@@ -3,20 +3,36 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Web Media Hub - Multi-store clothing management API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: products
+    description: Product management
+  - name: categories
+    description: Category management
+  - name: bookings
+    description: Customer bookings
+  - name: store
+    description: Store configuration
+  - name: admins
+    description: Admin management (super_admin only)
+  - name: notifications
+    description: Notifications
+  - name: dashboard
+    description: Dashboard summaries
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,7 +40,495 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with username and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /auth/change-password:
+    patch:
+      operationId: changePassword
+      tags: [auth]
+      summary: Change username and/or password
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordInput"
+      responses:
+        "200":
+          description: Updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: List all products (newest first)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [Top, Bottom, "Full Outfit", Functional]
+        - in: query
+          name: storeId
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+    post:
+      operationId: createProduct
+      tags: [products]
+      summary: Create a new product
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+
+  /products/{id}:
+    get:
+      operationId: getProduct
+      tags: [products]
+      summary: Get a product by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Product details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+    patch:
+      operationId: updateProduct
+      tags: [products]
+      summary: Update a product
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+    delete:
+      operationId: deleteProduct
+      tags: [products]
+      summary: Delete a product
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /products/{id}/like:
+    post:
+      operationId: likeProduct
+      tags: [products]
+      summary: Toggle like on a product
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Like toggled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LikeResponse"
+
+  /products/upload-image:
+    post:
+      operationId: uploadProductImage
+      tags: [products]
+      summary: Upload product image (base64)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImageUploadInput"
+      responses:
+        "200":
+          description: Uploaded image URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImageUploadResponse"
+
+  /categories:
+    get:
+      operationId: listCategories
+      tags: [categories]
+      summary: List all function/event categories
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Categories list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+    post:
+      operationId: createCategory
+      tags: [categories]
+      summary: Create a new function/event category
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+
+  /categories/{id}:
+    delete:
+      operationId: deleteCategory
+      tags: [categories]
+      summary: Delete a category
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /bookings:
+    get:
+      operationId: listBookings
+      tags: [bookings]
+      summary: List all active bookings (newest first)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Bookings list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Booking"
+    post:
+      operationId: createBooking
+      tags: [bookings]
+      summary: Create a booking (public, for customers)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingInput"
+      responses:
+        "201":
+          description: Booking created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+
+  /bookings/{id}/ignore:
+    patch:
+      operationId: ignoreBooking
+      tags: [bookings]
+      summary: Ignore (soft-delete) a booking
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Booking ignored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+
+  /store:
+    get:
+      operationId: getStore
+      tags: [store]
+      summary: Get store configuration
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Store info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Store"
+    post:
+      operationId: createStore
+      tags: [store]
+      summary: Create/save store configuration
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StoreInput"
+      responses:
+        "200":
+          description: Store saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Store"
+    patch:
+      operationId: updateStore
+      tags: [store]
+      summary: Update store configuration (after save/lock)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StoreUpdate"
+      responses:
+        "200":
+          description: Store updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Store"
+
+  /admins:
+    get:
+      operationId: listAdmins
+      tags: [admins]
+      summary: List all admins (super_admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Admins list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+    post:
+      operationId: createAdmin
+      tags: [admins]
+      summary: Create a new admin (super_admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminInput"
+      responses:
+        "201":
+          description: Admin created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /admins/{id}:
+    delete:
+      operationId: deleteAdmin
+      tags: [admins]
+      summary: Delete an admin (super_admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      summary: List notifications for current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Notifications list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+
+  /notifications/mark-read:
+    patch:
+      operationId: markNotificationsRead
+      tags: [notifications]
+      summary: Mark all notifications as read
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Marked as read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary stats
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +538,346 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    DeleteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+        - message
+
+    LoginInput:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    ChangePasswordInput:
+      type: object
+      properties:
+        username:
+          type: string
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+
+    AuthResponse:
+      type: object
+      required: [token, user]
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+
+    User:
+      type: object
+      required: [id, username, role]
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        role:
+          type: string
+          enum: [super_admin, admin]
+        createdAt:
+          type: string
+
+    AdminInput:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    Product:
+      type: object
+      required: [id, name, discountPrice, actualPrice, productType, sizes, images, likeCount, createdAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        images:
+          type: array
+          items:
+            type: string
+        discountPrice:
+          type: number
+        actualPrice:
+          type: number
+        functionCategory:
+          type: ["string", "null"]
+        productType:
+          type: string
+          enum: [Top, Bottom, "Full Outfit", Functional]
+        sizes:
+          type: array
+          items:
+            type: string
+        likeCount:
+          type: integer
+        storeId:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    ProductInput:
+      type: object
+      required: [name, discountPrice, actualPrice, productType, sizes, images]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        images:
+          type: array
+          items:
+            type: string
+        discountPrice:
+          type: number
+        actualPrice:
+          type: number
+        functionCategory:
+          type: string
+        productType:
+          type: string
+          enum: [Top, Bottom, "Full Outfit", Functional]
+        sizes:
+          type: array
+          items:
+            type: string
+
+    ProductUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        images:
+          type: array
+          items:
+            type: string
+        discountPrice:
+          type: number
+        actualPrice:
+          type: number
+        functionCategory:
+          type: string
+        productType:
+          type: string
+          enum: [Top, Bottom, "Full Outfit", Functional]
+        sizes:
+          type: array
+          items:
+            type: string
+
+    LikeResponse:
+      type: object
+      required: [likeCount]
+      properties:
+        likeCount:
+          type: integer
+
+    ImageUploadInput:
+      type: object
+      required: [imageData, fileName]
+      properties:
+        imageData:
+          type: string
+          description: Base64 encoded image data
+        fileName:
+          type: string
+
+    ImageUploadResponse:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+
+    Category:
+      type: object
+      required: [id, name, createdAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        createdAt:
+          type: string
+
+    CategoryInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+
+    Booking:
+      type: object
+      required: [id, productId, product, customerName, customerPhone, customerAddress, selectedSize, createdAt, ignored]
+      properties:
+        id:
+          type: string
+        productId:
+          type: string
+        product:
+          $ref: "#/components/schemas/Product"
+        customerName:
+          type: string
+        customerPhone:
+          type: string
+        customerAddress:
+          type: string
+        selectedSize:
+          type: string
+        ignored:
+          type: boolean
+        createdAt:
+          type: string
+
+    BookingInput:
+      type: object
+      required: [productId, customerName, customerPhone, customerAddress, selectedSize]
+      properties:
+        productId:
+          type: string
+        customerName:
+          type: string
+        customerPhone:
+          type: string
+        customerAddress:
+          type: string
+        selectedSize:
+          type: string
+
+    Store:
+      type: object
+      required: [id, name, isLocked]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        address:
+          type: ["string", "null"]
+        whatsappNumber:
+          type: ["string", "null"]
+        openingTime:
+          type: ["string", "null"]
+        openDays:
+          type: ["string", "null"]
+        bannerImage:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        publicSlug:
+          type: ["string", "null"]
+        isLocked:
+          type: boolean
+        createdAt:
+          type: string
+
+    StoreInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+        whatsappNumber:
+          type: string
+        openingTime:
+          type: string
+        openDays:
+          type: string
+        bannerImage:
+          type: string
+        description:
+          type: string
+
+    StoreUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+        whatsappNumber:
+          type: string
+        openingTime:
+          type: string
+        openDays:
+          type: string
+        bannerImage:
+          type: string
+        description:
+          type: string
+
+    Notification:
+      type: object
+      required: [id, type, message, read, createdAt]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [booking, like, store_request]
+        message:
+          type: string
+        read:
+          type: boolean
+        relatedId:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    DashboardSummary:
+      type: object
+      required: [totalProducts, categoryCounts, activeBookings, unreadNotifications]
+      properties:
+        totalProducts:
+          type: integer
+        categoryCounts:
+          type: object
+          properties:
+            Top:
+              type: integer
+            Bottom:
+              type: integer
+            "Full Outfit":
+              type: integer
+            Functional:
+              type: integer
+          required: [Top, Bottom, "Full Outfit", Functional]
+        activeBookings:
+          type: integer
+        unreadNotifications:
+          type: integer
+        recentBookings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Booking"
