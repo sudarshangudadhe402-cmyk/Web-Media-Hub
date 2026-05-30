@@ -38,36 +38,53 @@ import { QRCodeSVG } from "qrcode.react";
 
 const ALL_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
+interface TimeVal {
+  hour: string;
+  minute: string;
+  period: "AM" | "PM";
+}
+
 interface StoreForm {
   name: string;
   address: string;
   whatsappNumber: string;
-  openFrom: string;
-  openTo: string;
+  openFrom: TimeVal;
+  openTo: TimeVal;
   openDays: string[];
   description: string;
 }
+
+const DEFAULT_TIME: TimeVal = { hour: "", minute: "00", period: "AM" };
 
 const EMPTY_FORM: StoreForm = {
   name: "",
   address: "",
   whatsappNumber: "",
-  openFrom: "",
-  openTo: "",
+  openFrom: { ...DEFAULT_TIME },
+  openTo: { ...DEFAULT_TIME, period: "PM" },
   openDays: [],
   description: "",
 };
+
+function formatTime(t: TimeVal): string {
+  if (!t.hour) return "";
+  return `${t.hour}:${t.minute} ${t.period}`;
+}
+
+function parseTime12(raw: string | undefined, index: 0 | 1): TimeVal {
+  if (!raw) return index === 0 ? { ...DEFAULT_TIME } : { ...DEFAULT_TIME, period: "PM" };
+  const parts = raw.split(" - ");
+  const segment = parts[index]?.trim() ?? "";
+  const match = segment.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!match) return index === 0 ? { ...DEFAULT_TIME } : { ...DEFAULT_TIME, period: "PM" };
+  return { hour: match[1], minute: match[2], period: match[3].toUpperCase() as "AM" | "PM" };
+}
 
 function parseDays(raw: string | undefined): string[] {
   if (!raw) return [];
   return raw.split(",").map((d) => d.trim()).filter(Boolean);
 }
 
-function parseTime(raw: string | undefined, index: 0 | 1): string {
-  if (!raw) return "";
-  const parts = raw.split("-").map((s) => s.trim());
-  return parts[index] ?? "";
-}
 
 export default function MyStore() {
   const { data: store, isLoading } = useGetStore({ query: { retry: false } });
@@ -90,8 +107,8 @@ export default function MyStore() {
         name: store.name ?? "",
         address: store.address ?? "",
         whatsappNumber: store.whatsappNumber ?? "",
-        openFrom: parseTime(store.openingTime, 0),
-        openTo: parseTime(store.openingTime, 1),
+        openFrom: parseTime12(store.openingTime, 0),
+        openTo: parseTime12(store.openingTime, 1),
         openDays: parseDays(store.openDays),
         description: store.description ?? "",
       });
@@ -135,7 +152,9 @@ export default function MyStore() {
       address: form.address,
       whatsappNumber: form.whatsappNumber,
       openingTime:
-        form.openFrom && form.openTo ? `${form.openFrom} - ${form.openTo}` : form.openFrom,
+        form.openFrom.hour && form.openTo.hour
+          ? `${formatTime(form.openFrom)} - ${formatTime(form.openTo)}`
+          : formatTime(form.openFrom),
       openDays: form.openDays.join(", "),
       description: form.description,
       bannerImage: bannerUrl,
@@ -426,22 +445,43 @@ export default function MyStore() {
           {/* 4. Opening Time */}
           <div className="space-y-1.5">
             <Label>Opening Time</Label>
-            <div className="flex items-center gap-3">
-              <Input
-                type="time"
-                value={form.openFrom}
-                onChange={(e) => setForm((p) => ({ ...p, openFrom: e.target.value }))}
-                className="flex-1"
-                data-testid="open-from"
-              />
-              <span className="text-muted-foreground text-sm font-medium shrink-0">to</span>
-              <Input
-                type="time"
-                value={form.openTo}
-                onChange={(e) => setForm((p) => ({ ...p, openTo: e.target.value }))}
-                className="flex-1"
-                data-testid="open-to"
-              />
+            <div className="flex items-center gap-2 flex-wrap">
+              {(["openFrom", "openTo"] as const).map((key, idx) => (
+                <div key={key} className="flex items-center gap-1 flex-1 min-w-0">
+                  {idx === 1 && <span className="text-muted-foreground text-sm font-medium shrink-0 px-1">to</span>}
+                  <select
+                    value={form[key].hour}
+                    onChange={(e) => setForm((p) => ({ ...p, [key]: { ...p[key], hour: e.target.value } }))}
+                    className="flex-1 min-w-0 h-9 rounded-md border border-input bg-background px-2 text-sm"
+                    data-testid={`${key}-hour`}
+                  >
+                    <option value="">HH</option>
+                    {Array.from({ length: 12 }, (_, i) => String(i + 1)).map((h) => (
+                      <option key={h} value={h}>{h}</option>
+                    ))}
+                  </select>
+                  <span className="text-muted-foreground shrink-0">:</span>
+                  <select
+                    value={form[key].minute}
+                    onChange={(e) => setForm((p) => ({ ...p, [key]: { ...p[key], minute: e.target.value } }))}
+                    className="w-16 h-9 rounded-md border border-input bg-background px-2 text-sm"
+                    data-testid={`${key}-minute`}
+                  >
+                    {["00", "15", "30", "45"].map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={form[key].period}
+                    onChange={(e) => setForm((p) => ({ ...p, [key]: { ...p[key], period: e.target.value as "AM" | "PM" } }))}
+                    className="w-16 h-9 rounded-md border border-input bg-background px-2 text-sm"
+                    data-testid={`${key}-period`}
+                  >
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                  </select>
+                </div>
+              ))}
             </div>
           </div>
 
