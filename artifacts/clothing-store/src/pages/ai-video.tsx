@@ -92,17 +92,17 @@ export default function AiVideo() {
           {(
             [
               { key: "friend", label: "Friend Store", icon: Store },
-              { key: "approved", label: "Approved Store", icon: CheckCircle },
-              { key: "rejected", label: "Rejected Store", icon: XCircle },
-            ] as { key: Tab; label: string; icon: React.ElementType }[]
-          ).map(({ key, label, icon: Icon }) => (
+              { key: "approved", label: "Approved Store", icon: CheckCircle, activeClass: "bg-green-600 text-white border-green-600" },
+              { key: "rejected", label: "Rejected Store", icon: XCircle, activeClass: "bg-red-600 text-white border-red-600" },
+            ] as { key: Tab; label: string; icon: React.ElementType; activeClass?: string }[]
+          ).map(({ key, label, icon: Icon, activeClass }) => (
             <button
               key={key}
               data-testid={`tab-${key}`}
               onClick={() => setActiveTab(key)}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-sm font-medium border transition-colors cursor-not-allowed opacity-70 ${
                 activeTab === key
-                  ? "bg-primary text-primary-foreground border-primary"
+                  ? (activeClass ?? "bg-primary text-primary-foreground border-primary")
                   : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
               }`}
             >
