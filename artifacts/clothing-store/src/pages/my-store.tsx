@@ -1,32 +1,76 @@
 import { useState, useEffect } from "react";
-import { useGetStore, useCreateStore, useUpdateStore, useUploadProductImage, getGetStoreQueryKey } from "@workspace/api-client-react";
+import {
+  useGetStore,
+  useCreateStore,
+  useUpdateStore,
+  useUploadProductImage,
+  getGetStoreQueryKey,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Store, Image as ImageIcon, MapPin, Phone, Clock, CalendarDays, ExternalLink, QrCode, Copy } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Store,
+  Image as ImageIcon,
+  MapPin,
+  Phone,
+  Clock,
+  CalendarDays,
+  Pencil,
+  Upload,
+  ExternalLink,
+  Copy,
+  QrCode,
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { QRCodeSVG } from "qrcode.react";
 
-const storeSchema = z.object({
-  name: z.string().min(1, "Store name is required"),
-  address: z.string().optional(),
-  whatsappNumber: z.string().optional(),
-  openingTime: z.string().optional(),
-  openDays: z.string().optional(),
-  description: z.string().optional()
-});
+const ALL_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+interface StoreForm {
+  name: string;
+  address: string;
+  whatsappNumber: string;
+  openFrom: string;
+  openTo: string;
+  openDays: string[];
+  description: string;
+}
+
+const EMPTY_FORM: StoreForm = {
+  name: "",
+  address: "",
+  whatsappNumber: "",
+  openFrom: "",
+  openTo: "",
+  openDays: [],
+  description: "",
+};
+
+function parseDays(raw: string | undefined): string[] {
+  if (!raw) return [];
+  return raw.split(",").map((d) => d.trim()).filter(Boolean);
+}
+
+function parseTime(raw: string | undefined, index: 0 | 1): string {
+  if (!raw) return "";
+  const parts = raw.split("-").map((s) => s.trim());
+  return parts[index] ?? "";
+}
 
 export default function MyStore() {
   const { data: store, isLoading } = useGetStore({ query: { retry: false } });
-  const [bannerUrl, setBannerUrl] = useState<string>("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -34,259 +78,433 @@ export default function MyStore() {
   const updateStore = useUpdateStore();
   const uploadImage = useUploadProductImage();
 
-  const form = useForm<z.infer<typeof storeSchema>>({
-    resolver: zodResolver(storeSchema),
-    defaultValues: {
-      name: "",
-      address: "",
-      whatsappNumber: "",
-      openingTime: "",
-      openDays: "",
-      description: ""
-    }
-  });
+  const [locked, setLocked] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [bannerUrl, setBannerUrl] = useState("");
+  const [bannerPreview, setBannerPreview] = useState("");
+  const [form, setForm] = useState<StoreForm>(EMPTY_FORM);
 
   useEffect(() => {
     if (store) {
-      form.reset({
-        name: store.name || "",
-        address: store.address || "",
-        whatsappNumber: store.whatsappNumber || "",
-        openingTime: store.openingTime || "",
-        openDays: store.openDays || "",
-        description: store.description || ""
+      setForm({
+        name: store.name ?? "",
+        address: store.address ?? "",
+        whatsappNumber: store.whatsappNumber ?? "",
+        openFrom: parseTime(store.openingTime, 0),
+        openTo: parseTime(store.openingTime, 1),
+        openDays: parseDays(store.openDays),
+        description: store.description ?? "",
       });
-      setBannerUrl(store.bannerImage || "");
+      setBannerUrl(store.bannerImage ?? "");
+      setBannerPreview(store.bannerImage ?? "");
+      setLocked(!!store.isLocked);
     }
-  }, [store, form]);
+  }, [store]);
 
-  const handleFileChange = async (files: FileList | null) => {
+  function toggleDay(day: string) {
+    setForm((p) => ({
+      ...p,
+      openDays: p.openDays.includes(day)
+        ? p.openDays.filter((d) => d !== day)
+        : [...p.openDays, day],
+    }));
+  }
+
+  async function handleBannerChange(files: FileList | null) {
     if (!files || files.length === 0) return;
     const file = files[0];
+    const preview = URL.createObjectURL(file);
+    setBannerPreview(preview);
     const base64 = await new Promise<string>((resolve) => {
       const reader = new FileReader();
       reader.onload = () => resolve((reader.result as string).split(",")[1]);
       reader.readAsDataURL(file);
     });
-    
-    uploadImage.mutate({ data: { imageData: base64, fileName: file.name } }, {
-      onSuccess: (res) => setBannerUrl(res.url),
-      onError: () => toast({ title: "Failed to upload image", variant: "destructive" })
-    });
-  };
+    uploadImage.mutate(
+      { data: { imageData: base64, fileName: file.name } },
+      {
+        onSuccess: (res) => setBannerUrl(res.url),
+        onError: () => toast({ variant: "destructive", title: "Failed to upload banner" }),
+      }
+    );
+  }
 
-  const onSubmit = (values: z.infer<typeof storeSchema>) => {
-    const data = { ...values, bannerImage: bannerUrl };
-    
+  function buildPayload() {
+    return {
+      name: form.name,
+      address: form.address,
+      whatsappNumber: form.whatsappNumber,
+      openingTime:
+        form.openFrom && form.openTo ? `${form.openFrom} - ${form.openTo}` : form.openFrom,
+      openDays: form.openDays.join(", "),
+      description: form.description,
+      bannerImage: bannerUrl,
+      isLocked: true,
+    };
+  }
+
+  function handleDone(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.name.trim()) {
+      toast({ variant: "destructive", title: "Store name is required" });
+      return;
+    }
+    const payload = buildPayload();
     if (store) {
-      updateStore.mutate({ data }, {
-        onSuccess: () => {
-          toast({ title: "Store updated successfully" });
-          queryClient.invalidateQueries({ queryKey: getGetStoreQueryKey() });
+      updateStore.mutate(
+        { data: payload },
+        {
+          onSuccess: () => {
+            toast({ title: editing ? "Store updated successfully" : "Store saved successfully" });
+            queryClient.invalidateQueries({ queryKey: getGetStoreQueryKey() });
+            setLocked(true);
+            setEditing(false);
+          },
+          onError: () => toast({ variant: "destructive", title: "Failed to save store" }),
         }
-      });
+      );
     } else {
-      createStore.mutate({ data }, {
-        onSuccess: () => {
-          toast({ title: "Store created successfully" });
-          queryClient.invalidateQueries({ queryKey: getGetStoreQueryKey() });
+      createStore.mutate(
+        { data: payload },
+        {
+          onSuccess: () => {
+            toast({ title: "Store created successfully" });
+            queryClient.invalidateQueries({ queryKey: getGetStoreQueryKey() });
+            setLocked(true);
+          },
+          onError: () => toast({ variant: "destructive", title: "Failed to create store" }),
         }
-      });
+      );
     }
-  };
+  }
 
-  const handleUnlock = () => {
-    if (store && store.isLocked) {
-      updateStore.mutate({ data: { ...store, isLocked: false } }, {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetStoreQueryKey() });
-        }
+  function handleUpdate() {
+    setEditing(true);
+    setLocked(false);
+  }
+
+  function handleCancel() {
+    if (store) {
+      setForm({
+        name: store.name ?? "",
+        address: store.address ?? "",
+        whatsappNumber: store.whatsappNumber ?? "",
+        openFrom: parseTime(store.openingTime, 0),
+        openTo: parseTime(store.openingTime, 1),
+        openDays: parseDays(store.openDays),
+        description: store.description ?? "",
       });
+      setBannerPreview(store.bannerImage ?? "");
+      setBannerUrl(store.bannerImage ?? "");
     }
-  };
+    setEditing(false);
+    setLocked(true);
+  }
+
+  const storeUrl =
+    store?.publicSlug ? `${window.location.origin}/store/${store.publicSlug}` : "";
+
+  const isPending = createStore.isPending || updateStore.isPending;
 
   if (isLoading) {
     return (
-      <div className="space-y-6 max-w-4xl mx-auto">
-        <Skeleton className="h-10 w-48" />
-        <Skeleton className="h-[600px] w-full rounded-xl" />
+      <div className="space-y-4 max-w-2xl mx-auto">
+        <Skeleton className="h-8 w-40" />
+        <Skeleton className="h-[500px] w-full rounded-2xl" />
       </div>
     );
   }
 
-  const isLocked = store?.isLocked;
-  const storeUrl = store?.publicSlug ? `${window.location.origin}/store/${store.publicSlug}` : "";
-
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">My Store</h1>
-          <p className="text-muted-foreground">Manage your store details and public profile.</p>
-        </div>
-        {isLocked && (
-          <Button variant="outline" onClick={handleUnlock}>
-            Edit Store Details
-          </Button>
-        )}
+    <div className="space-y-6 max-w-2xl mx-auto pb-12">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">My Store</h1>
+        <p className="text-muted-foreground text-sm mt-1">Set up your store profile and public page</p>
       </div>
 
-      {store && store.publicSlug && (
-        <Card className="bg-primary/5 border-primary/20">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="space-y-1 text-center md:text-left w-full">
-                <h3 className="font-semibold flex items-center justify-center md:justify-start gap-2">
-                  <ExternalLink className="w-4 h-4 text-primary" /> Public Store Link
-                </h3>
-                <p className="text-sm text-muted-foreground font-mono bg-background p-2 rounded border break-all">
-                  {storeUrl}
-                </p>
+      {/* ── LOCKED VIEW ── */}
+      {locked && store ? (
+        <div className="space-y-4">
+          <Card className="overflow-hidden">
+            {/* Banner */}
+            <div className="h-44 w-full bg-muted relative">
+              {bannerPreview || store.bannerImage ? (
+                <img
+                  src={bannerPreview || store.bannerImage}
+                  alt="Store banner"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <ImageIcon className="w-10 h-10 text-muted-foreground/30" />
+                </div>
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+              <h2 className="absolute bottom-4 left-5 text-2xl font-bold text-white">{store.name}</h2>
+            </div>
+
+            <CardContent className="p-5 space-y-4">
+              {/* Info rows */}
+              <div className="divide-y divide-border rounded-xl border overflow-hidden">
+                {store.address && (
+                  <div className="flex items-start gap-3 px-4 py-3">
+                    <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Store Address</p>
+                      <p className="text-sm font-medium">{store.address}</p>
+                    </div>
+                  </div>
+                )}
+                {store.whatsappNumber && (
+                  <div className="flex items-start gap-3 px-4 py-3">
+                    <Phone className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Owner WhatsApp Number</p>
+                      <p className="text-sm font-medium">{store.whatsappNumber}</p>
+                    </div>
+                  </div>
+                )}
+                {store.openingTime && (
+                  <div className="flex items-start gap-3 px-4 py-3">
+                    <Clock className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Opening Time</p>
+                      <p className="text-sm font-medium">{store.openingTime}</p>
+                    </div>
+                  </div>
+                )}
+                {store.openDays && (
+                  <div className="flex items-start gap-3 px-4 py-3">
+                    <CalendarDays className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Open Days</p>
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        {parseDays(store.openDays).map((d) => (
+                          <span key={d} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
+                            {d}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {store.description && (
+                  <div className="flex items-start gap-3 px-4 py-3">
+                    <Store className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Description</p>
+                      <p className="text-sm">{store.description}</p>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <Button variant="secondary" onClick={() => {
-                  navigator.clipboard.writeText(storeUrl);
-                  toast({ title: "Link copied to clipboard" });
-                }}>
-                  <Copy className="w-4 h-4 mr-2" /> Copy Link
-                </Button>
-                
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button>
-                      <QrCode className="w-4 h-4 mr-2" /> QR Code
+
+              {/* Public link + QR */}
+              {storeUrl && (
+                <div className="bg-muted rounded-xl p-4 space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                    <ExternalLink className="w-3.5 h-3.5" /> Public Store Link
+                  </p>
+                  <p className="text-xs font-mono bg-background border rounded px-2 py-1.5 break-all">{storeUrl}</p>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="flex-1"
+                      onClick={() => {
+                        navigator.clipboard.writeText(storeUrl);
+                        toast({ title: "Link copied" });
+                      }}
+                    >
+                      <Copy className="w-3.5 h-3.5 mr-1.5" /> Copy
                     </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-md flex flex-col items-center justify-center py-10">
-                    <DialogHeader>
-                      <DialogTitle className="text-center mb-4">Store QR Code</DialogTitle>
-                    </DialogHeader>
-                    <div className="bg-white p-4 rounded-xl">
-                      <QRCodeSVG value={storeUrl} size={250} level="H" includeMargin />
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-4 text-center">
-                      Customers can scan this code to visit your store directly.
-                    </p>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button size="sm" className="flex-1">
+                          <QrCode className="w-3.5 h-3.5 mr-1.5" /> QR Code
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-sm flex flex-col items-center py-8">
+                        <DialogHeader>
+                          <DialogTitle className="text-center mb-4">Store QR Code</DialogTitle>
+                        </DialogHeader>
+                        <div className="bg-white p-4 rounded-xl">
+                          <QRCodeSVG value={storeUrl} size={220} level="H" includeMargin />
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-4 text-center">
+                          Customers scan this to visit your store.
+                        </p>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </div>
+              )}
 
-      {isLocked ? (
-        <Card>
-          <div className="h-48 w-full bg-muted relative rounded-t-xl overflow-hidden">
-            {store.bannerImage ? (
-              <img src={store.bannerImage} alt="Banner" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                <ImageIcon className="w-12 h-12 opacity-20" />
+              {/* Update Information — small, bottom left */}
+              <div className="flex justify-start pt-1">
+                <button
+                  data-testid="update-info-btn"
+                  onClick={handleUpdate}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  Update information
+                </button>
               </div>
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-            <h2 className="absolute bottom-4 left-6 text-3xl font-bold text-white">{store.name}</h2>
-          </div>
-          <CardContent className="p-6">
-            <div className="grid md:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <div>
-                  <h4 className="font-semibold text-muted-foreground mb-3 flex items-center gap-2">
-                    <Store className="w-4 h-4" /> About
-                  </h4>
-                  <p className="text-sm">{store.description || "No description provided."}</p>
-                </div>
-              </div>
-              <div className="space-y-4 bg-muted/50 p-6 rounded-xl">
-                <div className="flex items-start gap-3">
-                  <MapPin className="w-5 h-5 text-muted-foreground mt-0.5" />
-                  <div>
-                    <span className="text-sm font-medium block">Address</span>
-                    <span className="text-sm text-muted-foreground">{store.address || "Not specified"}</span>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Phone className="w-5 h-5 text-muted-foreground mt-0.5" />
-                  <div>
-                    <span className="text-sm font-medium block">WhatsApp</span>
-                    <span className="text-sm text-muted-foreground">{store.whatsappNumber || "Not specified"}</span>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Clock className="w-5 h-5 text-muted-foreground mt-0.5" />
-                  <div>
-                    <span className="text-sm font-medium block">Opening Hours</span>
-                    <span className="text-sm text-muted-foreground">{store.openingTime || "Not specified"}</span>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <CalendarDays className="w-5 h-5 text-muted-foreground mt-0.5" />
-                  <div>
-                    <span className="text-sm font-medium block">Open Days</span>
-                    <span className="text-sm text-muted-foreground">{store.openDays || "Not specified"}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>{store ? "Edit Store Information" : "Setup Your Store"}</CardTitle>
-            <CardDescription>Fill in your store details to generate your public link.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField control={form.control} name="name" render={({ field }) => (
-                  <FormItem><FormLabel>Store Name <span className="text-destructive">*</span></FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                
-                <FormItem>
-                  <FormLabel>Banner Image</FormLabel>
-                  <FormControl>
-                    <Input type="file" accept="image/*" onChange={(e) => handleFileChange(e.target.files)} disabled={uploadImage.isPending} />
-                  </FormControl>
-                  {bannerUrl && (
-                    <div className="mt-2 h-32 w-full max-w-md border rounded-lg overflow-hidden relative">
-                      <img src={bannerUrl} alt="Banner Preview" className="w-full h-full object-cover" />
-                    </div>
-                  )}
-                  {uploadImage.isPending && (
-                    <div className="mt-2 h-32 w-full max-w-md border rounded-lg flex items-center justify-center bg-muted animate-pulse">
-                      <ImageIcon className="w-8 h-8 opacity-50" />
-                    </div>
-                  )}
-                </FormItem>
-
-                <div className="grid md:grid-cols-2 gap-6">
-                  <FormField control={form.control} name="whatsappNumber" render={({ field }) => (
-                    <FormItem><FormLabel>WhatsApp Number</FormLabel><FormControl><Input placeholder="+1234567890" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={form.control} name="openDays" render={({ field }) => (
-                    <FormItem><FormLabel>Open Days</FormLabel><FormControl><Input placeholder="Mon - Sat" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={form.control} name="openingTime" render={({ field }) => (
-                    <FormItem><FormLabel>Opening Time</FormLabel><FormControl><Input placeholder="9:00 AM - 6:00 PM" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={form.control} name="address" render={({ field }) => (
-                    <FormItem><FormLabel>Address</FormLabel><FormControl><Input placeholder="123 Store St, City" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
+        /* ── EDIT / CREATE FORM ── */
+        <form onSubmit={handleDone} className="space-y-5">
+          {/* 6. Store Banner */}
+          <div className="space-y-2">
+            <Label>Store Banner</Label>
+            <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-xl cursor-pointer hover:border-primary/50 transition-colors bg-muted/40 overflow-hidden relative">
+              {bannerPreview ? (
+                <img src={bannerPreview} alt="Banner preview" className="w-full h-full object-cover" />
+              ) : (
+                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                  <Upload className="w-8 h-8" />
+                  <span className="text-sm">Click to upload banner image</span>
                 </div>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleBannerChange(e.target.files)}
+                disabled={uploadImage.isPending}
+                data-testid="banner-upload"
+              />
+            </label>
+            {uploadImage.isPending && (
+              <p className="text-xs text-muted-foreground animate-pulse">Uploading...</p>
+            )}
+          </div>
 
-                <FormField control={form.control} name="description" render={({ field }) => (
-                  <FormItem><FormLabel>Store Description</FormLabel><FormControl><Textarea rows={4} {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
+          {/* 1. Store Name */}
+          <div className="space-y-1.5">
+            <Label htmlFor="name">
+              Store Name <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="name"
+              placeholder="e.g. Fashion Zone"
+              value={form.name}
+              onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+              required
+              data-testid="store-name"
+            />
+          </div>
 
-                <Button type="submit" className="w-full md:w-auto" disabled={createStore.isPending || updateStore.isPending}>
-                  {store ? "Save Changes & Lock" : "Create Store & Lock"}
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+          {/* 2. Store Address */}
+          <div className="space-y-1.5">
+            <Label htmlFor="address">Store Address</Label>
+            <Input
+              id="address"
+              placeholder="e.g. 123 Market Street, Mumbai"
+              value={form.address}
+              onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))}
+              data-testid="store-address"
+            />
+          </div>
+
+          {/* 3. Owner WhatsApp Number */}
+          <div className="space-y-1.5">
+            <Label htmlFor="whatsapp">Owner WhatsApp Number</Label>
+            <Input
+              id="whatsapp"
+              type="tel"
+              placeholder="+91 00000 00000"
+              value={form.whatsappNumber}
+              onChange={(e) => setForm((p) => ({ ...p, whatsappNumber: e.target.value }))}
+              data-testid="store-whatsapp"
+            />
+          </div>
+
+          {/* 4. Opening Time */}
+          <div className="space-y-1.5">
+            <Label>Opening Time</Label>
+            <div className="flex items-center gap-3">
+              <Input
+                type="time"
+                value={form.openFrom}
+                onChange={(e) => setForm((p) => ({ ...p, openFrom: e.target.value }))}
+                className="flex-1"
+                data-testid="open-from"
+              />
+              <span className="text-muted-foreground text-sm font-medium shrink-0">to</span>
+              <Input
+                type="time"
+                value={form.openTo}
+                onChange={(e) => setForm((p) => ({ ...p, openTo: e.target.value }))}
+                className="flex-1"
+                data-testid="open-to"
+              />
+            </div>
+          </div>
+
+          {/* 5. Open Days */}
+          <div className="space-y-2">
+            <Label>Open Days</Label>
+            <div className="flex flex-wrap gap-2">
+              {ALL_DAYS.map((day) => {
+                const selected = form.openDays.includes(day);
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() => toggleDay(day)}
+                    data-testid={`day-${day}`}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                      selected
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-muted text-muted-foreground border-border hover:border-primary/40"
+                    }`}
+                  >
+                    {day}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 7. Description */}
+          <div className="space-y-1.5">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              rows={3}
+              placeholder="Tell customers about your store..."
+              value={form.description}
+              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+              data-testid="store-description"
+            />
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex gap-3 pt-2">
+            {editing && (
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={handleCancel}
+              >
+                Cancel
+              </Button>
+            )}
+            <Button
+              type="submit"
+              disabled={isPending || uploadImage.isPending}
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold text-base py-5"
+              data-testid="store-done-btn"
+            >
+              {isPending ? "Saving..." : editing ? "Update" : "Done"}
+            </Button>
+          </div>
+        </form>
       )}
     </div>
   );
