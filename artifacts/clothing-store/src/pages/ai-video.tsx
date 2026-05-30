@@ -48,11 +48,11 @@ export default function AiVideo() {
         <p className="text-muted-foreground text-sm mt-1">Refer friends and earn free AI promotional videos</p>
       </div>
 
-      {/* Add My Friend's Store — Red CTA */}
+      {/* Add My Friend's Store — Green CTA */}
       <button
         data-testid="add-friend-store-btn"
         onClick={() => setAddStoreOpen(true)}
-        className="w-full flex items-center justify-between gap-4 bg-red-600 hover:bg-red-700 active:bg-red-800 transition-colors text-white rounded-xl px-6 py-5 shadow-lg"
+        className="w-full flex items-center justify-between gap-4 bg-green-600 hover:bg-green-700 active:bg-green-800 transition-colors text-white rounded-xl px-6 py-5 shadow-lg"
       >
         <div className="flex items-center gap-3">
           <PlusCircle className="w-6 h-6 shrink-0" />
@@ -218,7 +218,7 @@ export default function AiVideo() {
               >
                 Cancel
               </Button>
-              <Button type="submit" className="flex-1 bg-red-600 hover:bg-red-700 text-white">
+              <Button type="submit" className="flex-1 bg-green-600 hover:bg-green-700 text-white">
                 Done
               </Button>
             </div>
