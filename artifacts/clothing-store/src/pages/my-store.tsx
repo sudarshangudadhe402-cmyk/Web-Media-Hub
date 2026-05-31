@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   useGetStore,
   useCreateStore,
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Store,
@@ -71,7 +72,7 @@ function formatTime(t: TimeVal): string {
   return `${t.hour}:${t.minute} ${t.period}`;
 }
 
-function parseTime12(raw: string | undefined, index: 0 | 1): TimeVal {
+function parseTime12(raw: string | null | undefined, index: 0 | 1): TimeVal {
   if (!raw) return index === 0 ? { ...DEFAULT_TIME } : { ...DEFAULT_TIME, period: "PM" };
   const parts = raw.split(" - ");
   const segment = parts[index]?.trim() ?? "";
@@ -80,7 +81,7 @@ function parseTime12(raw: string | undefined, index: 0 | 1): TimeVal {
   return { hour: match[1], minute: match[2], period: match[3].toUpperCase() as "AM" | "PM" };
 }
 
-function parseDays(raw: string | undefined): string[] {
+function parseDays(raw: string | null | undefined): string[] {
   if (!raw) return [];
   return raw.split(",").map((d) => d.trim()).filter(Boolean);
 }
@@ -88,6 +89,7 @@ function parseDays(raw: string | undefined): string[] {
 
 export default function MyStore() {
   const { data: store, isLoading } = useGetStore({ query: { retry: false } });
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -100,9 +102,11 @@ export default function MyStore() {
   const [bannerUrl, setBannerUrl] = useState("");
   const [bannerPreview, setBannerPreview] = useState("");
   const [form, setForm] = useState<StoreForm>(EMPTY_FORM);
+  const initializedRef = useRef(false);
 
   useEffect(() => {
-    if (store) {
+    if (store && !initializedRef.current) {
+      initializedRef.current = true;
       setForm({
         name: store.name ?? "",
         address: store.address ?? "",
@@ -198,6 +202,19 @@ export default function MyStore() {
   }
 
   function handleUpdate() {
+    if (store) {
+      setForm({
+        name: store.name ?? "",
+        address: store.address ?? "",
+        whatsappNumber: store.whatsappNumber ?? "",
+        openFrom: parseTime12(store.openingTime, 0),
+        openTo: parseTime12(store.openingTime, 1),
+        openDays: parseDays(store.openDays),
+        description: store.description ?? "",
+      });
+      setBannerPreview(store.bannerImage ?? "");
+      setBannerUrl(store.bannerImage ?? "");
+    }
     setEditing(true);
     setLocked(false);
   }
@@ -208,8 +225,8 @@ export default function MyStore() {
         name: store.name ?? "",
         address: store.address ?? "",
         whatsappNumber: store.whatsappNumber ?? "",
-        openFrom: parseTime(store.openingTime, 0),
-        openTo: parseTime(store.openingTime, 1),
+        openFrom: parseTime12(store.openingTime, 0),
+        openTo: parseTime12(store.openingTime, 1),
         openDays: parseDays(store.openDays),
         description: store.description ?? "",
       });
@@ -220,8 +237,9 @@ export default function MyStore() {
     setLocked(true);
   }
 
-  const storeUrl =
-    store?.publicSlug ? `${window.location.origin}/store/${store.publicSlug}` : "";
+  const storeUrl = user?.username
+    ? `https://${user.username}.web-media-hub.com/store`
+    : "";
 
   const isPending = createStore.isPending || updateStore.isPending;
 
@@ -249,7 +267,7 @@ export default function MyStore() {
             <div className="h-44 w-full bg-muted relative">
               {bannerPreview || store.bannerImage ? (
                 <img
-                  src={bannerPreview || store.bannerImage}
+                  src={bannerPreview || store.bannerImage || undefined}
                   alt="Store banner"
                   className="w-full h-full object-cover"
                 />
