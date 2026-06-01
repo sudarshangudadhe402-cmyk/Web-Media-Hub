@@ -1,67 +1,140 @@
 import { useState } from "react";
-import { useListProducts, useCreateProduct, useUpdateProduct, useDeleteProduct, useLikeProduct, useUploadProductImage, useListCategories, getListProductsQueryKey } from "@workspace/api-client-react";
+import {
+  useListProducts,
+  useCreateProduct,
+  useUpdateProduct,
+  useDeleteProduct,
+  useUploadProductImage,
+  useListCategories,
+  getListProductsQueryKey,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Heart, Trash2, Edit, Image as ImageIcon, MessageCircle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Image as ImageIcon,
+  Plus,
+  Upload,
+  X,
+  Pencil,
+  Trash2,
+  Tag,
+  ChevronLeft,
+} from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const productSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  description: z.string().optional(),
-  actualPrice: z.coerce.number().min(0, "Actual price must be positive"),
-  discountPrice: z.coerce.number().min(0, "Discount price must be positive"),
-  functionCategory: z.string().optional(),
-  productType: z.enum(["Top", "Bottom", "Full Outfit", "Functional"]),
-  sizes: z.array(z.string()).min(1, "At least one size is required")
-});
+/* ── constants ── */
+const PRODUCT_TYPES = ["Top", "Bottom", "Full Outfit"] as const;
+type ProductType = (typeof PRODUCT_TYPES)[number];
 
-const AVAILABLE_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "0-3M", "3-6M", "6-12M", "1Y", "2Y", "3Y", "4Y", "5Y"];
+const SIZE_GROUPS = [
+  {
+    label: "Adults",
+    sizes: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
+  },
+  {
+    label: "Kids (Age)",
+    sizes: ["0-3M", "3-6M", "6-12M", "1Y+", "2Y+", "3Y+", "4Y+", "5Y+", "6Y+", "7Y+", "8Y+"],
+  },
+  {
+    label: "Gender",
+    sizes: ["Boy", "Girl", "Unisex"],
+  },
+];
 
+interface ProductForm {
+  name: string;
+  description: string;
+  discountPrice: string;
+  actualPrice: string;
+  functionCategory: string;
+  productType: ProductType;
+  sizes: string[];
+}
+
+const EMPTY_FORM: ProductForm = {
+  name: "",
+  description: "",
+  discountPrice: "",
+  actualPrice: "",
+  functionCategory: "",
+  productType: "Top",
+  sizes: [],
+};
+
+function toggleItem(arr: string[], val: string): string[] {
+  return arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val];
+}
+
+/* ── main component ── */
 export default function Products() {
-  const [filterType, setFilterType] = useState<string>("All");
+  const [filterType, setFilterType] = useState("All");
+  const [form, setForm] = useState<ProductForm>(EMPTY_FORM);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
-  const [editingProduct, setEditingProduct] = useState<any>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: products, isLoading } = useListProducts(filterType !== "All" ? { type: filterType as any } : {});
+  const { data: products, isLoading } = useListProducts(
+    filterType !== "All" ? { type: filterType as any } : {}
+  );
   const { data: categories } = useListCategories();
-  
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
-  const likeProduct = useLikeProduct();
   const uploadImage = useUploadProductImage();
 
-  const form = useForm<z.infer<typeof productSchema>>({
-    resolver: zodResolver(productSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-      actualPrice: 0,
-      discountPrice: 0,
-      functionCategory: "",
-      productType: "Top",
-      sizes: []
-    }
-  });
+  /* ── helpers ── */
+  function resetForm() {
+    setForm(EMPTY_FORM);
+    setImageUrls([]);
+    setEditingId(null);
+  }
 
-  const handleFileChange = async (files: FileList | null) => {
+  function openAdd() {
+    resetForm();
+    setFormOpen(true);
+  }
+
+  function openEdit(product: any) {
+    setForm({
+      name: product.name,
+      description: product.description ?? "",
+      discountPrice: String(product.discountPrice),
+      actualPrice: String(product.actualPrice),
+      functionCategory: product.functionCategory ?? "",
+      productType: product.productType,
+      sizes: product.sizes,
+    });
+    setImageUrls(product.images ?? []);
+    setEditingId(product.id);
+    setSelectedProduct(null);
+    setFormOpen(true);
+  }
+
+  async function handleFileChange(files: FileList | null) {
     if (!files) return;
     for (const file of Array.from(files)) {
       const base64 = await new Promise<string>((resolve) => {
@@ -69,312 +142,606 @@ export default function Products() {
         reader.onload = () => resolve((reader.result as string).split(",")[1]);
         reader.readAsDataURL(file);
       });
-      uploadImage.mutate({ data: { imageData: base64, fileName: file.name } }, {
-        onSuccess: (res) => setImageUrls(prev => [...prev, res.url]),
-        onError: () => toast({ title: "Failed to upload image", variant: "destructive" })
-      });
-    }
-  };
-
-  const onSubmit = (values: z.infer<typeof productSchema>) => {
-    const data = { ...values, images: imageUrls };
-    if (editingProduct) {
-      updateProduct.mutate({ id: editingProduct.id, data }, {
-        onSuccess: () => {
-          toast({ title: "Product updated" });
-          queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
-          setEditingProduct(null);
-          setIsModalOpen(false);
-          form.reset();
-          setImageUrls([]);
+      uploadImage.mutate(
+        { data: { imageData: base64, fileName: file.name } },
+        {
+          onSuccess: (res) => setImageUrls((p) => [...p, res.url]),
+          onError: () =>
+            toast({ title: "Failed to upload image", variant: "destructive" }),
         }
-      });
+      );
+    }
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.name.trim()) {
+      toast({ title: "Product name is required", variant: "destructive" });
+      return;
+    }
+    const data = {
+      name: form.name,
+      description: form.description,
+      discountPrice: parseFloat(form.discountPrice) || 0,
+      actualPrice: parseFloat(form.actualPrice) || 0,
+      functionCategory: form.functionCategory || undefined,
+      productType: form.productType,
+      sizes: form.sizes,
+      images: imageUrls,
+    };
+
+    if (editingId) {
+      updateProduct.mutate(
+        { id: editingId, data },
+        {
+          onSuccess: () => {
+            toast({ title: "Product updated" });
+            queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
+            resetForm();
+            setFormOpen(false);
+          },
+          onError: () =>
+            toast({ title: "Failed to update product", variant: "destructive" }),
+        }
+      );
     } else {
-      createProduct.mutate({ data }, {
-        onSuccess: () => {
-          toast({ title: "Product created" });
-          queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
-          form.reset();
-          setImageUrls([]);
-          setIsModalOpen(false);
+      createProduct.mutate(
+        { data },
+        {
+          onSuccess: () => {
+            toast({ title: "Product added" });
+            queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
+            resetForm();
+            setFormOpen(false);
+          },
+          onError: () =>
+            toast({ title: "Failed to add product", variant: "destructive" }),
         }
-      });
+      );
     }
-  };
+  }
 
-  const openEdit = (product: any) => {
-    setEditingProduct(product);
-    setImageUrls(product.images || []);
-    form.reset({
-      name: product.name,
-      description: product.description || "",
-      actualPrice: product.actualPrice,
-      discountPrice: product.discountPrice,
-      functionCategory: product.functionCategory || "",
-      productType: product.productType,
-      sizes: product.sizes
-    });
-    setIsModalOpen(true);
-  };
-
-  const handleDelete = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this product?")) {
-      deleteProduct.mutate({ id }, {
+  function handleDelete(id: string) {
+    if (!window.confirm("Delete this product?")) return;
+    deleteProduct.mutate(
+      { id },
+      {
         onSuccess: () => {
           toast({ title: "Product deleted" });
           queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
-        }
-      });
-    }
-  };
-
-  const handleLike = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    likeProduct.mutate({ id }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
+          setSelectedProduct(null);
+        },
+        onError: () =>
+          toast({ title: "Failed to delete product", variant: "destructive" }),
       }
-    });
-  };
+    );
+  }
 
+  const isPending = createProduct.isPending || updateProduct.isPending;
+
+  /* ── render ── */
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">Products</h1>
-        <Dialog open={isModalOpen} onOpenChange={(open) => {
-          setIsModalOpen(open);
-          if (!open) {
-            setEditingProduct(null);
-            form.reset();
-            setImageUrls([]);
-          }
-        }}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-add-product">Add Product</Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{editingProduct ? "Edit Product" : "Add New Product"}</DialogTitle>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField control={form.control} name="name" render={({ field }) => (
-                  <FormItem><FormLabel>Product Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormItem>
-                  <FormLabel>Product Images</FormLabel>
-                  <FormControl>
-                    <Input type="file" multiple accept="image/*" onChange={(e) => handleFileChange(e.target.files)} disabled={uploadImage.isPending} />
-                  </FormControl>
-                  <div className="flex gap-2 mt-2 flex-wrap">
-                    {imageUrls.map((url, i) => (
-                      <div key={i} className="relative w-16 h-16 border rounded">
-                        <img src={url} alt={`Preview ${i}`} className="w-full h-full object-cover rounded" />
-                        <button type="button" className="absolute top-0 right-0 bg-destructive text-white rounded-full w-4 h-4 text-xs flex items-center justify-center" onClick={() => setImageUrls(prev => prev.filter((_, idx) => idx !== i))}>×</button>
-                      </div>
-                    ))}
-                    {uploadImage.isPending && (
-                      <div className="w-16 h-16 border rounded flex items-center justify-center bg-muted animate-pulse">
-                        <ImageIcon className="w-6 h-6 opacity-50" />
-                      </div>
-                    )}
-                  </div>
-                </FormItem>
-                <FormField control={form.control} name="description" render={({ field }) => (
-                  <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField control={form.control} name="actualPrice" render={({ field }) => (
-                    <FormItem><FormLabel>Actual Price</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={form.control} name="discountPrice" render={({ field }) => (
-                    <FormItem><FormLabel>Discount Price</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField control={form.control} name="productType" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Product Type</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          <SelectItem value="Top">Top</SelectItem>
-                          <SelectItem value="Bottom">Bottom</SelectItem>
-                          <SelectItem value="Full Outfit">Full Outfit</SelectItem>
-                          <SelectItem value="Functional">Functional</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="functionCategory" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Function Category</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || "none"}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
-                          {categories?.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                </div>
-                <FormField control={form.control} name="sizes" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Sizes</FormLabel>
-                    <div className="flex flex-wrap gap-2">
-                      {AVAILABLE_SIZES.map(size => {
-                        const isSelected = field.value.includes(size);
-                        return (
-                          <Badge 
-                            key={size} 
-                            variant={isSelected ? "default" : "outline"} 
-                            className="cursor-pointer"
-                            onClick={() => {
-                              const newSizes = isSelected ? field.value.filter(s => s !== size) : [...field.value, size];
-                              field.onChange(newSizes);
-                            }}
-                          >
-                            {size}
-                          </Badge>
-                        );
-                      })}
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <Button type="submit" disabled={createProduct.isPending || updateProduct.isPending} className="w-full">
-                  {editingProduct ? "Update Product" : "Add Product"}
-                </Button>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Products</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">
+            {products?.length ?? 0} items
+          </p>
+        </div>
+        <Button
+          onClick={openAdd}
+          className="bg-green-600 hover:bg-green-700 text-white font-semibold gap-1.5"
+        >
+          <Plus className="w-4 h-4" />
+          Add Product
+        </Button>
       </div>
 
+      {/* Filter tabs */}
       <Tabs value={filterType} onValueChange={setFilterType}>
         <TabsList>
           <TabsTrigger value="All">All</TabsTrigger>
-          <TabsTrigger value="Top">Top</TabsTrigger>
-          <TabsTrigger value="Bottom">Bottom</TabsTrigger>
-          <TabsTrigger value="Full Outfit">Full Outfit</TabsTrigger>
-          <TabsTrigger value="Functional">Functional</TabsTrigger>
+          {PRODUCT_TYPES.map((t) => (
+            <TabsTrigger key={t} value={t}>
+              {t}
+            </TabsTrigger>
+          ))}
         </TabsList>
       </Tabs>
 
+      {/* Product grid — newest first */}
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {[1,2,3,4].map(i => <Skeleton key={i} className="h-64 w-full rounded-xl" />)}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-64 rounded-xl" />
+          ))}
         </div>
-      ) : products?.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <ImageIcon className="mx-auto h-12 w-12 opacity-20 mb-4" />
-          <p>No products found.</p>
+      ) : !products?.length ? (
+        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+          <ImageIcon className="w-12 h-12 opacity-20 mb-3" />
+          <p className="text-sm">No products yet. Add your first one!</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {products?.map(product => {
-            const savings = product.actualPrice > product.discountPrice 
-              ? Math.round(((product.actualPrice - product.discountPrice) / product.actualPrice) * 100) 
-              : 0;
-
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {products.map((product) => {
+            const discount =
+              product.actualPrice > product.discountPrice
+                ? Math.round(
+                    ((product.actualPrice - product.discountPrice) /
+                      product.actualPrice) *
+                      100
+                  )
+                : 0;
             return (
-              <Card key={product.id} className="overflow-hidden cursor-pointer hover:border-primary transition-all group relative" onClick={() => setSelectedProduct(product)} data-testid={`card-product-${product.id}`}>
-                <div className="aspect-square bg-muted relative">
+              <Card
+                key={product.id}
+                className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => setSelectedProduct(product)}
+              >
+                {/* Image */}
+                <div className="aspect-[3/4] bg-muted relative">
                   {product.images?.[0] ? (
-                    <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
+                    <img
+                      src={product.images[0]}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center"><ImageIcon className="opacity-20 h-10 w-10" /></div>
+                    <div className="w-full h-full flex items-center justify-center">
+                      <ImageIcon className="w-8 h-8 opacity-20" />
+                    </div>
                   )}
-                  <Badge className="absolute top-2 left-2">{product.productType}</Badge>
-                  {savings > 0 && <Badge variant="destructive" className="absolute top-2 left-16">{savings}% OFF</Badge>}
-                  
-                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button size="icon" variant="secondary" className="h-8 w-8 bg-background/80 backdrop-blur" onClick={(e) => { e.stopPropagation(); openEdit(product); }}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button size="icon" variant="destructive" className="h-8 w-8 bg-destructive/80 backdrop-blur" onClick={(e) => { e.stopPropagation(); handleDelete(product.id); }}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  {discount > 0 && (
+                    <span className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                      {discount}% OFF
+                    </span>
+                  )}
+                  <span className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">
+                    {product.productType}
+                  </span>
                 </div>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold line-clamp-1">{product.name}</h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-lg font-bold">${product.discountPrice}</span>
+                <CardContent className="p-3 space-y-1">
+                  <p className="font-medium text-sm line-clamp-1 leading-tight">
+                    {product.name}
+                  </p>
+                  {product.functionCategory && (
+                    <p className="text-[10px] text-muted-foreground">
+                      {product.functionCategory}
+                    </p>
+                  )}
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <span className="text-base font-bold text-green-700">
+                      ₹{product.discountPrice}
+                    </span>
                     {product.actualPrice > product.discountPrice && (
-                      <span className="text-sm text-muted-foreground line-through">${product.actualPrice}</span>
+                      <span className="text-xs text-muted-foreground line-through">
+                        ₹{product.actualPrice}
+                      </span>
                     )}
                   </div>
+                  {product.sizes?.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-0.5">
+                      {product.sizes.slice(0, 3).map((s: string) => (
+                        <span
+                          key={s}
+                          className="text-[9px] border rounded px-1 py-0.5 text-muted-foreground"
+                        >
+                          {s}
+                        </span>
+                      ))}
+                      {product.sizes.length > 3 && (
+                        <span className="text-[9px] text-muted-foreground">
+                          +{product.sizes.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
-                <CardFooter className="p-4 pt-0 flex justify-between items-center">
-                  <div className="flex gap-1 overflow-hidden">
-                    {product.sizes.slice(0, 3).map(s => <Badge key={s} variant="outline" className="text-[10px] px-1">{s}</Badge>)}
-                    {product.sizes.length > 3 && <Badge variant="outline" className="text-[10px] px-1">+{product.sizes.length - 3}</Badge>}
-                  </div>
-                  <Button variant="ghost" size="sm" className="h-8 gap-1 px-2" onClick={(e) => handleLike(e, product.id)}>
-                    <Heart className={`h-4 w-4 ${product.likeCount > 0 ? "fill-destructive text-destructive" : ""}`} />
-                    <span className="text-xs">{product.likeCount}</span>
-                  </Button>
-                </CardFooter>
               </Card>
             );
           })}
         </div>
       )}
 
-      {selectedProduct && (
-        <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{selectedProduct.name}</DialogTitle>
-            </DialogHeader>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div className="aspect-square bg-muted rounded-lg overflow-hidden border">
-                  {selectedProduct.images?.[0] ? (
-                    <img src={selectedProduct.images[0]} alt={selectedProduct.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center"><ImageIcon className="opacity-20 h-16 w-16" /></div>
-                  )}
+      {/* ── ADD / EDIT FORM DIALOG ── */}
+      <Dialog
+        open={formOpen}
+        onOpenChange={(open) => {
+          setFormOpen(open);
+          if (!open) resetForm();
+        }}
+      >
+        <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingId ? "Update Product" : "Add New Product"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="space-y-5 pb-2">
+            {/* 1. Product Name */}
+            <div className="space-y-1.5">
+              <Label>
+                Product Name <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                placeholder="e.g. Floral Summer Kurta"
+                value={form.name}
+                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+              />
+            </div>
+
+            {/* 2. Product Image */}
+            <div className="space-y-1.5">
+              <Label>Product Image</Label>
+              <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-xl cursor-pointer hover:border-primary/50 transition-colors bg-muted/40">
+                <Upload className="w-6 h-6 text-muted-foreground mb-1" />
+                <span className="text-xs text-muted-foreground">
+                  {uploadImage.isPending ? "Uploading..." : "Click to upload images"}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => handleFileChange(e.target.files)}
+                  disabled={uploadImage.isPending}
+                />
+              </label>
+              {imageUrls.length > 0 && (
+                <div className="flex gap-2 flex-wrap mt-1">
+                  {imageUrls.map((url, i) => (
+                    <div key={i} className="relative w-16 h-16 rounded-lg border overflow-hidden">
+                      <img
+                        src={url}
+                        alt={`img-${i}`}
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setImageUrls((p) => p.filter((_, idx) => idx !== i))
+                        }
+                        className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/70 text-white rounded-full flex items-center justify-center"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-                {selectedProduct.images?.length > 1 && (
-                  <div className="flex gap-2 overflow-x-auto pb-2">
-                    {selectedProduct.images.map((img: string, i: number) => (
-                      <img key={i} src={img} alt="" className="h-16 w-16 object-cover rounded cursor-pointer border hover:border-primary" />
-                    ))}
+              )}
+            </div>
+
+            {/* 3. Description */}
+            <div className="space-y-1.5">
+              <Label>Description</Label>
+              <Textarea
+                rows={2}
+                placeholder="Describe this product..."
+                value={form.description}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, description: e.target.value }))
+                }
+              />
+            </div>
+
+            {/* 4. Price — Discount + Actual side by side */}
+            <div className="space-y-1.5">
+              <Label>Price</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Discount Price</p>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                      ₹
+                    </span>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      className="pl-7"
+                      value={form.discountPrice}
+                      onChange={(e) =>
+                        setForm((p) => ({ ...p, discountPrice: e.target.value }))
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Actual Price</p>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                      ₹
+                    </span>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      className="pl-7"
+                      value={form.actualPrice}
+                      onChange={(e) =>
+                        setForm((p) => ({ ...p, actualPrice: e.target.value }))
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+              {/* Price preview */}
+              {(form.discountPrice || form.actualPrice) && (
+                <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2">
+                  <span className="text-base font-bold text-green-700">
+                    ₹{form.discountPrice || "0"}
+                  </span>
+                  {form.actualPrice &&
+                    parseFloat(form.actualPrice) >
+                      parseFloat(form.discountPrice || "0") && (
+                      <>
+                        <span className="text-sm text-muted-foreground line-through">
+                          ₹{form.actualPrice}
+                        </span>
+                        <span className="text-xs font-semibold text-red-500">
+                          {Math.round(
+                            ((parseFloat(form.actualPrice) -
+                              parseFloat(form.discountPrice || "0")) /
+                              parseFloat(form.actualPrice)) *
+                              100
+                          )}
+                          % OFF
+                        </span>
+                      </>
+                    )}
+                </div>
+              )}
+            </div>
+
+            {/* 5. Category */}
+            <div className="space-y-1.5">
+              <Label>Category</Label>
+              <Select
+                value={form.functionCategory || "none"}
+                onValueChange={(v) =>
+                  setForm((p) => ({
+                    ...p,
+                    functionCategory: v === "none" ? "" : v,
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {categories?.map((c) => (
+                    <SelectItem key={c.id} value={c.name}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!categories?.length && (
+                <p className="text-xs text-muted-foreground">
+                  No categories yet — go to Categories page to add some.
+                </p>
+              )}
+            </div>
+
+            {/* 6. Product Type chips */}
+            <div className="space-y-1.5">
+              <Label>Type</Label>
+              <div className="flex gap-2 flex-wrap">
+                {PRODUCT_TYPES.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setForm((p) => ({ ...p, productType: t }))}
+                    className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                      form.productType === t
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-muted text-muted-foreground border-border hover:border-primary/40"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 7. Size / Age chips — grouped */}
+            <div className="space-y-2">
+              <Label>Size / Age</Label>
+              {SIZE_GROUPS.map((group) => (
+                <div key={group.label}>
+                  <p className="text-xs text-muted-foreground mb-1.5">
+                    {group.label}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {group.sizes.map((s) => {
+                      const selected = form.sizes.includes(s);
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() =>
+                            setForm((p) => ({
+                              ...p,
+                              sizes: toggleItem(p.sizes, s),
+                            }))
+                          }
+                          className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
+                            selected
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-background text-muted-foreground border-border hover:border-primary/40"
+                          }`}
+                        >
+                          {s}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Done / Update button */}
+            <Button
+              type="submit"
+              disabled={isPending || uploadImage.isPending}
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold text-base py-5"
+            >
+              {isPending
+                ? "Saving..."
+                : editingId
+                ? "Update Product"
+                : "Done"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── PRODUCT DETAIL DIALOG (Flipkart style) ── */}
+      {selectedProduct && (
+        <Dialog
+          open={!!selectedProduct}
+          onOpenChange={(open) => !open && setSelectedProduct(null)}
+        >
+          <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto p-0">
+            {/* Back bar */}
+            <div className="flex items-center gap-2 px-4 pt-4 pb-2 border-b sticky top-0 bg-background z-10">
+              <button
+                onClick={() => setSelectedProduct(null)}
+                className="p-1 rounded-full hover:bg-muted transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <h2 className="font-semibold text-sm line-clamp-1 flex-1">
+                {selectedProduct.name}
+              </h2>
+            </div>
+
+            <div className="p-4 space-y-5">
+              {/* Image */}
+              <div className="aspect-[4/3] bg-muted rounded-xl overflow-hidden">
+                {selectedProduct.images?.[0] ? (
+                  <img
+                    src={selectedProduct.images[0]}
+                    alt={selectedProduct.name}
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <ImageIcon className="w-16 h-16 opacity-20" />
                   </div>
                 )}
               </div>
-              <div className="space-y-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge>{selectedProduct.productType}</Badge>
-                  {selectedProduct.functionCategory && <Badge variant="outline">{selectedProduct.functionCategory}</Badge>}
+
+              {/* Thumbnail row */}
+              {selectedProduct.images?.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {selectedProduct.images.map((img: string, i: number) => (
+                    <img
+                      key={i}
+                      src={img}
+                      alt=""
+                      className="h-14 w-14 object-cover rounded-lg border shrink-0 cursor-pointer hover:border-primary"
+                      onClick={() =>
+                        setSelectedProduct((p: any) => ({
+                          ...p,
+                          images: [
+                            img,
+                            ...p.images.filter((_: string, idx: number) => idx !== i),
+                          ],
+                        }))
+                      }
+                    />
+                  ))}
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-3xl font-bold">${selectedProduct.discountPrice}</div>
-                  {selectedProduct.actualPrice > selectedProduct.discountPrice && (
-                    <div className="text-muted-foreground line-through text-lg">${selectedProduct.actualPrice}</div>
-                  )}
-                </div>
-                <div>
-                  <h4 className="font-semibold mb-2">Sizes Available</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedProduct.sizes.map((s: string) => <Badge key={s} variant="secondary">{s}</Badge>)}
-                  </div>
-                </div>
-                {selectedProduct.description && (
-                  <div>
-                    <h4 className="font-semibold mb-2">Description</h4>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedProduct.description}</p>
-                  </div>
+              )}
+
+              {/* Badges */}
+              <div className="flex flex-wrap gap-2">
+                <Badge>{selectedProduct.productType}</Badge>
+                {selectedProduct.functionCategory && (
+                  <Badge variant="outline">
+                    <Tag className="w-3 h-3 mr-1" />
+                    {selectedProduct.functionCategory}
+                  </Badge>
                 )}
-                <Button className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white" onClick={() => {
-                  window.open(`https://wa.me/?text=${encodeURIComponent(`Check out ${selectedProduct.name} for $${selectedProduct.discountPrice}!`)}`, '_blank');
-                }}>
-                  <MessageCircle className="mr-2 h-4 w-4" /> Share on WhatsApp
+              </div>
+
+              {/* Name */}
+              <h1 className="text-xl font-bold leading-snug">
+                {selectedProduct.name}
+              </h1>
+
+              {/* Price — Flipkart style */}
+              <div className="flex items-baseline gap-3">
+                <span className="text-3xl font-extrabold text-green-700">
+                  ₹{selectedProduct.discountPrice}
+                </span>
+                {selectedProduct.actualPrice > selectedProduct.discountPrice && (
+                  <>
+                    <span className="text-lg text-muted-foreground line-through">
+                      ₹{selectedProduct.actualPrice}
+                    </span>
+                    <span className="text-sm font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded">
+                      {Math.round(
+                        ((selectedProduct.actualPrice -
+                          selectedProduct.discountPrice) /
+                          selectedProduct.actualPrice) *
+                          100
+                      )}
+                      % OFF
+                    </span>
+                  </>
+                )}
+              </div>
+
+              {/* Sizes */}
+              {selectedProduct.sizes?.length > 0 && (
+                <div>
+                  <p className="text-sm font-semibold mb-2">
+                    Size / Age Available
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedProduct.sizes.map((s: string) => (
+                      <span
+                        key={s}
+                        className="px-3 py-1.5 border rounded-md text-sm font-medium"
+                      >
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Description */}
+              {selectedProduct.description && (
+                <div>
+                  <p className="text-sm font-semibold mb-1">Description</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                    {selectedProduct.description}
+                  </p>
+                </div>
+              )}
+
+              {/* Update + Delete */}
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <Button
+                  onClick={() => openEdit(selectedProduct)}
+                  className="bg-green-600 hover:bg-green-700 text-white font-semibold gap-2"
+                >
+                  <Pencil className="w-4 h-4" />
+                  Update
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => handleDelete(selectedProduct.id)}
+                  disabled={deleteProduct.isPending}
+                  className="font-semibold gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
                 </Button>
               </div>
             </div>
