@@ -86,7 +86,13 @@ export default function ManageAdmins() {
           setAddOpen(false);
         },
         onError: (err: any) => {
-          toast({ variant: "destructive", title: "Failed", description: err.message });
+          const msg = err?.response?.data?.error || err?.message || "Failed to create admin";
+          const isUsernameConflict = msg.toLowerCase().includes("already exists") || msg.toLowerCase().includes("username");
+          toast({
+            variant: "destructive",
+            title: isUsernameConflict ? "Username already exists" : "Failed",
+            description: isUsernameConflict ? "Please try a different username" : msg,
+          });
         },
       }
     );
@@ -115,7 +121,15 @@ export default function ManageAdmins() {
           queryClient.invalidateQueries({ queryKey: getListAdminsQueryKey() });
           setRequestDetailOpen(false);
         },
-        onError: () => toast({ title: "Failed to approve", variant: "destructive" }),
+        onError: (err: any) => {
+          const msg = err?.response?.data?.error || err?.message || "Failed to approve";
+          const isUsernameConflict = msg.toLowerCase().includes("already exists") || msg.toLowerCase().includes("username");
+          toast({
+            variant: "destructive",
+            title: isUsernameConflict ? "Username already exists" : "Failed to approve",
+            description: isUsernameConflict ? "Please try a different username for this store request" : msg,
+          });
+        },
       }
     );
   }

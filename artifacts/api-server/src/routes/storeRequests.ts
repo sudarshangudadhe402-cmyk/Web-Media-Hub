@@ -70,14 +70,17 @@ router.patch("/store-requests/:id/approve", requireSuperAdmin, async (req, res) 
     if (!request) { res.status(404).json({ error: "Not found" }); return; }
 
     const existingUser = await User.findOne({ username: request.username });
-    if (!existingUser) {
-      await User.create({
-        username: request.username,
-        password: request.password,
-        plainPassword: request.password,
-        role: "admin",
-      });
+    if (existingUser) {
+      await StoreRequest.findByIdAndUpdate(req.params.id, { status: "pending" });
+      res.status(400).json({ error: "Username already exists, please try a different username" });
+      return;
     }
+    await User.create({
+      username: request.username,
+      password: request.password,
+      plainPassword: request.password,
+      role: "admin",
+    });
 
     await Notification.create({
       type: "store_request",
