@@ -598,51 +598,71 @@ export default function Products() {
         </DialogContent>
       </Dialog>
 
-      {/* ── PRODUCT DETAIL DIALOG (Flipkart style) ── */}
+      {/* ── PRODUCT DETAIL DIALOG (Meesho full-screen style) ── */}
       {selectedProduct && (
         <Dialog
           open={!!selectedProduct}
           onOpenChange={(open) => !open && setSelectedProduct(null)}
         >
-          <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto p-0">
-            {/* Back bar */}
-            <div className="flex items-center gap-2 px-4 pt-4 pb-2 border-b sticky top-0 bg-background z-10">
+          <DialogContent className="fixed inset-0 max-w-none w-full h-full rounded-none p-0 m-0 flex flex-col bg-[#f5f5f5] translate-x-0 translate-y-0 top-0 left-0">
+            {/* Sticky top bar */}
+            <div className="flex items-center gap-2 px-3 pt-3 pb-2 bg-white border-b sticky top-0 z-20 shadow-sm">
               <button
                 onClick={() => setSelectedProduct(null)}
-                className="p-1 rounded-full hover:bg-muted transition-colors"
+                className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="w-5 h-5 text-gray-800" />
               </button>
-              <h2 className="font-semibold text-sm line-clamp-1 flex-1">
+              <h2 className="font-medium text-sm line-clamp-1 flex-1 text-gray-800">
                 {selectedProduct.name}
               </h2>
             </div>
 
-            <div className="p-4 space-y-5">
-              {/* Image */}
-              <div className="aspect-[4/3] bg-muted rounded-xl overflow-hidden">
-                {selectedProduct.images?.[0] ? (
-                  <img
-                    src={selectedProduct.images[0]}
-                    alt={selectedProduct.name}
-                    className="w-full h-full object-contain"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <ImageIcon className="w-16 h-16 opacity-20" />
+            {/* Scrollable body */}
+            <div className="flex-1 overflow-y-auto">
+              {/* Hero image */}
+              <div className="relative bg-white">
+                <div className="w-full" style={{ aspectRatio: "3/4", maxHeight: "70vh" }}>
+                  {selectedProduct.images?.[0] ? (
+                    <img
+                      src={selectedProduct.images[0]}
+                      alt={selectedProduct.name}
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                      <ImageIcon className="w-20 h-20 opacity-20" />
+                    </div>
+                  )}
+                </div>
+                {/* Discount pill overlaid on image */}
+                {selectedProduct.actualPrice > selectedProduct.discountPrice && (
+                  <div className="absolute bottom-3 left-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">
+                    {Math.round(
+                      ((selectedProduct.actualPrice - selectedProduct.discountPrice) /
+                        selectedProduct.actualPrice) *
+                        100
+                    )}% OFF
                   </div>
                 )}
+                {/* Type tag */}
+                <div className="absolute top-3 right-3 bg-black/50 text-white text-[10px] font-medium px-2 py-0.5 rounded">
+                  {selectedProduct.productType}
+                </div>
               </div>
 
               {/* Thumbnail row */}
               {selectedProduct.images?.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto pb-1">
+                <div className="flex gap-2 px-4 py-3 bg-white border-b overflow-x-auto">
                   {selectedProduct.images.map((img: string, i: number) => (
                     <img
                       key={i}
                       src={img}
                       alt=""
-                      className="h-14 w-14 object-cover rounded-lg border shrink-0 cursor-pointer hover:border-primary"
+                      className="h-14 w-14 object-cover rounded shrink-0 cursor-pointer transition-all"
+                      style={{
+                        border: i === 0 ? "2px solid #f97316" : "2px solid #e5e7eb",
+                      }}
                       onClick={() =>
                         setSelectedProduct((p: any) => ({
                           ...p,
@@ -658,10 +678,12 @@ export default function Products() {
               )}
 
               {/* Badges */}
-              <div className="flex flex-wrap gap-2">
-                <Badge>{selectedProduct.productType}</Badge>
+              <div className="flex flex-wrap gap-2 px-4 pt-4 bg-white">
+                <Badge className="bg-orange-100 text-orange-700 border-orange-200 font-medium">
+                  {selectedProduct.productType}
+                </Badge>
                 {selectedProduct.functionCategory && (
-                  <Badge variant="outline">
+                  <Badge variant="outline" className="text-gray-600 border-gray-300">
                     <Tag className="w-3 h-3 mr-1" />
                     {selectedProduct.functionCategory}
                   </Badge>
@@ -669,44 +691,44 @@ export default function Products() {
               </div>
 
               {/* Name */}
-              <h1 className="text-xl font-bold leading-snug">
-                {selectedProduct.name}
-              </h1>
+              <div className="bg-white px-4 pt-2 pb-4">
+                <h1 className="text-base font-semibold text-gray-900 leading-snug">
+                  {selectedProduct.name}
+                </h1>
+              </div>
 
-              {/* Price — Flipkart style */}
-              <div className="flex items-baseline gap-3">
-                <span className="text-3xl font-extrabold text-green-700">
+              {/* Price — Meesho style */}
+              <div className="bg-white mt-2 px-4 py-4 border-t border-b flex items-baseline gap-2">
+                {selectedProduct.actualPrice > selectedProduct.discountPrice && (
+                  <span className="text-green-600 text-sm font-bold">
+                    ↓{Math.round(
+                      ((selectedProduct.actualPrice - selectedProduct.discountPrice) /
+                        selectedProduct.actualPrice) *
+                        100
+                    )}%
+                  </span>
+                )}
+                {selectedProduct.actualPrice > selectedProduct.discountPrice && (
+                  <span className="text-gray-400 line-through text-sm">
+                    ₹{selectedProduct.actualPrice}
+                  </span>
+                )}
+                <span className="text-2xl font-extrabold text-gray-900">
                   ₹{selectedProduct.discountPrice}
                 </span>
-                {selectedProduct.actualPrice > selectedProduct.discountPrice && (
-                  <>
-                    <span className="text-lg text-muted-foreground line-through">
-                      ₹{selectedProduct.actualPrice}
-                    </span>
-                    <span className="text-sm font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded">
-                      {Math.round(
-                        ((selectedProduct.actualPrice -
-                          selectedProduct.discountPrice) /
-                          selectedProduct.actualPrice) *
-                          100
-                      )}
-                      % OFF
-                    </span>
-                  </>
-                )}
               </div>
 
               {/* Sizes */}
               {selectedProduct.sizes?.length > 0 && (
-                <div>
-                  <p className="text-sm font-semibold mb-2">
-                    Size / Age Available
+                <div className="bg-white mt-2 px-4 py-4">
+                  <p className="text-sm font-semibold text-gray-800 mb-3">
+                    Select Size
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {selectedProduct.sizes.map((s: string) => (
                       <span
                         key={s}
-                        className="px-3 py-1.5 border rounded-md text-sm font-medium"
+                        className="px-4 py-1.5 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:border-orange-400 cursor-default transition-colors"
                       >
                         {s}
                       </span>
@@ -717,33 +739,37 @@ export default function Products() {
 
               {/* Description */}
               {selectedProduct.description && (
-                <div>
-                  <p className="text-sm font-semibold mb-1">Description</p>
-                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                <div className="bg-white mt-2 px-4 py-4">
+                  <p className="text-sm font-semibold text-gray-800 mb-2">Description</p>
+                  <p className="text-sm text-gray-500 leading-relaxed whitespace-pre-wrap">
                     {selectedProduct.description}
                   </p>
                 </div>
               )}
 
-              {/* Update + Delete */}
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <Button
-                  onClick={() => openEdit(selectedProduct)}
-                  className="bg-green-600 hover:bg-green-700 text-white font-semibold gap-2"
-                >
-                  <Pencil className="w-4 h-4" />
-                  Update
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => handleDelete(selectedProduct.id)}
-                  disabled={deleteProduct.isPending}
-                  className="font-semibold gap-2"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Delete
-                </Button>
-              </div>
+              {/* Bottom spacer so content clears sticky footer */}
+              <div className="h-24" />
+            </div>
+
+            {/* Sticky bottom action bar — Meesho style */}
+            <div className="sticky bottom-0 bg-white border-t shadow-[0_-2px_8px_rgba(0,0,0,0.08)] px-4 py-3 grid grid-cols-2 gap-3 z-20">
+              <Button
+                onClick={() => openEdit(selectedProduct)}
+                variant="outline"
+                className="font-semibold gap-2 border-gray-800 text-gray-800 hover:bg-gray-50 py-5 rounded text-sm"
+              >
+                <Pencil className="w-4 h-4" />
+                Update
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => handleDelete(selectedProduct.id)}
+                disabled={deleteProduct.isPending}
+                className="font-semibold gap-2 py-5 rounded text-sm"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
