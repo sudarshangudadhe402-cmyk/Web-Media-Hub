@@ -38,6 +38,10 @@ import {
   Trash2,
   Tag,
   ChevronLeft,
+  Heart,
+  Star,
+  TrendingDown,
+  Truck,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -275,7 +279,7 @@ export default function Products() {
           <p className="text-sm">No products yet. Add your first one!</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-[2px] bg-gray-200">
           {products.map((product) => {
             const discount =
               product.actualPrice > product.discountPrice
@@ -285,14 +289,21 @@ export default function Products() {
                       100
                   )
                 : 0;
+            const deliveryDate = new Date();
+            deliveryDate.setDate(deliveryDate.getDate() + 7);
+            const deliveryStr = deliveryDate.toLocaleDateString("en-IN", {
+              day: "numeric",
+              month: "short",
+            });
+            const upiOff = Math.round(product.discountPrice * 0.08);
             return (
-              <Card
+              <div
                 key={product.id}
-                className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                className="bg-white cursor-pointer active:opacity-90"
                 onClick={() => { setSelectedProduct(product); setActiveImgIdx(0); }}
               >
                 {/* Image */}
-                <div className="aspect-[3/4] bg-muted relative">
+                <div className="aspect-[3/4] bg-gray-100 relative overflow-hidden">
                   {product.images?.[0] ? (
                     <img
                       src={product.images[0]}
@@ -301,56 +312,90 @@ export default function Products() {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <ImageIcon className="w-8 h-8 opacity-20" />
+                      <ImageIcon className="w-8 h-8 text-gray-300" />
                     </div>
                   )}
-                  {discount > 0 && (
-                    <span className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
-                      {discount}% OFF
-                    </span>
-                  )}
-                  <span className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">
-                    {product.productType}
-                  </span>
+                  {/* Heart icon */}
+                  <button
+                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/80 flex items-center justify-center shadow-sm"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Heart className="w-3.5 h-3.5 text-gray-500" />
+                  </button>
+                  {/* Rating overlay at bottom-left */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/40 to-transparent pt-6 pb-1.5 px-2">
+                    <div className="flex items-center gap-1">
+                      <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                      <span className="text-white text-[11px] font-semibold">4.1</span>
+                      <span className="text-white/70 text-[10px]">| {(Math.floor(Math.random() * 40 + 5))}k</span>
+                    </div>
+                  </div>
                 </div>
-                <CardContent className="p-3 space-y-1">
-                  <p className="font-medium text-sm line-clamp-1 leading-tight">
-                    {product.name}
-                  </p>
+
+                {/* Card info */}
+                <div className="p-2 pb-3 space-y-0.5">
+                  {/* Brand + name */}
                   {product.functionCategory && (
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="text-[11px] font-bold text-purple-600 leading-tight uppercase tracking-wide truncate">
                       {product.functionCategory}
                     </p>
                   )}
-                  <div className="flex items-baseline gap-2 mt-1">
-                    <span className="text-base font-bold text-green-700">
-                      ₹{product.discountPrice}
-                    </span>
+                  <p className="text-[12px] text-gray-700 leading-tight line-clamp-2">
+                    {product.name}
+                  </p>
+
+                  {/* Pricing row */}
+                  <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
+                    {discount > 0 && (
+                      <span className="flex items-center gap-0.5 text-[11px] font-bold text-green-600">
+                        <TrendingDown className="w-3 h-3" />
+                        {discount}%
+                      </span>
+                    )}
                     {product.actualPrice > product.discountPrice && (
-                      <span className="text-xs text-muted-foreground line-through">
+                      <span className="text-[11px] text-gray-400 line-through">
                         ₹{product.actualPrice}
                       </span>
                     )}
+                    <span className="text-[13px] font-bold text-gray-900">
+                      ₹{product.discountPrice}
+                    </span>
                   </div>
+
+                  {/* UPI offer */}
+                  {upiOff > 0 && (
+                    <p className="text-[10px] text-gray-500 leading-tight">
+                      <span className="font-bold text-blue-600">WOW!</span>{" "}
+                      ₹{upiOff} with UPI + more
+                    </p>
+                  )}
+
+                  {/* Delivery */}
+                  <div className="flex items-center gap-1 pt-0.5">
+                    <Truck className="w-3 h-3 text-gray-400 shrink-0" />
+                    <span className="text-[10px] text-gray-500">Delivery by {deliveryStr}</span>
+                  </div>
+
+                  {/* Sizes */}
                   {product.sizes?.length > 0 && (
                     <div className="flex flex-wrap gap-1 pt-0.5">
-                      {product.sizes.slice(0, 3).map((s: string) => (
+                      {product.sizes.slice(0, 4).map((s: string) => (
                         <span
                           key={s}
-                          className="text-[9px] border rounded px-1 py-0.5 text-muted-foreground"
+                          className="text-[9px] border border-gray-200 rounded px-1 py-0.5 text-gray-500"
                         >
                           {s}
                         </span>
                       ))}
-                      {product.sizes.length > 3 && (
-                        <span className="text-[9px] text-muted-foreground">
-                          +{product.sizes.length - 3}
+                      {product.sizes.length > 4 && (
+                        <span className="text-[9px] text-gray-400">
+                          +{product.sizes.length - 4}
                         </span>
                       )}
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             );
           })}
         </div>
