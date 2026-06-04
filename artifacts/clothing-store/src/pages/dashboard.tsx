@@ -56,10 +56,10 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="cursor-pointer hover:text-primary" onClick={() => setLocation("/products?type=Top")}>Top: {summary.categoryCounts.Top}</div>
-              <div className="cursor-pointer hover:text-primary" onClick={() => setLocation("/products?type=Bottom")}>Bottom: {summary.categoryCounts.Bottom}</div>
-              <div className="cursor-pointer hover:text-primary" onClick={() => setLocation("/products?type=Full_Outfit")}>Full Outfit: {summary.categoryCounts["Full Outfit"]}</div>
-              <div className="cursor-pointer hover:text-primary" onClick={() => setLocation("/products?type=Functional")}>Functional: {summary.categoryCounts.Functional}</div>
+              <div>Top: {summary.categoryCounts.Top}</div>
+              <div>Bottom: {summary.categoryCounts.Bottom}</div>
+              <div>Full Outfit: {summary.categoryCounts["Full Outfit"]}</div>
+              <div>Functional: {summary.categoryCounts.Functional}</div>
             </div>
           </CardContent>
         </Card>
