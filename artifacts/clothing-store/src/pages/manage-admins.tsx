@@ -65,6 +65,11 @@ export default function ManageAdmins() {
 
   const [form, setForm] = useState({ username: "", password: "", whatsapp: "" });
 
+  const requestUsernameExists = !!(
+    selectedRequest &&
+    admins?.some((a) => a.username === selectedRequest.username)
+  );
+
   const pending = (allRequests ?? []).filter((r) => r.status === "pending");
   const approved = (allRequests ?? []).filter((r) => r.status === "approved");
   const rejected = (allRequests ?? []).filter((r) => r.status === "rejected");
@@ -76,6 +81,13 @@ export default function ManageAdmins() {
 
   function handleCreate(e: React.FormEvent) {
     e.preventDefault();
+    if (form.whatsapp) {
+      const digits = form.whatsapp.replace(/\D/g, "");
+      if (digits.length !== 10 || /^0+$/.test(digits) || /^(\d)\1{9}$/.test(digits)) {
+        toast({ variant: "destructive", title: "Invalid WhatsApp number", description: "Please enter a valid 10-digit Indian mobile number" });
+        return;
+      }
+    }
     createAdmin.mutate(
       { data: { username: form.username, password: form.password } },
       {
@@ -356,7 +368,25 @@ export default function ManageAdmins() {
                 Store Owner WhatsApp Number
                 <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
               </Label>
-              <Input id="whatsapp" name="whatsapp" type="tel" placeholder="+91 00000 00000" value={form.whatsapp} onChange={handleFormChange} data-testid="new-admin-whatsapp" />
+              <div className="flex items-center border border-input rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-ring">
+                <span className="px-3 py-2 bg-muted text-sm font-medium text-muted-foreground border-r border-input shrink-0">+91</span>
+                <input
+                  id="whatsapp"
+                  name="whatsapp"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  placeholder="9876543210"
+                  value={form.whatsapp}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                    setForm((p) => ({ ...p, whatsapp: val }));
+                  }}
+                  className="flex-1 px-3 py-2 text-sm bg-background outline-none"
+                  data-testid="new-admin-whatsapp"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Enter 10-digit mobile number (e.g. 9876543210)</p>
             </div>
             <div className="flex gap-3 pt-2">
               <Button type="button" variant="outline" className="flex-1" onClick={() => setAddOpen(false)}>Cancel</Button>
@@ -462,7 +492,9 @@ export default function ManageAdmins() {
                     WhatsApp <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
                   </span>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{selectedRequest.whatsapp}</span>
+                    <span className="text-sm font-medium">
+                      +91 {selectedRequest.whatsapp.replace(/^\+?91/, "").trim()}
+                    </span>
                     <button
                       onClick={() => openWhatsApp(selectedRequest.whatsapp, selectedRequest.storeName)}
                       className="w-7 h-7 rounded-full bg-green-500 hover:bg-green-600 flex items-center justify-center text-white transition-colors"
@@ -491,25 +523,35 @@ export default function ManageAdmins() {
               </div>
 
               {selectedRequest.status === "pending" && (
-                <div className="flex gap-3">
-                  <Button
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                    onClick={() => handleApprove(selectedRequest.id)}
-                    disabled={approveRequest.isPending}
-                    data-testid="approve-store-btn"
-                  >
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    {approveRequest.isPending ? "Approving..." : "Approve Store"}
-                  </Button>
-                  <Button
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                    onClick={() => handleReject(selectedRequest.id)}
-                    disabled={rejectRequest.isPending}
-                    data-testid="reject-store-btn"
-                  >
-                    <XCircle className="w-4 h-4 mr-2" />
-                    {rejectRequest.isPending ? "Rejecting..." : "Reject Store"}
-                  </Button>
+                <div className="space-y-3">
+                  {requestUsernameExists && (
+                    <div className="flex items-start gap-2 bg-destructive/10 border border-destructive/30 rounded-xl px-4 py-3">
+                      <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                      <p className="text-sm text-destructive font-medium">
+                        Username <span className="font-bold">@{selectedRequest.username}</span> already exists — this request cannot be approved. Ask the applicant to resubmit with a different username.
+                      </p>
+                    </div>
+                  )}
+                  <div className="flex gap-3">
+                    <Button
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => handleApprove(selectedRequest.id)}
+                      disabled={approveRequest.isPending || requestUsernameExists}
+                      data-testid="approve-store-btn"
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      {approveRequest.isPending ? "Approving..." : "Approve Store"}
+                    </Button>
+                    <Button
+                      className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                      onClick={() => handleReject(selectedRequest.id)}
+                      disabled={rejectRequest.isPending}
+                      data-testid="reject-store-btn"
+                    >
+                      <XCircle className="w-4 h-4 mr-2" />
+                      {rejectRequest.isPending ? "Rejecting..." : "Reject Store"}
+                    </Button>
+                  </div>
                 </div>
               )}
               {selectedRequest.status !== "pending" && (
