@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { Product } from "../models/Product";
+import { Store } from "../models/Store";
 import { Notification } from "../models/Notification";
-import { requireAuth } from "../middlewares/auth";
+import { AuthRequest, requireAuth } from "../middlewares/auth";
 import { requireDb } from "../middlewares/dbCheck";
 
 const router = Router();
@@ -38,9 +39,11 @@ router.get("/products", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/products", requireAuth, async (req, res) => {
+router.post("/products", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { name, description, images, discountPrice, actualPrice, functionCategory, productType, sizes, age, gender } = req.body;
+    const userId = String(req.user!._id);
+    const store = await Store.findOne({ ownerId: userId });
     const product = await Product.create({
       name,
       description,
@@ -52,6 +55,7 @@ router.post("/products", requireAuth, async (req, res) => {
       sizes: sizes || [],
       age,
       gender,
+      storeId: store ? String(store._id) : undefined,
     });
     res.status(201).json({
       id: String(product._id),

@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { Store } from "../models/Store";
-import { requireAuth } from "../middlewares/auth";
-import { requireDb } from "../middlewares/dbCheck";
+import { AuthRequest, requireAuth } from "../middlewares/auth";
 
 const router = Router();
 
@@ -29,9 +28,24 @@ function formatStore(s: InstanceType<typeof Store>) {
   };
 }
 
-router.get("/store", requireAuth, async (req, res) => {
+async function getStoreForUser(userId: string) {
+  // Try to find this admin's own store
+  let store = await Store.findOne({ ownerId: userId });
+  if (!store) {
+    // Migration: claim the first unclaimed store
+    store = await Store.findOneAndUpdate(
+      { ownerId: { $exists: false } },
+      { ownerId: userId },
+      { new: true }
+    );
+  }
+  return store;
+}
+
+router.get("/store", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const store = await Store.findOne();
+    const userId = String(req.user!._id);
+    const store = await getStoreForUser(userId);
     if (!store) {
       res.status(404).json({ error: "Store not configured yet" });
       return;
@@ -43,17 +57,19 @@ router.get("/store", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/store", requireAuth, async (req, res) => {
+router.post("/store", requireAuth, async (req: AuthRequest, res) => {
   try {
+    const userId = String(req.user!._id);
     const { name, address, whatsappNumber, openingTime, openDays, bannerImage, description } = req.body;
 
-    let store = await Store.findOne();
+    let store = await getStoreForUser(userId);
     if (store) {
-      Object.assign(store, { name, address, whatsappNumber, openingTime, openDays, bannerImage, description, isLocked: true });
+      Object.assign(store, { name, address, whatsappNumber, openingTime, openDays, bannerImage, description, isLocked: true, ownerId: userId });
       if (!store.publicSlug) store.publicSlug = slugify(name);
       await store.save();
     } else {
       store = await Store.create({
+        ownerId: userId,
         name,
         address,
         whatsappNumber,
@@ -72,9 +88,10 @@ router.post("/store", requireAuth, async (req, res) => {
   }
 });
 
-router.patch("/store", requireAuth, async (req, res) => {
+router.patch("/store", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const store = await Store.findOne();
+    const userId = String(req.user!._id);
+    const store = await getStoreForUser(userId);
     if (!store) {
       res.status(404).json({ error: "Store not found" });
       return;

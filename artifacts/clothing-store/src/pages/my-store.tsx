@@ -237,8 +237,9 @@ export default function MyStore() {
     setLocked(true);
   }
 
-  const storeUrl = user?.username
-    ? `https://${user.username}.web-media-hub.com/store`
+  const BASE = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+  const storeUrl = store?.publicSlug
+    ? `${window.location.origin}${BASE}/store/${store.publicSlug}`
     : "";
 
   const isPending = createStore.isPending || updateStore.isPending;

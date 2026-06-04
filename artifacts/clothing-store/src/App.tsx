@@ -15,6 +15,7 @@ import AiVideo from "@/pages/ai-video";
 import UsernamePassword from "@/pages/username-password";
 import ManageAdmins from "@/pages/manage-admins";
 import StoreRequest from "@/pages/store-request";
+import PublicStore from "@/pages/public-store";
 import { Layout } from "@/components/layout";
 
 const queryClient = new QueryClient();
@@ -78,6 +79,7 @@ function Router() {
       <Route path="/store-request">
         {() => <ProtectedRoute component={StoreRequest} />}
       </Route>
+      <Route path="/store/:slug" component={PublicStore} />
       <Route component={NotFound} />
     </Switch>
   );

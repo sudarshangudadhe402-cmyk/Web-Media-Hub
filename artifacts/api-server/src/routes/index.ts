@@ -9,6 +9,7 @@ import adminsRouter from "./admins";
 import notificationsRouter from "./notifications";
 import dashboardRouter from "./dashboard";
 import storeRequestsRouter from "./storeRequests";
+import publicRouter from "./public";
 import { requireDb } from "../middlewares/dbCheck";
 
 const router: IRouter = Router();
@@ -26,5 +27,6 @@ router.use(adminsRouter);
 router.use(notificationsRouter);
 router.use(dashboardRouter);
 router.use(storeRequestsRouter);
+router.use(publicRouter);
 
 export default router;
