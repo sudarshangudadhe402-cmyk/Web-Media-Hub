@@ -84,6 +84,7 @@ function toggleItem(arr: string[], val: string): string[] {
 /* ── main component ── */
 export default function Products() {
   const [filterType, setFilterType] = useState("All");
+  const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [form, setForm] = useState<ProductForm>(EMPTY_FORM);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -97,10 +98,14 @@ export default function Products() {
 
   const [localLikes, setLocalLikes] = useState<Record<string, number>>({});
 
-  const { data: products, isLoading } = useListProducts(
-    filterType !== "All" ? { type: filterType as any } : {}
-  );
+  const { data: allProducts, isLoading } = useListProducts({});
   const { data: categories } = useListCategories();
+
+  const products = (allProducts ?? []).filter((p) => {
+    const typeMatch = filterType === "All" || p.productType === filterType;
+    const catMatch = !filterCategory || p.functionCategory === filterCategory;
+    return typeMatch && catMatch;
+  });
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
@@ -241,7 +246,8 @@ export default function Products() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Products</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
-            {products?.length ?? 0} items
+            {products.length} item{products.length !== 1 ? "s" : ""}
+            {filterCategory ? ` · ${filterCategory}` : ""}
           </p>
         </div>
         <Button
@@ -254,7 +260,7 @@ export default function Products() {
       </div>
 
       {/* Filter tabs */}
-      <Tabs value={filterType} onValueChange={setFilterType}>
+      <Tabs value={filterType} onValueChange={(v) => { setFilterType(v); setFilterCategory(null); }}>
         <TabsList>
           <TabsTrigger value="All">All</TabsTrigger>
           {PRODUCT_TYPES.map((t) => (
@@ -265,6 +271,28 @@ export default function Products() {
         </TabsList>
       </Tabs>
 
+      {/* Category chips */}
+      {categories && categories.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar -mx-1 px-1">
+          {categories.map((cat) => {
+            const active = filterCategory === cat.name;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setFilterCategory(active ? null : cat.name)}
+                className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                  active
+                    ? "bg-purple-600 text-white border-purple-600"
+                    : "bg-white text-gray-600 border-gray-300 hover:border-purple-400"
+                }`}
+              >
+                {cat.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Product grid — newest first */}
       {isLoading ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -272,7 +300,7 @@ export default function Products() {
             <Skeleton key={i} className="h-64 rounded-xl" />
           ))}
         </div>
-      ) : !products?.length ? (
+      ) : products.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
           <ImageIcon className="w-12 h-12 opacity-20 mb-3" />
           <p className="text-sm">No products yet. Add your first one!</p>
