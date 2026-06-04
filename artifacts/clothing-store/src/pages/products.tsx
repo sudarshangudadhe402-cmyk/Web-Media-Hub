@@ -361,30 +361,42 @@ export default function Products() {
                     </span>
                   </div>
 
-                  {/* Size / Age / Gender tags */}
-                  <div className="flex flex-wrap gap-1 pt-0.5">
-                    {product.gender && (
-                      <span className="text-[9px] bg-blue-50 text-blue-600 border border-blue-100 rounded px-1.5 py-0.5 font-medium">
-                        {product.gender}
-                      </span>
-                    )}
-                    {product.age && (
-                      <span className="text-[9px] bg-orange-50 text-orange-600 border border-orange-100 rounded px-1.5 py-0.5 font-medium">
+                  {/* Size */}
+                  {product.sizes?.length > 0 && (
+                    <div className="pt-1">
+                      <p className="text-[10px] font-semibold text-gray-500 mb-0.5">Size</p>
+                      <div className="flex flex-wrap gap-1">
+                        {product.sizes.slice(0, 4).map((s: string) => (
+                          <span key={s} className="text-[9px] border border-gray-300 rounded px-1.5 py-0.5 text-gray-600 bg-gray-50">
+                            {s}
+                          </span>
+                        ))}
+                        {product.sizes.length > 4 && (
+                          <span className="text-[9px] text-gray-400">+{product.sizes.length - 4}</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Age */}
+                  {product.age && (
+                    <div className="pt-0.5">
+                      <p className="text-[10px] font-semibold text-gray-500 mb-0.5">Age</p>
+                      <span className="text-[9px] bg-orange-50 text-orange-600 border border-orange-200 rounded px-1.5 py-0.5 font-medium">
                         {product.age}
                       </span>
-                    )}
-                    {product.sizes?.slice(0, 3).map((s: string) => (
-                      <span
-                        key={s}
-                        className="text-[9px] border border-gray-200 rounded px-1 py-0.5 text-gray-500"
-                      >
-                        {s}
+                    </div>
+                  )}
+
+                  {/* Gender */}
+                  {product.gender && (
+                    <div className="pt-0.5">
+                      <p className="text-[10px] font-semibold text-gray-500 mb-0.5">Gender</p>
+                      <span className="text-[9px] bg-blue-50 text-blue-600 border border-blue-200 rounded px-1.5 py-0.5 font-medium">
+                        {product.gender}
                       </span>
-                    ))}
-                    {product.sizes?.length > 3 && (
-                      <span className="text-[9px] text-gray-400">+{product.sizes.length - 3}</span>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
             );
