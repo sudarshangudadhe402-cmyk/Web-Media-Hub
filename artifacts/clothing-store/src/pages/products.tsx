@@ -644,7 +644,7 @@ export default function Products() {
                     <div
                       key={i}
                       className="shrink-0 w-full bg-white"
-                      style={{ scrollSnapAlign: "start", aspectRatio: "3/4", maxHeight: "68vh" }}
+                      style={{ scrollSnapAlign: "start", aspectRatio: "3/4", maxHeight: "48vh" }}
                     >
                       {img ? (
                         <img
@@ -771,6 +771,73 @@ export default function Products() {
                   </p>
                 </div>
               )}
+
+              {/* ── More like this ── */}
+              {(() => {
+                const related = (products ?? []).filter(
+                  (p) =>
+                    p.id !== selectedProduct.id &&
+                    p.productType === selectedProduct.productType
+                );
+                if (!related.length) return null;
+                return (
+                  <div className="bg-white mt-2 pb-4">
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-4 pt-4 pb-3">
+                      <span className="text-[15px] font-bold text-gray-900">More like this</span>
+                      <button className="w-8 h-8 rounded-full bg-gray-900 text-white flex items-center justify-center">
+                        <ChevronLeft className="w-4 h-4 rotate-180" />
+                      </button>
+                    </div>
+                    {/* Horizontal scroll row */}
+                    <div className="flex gap-3 overflow-x-auto px-4 pb-1" style={{ scrollSnapType: "x mandatory" }}>
+                      {related.map((p) => {
+                        const disc =
+                          p.actualPrice > p.discountPrice
+                            ? Math.round(((p.actualPrice - p.discountPrice) / p.actualPrice) * 100)
+                            : 0;
+                        return (
+                          <div
+                            key={p.id}
+                            className="shrink-0 cursor-pointer"
+                            style={{ width: 140, scrollSnapAlign: "start" }}
+                            onClick={() => { setSelectedProduct(p); setActiveImgIdx(0); carouselRef.current?.scrollTo({ left: 0 }); }}
+                          >
+                            {/* Image */}
+                            <div className="rounded-lg overflow-hidden bg-gray-100 relative" style={{ aspectRatio: "3/4" }}>
+                              {p.images?.[0] ? (
+                                <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <ImageIcon className="w-8 h-8 opacity-20" />
+                                </div>
+                              )}
+                              {disc > 0 && (
+                                <span className="absolute bottom-1.5 left-1.5 bg-[#ff3e6c] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-sm">
+                                  {disc}% OFF
+                                </span>
+                              )}
+                            </div>
+                            {/* Info */}
+                            <div className="mt-1.5 space-y-0.5">
+                              <p className="text-[11px] font-medium text-gray-800 line-clamp-2 leading-tight">{p.name}</p>
+                              {disc > 0 && (
+                                <p className="text-[10px] font-bold text-[#2ecc71]">{disc}% OFF</p>
+                              )}
+                              <div className="flex items-baseline gap-1">
+                                {disc > 0 && (
+                                  <span className="text-[10px] text-gray-400 line-through">₹{p.actualPrice}</span>
+                                )}
+                                <span className="text-[12px] font-bold text-gray-900">₹{p.discountPrice}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="h-24" />
             </div>
