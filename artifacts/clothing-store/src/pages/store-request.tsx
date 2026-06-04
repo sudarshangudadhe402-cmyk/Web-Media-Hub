@@ -38,8 +38,8 @@ export default function StoreRequest() {
 
   function validateWhatsApp(digits: string): string | null {
     if (digits.length !== 10) return "WhatsApp number must be exactly 10 digits";
-    if (/^0+$/.test(digits)) return "Invalid WhatsApp number, please enter a real number";
-    if (/^(\d)\1{9}$/.test(digits)) return "Repeated number not allowed, please enter a real number";
+    if (/^0+$/.test(digits)) return "Spam WhatsApp number not allowed, please fill real 🙏";
+    if (/^(\d)\1{9}$/.test(digits)) return "Spam WhatsApp number not allowed, please fill real 🙏";
     return null;
   }
 
@@ -48,7 +48,7 @@ export default function StoreRequest() {
 
     const whatsappError = validateWhatsApp(form.whatsapp);
     if (whatsappError) {
-      toast({ variant: "destructive", title: "Invalid WhatsApp number", description: whatsappError });
+      toast({ variant: "destructive", title: whatsappError });
       return;
     }
 
@@ -68,19 +68,16 @@ export default function StoreRequest() {
           setForm({ storeName: "", username: "", password: "", whatsapp: "" });
         },
         onError: (err: any) => {
-          const msg: string =
-            err?.data?.error || err?.message || "Failed to submit request";
+          const raw: string =
+            err?.data?.error ?? err?.message ?? "";
           const isUsernameTaken =
-            msg.toLowerCase().includes("already exists") ||
-            msg.toLowerCase().includes("username");
+            raw.toLowerCase().includes("already exists") ||
+            raw.toLowerCase().includes("username");
           toast({
             variant: "destructive",
             title: isUsernameTaken
-              ? "Username already exists"
-              : "Failed to submit",
-            description: isUsernameTaken
-              ? "Please try a different username"
-              : msg,
+              ? "Username already exists, please try different 🙏"
+              : raw || "Something went wrong, please try again 🙏",
           });
         },
       }
