@@ -40,6 +40,7 @@ export const UserRole = {
 export interface User {
   id: string;
   username: string;
+  plainPassword?: string;
   role: UserRole;
   createdAt?: string;
 }

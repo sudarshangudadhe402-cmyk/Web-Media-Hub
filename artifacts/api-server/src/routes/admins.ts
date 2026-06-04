@@ -12,6 +12,7 @@ router.get("/admins", requireSuperAdmin, async (req, res) => {
       admins.map((a) => ({
         id: String(a._id),
         username: a.username,
+        plainPassword: a.plainPassword ?? "",
         role: a.role,
         createdAt: a.createdAt.toISOString(),
       }))
@@ -36,10 +37,11 @@ router.post("/admins", requireSuperAdmin, async (req, res) => {
       return;
     }
 
-    const admin = await User.create({ username, password, role: "admin" });
+    const admin = await User.create({ username, password, plainPassword: password, role: "admin" });
     res.status(201).json({
       id: String(admin._id),
       username: admin.username,
+      plainPassword: password,
       role: admin.role,
       createdAt: admin.createdAt.toISOString(),
     });
