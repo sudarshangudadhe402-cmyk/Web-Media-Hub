@@ -68,17 +68,25 @@ export default function StoreRequest() {
           setForm({ storeName: "", username: "", password: "", whatsapp: "" });
         },
         onError: (err: any) => {
-          const raw: string =
-            err?.data?.error ?? err?.message ?? "";
-          const isUsernameTaken =
-            raw.toLowerCase().includes("already exists") ||
-            raw.toLowerCase().includes("username");
-          toast({
-            variant: "destructive",
-            title: isUsernameTaken
-              ? "Username already exists, please try different 🙏"
-              : raw || "Something went wrong, please try again 🙏",
-          });
+          // Try every possible path the ApiError might put the message
+          const reason: string =
+            err?.data?.error ??
+            err?.data?.message ??
+            err?.response?.data?.error ??
+            // err.message is "HTTP 400 Bad Request: <actual reason>" — strip the prefix
+            err?.message?.replace(/^HTTP \d+[^:]*:\s*/i, "") ??
+            "";
+
+          const isUsernameTaken = reason.toLowerCase().includes("already exists");
+          const isSpamWhatsApp = reason.toLowerCase().includes("whatsapp") || reason.toLowerCase().includes("phone");
+
+          const title = isUsernameTaken
+            ? "Username already exists, please try different 🙏"
+            : isSpamWhatsApp
+            ? "Spam WhatsApp number not allowed, please fill real 🙏"
+            : reason || "Something went wrong, please try again 🙏";
+
+          toast({ variant: "destructive", title });
         },
       }
     );
