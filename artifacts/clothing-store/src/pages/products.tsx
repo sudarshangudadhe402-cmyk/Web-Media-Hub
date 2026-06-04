@@ -138,7 +138,16 @@ export default function Products() {
 
   async function handleFileChange(files: FileList | null) {
     if (!files) return;
-    for (const file of Array.from(files)) {
+    const remaining = 4 - imageUrls.length;
+    if (remaining <= 0) {
+      toast({ title: "Maximum 4 images allowed", variant: "destructive" });
+      return;
+    }
+    const toUpload = Array.from(files).slice(0, remaining);
+    if (Array.from(files).length > remaining) {
+      toast({ title: `Only ${remaining} more image${remaining > 1 ? "s" : ""} can be added (max 4)`, variant: "destructive" });
+    }
+    for (const file of toUpload) {
       const base64 = await new Promise<string>((resolve) => {
         const reader = new FileReader();
         reader.onload = () => resolve((reader.result as string).split(",")[1]);
@@ -378,10 +387,14 @@ export default function Products() {
             {/* 2. Product Image */}
             <div className="space-y-1.5">
               <Label>Product Image</Label>
-              <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-xl cursor-pointer hover:border-primary/50 transition-colors bg-muted/40">
+              <label className={`flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-xl transition-colors bg-muted/40 ${imageUrls.length >= 4 ? "opacity-50 cursor-not-allowed border-muted" : "cursor-pointer hover:border-primary/50"}`}>
                 <Upload className="w-6 h-6 text-muted-foreground mb-1" />
                 <span className="text-xs text-muted-foreground">
-                  {uploadImage.isPending ? "Uploading..." : "Click to upload images"}
+                  {uploadImage.isPending
+                    ? "Uploading..."
+                    : imageUrls.length >= 4
+                    ? "Maximum 4 images reached"
+                    : `Click to upload images (${imageUrls.length}/4)`}
                 </span>
                 <input
                   type="file"
@@ -389,7 +402,7 @@ export default function Products() {
                   multiple
                   className="hidden"
                   onChange={(e) => handleFileChange(e.target.files)}
-                  disabled={uploadImage.isPending}
+                  disabled={uploadImage.isPending || imageUrls.length >= 4}
                 />
               </label>
               {imageUrls.length > 0 && (
