@@ -177,9 +177,9 @@ export default function MyStore() {
       updateStore.mutate(
         { data: payload },
         {
-          onSuccess: () => {
+          onSuccess: async () => {
             toast({ title: editing ? "Store updated successfully" : "Store saved successfully" });
-            queryClient.invalidateQueries({ queryKey: getGetStoreQueryKey() });
+            await queryClient.refetchQueries({ queryKey: getGetStoreQueryKey() });
             setLocked(true);
             setEditing(false);
           },
@@ -190,9 +190,9 @@ export default function MyStore() {
       createStore.mutate(
         { data: payload },
         {
-          onSuccess: () => {
+          onSuccess: async () => {
             toast({ title: "Store created successfully" });
-            queryClient.invalidateQueries({ queryKey: getGetStoreQueryKey() });
+            await queryClient.refetchQueries({ queryKey: getGetStoreQueryKey() });
             setLocked(true);
           },
           onError: () => toast({ variant: "destructive", title: "Failed to create store" }),
