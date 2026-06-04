@@ -25,6 +25,8 @@ router.get("/products", requireAuth, async (req, res) => {
         functionCategory: p.functionCategory ?? null,
         productType: p.productType,
         sizes: p.sizes,
+        age: p.age ?? null,
+        gender: p.gender ?? null,
         likeCount: p.likeCount,
         storeId: p.storeId ?? null,
         createdAt: p.createdAt.toISOString(),
@@ -38,7 +40,7 @@ router.get("/products", requireAuth, async (req, res) => {
 
 router.post("/products", requireAuth, async (req, res) => {
   try {
-    const { name, description, images, discountPrice, actualPrice, functionCategory, productType, sizes } = req.body;
+    const { name, description, images, discountPrice, actualPrice, functionCategory, productType, sizes, age, gender } = req.body;
     const product = await Product.create({
       name,
       description,
@@ -48,6 +50,8 @@ router.post("/products", requireAuth, async (req, res) => {
       functionCategory,
       productType,
       sizes: sizes || [],
+      age,
+      gender,
     });
     res.status(201).json({
       id: String(product._id),
@@ -59,6 +63,8 @@ router.post("/products", requireAuth, async (req, res) => {
       functionCategory: product.functionCategory ?? null,
       productType: product.productType,
       sizes: product.sizes,
+      age: product.age ?? null,
+      gender: product.gender ?? null,
       likeCount: product.likeCount,
       storeId: product.storeId ?? null,
       createdAt: product.createdAt.toISOString(),
@@ -105,6 +111,8 @@ router.get("/products/:id", requireAuth, async (req, res) => {
       functionCategory: product.functionCategory ?? null,
       productType: product.productType,
       sizes: product.sizes,
+      age: product.age ?? null,
+      gender: product.gender ?? null,
       likeCount: product.likeCount,
       storeId: product.storeId ?? null,
       createdAt: product.createdAt.toISOString(),
@@ -132,6 +140,8 @@ router.patch("/products/:id", requireAuth, async (req, res) => {
       functionCategory: product.functionCategory ?? null,
       productType: product.productType,
       sizes: product.sizes,
+      age: product.age ?? null,
+      gender: product.gender ?? null,
       likeCount: product.likeCount,
       storeId: product.storeId ?? null,
       createdAt: product.createdAt.toISOString(),

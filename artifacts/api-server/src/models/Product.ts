@@ -9,6 +9,8 @@ export interface IProduct extends Document {
   functionCategory?: string;
   productType: "Top" | "Bottom" | "Full Outfit" | "Functional";
   sizes: string[];
+  age?: string;
+  gender?: string;
   likeCount: number;
   storeId?: string;
   createdAt: Date;
@@ -28,6 +30,8 @@ const ProductSchema = new Schema<IProduct>(
       required: true,
     },
     sizes: [{ type: String }],
+    age: { type: String },
+    gender: { type: String },
     likeCount: { type: Number, default: 0 },
     storeId: { type: String },
   },

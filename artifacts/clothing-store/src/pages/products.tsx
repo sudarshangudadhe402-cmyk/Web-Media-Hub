@@ -6,6 +6,7 @@ import {
   useDeleteProduct,
   useUploadProductImage,
   useListCategories,
+  useLikeProduct,
   getListProductsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -39,9 +40,7 @@ import {
   Tag,
   ChevronLeft,
   Heart,
-  Star,
   TrendingDown,
-  Truck,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -50,20 +49,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 const PRODUCT_TYPES = ["Top", "Bottom", "Full Outfit"] as const;
 type ProductType = (typeof PRODUCT_TYPES)[number];
 
-const SIZE_GROUPS = [
-  {
-    label: "Adults",
-    sizes: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
-  },
-  {
-    label: "Kids (Age)",
-    sizes: ["0-3M", "3-6M", "6-12M", "1Y+", "2Y+", "3Y+", "4Y+", "5Y+", "6Y+", "7Y+", "8Y+"],
-  },
-  {
-    label: "Gender",
-    sizes: ["Boy", "Girl", "Unisex"],
-  },
-];
+const SIZE_OPTIONS = ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "Free Size"];
+const AGE_OPTIONS = ["0-3M", "3-6M", "6-12M", "1Y", "2Y", "3Y", "4Y", "5Y", "6Y", "7Y", "8Y", "9Y", "10Y", "11Y", "12Y", "13Y+"];
+const GENDER_OPTIONS = ["Men", "Women", "Boys", "Girls", "Unisex"];
 
 interface ProductForm {
   name: string;
@@ -73,6 +61,8 @@ interface ProductForm {
   functionCategory: string;
   productType: ProductType;
   sizes: string[];
+  age: string;
+  gender: string;
 }
 
 const EMPTY_FORM: ProductForm = {
@@ -83,6 +73,8 @@ const EMPTY_FORM: ProductForm = {
   functionCategory: "",
   productType: "Top",
   sizes: [],
+  age: "",
+  gender: "",
 };
 
 function toggleItem(arr: string[], val: string): string[] {
@@ -103,6 +95,8 @@ export default function Products() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const [localLikes, setLocalLikes] = useState<Record<string, number>>({});
+
   const { data: products, isLoading } = useListProducts(
     filterType !== "All" ? { type: filterType as any } : {}
   );
@@ -111,6 +105,7 @@ export default function Products() {
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
   const uploadImage = useUploadProductImage();
+  const likeProduct = useLikeProduct();
 
   /* ── helpers ── */
   function resetForm() {
@@ -133,6 +128,8 @@ export default function Products() {
       functionCategory: product.functionCategory ?? "",
       productType: product.productType,
       sizes: product.sizes,
+      age: product.age ?? "",
+      gender: product.gender ?? "",
     });
     setImageUrls(product.images ?? []);
     setEditingId(product.id);
@@ -182,6 +179,8 @@ export default function Products() {
       functionCategory: form.functionCategory || undefined,
       productType: form.productType,
       sizes: form.sizes,
+      age: form.age || undefined,
+      gender: form.gender || undefined,
       images: imageUrls,
     };
 
@@ -289,13 +288,6 @@ export default function Products() {
                       100
                   )
                 : 0;
-            const deliveryDate = new Date();
-            deliveryDate.setDate(deliveryDate.getDate() + 7);
-            const deliveryStr = deliveryDate.toLocaleDateString("en-IN", {
-              day: "numeric",
-              month: "short",
-            });
-            const upiOff = Math.round(product.discountPrice * 0.08);
             return (
               <div
                 key={product.id}
@@ -315,19 +307,26 @@ export default function Products() {
                       <ImageIcon className="w-8 h-8 text-gray-300" />
                     </div>
                   )}
-                  {/* Heart icon */}
+                  {/* Heart / Like button */}
                   <button
-                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/80 flex items-center justify-center shadow-sm"
-                    onClick={(e) => e.stopPropagation()}
+                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 flex items-center justify-center shadow-sm active:scale-90 transition-transform"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const prev = localLikes[product.id] ?? product.likeCount;
+                      setLocalLikes((l) => ({ ...l, [product.id]: prev + 1 }));
+                      likeProduct.mutate({ id: product.id });
+                    }}
                   >
-                    <Heart className="w-3.5 h-3.5 text-gray-500" />
+                    <Heart className={`w-3.5 h-3.5 ${(localLikes[product.id] ?? product.likeCount) > 0 ? "fill-red-500 text-red-500" : "text-gray-400"}`} />
                   </button>
-                  {/* Rating overlay at bottom-left */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/40 to-transparent pt-6 pb-1.5 px-2">
+                  {/* Like count overlay at bottom-left */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent pt-6 pb-1.5 px-2">
                     <div className="flex items-center gap-1">
-                      <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                      <span className="text-white text-[11px] font-semibold">4.1</span>
-                      <span className="text-white/70 text-[10px]">| {(Math.floor(Math.random() * 40 + 5))}k</span>
+                      <Heart className="w-3 h-3 fill-red-400 text-red-400" />
+                      <span className="text-white text-[11px] font-semibold">
+                        {(localLikes[product.id] ?? product.likeCount).toLocaleString("en-IN")}
+                      </span>
+                      <span className="text-white/70 text-[10px]">likes</span>
                     </div>
                   </div>
                 </div>
@@ -362,38 +361,30 @@ export default function Products() {
                     </span>
                   </div>
 
-                  {/* UPI offer */}
-                  {upiOff > 0 && (
-                    <p className="text-[10px] text-gray-500 leading-tight">
-                      <span className="font-bold text-blue-600">WOW!</span>{" "}
-                      ₹{upiOff} with UPI + more
-                    </p>
-                  )}
-
-                  {/* Delivery */}
-                  <div className="flex items-center gap-1 pt-0.5">
-                    <Truck className="w-3 h-3 text-gray-400 shrink-0" />
-                    <span className="text-[10px] text-gray-500">Delivery by {deliveryStr}</span>
+                  {/* Size / Age / Gender tags */}
+                  <div className="flex flex-wrap gap-1 pt-0.5">
+                    {product.gender && (
+                      <span className="text-[9px] bg-blue-50 text-blue-600 border border-blue-100 rounded px-1.5 py-0.5 font-medium">
+                        {product.gender}
+                      </span>
+                    )}
+                    {product.age && (
+                      <span className="text-[9px] bg-orange-50 text-orange-600 border border-orange-100 rounded px-1.5 py-0.5 font-medium">
+                        {product.age}
+                      </span>
+                    )}
+                    {product.sizes?.slice(0, 3).map((s: string) => (
+                      <span
+                        key={s}
+                        className="text-[9px] border border-gray-200 rounded px-1 py-0.5 text-gray-500"
+                      >
+                        {s}
+                      </span>
+                    ))}
+                    {product.sizes?.length > 3 && (
+                      <span className="text-[9px] text-gray-400">+{product.sizes.length - 3}</span>
+                    )}
                   </div>
-
-                  {/* Sizes */}
-                  {product.sizes?.length > 0 && (
-                    <div className="flex flex-wrap gap-1 pt-0.5">
-                      {product.sizes.slice(0, 4).map((s: string) => (
-                        <span
-                          key={s}
-                          className="text-[9px] border border-gray-200 rounded px-1 py-0.5 text-gray-500"
-                        >
-                          {s}
-                        </span>
-                      ))}
-                      {product.sizes.length > 4 && (
-                        <span className="text-[9px] text-gray-400">
-                          +{product.sizes.length - 4}
-                        </span>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
             );
@@ -606,40 +597,70 @@ export default function Products() {
               </div>
             </div>
 
-            {/* 7. Size / Age chips — grouped */}
-            <div className="space-y-2">
-              <Label>Size / Age</Label>
-              {SIZE_GROUPS.map((group) => (
-                <div key={group.label}>
-                  <p className="text-xs text-muted-foreground mb-1.5">
-                    {group.label}
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {group.sizes.map((s) => {
-                      const selected = form.sizes.includes(s);
-                      return (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() =>
-                            setForm((p) => ({
-                              ...p,
-                              sizes: toggleItem(p.sizes, s),
-                            }))
-                          }
-                          className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
-                            selected
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-background text-muted-foreground border-border hover:border-primary/40"
-                          }`}
-                        >
-                          {s}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
+            {/* 7. Size chips */}
+            <div className="space-y-1.5">
+              <Label>Size</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {SIZE_OPTIONS.map((s) => {
+                  const selected = form.sizes.includes(s);
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setForm((p) => ({ ...p, sizes: toggleItem(p.sizes, s) }))}
+                      className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
+                        selected
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background text-muted-foreground border-border hover:border-primary/40"
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 8. Age selector */}
+            <div className="space-y-1.5">
+              <Label>Age</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {AGE_OPTIONS.map((a) => (
+                  <button
+                    key={a}
+                    type="button"
+                    onClick={() => setForm((p) => ({ ...p, age: p.age === a ? "" : a }))}
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
+                      form.age === a
+                        ? "bg-orange-500 text-white border-orange-500"
+                        : "bg-background text-muted-foreground border-border hover:border-orange-300"
+                    }`}
+                  >
+                    {a}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 9. Gender selector */}
+            <div className="space-y-1.5">
+              <Label>Gender</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {GENDER_OPTIONS.map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => setForm((p) => ({ ...p, gender: p.gender === g ? "" : g }))}
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
+                      form.gender === g
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-background text-muted-foreground border-border hover:border-blue-300"
+                    }`}
+                  >
+                    {g}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Done / Update button */}
