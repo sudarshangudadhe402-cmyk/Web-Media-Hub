@@ -14,6 +14,7 @@ import MyStore from "@/pages/my-store";
 import AiVideo from "@/pages/ai-video";
 import UsernamePassword from "@/pages/username-password";
 import ManageAdmins from "@/pages/manage-admins";
+import StoreRequest from "@/pages/store-request";
 import { Layout } from "@/components/layout";
 
 const queryClient = new QueryClient();
@@ -73,6 +74,9 @@ function Router() {
       </Route>
       <Route path="/manage-admins">
         {() => <ProtectedRoute component={ManageAdmins} adminOnly={true} />}
+      </Route>
+      <Route path="/store-request">
+        {() => <ProtectedRoute component={StoreRequest} />}
       </Route>
       <Route component={NotFound} />
     </Switch>

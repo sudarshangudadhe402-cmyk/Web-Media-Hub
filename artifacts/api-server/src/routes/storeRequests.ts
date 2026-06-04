@@ -25,6 +25,11 @@ router.post("/store-requests", requireAuth, async (req: any, res) => {
       res.status(400).json({ error: "All fields are required" });
       return;
     }
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      res.status(400).json({ error: "Username already exists, please try a different username" });
+      return;
+    }
     const request = await StoreRequest.create({
       username,
       password,
