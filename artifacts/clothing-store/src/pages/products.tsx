@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   useListProducts,
   useCreateProduct,
@@ -93,6 +93,8 @@ export default function Products() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [activeImgIdx, setActiveImgIdx] = useState(0);
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -278,7 +280,7 @@ export default function Products() {
               <Card
                 key={product.id}
                 className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => setSelectedProduct(product)}
+                onClick={() => { setSelectedProduct(product); setActiveImgIdx(0); }}
               >
                 {/* Image */}
                 <div className="aspect-[3/4] bg-muted relative">
@@ -598,137 +600,158 @@ export default function Products() {
         </DialogContent>
       </Dialog>
 
-      {/* ── PRODUCT DETAIL DIALOG (Meesho full-screen style) ── */}
+      {/* ── PRODUCT DETAIL DIALOG (Meesho/Flipkart full-screen) ── */}
       {selectedProduct && (
         <Dialog
           open={!!selectedProduct}
           onOpenChange={(open) => !open && setSelectedProduct(null)}
         >
-          <DialogContent className="fixed inset-0 max-w-none w-full h-full rounded-none p-0 m-0 flex flex-col bg-[#f5f5f5] translate-x-0 translate-y-0 top-0 left-0">
-            {/* Sticky top bar */}
-            <div className="flex items-center gap-2 px-3 pt-3 pb-2 bg-white border-b sticky top-0 z-20 shadow-sm">
+          <DialogContent className="fixed inset-0 max-w-none w-full h-full rounded-none p-0 m-0 flex flex-col bg-[#f4f4f4] translate-x-0 translate-y-0 top-0 left-0">
+
+            {/* ── Sticky top bar ── */}
+            <div className="flex items-center gap-2 px-3 py-2 bg-white border-b sticky top-0 z-20 shadow-sm">
               <button
                 onClick={() => setSelectedProduct(null)}
                 className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
               >
-                <ChevronLeft className="w-5 h-5 text-gray-800" />
+                <ChevronLeft className="w-5 h-5 text-gray-700" />
               </button>
-              <h2 className="font-medium text-sm line-clamp-1 flex-1 text-gray-800">
+              <h2 className="font-semibold text-sm line-clamp-1 flex-1 text-gray-800">
                 {selectedProduct.name}
               </h2>
             </div>
 
-            {/* Scrollable body */}
+            {/* ── Scrollable body ── */}
             <div className="flex-1 overflow-y-auto">
-              {/* Hero image */}
+
+              {/* Swipeable image carousel */}
               <div className="relative bg-white">
-                <div className="w-full" style={{ aspectRatio: "3/4", maxHeight: "70vh" }}>
-                  {selectedProduct.images?.[0] ? (
-                    <img
-                      src={selectedProduct.images[0]}
-                      alt={selectedProduct.name}
-                      className="w-full h-full object-contain"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                      <ImageIcon className="w-20 h-20 opacity-20" />
+                {/* Scroll-snap track */}
+                <div
+                  ref={carouselRef}
+                  className="flex overflow-x-auto"
+                  style={{ scrollSnapType: "x mandatory", scrollBehavior: "smooth" }}
+                  onScroll={(e) => {
+                    const el = e.currentTarget;
+                    const idx = Math.round(el.scrollLeft / el.clientWidth);
+                    setActiveImgIdx(idx);
+                  }}
+                >
+                  {(selectedProduct.images?.length > 0
+                    ? selectedProduct.images
+                    : [null]
+                  ).map((img: string | null, i: number) => (
+                    <div
+                      key={i}
+                      className="shrink-0 w-full bg-white"
+                      style={{ scrollSnapAlign: "start", aspectRatio: "3/4", maxHeight: "68vh" }}
+                    >
+                      {img ? (
+                        <img
+                          src={img}
+                          alt={selectedProduct.name}
+                          className="w-full h-full object-contain"
+                          draggable={false}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                          <ImageIcon className="w-20 h-20 opacity-20" />
+                        </div>
+                      )}
                     </div>
-                  )}
+                  ))}
                 </div>
-                {/* Discount pill overlaid on image */}
+
+                {/* Discount badge */}
                 {selectedProduct.actualPrice > selectedProduct.discountPrice && (
-                  <div className="absolute bottom-3 left-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">
+                  <div className="absolute top-3 left-3 bg-[#ff3e6c] text-white text-[11px] font-bold px-2 py-0.5 rounded-sm">
                     {Math.round(
                       ((selectedProduct.actualPrice - selectedProduct.discountPrice) /
-                        selectedProduct.actualPrice) *
-                        100
+                        selectedProduct.actualPrice) * 100
                     )}% OFF
                   </div>
                 )}
-                {/* Type tag */}
-                <div className="absolute top-3 right-3 bg-black/50 text-white text-[10px] font-medium px-2 py-0.5 rounded">
+
+                {/* Product type tag */}
+                <div className="absolute top-3 right-3 bg-black/50 text-white text-[10px] font-medium px-2 py-0.5 rounded-sm">
                   {selectedProduct.productType}
                 </div>
-              </div>
 
-              {/* Thumbnail row */}
-              {selectedProduct.images?.length > 1 && (
-                <div className="flex gap-2 px-4 py-3 bg-white border-b overflow-x-auto">
-                  {selectedProduct.images.map((img: string, i: number) => (
-                    <img
-                      key={i}
-                      src={img}
-                      alt=""
-                      className="h-14 w-14 object-cover rounded shrink-0 cursor-pointer transition-all"
-                      style={{
-                        border: i === 0 ? "2px solid #f97316" : "2px solid #e5e7eb",
-                      }}
-                      onClick={() =>
-                        setSelectedProduct((p: any) => ({
-                          ...p,
-                          images: [
-                            img,
-                            ...p.images.filter((_: string, idx: number) => idx !== i),
-                          ],
-                        }))
-                      }
-                    />
-                  ))}
-                </div>
-              )}
-
-              {/* Badges */}
-              <div className="flex flex-wrap gap-2 px-4 pt-4 bg-white">
-                <Badge className="bg-orange-100 text-orange-700 border-orange-200 font-medium">
-                  {selectedProduct.productType}
-                </Badge>
-                {selectedProduct.functionCategory && (
-                  <Badge variant="outline" className="text-gray-600 border-gray-300">
-                    <Tag className="w-3 h-3 mr-1" />
-                    {selectedProduct.functionCategory}
-                  </Badge>
+                {/* Dot indicators */}
+                {selectedProduct.images?.length > 1 && (
+                  <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+                    {selectedProduct.images.map((_: string, i: number) => (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          carouselRef.current?.scrollTo({ left: i * carouselRef.current.clientWidth, behavior: "smooth" });
+                          setActiveImgIdx(i);
+                        }}
+                        className="rounded-full transition-all"
+                        style={{
+                          width: i === activeImgIdx ? 20 : 6,
+                          height: 6,
+                          background: i === activeImgIdx ? "#ff3e6c" : "rgba(255,255,255,0.7)",
+                          border: "1px solid rgba(0,0,0,0.15)",
+                        }}
+                      />
+                    ))}
+                  </div>
                 )}
               </div>
 
-              {/* Name */}
-              <div className="bg-white px-4 pt-2 pb-4">
-                <h1 className="text-base font-semibold text-gray-900 leading-snug">
+              {/* ── Info card ── */}
+              <div className="bg-white mt-2 px-4 pt-4 pb-2">
+                {/* Badges */}
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <span className="text-[11px] font-semibold bg-[#fff0f5] text-[#ff3e6c] border border-[#ffb3cb] px-2.5 py-0.5 rounded-full">
+                    {selectedProduct.productType}
+                  </span>
+                  {selectedProduct.functionCategory && (
+                    <span className="text-[11px] font-medium bg-gray-100 text-gray-600 border border-gray-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                      <Tag className="w-2.5 h-2.5" />
+                      {selectedProduct.functionCategory}
+                    </span>
+                  )}
+                </div>
+
+                {/* Product name */}
+                <h1 className="text-[15px] font-semibold text-gray-900 leading-snug mb-3">
                   {selectedProduct.name}
                 </h1>
+
+                {/* Price row */}
+                <div className="flex items-baseline gap-2 mb-1">
+                  <span className="text-[22px] font-extrabold text-gray-900">
+                    ₹{selectedProduct.discountPrice}
+                  </span>
+                  {selectedProduct.actualPrice > selectedProduct.discountPrice && (
+                    <>
+                      <span className="text-sm text-gray-400 line-through">
+                        ₹{selectedProduct.actualPrice}
+                      </span>
+                      <span className="text-sm font-bold text-[#2ecc71]">
+                        ↓{Math.round(
+                          ((selectedProduct.actualPrice - selectedProduct.discountPrice) /
+                            selectedProduct.actualPrice) * 100
+                        )}% off
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
 
-              {/* Price — Meesho style */}
-              <div className="bg-white mt-2 px-4 py-4 border-t border-b flex items-baseline gap-2">
-                {selectedProduct.actualPrice > selectedProduct.discountPrice && (
-                  <span className="text-green-600 text-sm font-bold">
-                    ↓{Math.round(
-                      ((selectedProduct.actualPrice - selectedProduct.discountPrice) /
-                        selectedProduct.actualPrice) *
-                        100
-                    )}%
-                  </span>
-                )}
-                {selectedProduct.actualPrice > selectedProduct.discountPrice && (
-                  <span className="text-gray-400 line-through text-sm">
-                    ₹{selectedProduct.actualPrice}
-                  </span>
-                )}
-                <span className="text-2xl font-extrabold text-gray-900">
-                  ₹{selectedProduct.discountPrice}
-                </span>
-              </div>
-
-              {/* Sizes */}
+              {/* ── Sizes ── */}
               {selectedProduct.sizes?.length > 0 && (
                 <div className="bg-white mt-2 px-4 py-4">
-                  <p className="text-sm font-semibold text-gray-800 mb-3">
+                  <p className="text-[13px] font-bold text-gray-800 mb-3 tracking-wide uppercase">
                     Select Size
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {selectedProduct.sizes.map((s: string) => (
                       <span
                         key={s}
-                        className="px-4 py-1.5 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:border-orange-400 cursor-default transition-colors"
+                        className="px-4 py-1.5 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white"
                       >
                         {s}
                       </span>
@@ -737,40 +760,40 @@ export default function Products() {
                 </div>
               )}
 
-              {/* Description */}
+              {/* ── Description ── */}
               {selectedProduct.description && (
                 <div className="bg-white mt-2 px-4 py-4">
-                  <p className="text-sm font-semibold text-gray-800 mb-2">Description</p>
+                  <p className="text-[13px] font-bold text-gray-800 mb-2 tracking-wide uppercase">
+                    Description
+                  </p>
                   <p className="text-sm text-gray-500 leading-relaxed whitespace-pre-wrap">
                     {selectedProduct.description}
                   </p>
                 </div>
               )}
 
-              {/* Bottom spacer so content clears sticky footer */}
               <div className="h-24" />
             </div>
 
-            {/* Sticky bottom action bar — Meesho style */}
-            <div className="sticky bottom-0 bg-white border-t shadow-[0_-2px_8px_rgba(0,0,0,0.08)] px-4 py-3 grid grid-cols-2 gap-3 z-20">
-              <Button
+            {/* ── Sticky bottom bar — Meesho/Flipkart style ── */}
+            <div className="sticky bottom-0 bg-white border-t shadow-[0_-2px_12px_rgba(0,0,0,0.1)] px-4 py-3 grid grid-cols-2 gap-3 z-20">
+              <button
                 onClick={() => openEdit(selectedProduct)}
-                variant="outline"
-                className="font-semibold gap-2 border-gray-800 text-gray-800 hover:bg-gray-50 py-5 rounded text-sm"
+                className="flex items-center justify-center gap-2 py-3 rounded font-bold text-sm border-2 border-gray-800 text-gray-800 bg-white hover:bg-gray-50 transition-colors"
               >
                 <Pencil className="w-4 h-4" />
                 Update
-              </Button>
-              <Button
-                variant="destructive"
+              </button>
+              <button
                 onClick={() => handleDelete(selectedProduct.id)}
                 disabled={deleteProduct.isPending}
-                className="font-semibold gap-2 py-5 rounded text-sm"
+                className="flex items-center justify-center gap-2 py-3 rounded font-bold text-sm bg-[#ff3e6c] text-white hover:bg-[#e0355f] transition-colors disabled:opacity-60"
               >
                 <Trash2 className="w-4 h-4" />
                 Delete
-              </Button>
+              </button>
             </div>
+
           </DialogContent>
         </Dialog>
       )}
