@@ -110,8 +110,9 @@ export default function ManageAdmins() {
       { id },
       {
         onSuccess: () => {
-          toast({ title: "Store approved ✅" });
+          toast({ title: "Store approved ✅ Admin account created" });
           queryClient.invalidateQueries({ queryKey: getListStoreRequestsQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getListAdminsQueryKey() });
           setRequestDetailOpen(false);
         },
         onError: () => toast({ title: "Failed to approve", variant: "destructive" }),

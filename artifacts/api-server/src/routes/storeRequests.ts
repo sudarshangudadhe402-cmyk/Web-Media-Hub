@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { StoreRequest } from "../models/StoreRequest";
+import { User } from "../models/User";
 import { requireAuth, requireSuperAdmin } from "../middlewares/auth";
 import { Notification } from "../models/Notification";
 
@@ -68,9 +69,19 @@ router.patch("/store-requests/:id/approve", requireSuperAdmin, async (req, res) 
     );
     if (!request) { res.status(404).json({ error: "Not found" }); return; }
 
+    const existingUser = await User.findOne({ username: request.username });
+    if (!existingUser) {
+      await User.create({
+        username: request.username,
+        password: request.password,
+        plainPassword: request.password,
+        role: "admin",
+      });
+    }
+
     await Notification.create({
       type: "store_request",
-      message: `Store "${request.storeName}" has been approved`,
+      message: `Store "${request.storeName}" has been approved and admin account created`,
       relatedId: String(request._id),
     });
 
