@@ -80,7 +80,7 @@ router.patch("/store", requireAuth, async (req, res) => {
       return;
     }
 
-    const { name, address, whatsappNumber, openingTime, openDays, bannerImage, description } = req.body;
+    const { name, address, whatsappNumber, openingTime, openDays, bannerImage, description, isLocked } = req.body;
     if (name !== undefined) store.name = name;
     if (address !== undefined) store.address = address;
     if (whatsappNumber !== undefined) store.whatsappNumber = whatsappNumber;
@@ -88,7 +88,7 @@ router.patch("/store", requireAuth, async (req, res) => {
     if (openDays !== undefined) store.openDays = openDays;
     if (bannerImage !== undefined) store.bannerImage = bannerImage;
     if (description !== undefined) store.description = description;
-    store.isLocked = false;
+    if (isLocked !== undefined) store.isLocked = isLocked;
     await store.save();
 
     res.json(formatStore(store));
