@@ -2,7 +2,11 @@ import { useState } from "react";
 import {
   useListAdmins,
   useCreateAdmin,
+  useListStoreRequests,
+  useApproveStoreRequest,
+  useRejectStoreRequest,
   getListAdminsQueryKey,
+  getListStoreRequestsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,20 +35,11 @@ import {
   MessageCircle,
   Eye,
   EyeOff,
+  Clock,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type StoreTab = "pending" | "approved" | "rejected";
-
-interface MockRequest {
-  id: string;
-  username: string;
-  password: string;
-  whatsapp: string;
-  storeName: string;
-}
-
-const MOCK_REQUESTS: MockRequest[] = [];
 
 export default function ManageAdmins() {
   const { user } = useAuth();
@@ -54,16 +49,26 @@ export default function ManageAdmins() {
   const { data: admins, isLoading } = useListAdmins();
   const createAdmin = useCreateAdmin();
 
+  // Store requests — fetched from MongoDB
+  const { data: allRequests, isLoading: reqLoading } = useListStoreRequests();
+  const approveRequest = useApproveStoreRequest();
+  const rejectRequest = useRejectStoreRequest();
+
   const [addOpen, setAddOpen] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<(typeof admins extends (infer T)[] | undefined ? T : never) | null>(null);
   const [adminDetailOpen, setAdminDetailOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<StoreTab>("pending");
-  const [selectedRequest, setSelectedRequest] = useState<MockRequest | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<NonNullable<typeof allRequests>[number] | null>(null);
   const [requestDetailOpen, setRequestDetailOpen] = useState(false);
   const [adminActive, setAdminActive] = useState<Record<string, boolean>>({});
   const [showPass, setShowPass] = useState(false);
 
   const [form, setForm] = useState({ username: "", password: "", whatsapp: "" });
+
+  const pending = (allRequests ?? []).filter((r) => r.status === "pending");
+  const approved = (allRequests ?? []).filter((r) => r.status === "approved");
+  const rejected = (allRequests ?? []).filter((r) => r.status === "rejected");
+  const tabData: Record<StoreTab, typeof pending> = { pending, approved, rejected };
 
   function handleFormChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
@@ -93,16 +98,39 @@ export default function ManageAdmins() {
     setShowPass(false);
   }
 
-  function openRequestDetail(req: MockRequest) {
-    setSelectedRequest(req);
-    setRequestDetailOpen(true);
-  }
-
   function openWhatsApp(number: string, storeName: string) {
     const msg = encodeURIComponent(
       `You want to approve your store?\n\nStore Information:\nStore Name: ${storeName}\n\nCan I send you information about store benefits or purchasing discount?`
     );
     window.open(`https://wa.me/${number.replace(/\D/g, "")}?text=${msg}`, "_blank");
+  }
+
+  function handleApprove(id: string) {
+    approveRequest.mutate(
+      { id },
+      {
+        onSuccess: () => {
+          toast({ title: "Store approved ✅" });
+          queryClient.invalidateQueries({ queryKey: getListStoreRequestsQueryKey() });
+          setRequestDetailOpen(false);
+        },
+        onError: () => toast({ title: "Failed to approve", variant: "destructive" }),
+      }
+    );
+  }
+
+  function handleReject(id: string) {
+    rejectRequest.mutate(
+      { id },
+      {
+        onSuccess: () => {
+          toast({ title: "Store rejected" });
+          queryClient.invalidateQueries({ queryKey: getListStoreRequestsQueryKey() });
+          setRequestDetailOpen(false);
+        },
+        onError: () => toast({ title: "Failed to reject", variant: "destructive" }),
+      }
+    );
   }
 
   if (user?.role !== "super_admin") {
@@ -183,10 +211,7 @@ export default function ManageAdmins() {
                           {admin.id === user?.id && (
                             <Badge variant="secondary" className="text-[10px]">You</Badge>
                           )}
-                          <Badge
-                            variant={admin.role === "super_admin" ? "default" : "outline"}
-                            className="capitalize text-[10px]"
-                          >
+                          <Badge variant={admin.role === "super_admin" ? "default" : "outline"} className="capitalize text-[10px]">
                             {admin.role.replace("_", " ")}
                           </Badge>
                         </div>
@@ -211,16 +236,25 @@ export default function ManageAdmins() {
         )}
       </div>
 
-      {/* Store Approval Tabs */}
+      {/* ── Store Approval Section ── */}
       <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Store className="w-5 h-5 text-primary" />
+          <h2 className="text-lg font-semibold">Store Approval Requests</h2>
+          {pending.length > 0 && (
+            <Badge className="bg-amber-500 text-white ml-1">{pending.length} pending</Badge>
+          )}
+        </div>
+
+        {/* Tabs */}
         <div className="flex gap-2 mb-4">
           {(
             [
-              { key: "pending", label: "Admin want to approve this store", icon: Store, activeClass: "bg-primary text-primary-foreground border-primary" },
-              { key: "approved", label: "Approved Store", icon: CheckCircle, activeClass: "bg-green-600 text-white border-green-600" },
-              { key: "rejected", label: "Rejected Store", icon: XCircle, activeClass: "bg-red-600 text-white border-red-600" },
-            ] as { key: StoreTab; label: string; icon: React.ElementType; activeClass: string }[]
-          ).map(({ key, label, icon: Icon, activeClass }) => (
+              { key: "pending" as StoreTab, label: "Pending Approval", icon: Clock, count: pending.length, activeClass: "bg-amber-500 text-white border-amber-500" },
+              { key: "approved" as StoreTab, label: "Approved", icon: CheckCircle, count: approved.length, activeClass: "bg-green-600 text-white border-green-600" },
+              { key: "rejected" as StoreTab, label: "Rejected", icon: XCircle, count: rejected.length, activeClass: "bg-red-600 text-white border-red-600" },
+            ]
+          ).map(({ key, label, icon: Icon, count, activeClass }) => (
             <button
               key={key}
               data-testid={`store-tab-${key}`}
@@ -231,59 +265,56 @@ export default function ManageAdmins() {
             >
               <Icon className="w-4 h-4" />
               <span className="text-center leading-tight">{label}</span>
-              <Badge variant="secondary" className="text-[10px] mt-0.5">0</Badge>
+              <Badge variant="secondary" className="text-[10px] mt-0.5">{count}</Badge>
             </button>
           ))}
         </div>
 
         {/* Tab Content */}
-        {activeTab === "pending" && (
-          MOCK_REQUESTS.length === 0 ? (
-            <Card className="border-dashed border-2">
-              <CardContent className="py-12 text-center space-y-2">
-                <Store className="w-10 h-10 mx-auto text-muted-foreground/30" />
-                <p className="text-muted-foreground font-medium">No pending store requests</p>
-                <p className="text-sm text-muted-foreground/60">Store approval requests will appear here</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-2">
-              {MOCK_REQUESTS.map((req) => (
-                <button key={req.id} onClick={() => openRequestDetail(req)} className="w-full text-left">
-                  <Card className="hover:border-primary/40 transition-colors cursor-pointer">
-                    <CardContent className="p-4 flex items-center gap-3">
-                      <Store className="w-8 h-8 text-primary" />
-                      <div className="flex-1">
-                        <p className="font-semibold">{req.storeName}</p>
-                        <p className="text-sm text-muted-foreground">@{req.username}</p>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                    </CardContent>
-                  </Card>
-                </button>
-              ))}
-            </div>
-          )
-        )}
-
-        {activeTab === "approved" && (
+        {reqLoading ? (
+          <div className="space-y-3">
+            {[1, 2].map((i) => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
+          </div>
+        ) : tabData[activeTab].length === 0 ? (
           <Card className="border-dashed border-2">
             <CardContent className="py-12 text-center space-y-2">
-              <CheckCircle className="w-10 h-10 mx-auto text-green-400/40" />
-              <p className="text-muted-foreground font-medium">No approved stores yet</p>
-              <p className="text-sm text-muted-foreground/60">Approved stores will appear here</p>
+              {activeTab === "pending" && <><Clock className="w-10 h-10 mx-auto text-muted-foreground/30" /><p className="text-muted-foreground font-medium">No pending store requests</p><p className="text-sm text-muted-foreground/60">Store approval requests will appear here</p></>}
+              {activeTab === "approved" && <><CheckCircle className="w-10 h-10 mx-auto text-green-400/40" /><p className="text-muted-foreground font-medium">No approved stores yet</p></>}
+              {activeTab === "rejected" && <><XCircle className="w-10 h-10 mx-auto text-red-400/40" /><p className="text-muted-foreground font-medium">No rejected stores</p></>}
             </CardContent>
           </Card>
-        )}
-
-        {activeTab === "rejected" && (
-          <Card className="border-dashed border-2">
-            <CardContent className="py-12 text-center space-y-2">
-              <XCircle className="w-10 h-10 mx-auto text-red-400/40" />
-              <p className="text-muted-foreground font-medium">No rejected stores</p>
-              <p className="text-sm text-muted-foreground/60">Rejected stores will appear here</p>
-            </CardContent>
-          </Card>
+        ) : (
+          <div className="space-y-2">
+            {tabData[activeTab].map((req) => (
+              <button
+                key={req.id}
+                onClick={() => { setSelectedRequest(req); setRequestDetailOpen(true); }}
+                className="w-full text-left"
+                data-testid={`store-req-${req.id}`}
+              >
+                <Card className="hover:border-primary/40 transition-colors cursor-pointer">
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                      req.status === "approved" ? "bg-green-100" :
+                      req.status === "rejected" ? "bg-red-100" : "bg-amber-100"
+                    }`}>
+                      {req.status === "approved" ? <CheckCircle className="w-5 h-5 text-green-600" /> :
+                       req.status === "rejected" ? <XCircle className="w-5 h-5 text-red-600" /> :
+                       <Clock className="w-5 h-5 text-amber-600" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold truncate">{req.storeName}</p>
+                      <p className="text-sm text-muted-foreground">@{req.username}</p>
+                      <p className="text-xs text-muted-foreground/60 mt-0.5">
+                        {new Date(req.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                      </p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                  </CardContent>
+                </Card>
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
@@ -299,48 +330,21 @@ export default function ManageAdmins() {
           <form onSubmit={handleCreate} className="space-y-4 pt-2">
             <div className="space-y-1.5">
               <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                name="username"
-                placeholder="admin_username"
-                value={form.username}
-                onChange={handleFormChange}
-                required
-                data-testid="new-admin-username"
-              />
+              <Input id="username" name="username" placeholder="admin_username" value={form.username} onChange={handleFormChange} required data-testid="new-admin-username" />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                placeholder="••••••••"
-                value={form.password}
-                onChange={handleFormChange}
-                required
-                data-testid="new-admin-password"
-              />
+              <Input id="password" name="password" type="password" placeholder="••••••••" value={form.password} onChange={handleFormChange} required data-testid="new-admin-password" />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="whatsapp" className="flex items-center gap-1.5">
                 Store Owner WhatsApp Number
                 <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
               </Label>
-              <Input
-                id="whatsapp"
-                name="whatsapp"
-                type="tel"
-                placeholder="+91 00000 00000"
-                value={form.whatsapp}
-                onChange={handleFormChange}
-                data-testid="new-admin-whatsapp"
-              />
+              <Input id="whatsapp" name="whatsapp" type="tel" placeholder="+91 00000 00000" value={form.whatsapp} onChange={handleFormChange} data-testid="new-admin-whatsapp" />
             </div>
             <div className="flex gap-3 pt-2">
-              <Button type="button" variant="outline" className="flex-1" onClick={() => setAddOpen(false)}>
-                Cancel
-              </Button>
+              <Button type="button" variant="outline" className="flex-1" onClick={() => setAddOpen(false)}>Cancel</Button>
               <Button type="submit" className="flex-1 bg-green-600 hover:bg-green-700 text-white" disabled={createAdmin.isPending}>
                 {createAdmin.isPending ? "Creating..." : "Create Admin"}
               </Button>
@@ -360,7 +364,6 @@ export default function ManageAdmins() {
           </DialogHeader>
           {selectedAdmin && (
             <div className="space-y-5 pt-2">
-              {/* Avatar + name */}
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xl uppercase">
                   {selectedAdmin.username.substring(0, 2)}
@@ -372,8 +375,6 @@ export default function ManageAdmins() {
                   </Badge>
                 </div>
               </div>
-
-              {/* Info rows */}
               <div className="bg-muted rounded-xl divide-y divide-border">
                 <div className="flex items-center justify-between px-4 py-3">
                   <span className="text-sm text-muted-foreground">Username</span>
@@ -382,17 +383,11 @@ export default function ManageAdmins() {
                 <div className="flex items-center justify-between px-4 py-3">
                   <span className="text-sm text-muted-foreground">Password</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium font-mono">
-                      {showPass ? "••••••••" : "••••••••"}
-                    </span>
+                    <span className="text-sm font-medium font-mono">••••••••</span>
                     <button onClick={() => setShowPass((p) => !p)} className="text-muted-foreground hover:text-foreground">
                       {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
-                </div>
-                <div className="flex items-center justify-between px-4 py-3">
-                  <span className="text-sm text-muted-foreground">WhatsApp</span>
-                  <span className="text-sm font-medium text-muted-foreground/60 italic">Not set</span>
                 </div>
                 <div className="flex items-center justify-between px-4 py-3">
                   <span className="text-sm text-muted-foreground">Added</span>
@@ -401,8 +396,6 @@ export default function ManageAdmins() {
                   </span>
                 </div>
               </div>
-
-              {/* Active toggle */}
               <div className="flex items-center justify-between bg-muted rounded-xl px-4 py-3">
                 <div>
                   <p className="font-medium text-sm">Active Admin</p>
@@ -412,15 +405,10 @@ export default function ManageAdmins() {
                 </div>
                 <Switch
                   checked={adminActive[selectedAdmin.id] !== false}
-                  onCheckedChange={(val) =>
-                    setAdminActive((p) => ({ ...p, [selectedAdmin.id]: val }))
-                  }
+                  onCheckedChange={(val) => setAdminActive((p) => ({ ...p, [selectedAdmin.id]: val }))}
                   data-testid="admin-active-toggle"
                 />
               </div>
-
-              {/* Password changes section — hidden until implemented */}
-              <p className="text-xs text-center text-muted-foreground/50 italic">Password changes section — coming soon</p>
             </div>
           )}
         </DialogContent>
@@ -439,6 +427,10 @@ export default function ManageAdmins() {
             <div className="space-y-5 pt-2">
               <div className="bg-muted rounded-xl divide-y divide-border">
                 <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-sm text-muted-foreground">Store Name</span>
+                  <span className="text-sm font-semibold">{selectedRequest.storeName}</span>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
                   <span className="text-sm text-muted-foreground">Username</span>
                   <span className="text-sm font-medium">{selectedRequest.username}</span>
                 </div>
@@ -448,8 +440,7 @@ export default function ManageAdmins() {
                 </div>
                 <div className="flex items-center justify-between px-4 py-3">
                   <span className="text-sm text-muted-foreground flex items-center gap-1">
-                    WhatsApp
-                    <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                    WhatsApp <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
                   </span>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">{selectedRequest.whatsapp}</span>
@@ -463,35 +454,50 @@ export default function ManageAdmins() {
                   </div>
                 </div>
                 <div className="flex items-center justify-between px-4 py-3">
-                  <span className="text-sm text-muted-foreground">Store Name</span>
-                  <span className="text-sm font-medium">{selectedRequest.storeName}</span>
+                  <span className="text-sm text-muted-foreground">Status</span>
+                  <Badge className={
+                    selectedRequest.status === "approved" ? "bg-green-600 text-white" :
+                    selectedRequest.status === "rejected" ? "bg-red-600 text-white" :
+                    "bg-amber-500 text-white"
+                  }>
+                    {selectedRequest.status}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-sm text-muted-foreground">Submitted</span>
+                  <span className="text-sm font-medium">
+                    {new Date(selectedRequest.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                  </span>
                 </div>
               </div>
 
-              <div className="flex gap-3">
-                <Button
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                  onClick={() => {
-                    toast({ title: "Store approved" });
-                    setRequestDetailOpen(false);
-                  }}
-                  data-testid="approve-store-btn"
-                >
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Approve Store
-                </Button>
-                <Button
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                  onClick={() => {
-                    toast({ title: "Store rejected" });
-                    setRequestDetailOpen(false);
-                  }}
-                  data-testid="reject-store-btn"
-                >
-                  <XCircle className="w-4 h-4 mr-2" />
-                  Reject Store
-                </Button>
-              </div>
+              {selectedRequest.status === "pending" && (
+                <div className="flex gap-3">
+                  <Button
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                    onClick={() => handleApprove(selectedRequest.id)}
+                    disabled={approveRequest.isPending}
+                    data-testid="approve-store-btn"
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    {approveRequest.isPending ? "Approving..." : "Approve Store"}
+                  </Button>
+                  <Button
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                    onClick={() => handleReject(selectedRequest.id)}
+                    disabled={rejectRequest.isPending}
+                    data-testid="reject-store-btn"
+                  >
+                    <XCircle className="w-4 h-4 mr-2" />
+                    {rejectRequest.isPending ? "Rejecting..." : "Reject Store"}
+                  </Button>
+                </div>
+              )}
+              {selectedRequest.status !== "pending" && (
+                <p className="text-center text-sm text-muted-foreground">
+                  This request has already been <strong>{selectedRequest.status}</strong>.
+                </p>
+              )}
             </div>
           )}
         </DialogContent>

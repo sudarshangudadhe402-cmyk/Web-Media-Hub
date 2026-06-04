@@ -1966,3 +1966,200 @@ export function useGetDashboardSummary<TData = Awaited<ReturnType<typeof getDash
 
 
 
+
+// ── Store Request Types ──────────────────────────────────────────────────────
+
+export interface StoreRequestItem {
+  id: string;
+  username: string;
+  storeName: string;
+  whatsapp: string;
+  status: "pending" | "approved" | "rejected";
+  submittedBy: string;
+  createdAt: string;
+}
+
+export interface StoreRequestInput {
+  username: string;
+  password: string;
+  storeName: string;
+  whatsapp: string;
+}
+
+// ── submitStoreRequest ────────────────────────────────────────────────────────
+
+export const submitStoreRequest = async (
+  data: StoreRequestInput,
+  options?: RequestInit
+): Promise<StoreRequestItem> => {
+  return customFetch<StoreRequestItem>("/api/store-requests", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+    ...options,
+  });
+};
+
+export const useSubmitStoreRequest = <
+  TError = ErrorType<unknown>,
+  TContext = unknown
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitStoreRequest>>,
+    TError,
+    { data: StoreRequestInput },
+    TContext
+  >;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof submitStoreRequest>>,
+  TError,
+  { data: StoreRequestInput },
+  TContext
+> => {
+  const mutationFn = ({ data }: { data: StoreRequestInput }) =>
+    submitStoreRequest(data);
+  return useMutation({ mutationFn, ...options?.mutation });
+};
+
+// ── listStoreRequests ─────────────────────────────────────────────────────────
+
+export const listStoreRequests = async (
+  params?: { status?: string },
+  options?: RequestInit
+): Promise<StoreRequestItem[]> => {
+  const qs = params?.status ? `?status=${params.status}` : "";
+  return customFetch<StoreRequestItem[]>(`/api/store-requests${qs}`, {
+    method: "GET",
+    ...options,
+  });
+};
+
+export const getListStoreRequestsQueryKey = (params?: { status?: string }) =>
+  ["/api/store-requests", params] as const;
+
+export const useListStoreRequests = <
+  TData = Awaited<ReturnType<typeof listStoreRequests>>,
+  TError = ErrorType<unknown>
+>(
+  params?: { status?: string },
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listStoreRequests>>,
+      TError,
+      TData
+    >;
+  }
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } => {
+  const queryKey =
+    options?.query?.queryKey ?? getListStoreRequestsQueryKey(params);
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listStoreRequests>>
+  > = ({ signal }) => listStoreRequests(params, { signal });
+  const query = useQuery({
+    queryKey,
+    queryFn,
+    ...options?.query,
+  }) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return { ...query, queryKey };
+};
+
+// ── myStoreRequests ───────────────────────────────────────────────────────────
+
+export const myStoreRequests = async (
+  options?: RequestInit
+): Promise<StoreRequestItem[]> => {
+  return customFetch<StoreRequestItem[]>("/api/store-requests/my", {
+    method: "GET",
+    ...options,
+  });
+};
+
+export const getMyStoreRequestsQueryKey = () =>
+  ["/api/store-requests/my"] as const;
+
+export const useMyStoreRequests = <
+  TData = Awaited<ReturnType<typeof myStoreRequests>>,
+  TError = ErrorType<unknown>
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof myStoreRequests>>,
+    TError,
+    TData
+  >;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } => {
+  const queryKey =
+    options?.query?.queryKey ?? getMyStoreRequestsQueryKey();
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof myStoreRequests>>
+  > = ({ signal }) => myStoreRequests({ signal });
+  const query = useQuery({
+    queryKey,
+    queryFn,
+    ...options?.query,
+  }) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return { ...query, queryKey };
+};
+
+// ── approveStoreRequest ───────────────────────────────────────────────────────
+
+export const approveStoreRequest = async (
+  id: string,
+  options?: RequestInit
+): Promise<StoreRequestItem> => {
+  return customFetch<StoreRequestItem>(`/api/store-requests/${id}/approve`, {
+    method: "PATCH",
+    ...options,
+  });
+};
+
+export const useApproveStoreRequest = <
+  TError = ErrorType<unknown>,
+  TContext = unknown
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof approveStoreRequest>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof approveStoreRequest>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationFn = ({ id }: { id: string }) => approveStoreRequest(id);
+  return useMutation({ mutationFn, ...options?.mutation });
+};
+
+// ── rejectStoreRequest ────────────────────────────────────────────────────────
+
+export const rejectStoreRequest = async (
+  id: string,
+  options?: RequestInit
+): Promise<StoreRequestItem> => {
+  return customFetch<StoreRequestItem>(`/api/store-requests/${id}/reject`, {
+    method: "PATCH",
+    ...options,
+  });
+};
+
+export const useRejectStoreRequest = <
+  TError = ErrorType<unknown>,
+  TContext = unknown
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rejectStoreRequest>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof rejectStoreRequest>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationFn = ({ id }: { id: string }) => rejectStoreRequest(id);
+  return useMutation({ mutationFn, ...options?.mutation });
+};
