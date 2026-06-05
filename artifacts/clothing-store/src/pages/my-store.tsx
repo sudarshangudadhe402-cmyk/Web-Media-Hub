@@ -109,22 +109,67 @@ export default function MyStore() {
   const [form, setForm] = useState<StoreForm>(EMPTY_FORM);
   const initializedRef = useRef(false);
   const qrCanvasRef = useRef<HTMLDivElement>(null);
+  const logoSrc = `${import.meta.env.BASE_URL ?? "/"}wmh-logo.png`;
 
   const getQrCanvas = useCallback((): HTMLCanvasElement | null => {
     return qrCanvasRef.current?.querySelector("canvas") ?? null;
   }, []);
 
-  const handleDownloadQr = useCallback(() => {
-    const canvas = getQrCanvas();
+  const buildStyledCanvas = useCallback(async (): Promise<HTMLCanvasElement | null> => {
+    const qrCanvas = getQrCanvas();
+    if (!qrCanvas) return null;
+
+    const qrSize = qrCanvas.width;
+    const pad = 32;
+    const total = qrSize + pad * 2;
+
+    const out = document.createElement("canvas");
+    out.width = total;
+    out.height = total;
+    const ctx = out.getContext("2d");
+    if (!ctx) return null;
+
+    // Dark background
+    ctx.fillStyle = "#111108";
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(0, 0, total, total, 24);
+    else ctx.rect(0, 0, total, total);
+    ctx.fill();
+
+    // Decorative blobs
+    const blobs: [number, number, number, string][] = [
+      [total - 10, -10, 60, "rgba(22,163,74,0.45)"],
+      [10, total + 5, 55, "rgba(16,185,129,0.35)"],
+      [-5, total * 0.35, 28, "rgba(52,211,153,0.20)"],
+      [total + 5, total * 0.65, 28, "rgba(34,197,94,0.18)"],
+    ];
+    ctx.save();
+    ctx.filter = "blur(18px)";
+    for (const [x, y, r, color] of blobs) {
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // QR code (already contains logo via imageSettings)
+    ctx.drawImage(qrCanvas, pad, pad, qrSize, qrSize);
+
+    return out;
+  }, [getQrCanvas]);
+
+  const handleDownloadQr = useCallback(async () => {
+    const canvas = await buildStyledCanvas();
     if (!canvas) return;
     const link = document.createElement("a");
     link.download = "store-qr.png";
     link.href = canvas.toDataURL("image/png");
     link.click();
-  }, [getQrCanvas]);
+  }, [buildStyledCanvas]);
 
   const handleShareQr = useCallback(async () => {
-    const canvas = getQrCanvas();
+    const canvas = await buildStyledCanvas();
     if (!canvas) return;
     if (!navigator.share) {
       toast({ title: "Sharing not supported on this device" });
@@ -136,10 +181,10 @@ export default function MyStore() {
       try {
         await navigator.share({ files: [file], title: "My Store QR Code" });
       } catch {
-        // user cancelled or share failed — silently ignore
+        // user cancelled or share failed silently
       }
     }, "image/png");
-  }, [getQrCanvas, toast]);
+  }, [buildStyledCanvas, toast]);
 
   useEffect(() => {
     if (store && !initializedRef.current) {
@@ -403,24 +448,47 @@ export default function MyStore() {
                         <DialogHeader>
                           <DialogTitle className="text-center mb-4">Store QR Code</DialogTitle>
                         </DialogHeader>
-                        <div ref={qrCanvasRef} className="bg-white p-4 rounded-xl">
-                          <QRCodeCanvas value={storeUrl} size={220} level="H" includeMargin />
+
+                        {/* Dark themed QR card */}
+                        <div
+                          className="relative rounded-2xl overflow-hidden flex items-center justify-center"
+                          style={{ background: "#111108", padding: "24px" }}
+                        >
+                          {/* Decorative blobs */}
+                          <div className="absolute top-0 right-0 w-20 h-20 rounded-full"
+                            style={{ background: "rgba(22,163,74,0.45)", filter: "blur(20px)", transform: "translate(30%,-30%)" }} />
+                          <div className="absolute bottom-0 left-0 w-16 h-16 rounded-full"
+                            style={{ background: "rgba(16,185,129,0.35)", filter: "blur(18px)", transform: "translate(-30%,30%)" }} />
+                          <div className="absolute left-0 top-1/3 w-8 h-8 rounded-full"
+                            style={{ background: "rgba(52,211,153,0.22)", filter: "blur(12px)" }} />
+                          <div className="absolute right-0 bottom-1/3 w-8 h-8 rounded-full"
+                            style={{ background: "rgba(34,197,94,0.20)", filter: "blur(12px)" }} />
+
+                          {/* QR canvas with logo in center */}
+                          <div ref={qrCanvasRef} className="relative z-10">
+                            <QRCodeCanvas
+                              value={storeUrl}
+                              size={220}
+                              level="H"
+                              includeMargin
+                              imageSettings={{
+                                src: logoSrc,
+                                height: 52,
+                                width: 52,
+                                excavate: true,
+                              }}
+                            />
+                          </div>
                         </div>
+
                         <p className="text-sm text-muted-foreground mt-4 text-center">
                           Customers scan this to visit your store.
                         </p>
                         <div className="flex gap-3 w-full mt-2">
-                          <Button
-                            variant="outline"
-                            className="flex-1"
-                            onClick={handleDownloadQr}
-                          >
+                          <Button variant="outline" className="flex-1" onClick={handleDownloadQr}>
                             <Download className="w-4 h-4 mr-2" /> Download
                           </Button>
-                          <Button
-                            className="flex-1"
-                            onClick={handleShareQr}
-                          >
+                          <Button className="flex-1" onClick={handleShareQr}>
                             <Share2 className="w-4 h-4 mr-2" /> Share
                           </Button>
                         </div>
