@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   useGetStore,
   useCreateStore,
@@ -29,6 +29,8 @@ import {
   Copy,
   QrCode,
   KeyRound,
+  Download,
+  Share2,
 } from "lucide-react";
 import {
   Dialog,
@@ -37,7 +39,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { QRCodeSVG } from "qrcode.react";
+import { QRCodeSVG, QRCodeCanvas } from "qrcode.react";
 
 const ALL_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -106,6 +108,38 @@ export default function MyStore() {
   const [bannerPreview, setBannerPreview] = useState("");
   const [form, setForm] = useState<StoreForm>(EMPTY_FORM);
   const initializedRef = useRef(false);
+  const qrCanvasRef = useRef<HTMLDivElement>(null);
+
+  const getQrCanvas = useCallback((): HTMLCanvasElement | null => {
+    return qrCanvasRef.current?.querySelector("canvas") ?? null;
+  }, []);
+
+  const handleDownloadQr = useCallback(() => {
+    const canvas = getQrCanvas();
+    if (!canvas) return;
+    const link = document.createElement("a");
+    link.download = "store-qr.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  }, [getQrCanvas]);
+
+  const handleShareQr = useCallback(async () => {
+    const canvas = getQrCanvas();
+    if (!canvas) return;
+    if (!navigator.share) {
+      toast({ title: "Sharing not supported on this device" });
+      return;
+    }
+    canvas.toBlob(async (blob) => {
+      if (!blob) return;
+      const file = new File([blob], "store-qr.png", { type: "image/png" });
+      try {
+        await navigator.share({ files: [file], title: "My Store QR Code" });
+      } catch {
+        // user cancelled or share failed — silently ignore
+      }
+    }, "image/png");
+  }, [getQrCanvas, toast]);
 
   useEffect(() => {
     if (store && !initializedRef.current) {
@@ -369,12 +403,27 @@ export default function MyStore() {
                         <DialogHeader>
                           <DialogTitle className="text-center mb-4">Store QR Code</DialogTitle>
                         </DialogHeader>
-                        <div className="bg-white p-4 rounded-xl">
-                          <QRCodeSVG value={storeUrl} size={220} level="H" includeMargin />
+                        <div ref={qrCanvasRef} className="bg-white p-4 rounded-xl">
+                          <QRCodeCanvas value={storeUrl} size={220} level="H" includeMargin />
                         </div>
                         <p className="text-sm text-muted-foreground mt-4 text-center">
                           Customers scan this to visit your store.
                         </p>
+                        <div className="flex gap-3 w-full mt-2">
+                          <Button
+                            variant="outline"
+                            className="flex-1"
+                            onClick={handleDownloadQr}
+                          >
+                            <Download className="w-4 h-4 mr-2" /> Download
+                          </Button>
+                          <Button
+                            className="flex-1"
+                            onClick={handleShareQr}
+                          >
+                            <Share2 className="w-4 h-4 mr-2" /> Share
+                          </Button>
+                        </div>
                       </DialogContent>
                     </Dialog>
                   </div>
