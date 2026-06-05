@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,7 @@ import {
   Users,
   Star,
   ChevronRight,
+  ChevronDown,
   Store,
   CheckCircle,
   XCircle,
@@ -58,6 +60,7 @@ export default function ManageAdmins() {
   const [selectedAdmin, setSelectedAdmin] = useState<(typeof admins extends (infer T)[] | undefined ? T : never) | null>(null);
   const [adminDetailOpen, setAdminDetailOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<StoreTab>("pending");
+  const [storeRequestOpen, setStoreRequestOpen] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState<NonNullable<typeof allRequests>[number] | null>(null);
   const [requestDetailOpen, setRequestDetailOpen] = useState(false);
   const [adminActive, setAdminActive] = useState<Record<string, boolean>>({});
@@ -264,14 +267,22 @@ export default function ManageAdmins() {
       </div>
 
       {/* ── Store Approval Section ── */}
-      <div>
-        <div className="flex items-center gap-2 mb-4">
-          <Store className="w-5 h-5 text-primary" />
-          <h2 className="text-lg font-semibold">Store Approval Requests</h2>
-          {pending.length > 0 && (
-            <Badge className="bg-amber-500 text-white ml-1">{pending.length} pending</Badge>
-          )}
-        </div>
+      <Collapsible open={storeRequestOpen} onOpenChange={setStoreRequestOpen}>
+        <CollapsibleTrigger asChild>
+          <button className="w-full flex items-center justify-between gap-2 mb-4 group">
+            <div className="flex items-center gap-2">
+              <Store className="w-5 h-5 text-primary" />
+              <h2 className="text-lg font-semibold">Store Approval Requests</h2>
+              {pending.length > 0 && (
+                <Badge className="bg-amber-500 text-white ml-1">{pending.length} pending</Badge>
+              )}
+            </div>
+            <ChevronDown
+              className={`w-5 h-5 text-muted-foreground transition-transform duration-200 ${storeRequestOpen ? "rotate-180" : ""}`}
+            />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
 
         {/* Tabs */}
         <div className="flex gap-2 mb-4">
@@ -343,7 +354,8 @@ export default function ManageAdmins() {
             ))}
           </div>
         )}
-      </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Add Admin Dialog */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
