@@ -1977,6 +1977,7 @@ export interface StoreRequestItem {
   status: "pending" | "approved" | "rejected";
   submittedBy: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface StoreRequestInput {

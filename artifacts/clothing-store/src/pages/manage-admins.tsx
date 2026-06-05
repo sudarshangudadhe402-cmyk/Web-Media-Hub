@@ -520,6 +520,16 @@ export default function ManageAdmins() {
                     {new Date(selectedRequest.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                   </span>
                 </div>
+                {selectedRequest.status !== "pending" && (
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <span className={`text-sm font-medium ${selectedRequest.status === "approved" ? "text-green-600" : "text-red-600"}`}>
+                      {selectedRequest.status === "approved" ? "Approved on" : "Rejected on"}
+                    </span>
+                    <span className="text-sm font-semibold">
+                      {new Date(selectedRequest.updatedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {selectedRequest.status === "pending" && (

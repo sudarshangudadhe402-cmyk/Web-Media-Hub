@@ -15,6 +15,7 @@ function fmt(s: InstanceType<typeof StoreRequest>) {
     status: s.status,
     submittedBy: s.submittedBy,
     createdAt: s.createdAt.toISOString(),
+    updatedAt: (s as any).updatedAt ? new Date((s as any).updatedAt).toISOString() : s.createdAt.toISOString(),
   };
 }
 
