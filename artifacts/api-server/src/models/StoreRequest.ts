@@ -7,6 +7,7 @@ export interface IStoreRequest extends Document {
   whatsapp: string;
   status: "pending" | "approved" | "rejected";
   submittedBy: string;
+  rewardCode?: string;
   createdAt: Date;
 }
 
@@ -18,6 +19,7 @@ const StoreRequestSchema = new Schema<IStoreRequest>(
     whatsapp: { type: String, required: true },
     status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
     submittedBy: { type: String, required: true },
+    rewardCode: { type: String },
   },
   { timestamps: true }
 );

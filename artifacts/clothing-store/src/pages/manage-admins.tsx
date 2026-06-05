@@ -641,9 +641,15 @@ export default function ManageAdmins() {
                     </div>
                     <div className="flex items-center justify-between px-4 py-3">
                       <span className="text-sm text-muted-foreground">Reward Code</span>
-                      <span className="text-sm font-mono tracking-[0.2em] text-muted-foreground/50 bg-muted px-3 py-1 rounded-md border border-dashed">
-                        ― ― ― ― ― ― ― ― ― ―
-                      </span>
+                      {(selectedRequest as any).rewardCode ? (
+                        <span className="text-sm font-mono font-bold tracking-[0.15em] text-green-700 bg-green-50 border border-green-200 px-3 py-1 rounded-md select-all">
+                          {(selectedRequest as any).rewardCode}
+                        </span>
+                      ) : (
+                        <span className="text-sm font-mono tracking-[0.2em] text-muted-foreground/50 bg-muted px-3 py-1 rounded-md border border-dashed">
+                          ― ― ― ― ― ― ― ― ― ―
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

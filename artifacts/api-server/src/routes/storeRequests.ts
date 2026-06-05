@@ -6,6 +6,23 @@ import { Notification } from "../models/Notification";
 
 const router = Router();
 
+const REWARD_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789";
+
+function generateRewardCode(username: string): string {
+  // First 3 letters of username (uppercase alpha only) as reference prefix
+  const prefix = username
+    .toUpperCase()
+    .replace(/[^A-Z]/g, "")
+    .slice(0, 3)
+    .padEnd(3, "X");
+  // 7 random chars from A-Z + 1-9
+  const random = Array.from(
+    { length: 7 },
+    () => REWARD_CHARS[Math.floor(Math.random() * REWARD_CHARS.length)]
+  ).join("");
+  return prefix + random;
+}
+
 function fmt(s: InstanceType<typeof StoreRequest>) {
   return {
     id: String(s._id),
@@ -15,6 +32,7 @@ function fmt(s: InstanceType<typeof StoreRequest>) {
     whatsapp: s.whatsapp,
     status: s.status,
     submittedBy: s.submittedBy,
+    rewardCode: s.rewardCode ?? null,
     createdAt: s.createdAt.toISOString(),
     updatedAt: (s as any).updatedAt ? new Date((s as any).updatedAt).toISOString() : s.createdAt.toISOString(),
   };
@@ -79,19 +97,22 @@ router.get("/store-requests", requireSuperAdmin, async (req, res) => {
 
 router.patch("/store-requests/:id/approve", requireSuperAdmin, async (req, res) => {
   try {
-    const request = await StoreRequest.findByIdAndUpdate(
-      req.params.id,
-      { status: "approved" },
-      { new: true }
-    );
+    const request = await StoreRequest.findById(req.params.id);
     if (!request) { res.status(404).json({ error: "Not found" }); return; }
 
     const existingUser = await User.findOne({ username: request.username });
     if (existingUser) {
-      await StoreRequest.findByIdAndUpdate(req.params.id, { status: "pending" });
       res.status(400).json({ error: "Username already exists, please try a different username" });
       return;
     }
+
+    // Generate unique reward code (use existing one if already generated)
+    const rewardCode = request.rewardCode || generateRewardCode(request.username);
+
+    request.status = "approved";
+    request.rewardCode = rewardCode;
+    await request.save();
+
     await User.create({
       username: request.username,
       password: request.password,
