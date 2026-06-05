@@ -60,7 +60,7 @@ export default function ManageAdmins() {
   const [selectedAdmin, setSelectedAdmin] = useState<(typeof admins extends (infer T)[] | undefined ? T : never) | null>(null);
   const [adminDetailOpen, setAdminDetailOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<StoreTab>("pending");
-  const [storeRequestOpen, setStoreRequestOpen] = useState(true);
+  const [adminsOpen, setAdminsOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<NonNullable<typeof allRequests>[number] | null>(null);
   const [requestDetailOpen, setRequestDetailOpen] = useState(false);
   const [adminActive, setAdminActive] = useState<Record<string, boolean>>({});
@@ -199,16 +199,24 @@ export default function ManageAdmins() {
       </button>
 
       {/* Admins List */}
-      <div>
-        <div className="flex items-center gap-2 mb-4">
-          <Users className="w-5 h-5 text-primary" />
-          <h2 className="text-lg font-semibold">Admins</h2>
-          <Badge className="ml-1">{adminCount}</Badge>
-        </div>
+      <Collapsible open={adminsOpen} onOpenChange={setAdminsOpen}>
+        <CollapsibleTrigger asChild>
+          <button className="w-full flex items-center justify-between gap-2 mb-4">
+            <div className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-primary" />
+              <h2 className="text-lg font-semibold">Admins</h2>
+              <Badge className="ml-1">{adminCount}</Badge>
+            </div>
+            <ChevronDown
+              className={`w-5 h-5 text-muted-foreground transition-transform duration-200 ${adminsOpen ? "rotate-180" : ""}`}
+            />
+          </button>
+        </CollapsibleTrigger>
 
+        {/* Always show latest 2 admins */}
         {isLoading ? (
           <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
+            {[1, 2].map((i) => (
               <Skeleton key={i} className="h-16 w-full rounded-xl" />
             ))}
           </div>
@@ -221,7 +229,7 @@ export default function ManageAdmins() {
           </Card>
         ) : (
           <div className="space-y-2">
-            {admins?.map((admin) => {
+            {admins?.slice(0, 2).map((admin) => {
               const isActive = adminActive[admin.id] !== false;
               return (
                 <button
@@ -262,27 +270,75 @@ export default function ManageAdmins() {
                 </button>
               );
             })}
+
+            {/* Remaining admins — visible only when open */}
+            <CollapsibleContent>
+              <div className="space-y-2 mt-2">
+                {admins?.slice(2).map((admin) => {
+                  const isActive = adminActive[admin.id] !== false;
+                  return (
+                    <button
+                      key={admin.id}
+                      data-testid={`admin-row-${admin.id}`}
+                      onClick={() => openAdminDetail(admin)}
+                      className="w-full text-left"
+                    >
+                      <Card className="hover:border-primary/40 transition-colors cursor-pointer">
+                        <CardContent className="p-4 flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold uppercase shrink-0">
+                            {admin.username.substring(0, 2)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold truncate">{admin.username}</span>
+                              {admin.id === user?.id && (
+                                <Badge variant="secondary" className="text-[10px]">You</Badge>
+                              )}
+                              <Badge variant={admin.role === "super_admin" ? "default" : "outline"} className="capitalize text-[10px]">
+                                {admin.role.replace("_", " ")}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className={`text-xs font-medium ${isActive ? "text-green-600" : "text-muted-foreground"}`}>
+                                {isActive ? "Active" : "Inactive"}
+                              </span>
+                              {admin.createdAt && (
+                                <span className="text-xs text-muted-foreground">
+                                  · Added {new Date(admin.createdAt).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                        </CardContent>
+                      </Card>
+                    </button>
+                  );
+                })}
+              </div>
+            </CollapsibleContent>
+
+            {adminCount > 2 && (
+              <button
+                onClick={() => setAdminsOpen((o) => !o)}
+                className="w-full text-center text-sm text-primary font-medium py-2 hover:underline"
+              >
+                {adminsOpen ? "Show less" : `+${adminCount - 2} more admins`}
+              </button>
+            )}
           </div>
         )}
-      </div>
+      </Collapsible>
 
       {/* ── Store Approval Section ── */}
-      <Collapsible open={storeRequestOpen} onOpenChange={setStoreRequestOpen}>
-        <CollapsibleTrigger asChild>
-          <button className="w-full flex items-center justify-between gap-2 mb-4 group">
-            <div className="flex items-center gap-2">
-              <Store className="w-5 h-5 text-primary" />
-              <h2 className="text-lg font-semibold">Store Approval Requests</h2>
-              {pending.length > 0 && (
-                <Badge className="bg-amber-500 text-white ml-1">{pending.length} pending</Badge>
-              )}
-            </div>
-            <ChevronDown
-              className={`w-5 h-5 text-muted-foreground transition-transform duration-200 ${storeRequestOpen ? "rotate-180" : ""}`}
-            />
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Store className="w-5 h-5 text-primary" />
+          <h2 className="text-lg font-semibold">Store Approval Requests</h2>
+          {pending.length > 0 && (
+            <Badge className="bg-amber-500 text-white ml-1">{pending.length} pending</Badge>
+          )}
+        </div>
 
         {/* Tabs */}
         <div className="flex gap-2 mb-4">
@@ -354,8 +410,7 @@ export default function ManageAdmins() {
             ))}
           </div>
         )}
-        </CollapsibleContent>
-      </Collapsible>
+      </div>
 
       {/* Add Admin Dialog */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
