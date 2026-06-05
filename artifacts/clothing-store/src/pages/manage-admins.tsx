@@ -119,11 +119,8 @@ export default function ManageAdmins() {
     setShowPass(false);
   }
 
-  function openWhatsApp(number: string, storeName: string) {
-    const msg = encodeURIComponent(
-      `You want to approve your store?\n\nStore Information:\nStore Name: ${storeName}\n\nCan I send you information about store benefits or purchasing discount?`
-    );
-    window.open(`https://wa.me/${number.replace(/\D/g, "")}?text=${msg}`, "_blank");
+  function openWhatsApp(number: string) {
+    window.open(`https://wa.me/${number.replace(/\D/g, "")}`, "_blank");
   }
 
   function sendApprovalWhatsApp(req: NonNullable<typeof allRequests>[number]) {
@@ -582,7 +579,15 @@ export default function ManageAdmins() {
                       +91 {selectedRequest.whatsapp.replace(/^\+?91/, "").trim()}
                     </span>
                     <button
-                      onClick={() => openWhatsApp(selectedRequest.whatsapp, selectedRequest.storeName)}
+                      onClick={() => {
+                        if (selectedRequest.status === "approved") {
+                          sendApprovalWhatsApp(selectedRequest);
+                        } else if (selectedRequest.status === "rejected") {
+                          sendRejectionWhatsApp(selectedRequest);
+                        } else {
+                          openWhatsApp(selectedRequest.whatsapp);
+                        }
+                      }}
                       className="w-7 h-7 rounded-full bg-green-500 hover:bg-green-600 flex items-center justify-center text-white transition-colors"
                       data-testid="whatsapp-btn"
                     >
