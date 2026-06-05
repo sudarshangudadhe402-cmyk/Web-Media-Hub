@@ -27,6 +27,9 @@ import {
   Store,
   Gift,
   Clock,
+  Copy,
+  Phone,
+  Link as LinkIcon,
 } from "lucide-react";
 
 type Tab = "friend" | "approved" | "rejected";
@@ -35,6 +38,7 @@ export default function AiVideo() {
   const [addStoreOpen, setAddStoreOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("friend");
+  const [selectedApproved, setSelectedApproved] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -209,39 +213,130 @@ export default function AiVideo() {
           </Card>
         ) : (
           <div className="space-y-2">
-            {tabData[activeTab].map((req) => (
-              <Card key={req.id} className="overflow-hidden">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                    req.status === "approved" ? "bg-green-100" :
-                    req.status === "rejected" ? "bg-red-100" : "bg-amber-100"
-                  }`}>
-                    {req.status === "approved" ? <CheckCircle className="w-5 h-5 text-green-600" /> :
-                     req.status === "rejected" ? <XCircle className="w-5 h-5 text-red-600" /> :
-                     <Clock className="w-5 h-5 text-amber-600" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm truncate">{req.storeName}</p>
-                    <p className="text-xs text-muted-foreground">@{req.username} · {req.whatsapp}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {new Date(req.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                    </p>
-                  </div>
-                  <Badge
-                    className={`text-[10px] shrink-0 ${
-                      req.status === "approved" ? "bg-green-600 text-white" :
-                      req.status === "rejected" ? "bg-red-600 text-white" :
-                      "bg-amber-500 text-white"
-                    }`}
-                  >
-                    {req.status === "approved" ? "Approved" : req.status === "rejected" ? "Rejected" : "Pending"}
-                  </Badge>
-                </CardContent>
-              </Card>
-            ))}
+            {tabData[activeTab].map((req) => {
+              const isApproved = req.status === "approved";
+              return (
+                <Card
+                  key={req.id}
+                  className={`overflow-hidden ${isApproved ? "cursor-pointer hover:shadow-md transition-shadow border-green-200" : ""}`}
+                  onClick={() => isApproved && setSelectedApproved(req)}
+                >
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                      req.status === "approved" ? "bg-green-100" :
+                      req.status === "rejected" ? "bg-red-100" : "bg-amber-100"
+                    }`}>
+                      {req.status === "approved" ? <CheckCircle className="w-5 h-5 text-green-600" /> :
+                       req.status === "rejected" ? <XCircle className="w-5 h-5 text-red-600" /> :
+                       <Clock className="w-5 h-5 text-amber-600" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">{req.storeName}</p>
+                      <p className="text-xs text-muted-foreground">@{req.username} · {req.whatsapp}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {new Date(req.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                      </p>
+                    </div>
+                    <Badge
+                      className={`text-[10px] shrink-0 ${
+                        req.status === "approved" ? "bg-green-600 text-white" :
+                        req.status === "rejected" ? "bg-red-600 text-white" :
+                        "bg-amber-500 text-white"
+                      }`}
+                    >
+                      {req.status === "approved" ? "Approved" : req.status === "rejected" ? "Rejected" : "Pending"}
+                    </Badge>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
+
+      {/* Approved Store Detail Dialog */}
+      <Dialog open={!!selectedApproved} onOpenChange={(open) => { if (!open) setSelectedApproved(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              {selectedApproved?.storeName}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedApproved && (
+            <div className="space-y-4 pt-1">
+              {/* Submitted info */}
+              <div className="rounded-xl border overflow-hidden bg-muted/40">
+                <div className="px-4 py-2.5 bg-muted border-b">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Submitted Information</p>
+                </div>
+                <div className="divide-y divide-border">
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                      <Store className="w-3.5 h-3.5" /> Store Name
+                    </span>
+                    <span className="text-sm font-semibold">{selectedApproved.storeName}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                      <Phone className="w-3.5 h-3.5" /> WhatsApp
+                    </span>
+                    <span className="text-sm font-medium">
+                      +91 {selectedApproved.whatsapp.replace(/^\+?91/, "").trim()}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <span className="text-sm text-muted-foreground">Approved on</span>
+                    <span className="text-sm font-medium text-green-600">
+                      {new Date(selectedApproved.updatedAt ?? selectedApproved.createdAt).toLocaleDateString("en-IN", {
+                        day: "numeric", month: "short", year: "numeric",
+                      })}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Reward Code + Link */}
+              <div className="rounded-xl border border-green-200 overflow-hidden">
+                <div className="px-4 py-2.5 bg-green-50 border-b border-green-200">
+                  <p className="text-xs font-bold text-green-700 uppercase tracking-widest">Store Rewards</p>
+                </div>
+                <div className="divide-y divide-border">
+                  <div className="flex items-center justify-between px-4 py-3 gap-3">
+                    <span className="text-sm text-muted-foreground shrink-0">Reward Code</span>
+                    {selectedApproved.rewardCode ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-mono font-bold tracking-[0.15em] text-green-700 bg-green-50 border border-green-200 px-3 py-1 rounded-md select-all">
+                          {selectedApproved.rewardCode}
+                        </span>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(selectedApproved.rewardCode);
+                            toast({ title: "Reward code copied ✅" });
+                          }}
+                          className="w-7 h-7 rounded-full bg-green-100 hover:bg-green-200 flex items-center justify-center text-green-700 transition-colors"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-sm font-mono text-muted-foreground/40">— — — — —</span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-3 gap-3">
+                    <span className="text-sm text-muted-foreground flex items-center gap-1.5 shrink-0">
+                      <LinkIcon className="w-3.5 h-3.5" /> Store Link
+                    </span>
+                    <span className="text-sm text-muted-foreground/40 italic text-right">
+                      Coming soon...
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Add Friend Store Dialog */}
       <Dialog open={addStoreOpen} onOpenChange={setAddStoreOpen}>
