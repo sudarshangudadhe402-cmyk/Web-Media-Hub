@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useLocation } from "wouter";
 import {
   Store,
   Image as ImageIcon,
@@ -27,6 +28,7 @@ import {
   ExternalLink,
   Copy,
   QrCode,
+  KeyRound,
 } from "lucide-react";
 import {
   Dialog,
@@ -92,6 +94,7 @@ export default function MyStore() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   const createStore = useCreateStore();
   const updateStore = useUpdateStore();
@@ -378,8 +381,8 @@ export default function MyStore() {
                 </div>
               )}
 
-              {/* Update Information — small, bottom left */}
-              <div className="flex justify-start pt-1">
+              {/* Bottom actions */}
+              <div className="flex items-center justify-between pt-1">
                 <button
                   data-testid="update-info-btn"
                   onClick={handleUpdate}
@@ -387,6 +390,14 @@ export default function MyStore() {
                 >
                   <Pencil className="w-3.5 h-3.5" />
                   Update information
+                </button>
+                <button
+                  data-testid="username-password-btn"
+                  onClick={() => setLocation("/username-password")}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  Username &amp; Password
                 </button>
               </div>
             </CardContent>

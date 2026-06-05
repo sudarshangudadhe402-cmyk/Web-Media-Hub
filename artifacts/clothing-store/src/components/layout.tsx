@@ -7,7 +7,6 @@ import {
   Tags,
   Store,
   Video,
-  KeyRound,
   Users,
   Bell,
   Menu,
@@ -48,7 +47,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { name: "Categories", href: "/categories", icon: Tags },
     { name: "My Store", href: "/my-store", icon: Store },
     { name: "AI Promotional Video", href: "/ai-video", icon: Video },
-    { name: "Username & Password", href: "/username-password", icon: KeyRound },
     ...(user?.role === "super_admin"
       ? [{ name: "Manage Admins", href: "/manage-admins", icon: Users }]
       : []),
