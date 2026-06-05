@@ -110,6 +110,35 @@ export default function MyStore() {
   const initializedRef = useRef(false);
   const qrCanvasRef = useRef<HTMLDivElement>(null);
   const logoSrc = `${import.meta.env.BASE_URL ?? "/"}wmh-logo.png`;
+  const [circularLogoSrc, setCircularLogoSrc] = useState<string>(logoSrc);
+
+  useEffect(() => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = logoSrc;
+    img.onload = () => {
+      const size = 120;
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      // Black circle background
+      ctx.fillStyle = "#000000";
+      ctx.beginPath();
+      ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+      ctx.fill();
+      // Clip to circle, draw logo with padding
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2);
+      ctx.clip();
+      const pad = 14;
+      ctx.drawImage(img, pad, pad, size - pad * 2, size - pad * 2);
+      ctx.restore();
+      setCircularLogoSrc(canvas.toDataURL("image/png"));
+    };
+  }, [logoSrc]);
 
   const getQrCanvas = useCallback((): HTMLCanvasElement | null => {
     return qrCanvasRef.current?.querySelector("canvas") ?? null;
@@ -472,9 +501,9 @@ export default function MyStore() {
                               level="H"
                               includeMargin
                               imageSettings={{
-                                src: logoSrc,
-                                height: 52,
-                                width: 52,
+                                src: circularLogoSrc,
+                                height: 56,
+                                width: 56,
                                 excavate: true,
                               }}
                             />
