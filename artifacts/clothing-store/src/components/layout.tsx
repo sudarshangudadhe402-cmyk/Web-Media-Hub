@@ -13,7 +13,6 @@ import {
   Menu,
   LogOut,
   Check,
-  SendHorizonal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -50,9 +49,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { name: "My Store", href: "/my-store", icon: Store },
     { name: "AI Promotional Video", href: "/ai-video", icon: Video },
     { name: "Username & Password", href: "/username-password", icon: KeyRound },
-    ...(user?.role === "admin"
-      ? [{ name: "Store Request", href: "/store-request", icon: SendHorizonal }]
-      : []),
     ...(user?.role === "super_admin"
       ? [{ name: "Manage Admins", href: "/manage-admins", icon: Users }]
       : []),

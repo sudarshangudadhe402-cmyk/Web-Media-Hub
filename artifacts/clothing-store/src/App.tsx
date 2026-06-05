@@ -14,7 +14,6 @@ import MyStore from "@/pages/my-store";
 import AiVideo from "@/pages/ai-video";
 import UsernamePassword from "@/pages/username-password";
 import ManageAdmins from "@/pages/manage-admins";
-import StoreRequest from "@/pages/store-request";
 import PublicStore from "@/pages/public-store";
 import { Layout } from "@/components/layout";
 
@@ -75,9 +74,6 @@ function Router() {
       </Route>
       <Route path="/manage-admins">
         {() => <ProtectedRoute component={ManageAdmins} adminOnly={true} />}
-      </Route>
-      <Route path="/store-request">
-        {() => <ProtectedRoute component={StoreRequest} />}
       </Route>
       <Route path="/store/:slug" component={PublicStore} />
       <Route component={NotFound} />
