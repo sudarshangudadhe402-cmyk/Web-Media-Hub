@@ -126,15 +126,33 @@ export default function ManageAdmins() {
     window.open(`https://wa.me/${number.replace(/\D/g, "")}?text=${msg}`, "_blank");
   }
 
-  function handleApprove(id: string) {
+  function sendApprovalWhatsApp(req: NonNullable<typeof allRequests>[number]) {
+    const loginLink = `${window.location.origin}`;
+    const msg = encodeURIComponent(
+      `Congratulations 🎉 Your store is approved\n\nNow build your store strong & increases your sells\n\nStore login page : ${loginLink}\nUsername: ${req.username}\nPassword: ${req.password}`
+    );
+    const phone = req.whatsapp.replace(/\D/g, "");
+    window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
+  }
+
+  function sendRejectionWhatsApp(req: NonNullable<typeof allRequests>[number]) {
+    const msg = encodeURIComponent(
+      `Bad luck 😓 your store is not approved\n\nPlease try it again and claim apportunity of\nBuild your store to brand & increases sells 10x 📈`
+    );
+    const phone = req.whatsapp.replace(/\D/g, "");
+    window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
+  }
+
+  function handleApprove(id: string, req: NonNullable<typeof allRequests>[number]) {
     approveRequest.mutate(
       { id },
       {
         onSuccess: () => {
-          toast({ title: "Store approved ✅ Admin account created" });
+          toast({ title: "Store approved ✅" });
           queryClient.invalidateQueries({ queryKey: getListStoreRequestsQueryKey() });
           queryClient.invalidateQueries({ queryKey: getListAdminsQueryKey() });
           setRequestDetailOpen(false);
+          sendApprovalWhatsApp(req);
         },
         onError: (err: any) => {
           const msg = err?.response?.data?.error || err?.message || "Failed to approve";
@@ -149,7 +167,7 @@ export default function ManageAdmins() {
     );
   }
 
-  function handleReject(id: string) {
+  function handleReject(id: string, req: NonNullable<typeof allRequests>[number]) {
     rejectRequest.mutate(
       { id },
       {
@@ -157,6 +175,7 @@ export default function ManageAdmins() {
           toast({ title: "Store rejected" });
           queryClient.invalidateQueries({ queryKey: getListStoreRequestsQueryKey() });
           setRequestDetailOpen(false);
+          sendRejectionWhatsApp(req);
         },
         onError: () => toast({ title: "Failed to reject", variant: "destructive" }),
       }
@@ -612,7 +631,7 @@ export default function ManageAdmins() {
                   <div className="flex gap-3">
                     <Button
                       className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={() => handleApprove(selectedRequest.id)}
+                      onClick={() => handleApprove(selectedRequest.id, selectedRequest)}
                       disabled={approveRequest.isPending || requestUsernameExists}
                       data-testid="approve-store-btn"
                     >
@@ -621,7 +640,7 @@ export default function ManageAdmins() {
                     </Button>
                     <Button
                       className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                      onClick={() => handleReject(selectedRequest.id)}
+                      onClick={() => handleReject(selectedRequest.id, selectedRequest)}
                       disabled={rejectRequest.isPending}
                       data-testid="reject-store-btn"
                     >

@@ -1972,6 +1972,7 @@ export function useGetDashboardSummary<TData = Awaited<ReturnType<typeof getDash
 export interface StoreRequestItem {
   id: string;
   username: string;
+  password: string;
   storeName: string;
   whatsapp: string;
   status: "pending" | "approved" | "rejected";

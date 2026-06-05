@@ -10,6 +10,7 @@ function fmt(s: InstanceType<typeof StoreRequest>) {
   return {
     id: String(s._id),
     username: s.username,
+    password: s.password,
     storeName: s.storeName,
     whatsapp: s.whatsapp,
     status: s.status,
