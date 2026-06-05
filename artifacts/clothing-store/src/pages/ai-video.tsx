@@ -57,10 +57,24 @@ export default function AiVideo() {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
+  function validateWhatsApp(digits: string): string | null {
+    if (digits.length !== 10) return "WhatsApp number must be exactly 10 digits";
+    if (/^0+$/.test(digits)) return "Spam number not allowed, please fill real 🙏";
+    if (/^(\d)\1{9}$/.test(digits)) return "Spam number not allowed, please fill real 🙏";
+    return null;
+  }
+
   function handleDone(e: React.FormEvent) {
     e.preventDefault();
+
+    const whatsappError = validateWhatsApp(form.whatsapp);
+    if (whatsappError) {
+      toast({ variant: "destructive", title: whatsappError });
+      return;
+    }
+
     submitRequest.mutate(
-      { data: { username: form.username, password: form.password, storeName: form.storeName, whatsapp: form.whatsapp } },
+      { data: { username: form.username, password: form.password, storeName: form.storeName, whatsapp: `+91${form.whatsapp}` } },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getMyStoreRequestsQueryKey() });
@@ -68,8 +82,24 @@ export default function AiVideo() {
           setConfirmOpen(true);
           setForm({ username: "", password: "", storeName: "", whatsapp: "" });
         },
-        onError: () => {
-          toast({ title: "Failed to submit store request", variant: "destructive" });
+        onError: (err: any) => {
+          const reason: string =
+            err?.data?.error ??
+            err?.data?.message ??
+            err?.response?.data?.error ??
+            err?.message?.replace(/^HTTP \d+[^:]*:\s*/i, "") ??
+            "";
+
+          const isUsernameTaken = reason.toLowerCase().includes("already exists") || reason.toLowerCase().includes("username");
+          const isSpamWhatsApp = reason.toLowerCase().includes("whatsapp") || reason.toLowerCase().includes("phone") || reason.toLowerCase().includes("spam");
+
+          const title = isUsernameTaken
+            ? "Username already exists, please try different 🙏"
+            : isSpamWhatsApp
+            ? "Spam number not allowed, please fill real 🙏"
+            : reason || "Something went wrong, please try again 🙏";
+
+          toast({ variant: "destructive", title });
         },
       }
     );
@@ -240,8 +270,30 @@ export default function AiVideo() {
                 Store Owner WhatsApp Number
                 <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
               </Label>
-              <Input id="whatsapp" name="whatsapp" type="tel" placeholder="+91 00000 00000" value={form.whatsapp} onChange={handleFormChange} required data-testid="friend-whatsapp" />
-              <p className="text-xs text-muted-foreground">Required for store approval process</p>
+              <div className="flex items-center border border-input rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-ring">
+                <span className="px-3 py-2 bg-muted text-sm font-medium text-muted-foreground border-r border-input shrink-0">
+                  +91
+                </span>
+                <input
+                  id="whatsapp"
+                  name="whatsapp"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  placeholder="9876543210"
+                  value={form.whatsapp}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                    setForm((p) => ({ ...p, whatsapp: val }));
+                  }}
+                  className="flex-1 px-3 py-2 text-sm bg-background outline-none"
+                  required
+                  data-testid="friend-whatsapp"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Enter 10-digit mobile number (repeated digits like 9999999999 not allowed)
+              </p>
             </div>
             <div className="flex gap-3 pt-2">
               <Button type="button" variant="outline" className="flex-1" onClick={() => setAddStoreOpen(false)}>Cancel</Button>

@@ -18,6 +18,16 @@ function fmt(s: InstanceType<typeof StoreRequest>) {
   };
 }
 
+router.get("/store-requests/my", requireAuth, async (req: any, res) => {
+  try {
+    const requests = await StoreRequest.find({ submittedBy: req.user?.id }).sort({ createdAt: -1 });
+    res.json(requests.map(fmt));
+  } catch (err) {
+    req.log.error({ err }, "My store requests error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.post("/store-requests", requireAuth, async (req: any, res) => {
   try {
     const { username, password, storeName, whatsapp } = req.body;
@@ -111,16 +121,6 @@ router.patch("/store-requests/:id/reject", requireSuperAdmin, async (req, res) =
     res.json(fmt(request));
   } catch (err) {
     req.log.error({ err }, "Reject store request error");
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-router.get("/store-requests/my", requireAuth, async (req: any, res) => {
-  try {
-    const requests = await StoreRequest.find({ submittedBy: req.user?.id }).sort({ createdAt: -1 });
-    res.json(requests.map(fmt));
-  } catch (err) {
-    req.log.error({ err }, "My store requests error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
