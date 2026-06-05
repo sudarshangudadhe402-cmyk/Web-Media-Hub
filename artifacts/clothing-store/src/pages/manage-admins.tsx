@@ -623,6 +623,32 @@ export default function ManageAdmins() {
                 )}
               </div>
 
+              {selectedRequest.status === "approved" && (
+                <div className="rounded-xl border border-green-200 overflow-hidden">
+                  <div className="px-4 py-2.5 bg-green-50 border-b border-green-200">
+                    <p className="text-xs font-bold text-green-700 uppercase tracking-widest">Store Owner Info</p>
+                  </div>
+                  <div className="divide-y divide-border">
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <span className="text-sm text-muted-foreground">Store Name</span>
+                      <span className="text-sm font-semibold">{selectedRequest.storeName}</span>
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <span className="text-sm text-muted-foreground">WhatsApp</span>
+                      <span className="text-sm font-medium">
+                        +91 {selectedRequest.whatsapp.replace(/^\+?91/, "").trim()}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <span className="text-sm text-muted-foreground">Reward Code</span>
+                      <span className="text-sm font-mono tracking-[0.2em] text-muted-foreground/50 bg-muted px-3 py-1 rounded-md border border-dashed">
+                        ― ― ― ― ― ― ― ― ― ―
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {selectedRequest.status === "pending" && (
                 <div className="space-y-3">
                   {requestUsernameExists && (
