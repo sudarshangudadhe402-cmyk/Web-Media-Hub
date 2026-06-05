@@ -77,29 +77,29 @@
   --popover-foreground: 0 0% 8%;
   --popover-border: 40 18% 86%;
 
-  --primary: 43 82% 45%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 40 18% 93%;
+  --primary: 25 45% 28%;
+  --primary-foreground: 40 30% 92%;
+  --secondary: 30 12% 93%;
   --secondary-foreground: 0 0% 12%;
-  --muted: 40 16% 93%;
-  --muted-foreground: 40 8% 46%;
-  --accent: 43 82% 45%;
-  --accent-foreground: 0 0% 8%;
+  --muted: 30 10% 93%;
+  --muted-foreground: 30 6% 46%;
+  --accent: 25 45% 28%;
+  --accent-foreground: 40 30% 92%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 98%;
 
-  --input: 40 18% 84%;
-  --ring: 43 82% 45%;
+  --input: 30 12% 84%;
+  --ring: 25 45% 28%;
 
-  /* Sidebar — near-black with gold accents */
+  /* Sidebar — near-black with dark bronze accents */
   --sidebar: 0 0% 8%;
-  --sidebar-foreground: 40 30% 88%;
+  --sidebar-foreground: 30 20% 85%;
   --sidebar-border: 0 0% 14%;
-  --sidebar-primary: 43 82% 45%;
-  --sidebar-primary-foreground: 0 0% 8%;
+  --sidebar-primary: 25 45% 28%;
+  --sidebar-primary-foreground: 40 30% 92%;
   --sidebar-accent: 0 0% 13%;
-  --sidebar-accent-foreground: 40 30% 88%;
-  --sidebar-ring: 43 82% 45%;
+  --sidebar-accent-foreground: 30 20% 85%;
+  --sidebar-ring: 25 45% 28%;
 
   --app-font-sans: 'Poppins', sans-serif;
   --app-font-serif: 'Playfair Display', Georgia, serif;
@@ -131,28 +131,28 @@
   --popover-foreground: 40 30% 90%;
   --popover-border: 0 0% 16%;
 
-  --primary: 43 82% 50%;
-  --primary-foreground: 0 0% 7%;
+  --primary: 25 40% 40%;
+  --primary-foreground: 30 20% 92%;
   --secondary: 0 0% 14%;
-  --secondary-foreground: 40 30% 88%;
+  --secondary-foreground: 30 20% 88%;
   --muted: 0 0% 14%;
-  --muted-foreground: 40 8% 55%;
-  --accent: 43 82% 50%;
-  --accent-foreground: 0 0% 7%;
+  --muted-foreground: 30 6% 55%;
+  --accent: 25 40% 40%;
+  --accent-foreground: 30 20% 92%;
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 0 0% 98%;
 
   --input: 0 0% 16%;
-  --ring: 43 82% 50%;
+  --ring: 25 40% 40%;
 
   --sidebar: 0 0% 5%;
-  --sidebar-foreground: 40 30% 88%;
+  --sidebar-foreground: 30 20% 88%;
   --sidebar-border: 0 0% 11%;
-  --sidebar-primary: 43 82% 50%;
-  --sidebar-primary-foreground: 0 0% 7%;
+  --sidebar-primary: 25 40% 40%;
+  --sidebar-primary-foreground: 30 20% 92%;
   --sidebar-accent: 0 0% 11%;
-  --sidebar-accent-foreground: 40 30% 88%;
-  --sidebar-ring: 43 82% 50%;
+  --sidebar-accent-foreground: 30 20% 88%;
+  --sidebar-ring: 25 40% 40%;
 }
 
 @layer base {
