@@ -12,6 +12,12 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   SendHorizonal,
   Clock,
   CheckCircle,
@@ -19,6 +25,9 @@ import {
   Store,
   User,
   Lock,
+  Copy,
+  Link as LinkIcon,
+  Phone,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -27,6 +36,8 @@ export default function StoreRequest() {
   const queryClient = useQueryClient();
   const submitRequest = useSubmitStoreRequest();
   const { data: myRequests, isLoading } = useMyStoreRequests();
+
+  const [selectedReq, setSelectedReq] = useState<typeof myRequests extends (infer T)[] | undefined ? T : never | null>(null as any);
 
   const [form, setForm] = useState({
     storeName: "",
@@ -225,8 +236,13 @@ export default function StoreRequest() {
             {myRequests.map((req) => {
               const cfg = statusConfig[req.status];
               const Icon = cfg.icon;
+              const isApproved = req.status === "approved";
               return (
-                <Card key={req.id}>
+                <Card
+                  key={req.id}
+                  className={isApproved ? "cursor-pointer hover:shadow-md transition-shadow border-green-200" : ""}
+                  onClick={() => isApproved && setSelectedReq(req)}
+                >
                   <CardContent className="p-4 flex items-center gap-3">
                     <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
                       req.status === "approved" ? "bg-green-100" :
@@ -256,6 +272,101 @@ export default function StoreRequest() {
           </div>
         )}
       </div>
+
+      {/* Approved request detail dialog */}
+      <Dialog open={!!selectedReq} onOpenChange={(open) => { if (!open) setSelectedReq(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              {selectedReq?.storeName}
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedReq && (
+            <div className="space-y-4 pt-1">
+              {/* Submitted info */}
+              <div className="rounded-xl border overflow-hidden bg-muted/40">
+                <div className="px-4 py-2.5 bg-muted border-b">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Submitted Information</p>
+                </div>
+                <div className="divide-y divide-border">
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                      <Store className="w-3.5 h-3.5" /> Store Name
+                    </span>
+                    <span className="text-sm font-semibold">{selectedReq.storeName}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5" /> Username
+                    </span>
+                    <span className="text-sm font-medium">@{selectedReq.username}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                      <Phone className="w-3.5 h-3.5" /> WhatsApp
+                    </span>
+                    <span className="text-sm font-medium">
+                      +91 {selectedReq.whatsapp.replace(/^\+?91/, "").trim()}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <span className="text-sm text-muted-foreground">Approved on</span>
+                    <span className="text-sm font-medium text-green-600">
+                      {new Date(selectedReq.updatedAt ?? selectedReq.createdAt).toLocaleDateString("en-IN", {
+                        day: "numeric", month: "short", year: "numeric",
+                      })}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Reward Code + Link section */}
+              <div className="rounded-xl border border-green-200 overflow-hidden">
+                <div className="px-4 py-2.5 bg-green-50 border-b border-green-200">
+                  <p className="text-xs font-bold text-green-700 uppercase tracking-widest">Store Rewards</p>
+                </div>
+                <div className="divide-y divide-border">
+                  {/* Reward Code */}
+                  <div className="flex items-center justify-between px-4 py-3 gap-3">
+                    <span className="text-sm text-muted-foreground shrink-0">Reward Code</span>
+                    {(selectedReq as any).rewardCode ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-mono font-bold tracking-[0.15em] text-green-700 bg-green-50 border border-green-200 px-3 py-1 rounded-md select-all">
+                          {(selectedReq as any).rewardCode}
+                        </span>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText((selectedReq as any).rewardCode);
+                            toast({ title: "Reward code copied ✅" });
+                          }}
+                          className="w-7 h-7 rounded-full bg-green-100 hover:bg-green-200 flex items-center justify-center text-green-700 transition-colors"
+                          title="Copy code"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-sm font-mono text-muted-foreground/40">— — — — —</span>
+                    )}
+                  </div>
+
+                  {/* Link placeholder */}
+                  <div className="flex items-center justify-between px-4 py-3 gap-3">
+                    <span className="text-sm text-muted-foreground flex items-center gap-1.5 shrink-0">
+                      <LinkIcon className="w-3.5 h-3.5" /> Store Link
+                    </span>
+                    <span className="text-sm text-muted-foreground/40 italic text-right">
+                      Coming soon...
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
