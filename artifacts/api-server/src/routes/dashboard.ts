@@ -18,6 +18,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
       activeBookings,
       unreadNotifications,
       recentBookingsDocs,
+      funcCatAgg,
     ] = await Promise.all([
       Product.countDocuments(),
       Product.countDocuments({ productType: "Top" }),
@@ -30,7 +31,17 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
         .populate("productId")
         .sort({ createdAt: -1 })
         .limit(5),
+      Product.aggregate([
+        { $match: { functionCategory: { $exists: true, $ne: null, $ne: "" } } },
+        { $group: { _id: "$functionCategory", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+      ]),
     ]);
+
+    const functionCategoryCounts: Record<string, number> = {};
+    for (const item of funcCatAgg) {
+      if (item._id) functionCategoryCounts[item._id] = item.count;
+    }
 
     const recentBookings = recentBookingsDocs.map((b) => {
       const prod = b.populated("productId") ? (b.productId as Record<string, unknown>) : null;
@@ -70,6 +81,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
         "Full Outfit": fullOutfitCount,
         Functional: functionalCount,
       },
+      functionCategoryCounts,
       activeBookings,
       unreadNotifications,
       recentBookings,

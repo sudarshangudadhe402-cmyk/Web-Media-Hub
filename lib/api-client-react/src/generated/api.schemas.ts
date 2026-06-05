@@ -239,6 +239,7 @@ export type DashboardSummaryCategoryCounts = {
 export interface DashboardSummary {
   totalProducts: number;
   categoryCounts: DashboardSummaryCategoryCounts;
+  functionCategoryCounts?: Record<string, number>;
   activeBookings: number;
   unreadNotifications: number;
   recentBookings?: Booking[];
