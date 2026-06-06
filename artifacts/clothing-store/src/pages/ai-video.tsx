@@ -55,7 +55,7 @@ export default function AiVideo() {
   const pending = (myRequests ?? []).filter((r) => r.status === "pending");
   const approved = (myRequests ?? []).filter((r) => r.status === "approved");
   const rejected = (myRequests ?? []).filter((r) => r.status === "rejected");
-  const rewardVideos = approved.length * 20;
+  const rewardCoins = approved.length * 2000;
 
   function handleFormChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -142,21 +142,28 @@ export default function AiVideo() {
         <Store className="w-8 h-8 text-green-200 shrink-0" />
       </button>
 
-      {/* Your Rewards Video */}
+      {/* Your Rewards */}
       <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-        <CardContent className="p-6 flex items-center gap-5">
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
-            <Gift className="w-8 h-8 text-primary" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm text-muted-foreground font-medium">Your Rewards</p>
-            <p className="text-4xl font-bold tracking-tight text-primary">{rewardVideos}</p>
-            <p className="text-sm text-muted-foreground mt-1">AI Promotional Videos earned</p>
-          </div>
-          <div className="text-right shrink-0">
-            <p className="text-xs text-muted-foreground">Per approved store</p>
-            <p className="text-2xl font-bold text-green-600">+20</p>
-            <p className="text-xs text-muted-foreground">videos</p>
+        <CardContent className="p-5">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Rewards</p>
+          <div className="flex items-start gap-4">
+            {/* Left */}
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <Gift className="w-4 h-4 text-primary" />
+                </div>
+                <span className="text-sm font-semibold text-foreground">Your reward</span>
+              </div>
+              <p className="text-4xl font-bold tracking-tight text-primary leading-none mt-2">{rewardCoins}</p>
+              <p className="text-xs text-muted-foreground mt-1.5">Ai promotional video's coin earned</p>
+            </div>
+            {/* Right */}
+            <div className="text-right shrink-0">
+              <p className="text-xs text-muted-foreground font-medium">Per approved store</p>
+              <p className="text-3xl font-bold text-green-600 leading-none mt-1">+2000</p>
+              <p className="text-xs text-muted-foreground mt-0.5">coin</p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -375,7 +382,7 @@ export default function AiVideo() {
                   type="tel"
                   inputMode="numeric"
                   maxLength={10}
-                  placeholder="9876543210"
+                  placeholder="0000000000"
                   value={form.whatsapp}
                   onChange={(e) => {
                     const val = e.target.value.replace(/\D/g, "").slice(0, 10);
