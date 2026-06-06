@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { Store } from "../models/Store";
 import { Product } from "../models/Product";
+import { Notification } from "../models/Notification";
 
 const router = Router();
 
@@ -11,9 +12,7 @@ router.get("/public/store/:slug", async (req, res) => {
       res.status(404).json({ error: "Store not found" });
       return;
     }
-
     const products = await Product.find({ storeId: String(store._id) }).sort({ createdAt: -1 });
-
     res.json({
       id: String(store._id),
       name: store.name,
@@ -32,6 +31,7 @@ router.get("/public/store/:slug", async (req, res) => {
         discountPrice: p.discountPrice,
         actualPrice: p.actualPrice,
         productType: p.productType,
+        functionCategory: p.functionCategory ?? null,
         sizes: p.sizes,
         age: p.age ?? null,
         gender: p.gender ?? null,
@@ -40,6 +40,27 @@ router.get("/public/store/:slug", async (req, res) => {
     });
   } catch (err) {
     req.log.error({ err }, "Public store fetch error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/public/products/:id/tryon", async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+    product.likeCount += 1;
+    await product.save();
+    await Notification.create({
+      type: "like",
+      message: `A customer tried "${product.name}" virtually (Virtual Try-On)`,
+      relatedId: String(product._id),
+    });
+    res.json({ success: true, likeCount: product.likeCount });
+  } catch (err) {
+    req.log.error({ err }, "Try-on notification error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
