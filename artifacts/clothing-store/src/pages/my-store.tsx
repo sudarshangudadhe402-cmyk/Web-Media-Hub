@@ -31,6 +31,10 @@ import {
   KeyRound,
   Download,
   Share2,
+  ZoomIn,
+  ZoomOut,
+  Check,
+  X as XIcon,
 } from "lucide-react";
 import {
   Dialog,
@@ -39,7 +43,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Slider } from "@/components/ui/slider";
 import { QRCodeSVG, QRCodeCanvas } from "qrcode.react";
+import Cropper from "react-easy-crop";
+import type { Area } from "react-easy-crop";
 
 const ALL_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -108,6 +115,13 @@ export default function MyStore() {
   const [bannerPreview, setBannerPreview] = useState("");
   const [form, setForm] = useState<StoreForm>(EMPTY_FORM);
   const initializedRef = useRef(false);
+
+  const [cropOpen, setCropOpen] = useState(false);
+  const [rawImageSrc, setRawImageSrc] = useState("");
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [aspect, setAspect] = useState<number | undefined>(undefined);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const qrCanvasRef = useRef<HTMLDivElement>(null);
   const logoSrc = `${import.meta.env.BASE_URL ?? "/"}wmh-logo.png`;
   const [circularLogoSrc, setCircularLogoSrc] = useState<string>(logoSrc);
@@ -242,23 +256,47 @@ export default function MyStore() {
     }));
   }
 
+  async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<string> {
+    const image = new Image();
+    image.src = imageSrc;
+    await new Promise<void>((resolve) => { image.onload = () => resolve(); });
+    const canvas = document.createElement("canvas");
+    canvas.width = pixelCrop.width;
+    canvas.height = pixelCrop.height;
+    const ctx = canvas.getContext("2d")!;
+    ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, pixelCrop.width, pixelCrop.height);
+    return canvas.toDataURL("image/jpeg", 0.92);
+  }
+
   async function handleBannerChange(files: FileList | null) {
     if (!files || files.length === 0) return;
     const file = files[0];
-    const preview = URL.createObjectURL(file);
-    setBannerPreview(preview);
-    const base64 = await new Promise<string>((resolve) => {
+    const dataUrl = await new Promise<string>((resolve) => {
       const reader = new FileReader();
-      reader.onload = () => resolve((reader.result as string).split(",")[1]);
+      reader.onload = () => resolve(reader.result as string);
       reader.readAsDataURL(file);
     });
+    setRawImageSrc(dataUrl);
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    setAspect(undefined);
+    setCroppedAreaPixels(null);
+    setCropOpen(true);
+  }
+
+  async function handleCropConfirm() {
+    if (!rawImageSrc || !croppedAreaPixels) return;
+    const dataUrl = await getCroppedImg(rawImageSrc, croppedAreaPixels);
+    setBannerPreview(dataUrl);
+    const base64 = dataUrl.split(",")[1];
     uploadImage.mutate(
-      { data: { imageData: base64, fileName: file.name } },
+      { data: { imageData: base64, fileName: "banner.jpg" } },
       {
         onSuccess: (res) => setBannerUrl(res.url),
         onError: () => toast({ variant: "destructive", title: "Failed to upload banner" }),
       }
     );
+    setCropOpen(false);
   }
 
   function buildPayload() {
@@ -557,7 +595,7 @@ export default function MyStore() {
             <Label>Store Banner</Label>
             <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-xl cursor-pointer hover:border-primary/50 transition-colors bg-muted/40 overflow-hidden relative">
               {bannerPreview ? (
-                <img src={bannerPreview} alt="Banner preview" className="w-full h-full object-cover" />
+                <img src={bannerPreview} alt="Banner preview" className="w-full h-full object-contain bg-black" />
               ) : (
                 <div className="flex flex-col items-center gap-2 text-muted-foreground">
                   <Upload className="w-8 h-8" />
@@ -573,10 +611,91 @@ export default function MyStore() {
                 data-testid="banner-upload"
               />
             </label>
+            {bannerPreview && (
+              <button
+                type="button"
+                onClick={() => {
+                  setRawImageSrc(bannerPreview);
+                  setCrop({ x: 0, y: 0 });
+                  setZoom(1);
+                  setCroppedAreaPixels(null);
+                  setCropOpen(true);
+                }}
+                className="text-xs text-primary underline underline-offset-2 flex items-center gap-1"
+              >
+                <ZoomIn className="w-3 h-3" /> Crop / Zoom banner
+              </button>
+            )}
             {uploadImage.isPending && (
               <p className="text-xs text-muted-foreground animate-pulse">Uploading...</p>
             )}
           </div>
+
+          {/* ── CROP DIALOG ── */}
+          <Dialog open={cropOpen} onOpenChange={(o) => { if (!o) setCropOpen(false); }}>
+            <DialogContent className="max-w-sm p-0 overflow-hidden">
+              <DialogHeader className="px-4 pt-4 pb-2">
+                <DialogTitle>Crop &amp; Zoom Banner</DialogTitle>
+              </DialogHeader>
+
+              {/* Aspect ratio pills */}
+              <div className="flex gap-2 px-4 pb-2">
+                {([["Free", undefined], ["16:9", 16/9], ["4:3", 4/3], ["1:1", 1]] as [string, number | undefined][]).map(([label, val]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => setAspect(val)}
+                    className={`text-xs px-3 py-1 rounded-full border font-medium transition-colors ${
+                      aspect === val
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "border-border text-muted-foreground hover:border-primary/50"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Cropper */}
+              <div className="relative w-full bg-black" style={{ height: 280 }}>
+                {rawImageSrc && (
+                  <Cropper
+                    image={rawImageSrc}
+                    crop={crop}
+                    zoom={zoom}
+                    aspect={aspect}
+                    onCropChange={setCrop}
+                    onZoomChange={setZoom}
+                    onCropComplete={(_, croppedPixels) => setCroppedAreaPixels(croppedPixels)}
+                  />
+                )}
+              </div>
+
+              {/* Zoom slider */}
+              <div className="px-4 py-3 flex items-center gap-3">
+                <ZoomOut className="w-4 h-4 text-muted-foreground shrink-0" />
+                <Slider
+                  min={1}
+                  max={3}
+                  step={0.01}
+                  value={[zoom]}
+                  onValueChange={([v]) => setZoom(v)}
+                  className="flex-1"
+                />
+                <ZoomIn className="w-4 h-4 text-muted-foreground shrink-0" />
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 px-4 pb-4">
+                <Button type="button" variant="outline" className="flex-1" onClick={() => setCropOpen(false)}>
+                  <XIcon className="w-4 h-4 mr-1.5" /> Cancel
+                </Button>
+                <Button type="button" className="flex-1" onClick={handleCropConfirm}>
+                  <Check className="w-4 h-4 mr-1.5" /> Apply
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {/* 1. Store Name */}
           <div className="space-y-1.5">
