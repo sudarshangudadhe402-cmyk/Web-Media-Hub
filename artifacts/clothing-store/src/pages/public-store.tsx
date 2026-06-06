@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   MapPin, Clock, CalendarDays, MessageCircle, Heart, ShoppingBag,
   ChevronLeft, Search, X, Camera, Loader2, BookMarked, RefreshCw,
-  CheckCircle2, Phone,
+  CheckCircle2, Phone, TrendingDown,
 } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 
@@ -83,6 +83,7 @@ export default function PublicStore() {
   });
 
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   const { data, isLoading, error } = useQuery<PublicStoreData>({
     queryKey: ["public-store", slug],
@@ -581,104 +582,126 @@ export default function PublicStore() {
     const productWaLink = waLink
       ? `${waLink}?text=${encodeURIComponent(`Hi! I'm interested in "${selectedProduct.name}" (₹${selectedProduct.discountPrice}). Can you help me?`)}`
       : null;
+    const relatedProducts = data.products.filter(
+      (p) => p.id !== selectedProduct.id && p.productType === selectedProduct.productType
+    );
 
     return (
-      <div className="min-h-screen bg-white flex flex-col">
-        {/* Header */}
-        <div className="sticky top-0 z-10 bg-white border-b border-gray-100 flex items-center gap-3 px-4 py-3">
-          <button onClick={goBack} className="p-1.5 rounded-full hover:bg-gray-100">
-            <ChevronLeft className="w-5 h-5" />
+      <div className="min-h-screen bg-[#f4f4f4] flex flex-col">
+
+        {/* ── Sticky top bar ── */}
+        <div className="flex items-center gap-2 px-3 py-2 bg-white border-b sticky top-0 z-20 shadow-sm">
+          <button onClick={goBack} className="p-1.5 rounded-full hover:bg-gray-100 transition-colors">
+            <ChevronLeft className="w-5 h-5 text-gray-700" />
           </button>
-          <span className="font-semibold text-gray-900 line-clamp-1 flex-1">{selectedProduct.name}</span>
+          <h2 className="font-semibold text-sm line-clamp-1 flex-1 text-gray-800">{selectedProduct.name}</h2>
           <button
             onClick={(e) => handleLike(selectedProduct.id, e)}
             className={`p-1.5 rounded-full transition-all ${
-              likedProducts.has(selectedProduct.id)
-                ? "bg-rose-50 text-rose-500"
-                : "hover:bg-gray-100 text-gray-400"
+              likedProducts.has(selectedProduct.id) ? "bg-rose-50 text-rose-500" : "hover:bg-gray-100 text-gray-400"
             }`}
           >
             <Heart className={`w-5 h-5 ${likedProducts.has(selectedProduct.id) ? "fill-current" : ""}`} />
           </button>
         </div>
 
-        {/* Scrollable content with bottom padding for fixed bar */}
+        {/* ── Scrollable body ── */}
         <div className="flex-1 overflow-y-auto pb-24">
-          {/* Product Images */}
-          <div className="relative bg-gray-50" style={{ height: "55vw", maxHeight: "380px", minHeight: "220px" }}>
-            {selectedProduct.images.length > 0 ? (
-              <img
-                src={selectedProduct.images[imgIndex]}
-                className="w-full h-full object-contain"
-                alt={selectedProduct.name}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <ShoppingBag className="w-16 h-16 text-gray-200" />
+
+          {/* Swipeable image carousel */}
+          <div className="relative bg-white">
+            <div
+              ref={carouselRef}
+              className="flex overflow-x-auto"
+              style={{ scrollSnapType: "x mandatory", scrollBehavior: "smooth" }}
+              onScroll={(e) => {
+                const el = e.currentTarget;
+                const idx = Math.round(el.scrollLeft / el.clientWidth);
+                setImgIndex(idx);
+              }}
+            >
+              {(selectedProduct.images.length > 0 ? selectedProduct.images : [null]).map((img, i) => (
+                <div
+                  key={i}
+                  className="shrink-0 w-full bg-white"
+                  style={{ scrollSnapAlign: "start", aspectRatio: "3/4", maxHeight: "48vh" }}
+                >
+                  {img ? (
+                    <img src={img} alt={selectedProduct.name} className="w-full h-full object-contain" draggable={false} />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                      <ShoppingBag className="w-20 h-20 opacity-20" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Discount badge */}
+            {pDiscount > 0 && (
+              <div className="absolute top-3 left-3 bg-[#ff3e6c] text-white text-[11px] font-bold px-2 py-0.5 rounded-sm">
+                {pDiscount}% OFF
               </div>
             )}
-            {pDiscount > 0 && (
-              <span className="absolute top-3 left-3 bg-rose-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow">
-                -{pDiscount}% OFF
-              </span>
-            )}
+
+            {/* Product type tag */}
+            <div className="absolute top-3 right-3 bg-black/50 text-white text-[10px] font-medium px-2 py-0.5 rounded-sm">
+              {selectedProduct.productType}
+            </div>
+
+            {/* Dot indicators */}
             {selectedProduct.images.length > 1 && (
               <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
                 {selectedProduct.images.map((_, i) => (
                   <button
                     key={i}
-                    onClick={() => setImgIndex(i)}
-                    className={`w-2 h-2 rounded-full transition-all ${i === imgIndex ? "bg-rose-500 w-4" : "bg-gray-300"}`}
+                    onClick={() => {
+                      carouselRef.current?.scrollTo({ left: i * (carouselRef.current?.clientWidth ?? 0), behavior: "smooth" });
+                      setImgIndex(i);
+                    }}
+                    className="rounded-full transition-all"
+                    style={{
+                      width: i === imgIndex ? 20 : 6,
+                      height: 6,
+                      background: i === imgIndex ? "#ff3e6c" : "rgba(255,255,255,0.7)",
+                      border: "1px solid rgba(0,0,0,0.15)",
+                    }}
                   />
                 ))}
               </div>
             )}
           </div>
 
-          {/* Thumbnail strip */}
-          {selectedProduct.images.length > 1 && (
-            <div className="flex gap-2 px-4 py-2 overflow-x-auto border-b border-gray-100">
-              {selectedProduct.images.map((img, i) => (
-                <button
-                  key={i}
-                  onClick={() => setImgIndex(i)}
-                  className={`flex-shrink-0 w-14 h-16 rounded-lg overflow-hidden border-2 transition-all ${
-                    i === imgIndex ? "border-rose-500" : "border-gray-100"
-                  }`}
-                >
-                  <img src={img} className="w-full h-full object-cover" />
-                </button>
-              ))}
+          {/* ── Info card ── */}
+          <div className="bg-white mt-2 px-4 pt-4 pb-2">
+            {/* Badges */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              <span className="text-[11px] font-semibold bg-[#fff0f5] text-[#ff3e6c] border border-[#ffb3cb] px-2.5 py-0.5 rounded-full">
+                {selectedProduct.productType}
+              </span>
+              {selectedProduct.functionCategory && (
+                <span className="text-[11px] font-medium bg-gray-100 text-gray-600 border border-gray-200 px-2.5 py-0.5 rounded-full">
+                  {selectedProduct.functionCategory}
+                </span>
+              )}
+              {selectedProduct.age && (
+                <span className="text-[11px] font-medium bg-orange-50 text-orange-600 border border-orange-200 px-2.5 py-0.5 rounded-full">
+                  {selectedProduct.age}
+                </span>
+              )}
+              {selectedProduct.gender && (
+                <span className="text-[11px] font-medium bg-blue-50 text-blue-600 border border-blue-200 px-2.5 py-0.5 rounded-full">
+                  {selectedProduct.gender}
+                </span>
+              )}
             </div>
-          )}
 
-          {/* Product Info */}
-          <div className="px-4 pt-4 pb-2 space-y-4">
-            {/* Sizes */}
-            {selectedProduct.sizes.length > 0 && (
-              <div>
-                <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2">Available Sizes</p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedProduct.sizes.map((s) => (
-                    <span key={s} className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700">
-                      {s}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Product name */}
+            <h1 className="text-[15px] font-semibold text-gray-900 leading-snug mb-3">{selectedProduct.name}</h1>
 
-            {/* Age */}
-            {selectedProduct.age && (
-              <div>
-                <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-1">Age Group</p>
-                <p className="text-sm text-gray-700">{selectedProduct.age}</p>
-              </div>
-            )}
-
-            {/* Price — Flipkart style */}
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-extrabold text-gray-900">
+            {/* Price row */}
+            <div className="flex items-baseline gap-2 mb-2">
+              <span className="text-[22px] font-extrabold text-gray-900">
                 ₹{selectedProduct.discountPrice.toLocaleString()}
               </span>
               {pDiscount > 0 && (
@@ -686,33 +709,45 @@ export default function PublicStore() {
                   <span className="text-sm text-gray-400 line-through">
                     ₹{selectedProduct.actualPrice.toLocaleString()}
                   </span>
-                  <span className="text-sm font-bold text-green-600">{pDiscount}% off</span>
+                  <span className="text-sm font-bold text-[#2ecc71]">
+                    ↓{pDiscount}% off
+                  </span>
                 </>
               )}
             </div>
 
-            {/* Product type / category badge */}
-            <div className="flex flex-wrap gap-2">
-              <span className="text-xs bg-violet-50 text-violet-700 font-medium px-2.5 py-1 rounded-full">
-                {selectedProduct.productType}
-              </span>
-              {selectedProduct.functionCategory && (
-                <span className="text-xs bg-amber-50 text-amber-700 font-medium px-2.5 py-1 rounded-full">
-                  {selectedProduct.functionCategory}
-                </span>
-              )}
+            {/* Likes */}
+            <div className="flex items-center gap-1.5 text-sm text-gray-400 mb-1">
+              <Heart className="w-4 h-4 text-rose-400 fill-current" />
+              <span>{(likeCounts[selectedProduct.id] ?? selectedProduct.likeCount).toLocaleString("en-IN")} people liked this</span>
             </div>
+          </div>
 
-            {/* Description */}
-            {selectedProduct.description && (
-              <div>
-                <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-1">Description</p>
-                <p className="text-sm text-gray-600 leading-relaxed">{selectedProduct.description}</p>
+          {/* ── Sizes ── */}
+          {selectedProduct.sizes.length > 0 && (
+            <div className="bg-white mt-2 px-4 py-4">
+              <p className="text-[13px] font-bold text-gray-800 mb-3 tracking-wide uppercase">Select Size</p>
+              <div className="flex flex-wrap gap-2">
+                {selectedProduct.sizes.map((s) => (
+                  <span key={s} className="px-4 py-1.5 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white">
+                    {s}
+                  </span>
+                ))}
               </div>
-            )}
+            </div>
+          )}
 
-            {/* WhatsApp */}
-            {productWaLink && (
+          {/* ── Description ── */}
+          {selectedProduct.description && (
+            <div className="bg-white mt-2 px-4 py-4">
+              <p className="text-[13px] font-bold text-gray-800 mb-2 tracking-wide uppercase">Description</p>
+              <p className="text-sm text-gray-500 leading-relaxed whitespace-pre-wrap">{selectedProduct.description}</p>
+            </div>
+          )}
+
+          {/* ── WhatsApp ── */}
+          {productWaLink && (
+            <div className="bg-white mt-2 px-4 py-3">
               <a
                 href={productWaLink}
                 target="_blank"
@@ -722,48 +757,53 @@ export default function PublicStore() {
                 <MessageCircle className="w-4 h-4" />
                 Ask on WhatsApp
               </a>
-            )}
-
-            {/* Likes */}
-            <div className="flex items-center gap-1.5 text-sm text-gray-400">
-              <Heart className="w-4 h-4 text-rose-400 fill-current" />
-              <span>{likeCounts[selectedProduct.id] ?? selectedProduct.likeCount} people liked this</span>
             </div>
-          </div>
+          )}
 
-          {/* More products */}
-          {data.products.filter((p) => p.id !== selectedProduct.id).length > 0 && (
-            <div className="px-4 pt-4 border-t border-gray-100 mt-2">
-              <p className="text-sm font-bold text-gray-700 mb-3">More Products</p>
-              <div className="flex gap-3 overflow-x-auto pb-2">
-                {data.products
-                  .filter((p) => p.id !== selectedProduct.id)
-                  .slice(0, 10)
-                  .map((p) => (
-                    <button
+          {/* ── More like this ── */}
+          {relatedProducts.length > 0 && (
+            <div className="bg-white mt-2 pb-4">
+              <div className="flex items-center justify-between px-4 pt-4 pb-3">
+                <span className="text-[15px] font-bold text-gray-900">More like this</span>
+              </div>
+              <div className="flex gap-3 overflow-x-auto px-4 pb-1" style={{ scrollSnapType: "x mandatory" }}>
+                {relatedProducts.slice(0, 10).map((p) => {
+                  const disc = discount(p);
+                  return (
+                    <div
                       key={p.id}
-                      onClick={() => { setSelectedProduct(p); setImgIndex(0); }}
-                      className="flex-shrink-0 w-28 text-left"
+                      className="shrink-0 cursor-pointer"
+                      style={{ width: 140, scrollSnapAlign: "start" }}
+                      onClick={() => { setSelectedProduct(p); setImgIndex(0); carouselRef.current?.scrollTo({ left: 0 }); }}
                     >
-                      <div className="w-28 h-32 rounded-xl overflow-hidden bg-gray-50 border border-gray-100">
+                      <div className="rounded-lg overflow-hidden bg-gray-100 relative" style={{ aspectRatio: "3/4" }}>
                         {p.images[0] ? (
-                          <img src={p.images[0]} className="w-full h-full object-cover" />
+                          <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
-                            <ShoppingBag className="w-6 h-6 text-gray-200" />
+                            <ShoppingBag className="w-8 h-8 opacity-20" />
                           </div>
                         )}
+                        {disc > 0 && (
+                          <span className="absolute bottom-1.5 left-1.5 bg-[#ff3e6c] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-sm">
+                            {disc}% OFF
+                          </span>
+                        )}
                       </div>
-                      <p className="text-xs text-gray-700 font-medium mt-1 line-clamp-1">{p.name}</p>
-                      <p className="text-xs font-bold text-gray-900">₹{p.discountPrice.toLocaleString()}</p>
-                    </button>
-                  ))}
+                      <div className="mt-1.5 space-y-0.5">
+                        <p className="text-[11px] font-medium text-gray-800 line-clamp-2 leading-tight">{p.name}</p>
+                        {disc > 0 && <p className="text-[10px] font-bold text-[#2ecc71]">{disc}% OFF</p>}
+                        <p className="text-[12px] font-bold text-gray-900">₹{p.discountPrice.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
         </div>
 
-        {/* Fixed bottom bar — like Flipkart */}
+        {/* Fixed bottom bar */}
         <div className="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-100 flex gap-0 shadow-lg">
           <button
             onClick={openTryOn}
@@ -774,7 +814,7 @@ export default function PublicStore() {
           </button>
           <button
             onClick={openBooking}
-            className="flex-1 py-3.5 flex flex-col items-center gap-0.5 bg-rose-500 text-white font-bold text-xs hover:bg-rose-600 transition-colors"
+            className="flex-1 py-3.5 flex flex-col items-center gap-0.5 bg-[#ff3e6c] text-white font-bold text-xs hover:bg-rose-600 transition-colors"
           >
             <BookMarked className="w-5 h-5" />
             Book Product
@@ -930,7 +970,7 @@ export default function PublicStore() {
       </div>
 
       {/* ── Products Grid (2 columns) ── */}
-      <div className="flex-1 p-3">
+      <div className="flex-1">
         {filteredProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <ShoppingBag className="w-12 h-12 text-gray-200 mb-3" />
@@ -939,70 +979,113 @@ export default function PublicStore() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-[2px] bg-gray-200">
             {filteredProducts.map((p) => {
               const pDis = discount(p);
               const liked = likedProducts.has(p.id);
               return (
-                <button
+                <div
                   key={p.id}
                   onClick={() => openProduct(p)}
-                  className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden text-left group active:scale-[0.98] transition-transform"
+                  className="bg-white cursor-pointer active:opacity-90"
                 >
-                  <div className="relative aspect-[3/4] bg-gray-50 overflow-hidden">
+                  {/* Image */}
+                  <div className="aspect-[3/4] bg-gray-100 relative overflow-hidden">
                     {p.images[0] ? (
                       <img
                         src={p.images[0]}
                         alt={p.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="w-full h-full object-cover"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <ShoppingBag className="w-8 h-8 text-gray-200" />
+                        <ShoppingBag className="w-8 h-8 text-gray-300" />
                       </div>
                     )}
-                    {pDis > 0 && (
-                      <span className="absolute top-2 left-2 bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                        -{pDis}%
-                      </span>
-                    )}
+                    {/* Heart / Like button */}
                     <button
-                      onClick={(e) => handleLike(p.id, e)}
-                      className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center shadow transition-all ${
-                        liked ? "bg-rose-500 text-white" : "bg-white/90 text-gray-400 hover:text-rose-500"
-                      }`}
+                      className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 flex items-center justify-center shadow-sm active:scale-90 transition-transform"
+                      onClick={(e) => { e.stopPropagation(); handleLike(p.id, e); }}
                     >
-                      <Heart className={`w-3.5 h-3.5 ${liked ? "fill-current" : ""}`} />
+                      <Heart className={`w-3.5 h-3.5 ${liked ? "fill-red-500 text-red-500" : "text-gray-400"}`} />
                     </button>
+                    {/* Like count overlay */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent pt-6 pb-1.5 px-2">
+                      <div className="flex items-center gap-1">
+                        <Heart className="w-3 h-3 fill-red-400 text-red-400" />
+                        <span className="text-white text-[11px] font-semibold">
+                          {(likeCounts[p.id] ?? p.likeCount).toLocaleString("en-IN")}
+                        </span>
+                        <span className="text-white/70 text-[10px]">likes</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="p-2.5 space-y-1">
-                    <p className="text-xs font-semibold text-gray-900 line-clamp-2 leading-tight">{p.name}</p>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-sm font-bold text-gray-900">₹{p.discountPrice.toLocaleString()}</span>
+
+                  {/* Card info */}
+                  <div className="p-2 pb-3 space-y-0.5">
+                    {p.functionCategory && (
+                      <p className="text-[11px] font-bold text-purple-600 leading-tight uppercase tracking-wide truncate">
+                        {p.functionCategory}
+                      </p>
+                    )}
+                    <p className="text-[12px] text-gray-700 leading-tight line-clamp-2">{p.name}</p>
+
+                    {/* Pricing row */}
+                    <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
                       {pDis > 0 && (
-                        <span className="text-[10px] text-gray-400 line-through">
+                        <span className="flex items-center gap-0.5 text-[11px] font-bold text-green-600">
+                          <TrendingDown className="w-3 h-3" />
+                          {pDis}%
+                        </span>
+                      )}
+                      {p.actualPrice > p.discountPrice && (
+                        <span className="text-[11px] text-gray-400 line-through">
                           ₹{p.actualPrice.toLocaleString()}
                         </span>
                       )}
+                      <span className="text-[13px] font-bold text-gray-900">
+                        ₹{p.discountPrice.toLocaleString()}
+                      </span>
                     </div>
+
+                    {/* Size */}
                     {p.sizes.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {p.sizes.slice(0, 3).map((s) => (
-                          <span key={s} className="text-[9px] border border-gray-200 rounded px-1 py-0.5 text-gray-500">
-                            {s}
-                          </span>
-                        ))}
-                        {p.sizes.length > 3 && (
-                          <span className="text-[9px] text-gray-400">+{p.sizes.length - 3}</span>
-                        )}
+                      <div className="pt-1">
+                        <p className="text-[10px] font-semibold text-gray-500 mb-0.5">Size</p>
+                        <div className="flex flex-wrap gap-1">
+                          {p.sizes.slice(0, 4).map((s) => (
+                            <span key={s} className="text-[9px] border border-gray-300 rounded px-1.5 py-0.5 text-gray-600 bg-gray-50">
+                              {s}
+                            </span>
+                          ))}
+                          {p.sizes.length > 4 && (
+                            <span className="text-[9px] text-gray-400">+{p.sizes.length - 4}</span>
+                          )}
+                        </div>
                       </div>
                     )}
-                    <div className="flex items-center gap-1 text-[10px] text-gray-400">
-                      <Heart className="w-2.5 h-2.5 text-rose-300 fill-current" />
-                      <span>{likeCounts[p.id] ?? p.likeCount}</span>
-                    </div>
+
+                    {/* Age */}
+                    {p.age && (
+                      <div className="pt-0.5">
+                        <p className="text-[10px] font-semibold text-gray-500 mb-0.5">Age</p>
+                        <span className="text-[9px] bg-orange-50 text-orange-600 border border-orange-200 rounded px-1.5 py-0.5 font-medium">
+                          {p.age}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Gender */}
+                    {p.gender && (
+                      <div className="pt-0.5">
+                        <p className="text-[10px] font-semibold text-gray-500 mb-0.5">Gender</p>
+                        <span className="text-[9px] bg-blue-50 text-blue-600 border border-blue-200 rounded px-1.5 py-0.5 font-medium">
+                          {p.gender}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
