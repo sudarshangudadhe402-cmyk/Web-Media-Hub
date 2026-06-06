@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { Booking } from "../models/Booking";
 import { Product } from "../models/Product";
+import { Store } from "../models/Store";
 import { Notification } from "../models/Notification";
-import { requireAuth } from "../middlewares/auth";
+import { AuthRequest, requireAuth } from "../middlewares/auth";
 import { requireDb } from "../middlewares/dbCheck";
 
 const router = Router();
@@ -25,9 +26,27 @@ function formatProduct(p: InstanceType<typeof Product> | null) {
   };
 }
 
-router.get("/bookings", requireAuth, async (req, res) => {
+async function getMyProductIds(userId: string): Promise<string[]> {
+  const store = await Store.findOne({ ownerId: userId });
+  if (!store) return [];
+  const products = await Product.find({ storeId: String(store._id) }).select("_id").lean();
+  return products.map((p) => String(p._id));
+}
+
+router.get("/bookings", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const bookings = await Booking.find({ ignored: false })
+    const userId = String(req.user!._id);
+    const myProductIds = await getMyProductIds(userId);
+
+    if (myProductIds.length === 0) {
+      res.json([]);
+      return;
+    }
+
+    const bookings = await Booking.find({
+      ignored: false,
+      productId: { $in: myProductIds },
+    })
       .populate("productId")
       .sort({ createdAt: -1 });
 

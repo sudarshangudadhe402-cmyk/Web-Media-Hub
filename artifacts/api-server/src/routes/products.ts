@@ -7,32 +7,45 @@ import { requireDb } from "../middlewares/dbCheck";
 
 const router = Router();
 
-router.get("/products", requireAuth, async (req, res) => {
+function formatProduct(p: InstanceType<typeof Product>) {
+  return {
+    id: String(p._id),
+    name: p.name,
+    description: p.description ?? null,
+    images: p.images,
+    discountPrice: p.discountPrice,
+    actualPrice: p.actualPrice,
+    functionCategory: p.functionCategory ?? null,
+    productType: p.productType,
+    sizes: p.sizes,
+    age: p.age ?? null,
+    gender: p.gender ?? null,
+    likeCount: p.likeCount,
+    storeId: p.storeId ?? null,
+    createdAt: p.createdAt.toISOString(),
+  };
+}
+
+async function getMyStore(userId: string) {
+  return Store.findOne({ ownerId: userId });
+}
+
+router.get("/products", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { type, storeId } = req.query;
-    const filter: Record<string, unknown> = {};
+    const { type } = req.query;
+    const userId = String(req.user!._id);
+
+    const store = await getMyStore(userId);
+    if (!store) {
+      res.json([]);
+      return;
+    }
+
+    const filter: Record<string, unknown> = { storeId: String(store._id) };
     if (type) filter.productType = type;
-    if (storeId) filter.storeId = storeId;
 
     const products = await Product.find(filter).sort({ createdAt: -1 });
-    res.json(
-      products.map((p) => ({
-        id: String(p._id),
-        name: p.name,
-        description: p.description ?? null,
-        images: p.images,
-        discountPrice: p.discountPrice,
-        actualPrice: p.actualPrice,
-        functionCategory: p.functionCategory ?? null,
-        productType: p.productType,
-        sizes: p.sizes,
-        age: p.age ?? null,
-        gender: p.gender ?? null,
-        likeCount: p.likeCount,
-        storeId: p.storeId ?? null,
-        createdAt: p.createdAt.toISOString(),
-      }))
-    );
+    res.json(products.map(formatProduct));
   } catch (err) {
     req.log.error({ err }, "List products error");
     res.status(500).json({ error: "Internal server error" });
@@ -43,7 +56,13 @@ router.post("/products", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { name, description, images, discountPrice, actualPrice, functionCategory, productType, sizes, age, gender } = req.body;
     const userId = String(req.user!._id);
-    const store = await Store.findOne({ ownerId: userId });
+    const store = await getMyStore(userId);
+
+    if (!store) {
+      res.status(400).json({ error: "You do not have a store. Please set up your store first." });
+      return;
+    }
+
     const product = await Product.create({
       name,
       description,
@@ -55,24 +74,10 @@ router.post("/products", requireAuth, async (req: AuthRequest, res) => {
       sizes: sizes || [],
       age,
       gender,
-      storeId: store ? String(store._id) : undefined,
+      storeId: String(store._id),
     });
-    res.status(201).json({
-      id: String(product._id),
-      name: product.name,
-      description: product.description ?? null,
-      images: product.images,
-      discountPrice: product.discountPrice,
-      actualPrice: product.actualPrice,
-      functionCategory: product.functionCategory ?? null,
-      productType: product.productType,
-      sizes: product.sizes,
-      age: product.age ?? null,
-      gender: product.gender ?? null,
-      likeCount: product.likeCount,
-      storeId: product.storeId ?? null,
-      createdAt: product.createdAt.toISOString(),
-    });
+
+    res.status(201).json(formatProduct(product));
   } catch (err) {
     req.log.error({ err }, "Create product error");
     res.status(500).json({ error: "Internal server error" });
@@ -98,71 +103,75 @@ router.post("/products/upload-image", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/products/:id", requireAuth, async (req, res) => {
+router.get("/products/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
+    const userId = String(req.user!._id);
+    const store = await getMyStore(userId);
     const product = await Product.findById(req.params.id);
+
     if (!product) {
       res.status(404).json({ error: "Product not found" });
       return;
     }
-    res.json({
-      id: String(product._id),
-      name: product.name,
-      description: product.description ?? null,
-      images: product.images,
-      discountPrice: product.discountPrice,
-      actualPrice: product.actualPrice,
-      functionCategory: product.functionCategory ?? null,
-      productType: product.productType,
-      sizes: product.sizes,
-      age: product.age ?? null,
-      gender: product.gender ?? null,
-      likeCount: product.likeCount,
-      storeId: product.storeId ?? null,
-      createdAt: product.createdAt.toISOString(),
-    });
+
+    if (store && product.storeId !== String(store._id)) {
+      res.status(403).json({ error: "Access denied" });
+      return;
+    }
+
+    res.json(formatProduct(product));
   } catch (err) {
     req.log.error({ err }, "Get product error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-router.patch("/products/:id", requireAuth, async (req, res) => {
+router.patch("/products/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
+    const userId = String(req.user!._id);
+    const store = await getMyStore(userId);
+    const existing = await Product.findById(req.params.id);
+
+    if (!existing) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+
+    if (store && existing.storeId !== String(store._id)) {
+      res.status(403).json({ error: "You can only edit your own store's products" });
+      return;
+    }
+
     const product = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!product) {
       res.status(404).json({ error: "Product not found" });
       return;
     }
-    res.json({
-      id: String(product._id),
-      name: product.name,
-      description: product.description ?? null,
-      images: product.images,
-      discountPrice: product.discountPrice,
-      actualPrice: product.actualPrice,
-      functionCategory: product.functionCategory ?? null,
-      productType: product.productType,
-      sizes: product.sizes,
-      age: product.age ?? null,
-      gender: product.gender ?? null,
-      likeCount: product.likeCount,
-      storeId: product.storeId ?? null,
-      createdAt: product.createdAt.toISOString(),
-    });
+
+    res.json(formatProduct(product));
   } catch (err) {
     req.log.error({ err }, "Update product error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-router.delete("/products/:id", requireAuth, async (req, res) => {
+router.delete("/products/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const product = await Product.findByIdAndDelete(req.params.id);
-    if (!product) {
+    const userId = String(req.user!._id);
+    const store = await getMyStore(userId);
+    const existing = await Product.findById(req.params.id);
+
+    if (!existing) {
       res.status(404).json({ error: "Product not found" });
       return;
     }
+
+    if (store && existing.storeId !== String(store._id)) {
+      res.status(403).json({ error: "You can only delete your own store's products" });
+      return;
+    }
+
+    await Product.findByIdAndDelete(req.params.id);
     res.json({ success: true, message: "Product deleted" });
   } catch (err) {
     req.log.error({ err }, "Delete product error");

@@ -2,6 +2,8 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { connectDB, dbAvailable } from "./lib/mongodb";
 import { User } from "./models/User";
+import { Store } from "./models/Store";
+import { Product } from "./models/Product";
 
 const rawPort = process.env["PORT"];
 
@@ -34,9 +36,33 @@ async function seedSuperAdmin() {
   }
 }
 
+async function cleanupSuperAdminProducts() {
+  if (!dbAvailable) return;
+  try {
+    const superAdmin = await User.findOne({ role: "super_admin" });
+    if (!superAdmin) return;
+
+    const superAdminStore = await Store.findOne({ ownerId: String(superAdmin._id) });
+    if (!superAdminStore) return;
+
+    const storeId = String(superAdminStore._id);
+    const count = await Product.countDocuments({ storeId });
+    if (count === 0) return;
+
+    const result = await Product.deleteMany({ storeId });
+    logger.info(
+      { deleted: result.deletedCount },
+      "Cleaned up super-admin store products"
+    );
+  } catch (err) {
+    logger.error({ err }, "Failed to cleanup super-admin products");
+  }
+}
+
 async function start() {
   await connectDB();
   await seedSuperAdmin();
+  await cleanupSuperAdminProducts();
 
   app.listen(port, (err) => {
     if (err) {

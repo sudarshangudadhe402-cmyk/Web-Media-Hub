@@ -2,36 +2,52 @@ import { Router } from "express";
 import { Product } from "../models/Product";
 import { Booking } from "../models/Booking";
 import { Notification } from "../models/Notification";
-import { requireAuth } from "../middlewares/auth";
+import { Store } from "../models/Store";
+import { AuthRequest, requireAuth } from "../middlewares/auth";
 import { requireDb } from "../middlewares/dbCheck";
 
 const router = Router();
 
-router.get("/dashboard/summary", requireAuth, async (req, res) => {
+router.get("/dashboard/summary", requireAuth, async (req: AuthRequest, res) => {
   try {
+    const userId = String(req.user!._id);
+    const store = await Store.findOne({ ownerId: userId });
+    const storeId = store ? String(store._id) : null;
+
+    const storeFilter = storeId ? { storeId } : { storeId: "__none__" };
+
     const [
       totalProducts,
       topCount,
       bottomCount,
       fullOutfitCount,
       functionalCount,
-      activeBookings,
       unreadNotifications,
-      recentBookingsDocs,
       funcCatCount,
     ] = await Promise.all([
-      Product.countDocuments(),
-      Product.countDocuments({ productType: "Top" }),
-      Product.countDocuments({ productType: "Bottom" }),
-      Product.countDocuments({ productType: "Full Outfit" }),
-      Product.countDocuments({ productType: "Functional" }),
-      Booking.countDocuments({ ignored: false }),
+      Product.countDocuments(storeFilter),
+      Product.countDocuments({ ...storeFilter, productType: "Top" }),
+      Product.countDocuments({ ...storeFilter, productType: "Bottom" }),
+      Product.countDocuments({ ...storeFilter, productType: "Full Outfit" }),
+      Product.countDocuments({ ...storeFilter, productType: "Functional" }),
       Notification.countDocuments({ read: false }),
-      Booking.find({ ignored: false })
-        .populate("productId")
-        .sort({ createdAt: -1 })
-        .limit(5),
-      Product.countDocuments({ functionCategory: { $exists: true, $nin: [null, ""] } }),
+      Product.countDocuments({ ...storeFilter, functionCategory: { $exists: true, $nin: [null, ""] } }),
+    ]);
+
+    const myProductIds = storeId
+      ? (await Product.find({ storeId }).select("_id").lean()).map((p) => String(p._id))
+      : [];
+
+    const [activeBookings, recentBookingsDocs] = await Promise.all([
+      myProductIds.length > 0
+        ? Booking.countDocuments({ ignored: false, productId: { $in: myProductIds } })
+        : Promise.resolve(0),
+      myProductIds.length > 0
+        ? Booking.find({ ignored: false, productId: { $in: myProductIds } })
+            .populate("productId")
+            .sort({ createdAt: -1 })
+            .limit(5)
+        : Promise.resolve([]),
     ]);
 
     const functionalTotal = functionalCount + funcCatCount;
