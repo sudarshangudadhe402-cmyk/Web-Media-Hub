@@ -11,7 +11,10 @@ import {
   Bell,
   Menu,
   LogOut,
-  Check,
+  CalendarCheck,
+  ShoppingBag,
+  Heart,
+  BellOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,24 +25,46 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { useListNotifications, useMarkNotificationsRead, useGetStore } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useListNotifications,
+  useMarkNotificationsRead,
+  useGetStore,
+  getListNotificationsQueryKey,
+} from "@workspace/api-client-react";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const [location] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  const queryClient = useQueryClient();
+  const [notifOpen, setNotifOpen] = useState(false);
+
   const { data: store } = useGetStore({ query: { retry: false } });
   const { data: notifications = [] } = useListNotifications();
   const markRead = useMarkNotificationsRead();
 
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  const handleNotifOpenChange = (open: boolean) => {
+    setNotifOpen(open);
+    if (open && unreadCount > 0) {
+      markRead.mutate();
+    }
+    if (!open) {
+      queryClient.invalidateQueries({ queryKey: getListNotificationsQueryKey() });
+    }
+  };
+
+  const notifIcon = (type: string) => {
+    if (type === "booking") return <CalendarCheck className="w-4 h-4 text-primary" />;
+    if (type === "like") return <Heart className="w-4 h-4 text-rose-500" />;
+    return <ShoppingBag className="w-4 h-4 text-primary" />;
+  };
 
   const navigation = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -148,7 +173,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-4">
-            <DropdownMenu>
+            <DropdownMenu open={notifOpen} onOpenChange={handleNotifOpenChange}>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative">
                   <Bell className="h-5 w-5" />
@@ -160,34 +185,74 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80 max-h-[400px] overflow-y-auto">
-                <div className="flex items-center justify-between px-4 py-2">
-                  <span className="font-semibold text-sm">Notifications</span>
-                  {unreadCount > 0 && (
-                    <Button variant="ghost" size="sm" className="h-auto py-1 px-2 text-xs" onClick={handleMarkRead}>
-                      <Check className="h-3 w-3 mr-1" /> Mark all read
-                    </Button>
+              <DropdownMenuContent
+                align="end"
+                className="w-80 p-0 overflow-hidden"
+                style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.18)", border: "1px solid hsl(var(--border))" }}
+              >
+                {/* Header */}
+                <div
+                  className="flex items-center justify-between px-4 py-3 border-b border-border"
+                  style={{ background: "hsl(var(--card))" }}
+                >
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-primary" />
+                    <span className="font-semibold text-sm tracking-wide">Notifications</span>
+                    {unreadCount > 0 && (
+                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold text-primary-foreground bg-primary">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Notification list */}
+                <div className="max-h-[380px] overflow-y-auto" style={{ background: "hsl(var(--background))" }}>
+                  {notifications.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center gap-2 py-10 text-muted-foreground">
+                      <BellOff className="w-8 h-8 opacity-30" />
+                      <p className="text-sm">No notifications yet</p>
+                    </div>
+                  ) : (
+                    notifications.map((n, i) => (
+                      <div
+                        key={n.id}
+                        className={`flex items-start gap-3 px-4 py-3 border-b border-border last:border-0 transition-colors ${
+                          !n.read ? "bg-primary/5" : "bg-transparent"
+                        }`}
+                      >
+                        {/* Type icon */}
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                          !n.read ? "bg-primary/10" : "bg-muted"
+                        }`}>
+                          {notifIcon(n.type)}
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <span className={`text-xs font-semibold uppercase tracking-wider ${
+                              !n.read ? "text-primary" : "text-muted-foreground"
+                            }`}>
+                              {n.type.replace(/_/g, " ")}
+                            </span>
+                            {!n.read && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                            )}
+                          </div>
+                          <p className={`text-sm leading-snug ${!n.read ? "font-medium text-foreground" : "text-foreground/70"}`}>
+                            {n.message}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {new Date(n.createdAt).toLocaleDateString("en-IN", {
+                              day: "numeric", month: "short", year: "numeric",
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    ))
                   )}
                 </div>
-                <DropdownMenuSeparator />
-                {notifications.length === 0 ? (
-                  <div className="p-4 text-center text-sm text-muted-foreground">No notifications</div>
-                ) : (
-                  notifications.map((n) => (
-                    <DropdownMenuItem key={n.id} className="flex flex-col items-start p-3 gap-1">
-                      <div className="flex items-center gap-2">
-                        {!n.read && <span className="h-2 w-2 rounded-full bg-primary" />}
-                        <span className="font-medium text-xs uppercase text-muted-foreground">
-                          {n.type.replace("_", " ")}
-                        </span>
-                      </div>
-                      <p className="text-sm">{n.message}</p>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(n.createdAt).toLocaleDateString()}
-                      </span>
-                    </DropdownMenuItem>
-                  ))
-                )}
               </DropdownMenuContent>
             </DropdownMenu>
             
