@@ -414,21 +414,20 @@ export default function MyStore() {
         <div className="space-y-4">
           <Card className="overflow-hidden">
             {/* Banner */}
-            <div className="w-full bg-black relative" style={{ maxHeight: 200 }}>
+            <div className="w-full bg-black relative">
               {bannerPreview || store.bannerImage ? (
                 <img
                   src={bannerPreview || store.bannerImage || undefined}
                   alt="Store banner"
-                  className="w-full object-cover"
-                  style={{ maxHeight: 200, width: "100%" }}
+                  className="w-full object-contain max-h-[70vh]"
                 />
               ) : (
-                <div className="w-full flex items-center justify-center bg-muted" style={{ height: 160 }}>
+                <div className="w-full h-44 flex items-center justify-center bg-muted">
                   <ImageIcon className="w-10 h-10 text-muted-foreground/30" />
                 </div>
               )}
-              <div className="absolute bottom-0 left-0 right-0 h-14 bg-gradient-to-t from-black/70 to-transparent" />
-              <h2 className="absolute bottom-3 left-4 text-xl font-bold text-white drop-shadow">{store.name}</h2>
+              <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/70 to-transparent" />
+              <h2 className="absolute bottom-4 left-5 text-2xl font-bold text-white drop-shadow">{store.name}</h2>
             </div>
 
             <CardContent className="p-5 space-y-4">
