@@ -376,20 +376,20 @@ export default function MyStore() {
         <div className="space-y-4">
           <Card className="overflow-hidden">
             {/* Banner */}
-            <div className="h-44 w-full bg-muted relative">
+            <div className="w-full bg-black relative">
               {bannerPreview || store.bannerImage ? (
                 <img
                   src={bannerPreview || store.bannerImage || undefined}
                   alt="Store banner"
-                  className="w-full h-full object-cover"
+                  className="w-full object-contain max-h-[70vh]"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center">
+                <div className="w-full h-44 flex items-center justify-center bg-muted">
                   <ImageIcon className="w-10 h-10 text-muted-foreground/30" />
                 </div>
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-              <h2 className="absolute bottom-4 left-5 text-2xl font-bold text-white">{store.name}</h2>
+              <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/70 to-transparent" />
+              <h2 className="absolute bottom-4 left-5 text-2xl font-bold text-white drop-shadow">{store.name}</h2>
             </div>
 
             <CardContent className="p-5 space-y-4">
