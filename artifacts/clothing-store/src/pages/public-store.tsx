@@ -785,59 +785,98 @@ export default function PublicStore() {
   }
 
   /* ─────────────────── MAIN STORE VIEW ─────────────────── */
+  const openDaySet = new Set(
+    (data.openDays ?? "").split(",").map((d) => d.trim()).filter(Boolean)
+  );
+  const DAY_COLS = [
+    ["Sun", "Mon", "Tue", "Wed"],
+    ["Thu", "Fri", "Sat"],
+  ];
+  const DAY_FULL: Record<string, string> = {
+    Sun: "Sunday", Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday",
+    Thu: "Thursday", Fri: "Friday", Sat: "Saturday",
+  };
+
   return (
     <div className="min-h-screen bg-[#f4f4f4] flex flex-col">
-      {/* ── Store Header (1/4 page) ── */}
-      <div className="bg-white border-b border-gray-100">
-        {/* Store Name */}
-        <div className="px-4 pt-4 pb-1">
-          <h1 className="text-2xl font-extrabold text-gray-900 leading-tight tracking-tight">{data.name}</h1>
-          {data.description && (
-            <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{data.description}</p>
+      {/* ── Store Header ── */}
+      <div className="bg-white border-b border-gray-100 flex">
+
+        {/* Left — Square banner */}
+        <div className="flex-shrink-0 bg-black" style={{ width: "50%", aspectRatio: "1/1" }}>
+          {data.bannerImage ? (
+            <img
+              src={data.bannerImage}
+              alt={data.name}
+              className="w-full h-full object-contain"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gray-100">
+              <ShoppingBag className="w-10 h-10 text-gray-300" />
+            </div>
           )}
         </div>
 
-        {/* Banner */}
-        {data.bannerImage && (
-          <div className="mx-4 mt-2 rounded-xl overflow-hidden" style={{ height: "130px" }}>
-            <img src={data.bannerImage} alt={data.name} className="w-full h-full object-cover" />
-          </div>
-        )}
+        {/* Right — Info */}
+        <div className="flex-1 flex flex-col justify-between p-3 overflow-hidden min-w-0">
+          {/* Store name */}
+          <h1 className="text-sm font-extrabold text-gray-900 leading-tight tracking-tight line-clamp-2 mb-1">
+            {data.name}
+          </h1>
 
-        {/* Store info chips */}
-        {(data.address || data.openingTime || data.openDays || data.whatsappNumber) && (
-          <div className="px-4 py-2 flex flex-wrap gap-1.5">
-            {data.address && (
-              <div className="flex items-center gap-1 text-[11px] text-gray-600 bg-gray-50 border border-gray-100 rounded-full px-2.5 py-1">
-                <MapPin className="w-3 h-3 text-rose-500" />
-                {data.address}
-              </div>
-            )}
-            {data.openingTime && (
-              <div className="flex items-center gap-1 text-[11px] text-gray-600 bg-gray-50 border border-gray-100 rounded-full px-2.5 py-1">
-                <Clock className="w-3 h-3 text-amber-500" />
-                {data.openingTime}
-              </div>
-            )}
-            {data.openDays && (
-              <div className="flex items-center gap-1 text-[11px] text-gray-600 bg-gray-50 border border-gray-100 rounded-full px-2.5 py-1">
-                <CalendarDays className="w-3 h-3 text-blue-500" />
-                {data.openDays}
-              </div>
-            )}
-            {waLink && (
-              <a
-                href={waLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 text-[11px] text-white bg-[#25D366] rounded-full px-2.5 py-1 font-medium"
-              >
-                <MessageCircle className="w-3 h-3" />
-                WhatsApp
-              </a>
-            )}
-          </div>
-        )}
+          {/* Address */}
+          {data.address && (
+            <div className="flex items-start gap-1 mb-1.5">
+              <MapPin className="w-3 h-3 text-rose-500 mt-0.5 shrink-0" />
+              <p className="text-[10px] text-gray-600 leading-snug line-clamp-2">{data.address}</p>
+            </div>
+          )}
+
+          {/* Days grid — 2 columns */}
+          {data.openDays && (
+            <div className="flex gap-2 mb-1.5">
+              {DAY_COLS.map((col, ci) => (
+                <div key={ci} className="flex flex-col gap-0.5">
+                  {col.map((abbr) => {
+                    const full = DAY_FULL[abbr];
+                    const isOpen = openDaySet.has(full);
+                    return (
+                      <span
+                        key={abbr}
+                        className={`text-[9px] font-semibold leading-tight ${
+                          isOpen ? "text-green-600" : "text-gray-300"
+                        }`}
+                      >
+                        {abbr}
+                      </span>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Timing */}
+          {data.openingTime && (
+            <div className="flex items-center gap-1 mb-1.5">
+              <Clock className="w-3 h-3 text-amber-500 shrink-0" />
+              <p className="text-[10px] text-gray-600 leading-tight">{data.openingTime}</p>
+            </div>
+          )}
+
+          {/* WhatsApp */}
+          {waLink && (
+            <a
+              href={waLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[10px] text-white bg-[#25D366] rounded-full px-2.5 py-1 font-semibold self-start"
+            >
+              <MessageCircle className="w-3 h-3" />
+              WhatsApp
+            </a>
+          )}
+        </div>
       </div>
 
       {/* ── Search + My Bookings ── */}
