@@ -2,6 +2,7 @@ import { Router } from "express";
 import { Store } from "../models/Store";
 import { Product } from "../models/Product";
 import { Notification } from "../models/Notification";
+import { Booking } from "../models/Booking";
 
 const router = Router();
 
@@ -40,6 +41,19 @@ router.get("/public/store/:slug", async (req, res) => {
     });
   } catch (err) {
     req.log.error({ err }, "Public store fetch error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/public/booking-status/:id", async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id).select("seenByAdmin").lean();
+    if (!booking) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    res.json({ seenByAdmin: booking.seenByAdmin ?? false });
+  } catch (err) {
     res.status(500).json({ error: "Internal server error" });
   }
 });

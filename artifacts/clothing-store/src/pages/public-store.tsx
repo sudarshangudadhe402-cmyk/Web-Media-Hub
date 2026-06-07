@@ -81,6 +81,7 @@ export default function PublicStore() {
     try { return JSON.parse(localStorage.getItem(`wmh_bookings_${slug}`) || "[]"); }
     catch { return []; }
   });
+  const [seenStatus, setSeenStatus] = useState<Record<string, boolean>>({});
 
   const photoInputRef = useRef<HTMLInputElement>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -102,6 +103,19 @@ export default function PublicStore() {
       setLikeCounts(counts);
     }
   }, [data]);
+
+  /* Fetch seen-by-admin status for each booking when My Bookings opens */
+  useEffect(() => {
+    if (view !== "mybookings" || myBookings.length === 0) return;
+    myBookings.forEach((bk) => {
+      fetch(`/api/public/booking-status/${bk.id}`)
+        .then((r) => r.ok ? r.json() : null)
+        .then((d) => {
+          if (d) setSeenStatus((prev) => ({ ...prev, [bk.id]: d.seenByAdmin }));
+        })
+        .catch(() => {});
+    });
+  }, [view]);
 
   const categories = useMemo(() => {
     if (!data) return [];
@@ -316,31 +330,45 @@ export default function PublicStore() {
               <p className="text-gray-400 text-sm">No bookings yet</p>
             </div>
           ) : (
-            myBookings.map((bk) => (
-              <div key={bk.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex gap-3">
-                {bk.productImage ? (
-                  <img src={bk.productImage} className="w-16 h-20 object-cover rounded-lg flex-shrink-0" />
-                ) : (
-                  <div className="w-16 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <ShoppingBag className="w-6 h-6 text-gray-300" />
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 text-sm line-clamp-1">{bk.productName}</p>
-                  {bk.selectedSize && (
-                    <span className="inline-block text-[10px] border border-gray-200 rounded px-1.5 py-0.5 text-gray-500 mt-1">
-                      Size: {bk.selectedSize}
-                    </span>
+            myBookings.map((bk) => {
+              const seen = seenStatus[bk.id] ?? false;
+              return (
+                <div key={bk.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex gap-3">
+                  {bk.productImage ? (
+                    <img src={bk.productImage} className="w-16 h-20 object-cover rounded-lg flex-shrink-0" />
+                  ) : (
+                    <div className="w-16 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <ShoppingBag className="w-6 h-6 text-gray-300" />
+                    </div>
                   )}
-                  <p className="text-xs text-gray-500 mt-1">{bk.customerName} · {bk.city}</p>
-                  <p className="text-xs text-gray-400">{bk.whatsapp}</p>
-                  <p className="text-[10px] text-gray-300 mt-1">
-                    {new Date(bk.bookedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                  </p>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900 text-sm line-clamp-1">{bk.productName}</p>
+                    {bk.selectedSize && (
+                      <span className="inline-block text-[10px] border border-gray-200 rounded px-1.5 py-0.5 text-gray-500 mt-1">
+                        Size: {bk.selectedSize}
+                      </span>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">{bk.customerName} · {bk.city}</p>
+                    <p className="text-xs text-gray-400">{bk.whatsapp}</p>
+                    <p className="text-[10px] text-gray-300 mt-1">
+                      {new Date(bk.bookedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                    </p>
+                  </div>
+                  {/* Double tick — gray=not seen, blue=seen by admin */}
+                  <div className="flex-shrink-0 mt-auto pb-0.5">
+                    <svg width="22" height="14" viewBox="0 0 22 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      {/* First tick (back) */}
+                      <path d="M1 7L5.5 11.5L13 3" stroke={seen ? "#53bdeb" : "#b0b8c1"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      {/* Second tick (front, offset right) */}
+                      <path d="M7 7L11.5 11.5L19 3" stroke={seen ? "#53bdeb" : "#b0b8c1"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <p className="text-[9px] text-center mt-0.5" style={{ color: seen ? "#53bdeb" : "#b0b8c1" }}>
+                      {seen ? "Seen" : "Sent"}
+                    </p>
+                  </div>
                 </div>
-                <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0 mt-1" />
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

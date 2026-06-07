@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
+import { useEffect } from "react";
 
 export default function Dashboard() {
   const { data: summary, isLoading } = useGetDashboardSummary();
@@ -13,6 +14,17 @@ export default function Dashboard() {
   const ignoreBooking = useIgnoreBooking();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  /* Auto-mark all visible bookings as seen when admin views dashboard */
+  useEffect(() => {
+    if (!summary?.recentBookings) return;
+    summary.recentBookings.forEach((booking) => {
+      if (!(booking as any).seenByAdmin) {
+        fetch(`/api/bookings/${booking.id}/seen`, { method: "PATCH", credentials: "include" })
+          .catch(() => {});
+      }
+    });
+  }, [summary?.recentBookings]);
 
   if (isLoading) {
     return <div>Loading dashboard...</div>;

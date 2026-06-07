@@ -60,6 +60,7 @@ router.get("/bookings", requireAuth, async (req: AuthRequest, res) => {
         customerAddress: b.customerAddress,
         selectedSize: b.selectedSize,
         ignored: b.ignored,
+        seenByAdmin: b.seenByAdmin,
         createdAt: b.createdAt.toISOString(),
       }))
     );
@@ -106,6 +107,26 @@ router.post("/bookings", async (req, res) => {
     });
   } catch (err) {
     req.log.error({ err }, "Create booking error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.patch("/bookings/:id/seen", requireAuth, async (req, res) => {
+  try {
+    const booking = await Booking.findByIdAndUpdate(
+      req.params.id,
+      { seenByAdmin: true },
+      { new: true }
+    ).populate("productId");
+
+    if (!booking) {
+      res.status(404).json({ error: "Booking not found" });
+      return;
+    }
+
+    res.json({ id: String(booking._id), seenByAdmin: booking.seenByAdmin });
+  } catch (err) {
+    req.log.error({ err }, "Mark booking seen error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
