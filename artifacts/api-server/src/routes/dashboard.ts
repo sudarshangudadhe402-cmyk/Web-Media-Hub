@@ -81,6 +81,7 @@ router.get("/dashboard/summary", requireAuth, async (req: AuthRequest, res) => {
         customerAddress: b.customerAddress,
         selectedSize: b.selectedSize,
         ignored: b.ignored,
+        tryOnImage: b.tryOnImage ?? null,
         createdAt: b.createdAt.toISOString(),
       };
     });

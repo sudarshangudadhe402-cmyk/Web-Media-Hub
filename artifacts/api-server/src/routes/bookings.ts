@@ -61,6 +61,7 @@ router.get("/bookings", requireAuth, async (req: AuthRequest, res) => {
         selectedSize: b.selectedSize,
         ignored: b.ignored,
         seenByAdmin: b.seenByAdmin,
+        tryOnImage: b.tryOnImage ?? null,
         createdAt: b.createdAt.toISOString(),
       }))
     );
@@ -80,12 +81,15 @@ router.post("/bookings", async (req, res) => {
       return;
     }
 
+    const { tryOnImage } = req.body;
+
     const booking = await Booking.create({
       productId,
       customerName,
       customerPhone,
       customerAddress,
       selectedSize,
+      tryOnImage: tryOnImage || undefined,
     });
 
     await Notification.create({

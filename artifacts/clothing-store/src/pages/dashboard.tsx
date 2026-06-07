@@ -23,6 +23,7 @@ interface AdminBooking {
   selectedSize: string;
   ignored: boolean;
   seenByAdmin: boolean;
+  tryOnImage: string | null;
   createdAt: string;
 }
 
@@ -95,8 +96,8 @@ export default function Dashboard() {
                 onClick={() => { setSelectedBooking(bk); setView("detail"); }}
                 className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 flex gap-3 cursor-pointer hover:border-primary/40 transition-colors active:bg-gray-50"
               >
-                {bk.product?.images?.[0] ? (
-                  <img src={bk.product.images[0]} className="w-16 h-20 object-cover rounded-lg flex-shrink-0" />
+                {(bk.tryOnImage || bk.product?.images?.[0]) ? (
+                  <img src={bk.tryOnImage || bk.product!.images[0]} className="w-16 h-20 object-cover rounded-lg flex-shrink-0" />
                 ) : (
                   <div className="w-16 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                     <ShoppingBag className="w-6 h-6 text-gray-300" />
@@ -150,14 +151,23 @@ export default function Dashboard() {
 
         {/* Product */}
         <Card className="overflow-hidden">
-          {p?.images?.[0] && (
+          {(selectedBooking.tryOnImage || p?.images?.[0]) && (
             <div className="h-52 bg-gray-100">
-              <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
+              <img
+                src={selectedBooking.tryOnImage || p!.images[0]}
+                alt={p?.name}
+                className="w-full h-full object-cover"
+              />
             </div>
           )}
           <CardContent className="pt-4 space-y-2">
             <h2 className="font-bold text-base leading-snug">{p?.name}</h2>
             <div className="flex flex-wrap gap-1.5">
+              {selectedBooking.tryOnImage && (
+                <span className="text-[11px] bg-violet-50 text-violet-700 border border-violet-200 px-2 py-0.5 rounded-full font-medium">
+                  Virtual Try-On
+                </span>
+              )}
               <span className="text-[11px] bg-violet-50 text-violet-700 border border-violet-200 px-2 py-0.5 rounded-full font-medium">
                 {p?.productType}
               </span>

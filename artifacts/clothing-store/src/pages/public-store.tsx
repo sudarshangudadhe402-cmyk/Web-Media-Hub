@@ -39,6 +39,7 @@ interface SavedBooking {
   id: string;
   productName: string;
   productImage: string;
+  tryOnImage?: string;
   customerName: string;
   city: string;
   whatsapp: string;
@@ -76,6 +77,7 @@ export default function PublicStore() {
   const [selectedSize, setSelectedSize] = useState("");
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [tryOnBookingImage, setTryOnBookingImage] = useState<string | null>(null);
 
   const [myBookings, setMyBookings] = useState<SavedBooking[]>(() => {
     try { return JSON.parse(localStorage.getItem(`wmh_bookings_${slug}`) || "[]"); }
@@ -189,6 +191,15 @@ export default function PublicStore() {
   }
 
   function openBooking() {
+    setTryOnBookingImage(null);
+    setBookingForm({ name: "", city: "", whatsapp: "" });
+    setSelectedSize(selectedProduct?.sizes[0] ?? "");
+    setBookingSuccess(false);
+    setView("booking");
+  }
+
+  function openTryOnBooking() {
+    setTryOnBookingImage(tryOnResult);
     setBookingForm({ name: "", city: "", whatsapp: "" });
     setSelectedSize(selectedProduct?.sizes[0] ?? "");
     setBookingSuccess(false);
@@ -284,6 +295,7 @@ export default function PublicStore() {
           customerPhone: bookingForm.whatsapp,
           customerAddress: bookingForm.city,
           selectedSize: selectedSize,
+          tryOnImage: tryOnBookingImage || undefined,
         }),
       });
       if (res.ok) {
@@ -292,6 +304,7 @@ export default function PublicStore() {
           id: bk.id,
           productName: selectedProduct.name,
           productImage: selectedProduct.images[0] ?? "",
+          tryOnImage: tryOnBookingImage ?? undefined,
           customerName: bookingForm.name,
           city: bookingForm.city,
           whatsapp: bookingForm.whatsapp,
@@ -360,8 +373,8 @@ export default function PublicStore() {
               const seen = seenStatus[bk.id] ?? false;
               return (
                 <div key={bk.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex gap-3">
-                  {bk.productImage ? (
-                    <img src={bk.productImage} className="w-16 h-20 object-cover rounded-lg flex-shrink-0" />
+                  {(bk.tryOnImage || bk.productImage) ? (
+                    <img src={bk.tryOnImage || bk.productImage} className="w-16 h-20 object-cover rounded-lg flex-shrink-0" />
                   ) : (
                     <div className="w-16 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                       <ShoppingBag className="w-6 h-6 text-gray-300" />
@@ -409,13 +422,17 @@ export default function PublicStore() {
           <button onClick={goBack} className="p-1.5 rounded-full hover:bg-gray-100">
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <span className="font-bold text-gray-900">Book Product</span>
+          <span className="font-bold text-gray-900">
+            {tryOnBookingImage ? "Book This Look" : "Book Product"}
+          </span>
         </div>
 
         <div className="p-4 flex-1 overflow-y-auto">
-          {/* Product preview */}
+          {/* Product / Try-On preview */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex gap-3 mb-6">
-            {selectedProduct.images[0] ? (
+            {tryOnBookingImage ? (
+              <img src={tryOnBookingImage} className="w-16 h-20 object-cover rounded-lg flex-shrink-0" />
+            ) : selectedProduct.images[0] ? (
               <img src={selectedProduct.images[0]} className="w-16 h-20 object-cover rounded-lg flex-shrink-0" />
             ) : (
               <div className="w-16 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -424,6 +441,11 @@ export default function PublicStore() {
             )}
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-gray-900 text-sm line-clamp-2">{selectedProduct.name}</p>
+              {tryOnBookingImage && (
+                <span className="inline-block text-[10px] bg-violet-50 text-violet-600 border border-violet-200 px-2 py-0.5 rounded-full font-medium mt-0.5">
+                  Virtual Try-On
+                </span>
+              )}
               <p className="text-base font-bold text-gray-900 mt-1">₹{selectedProduct.discountPrice.toLocaleString()}</p>
               {discount(selectedProduct) > 0 && (
                 <p className="text-xs text-gray-400 line-through">₹{selectedProduct.actualPrice.toLocaleString()}</p>
@@ -656,10 +678,19 @@ export default function PublicStore() {
                   </button>
                   <button
                     onClick={shareTryOnImage}
-                    className="flex-1 flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors"
+                    className="flex-1 flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors"
                   >
                     <Share2 className="w-4 h-4" />
                     Share
+                  </button>
+                </div>
+                <div className="px-4 w-full mt-2">
+                  <button
+                    onClick={openTryOnBooking}
+                    className="w-full flex items-center justify-center gap-2 bg-rose-500 hover:bg-rose-600 text-white font-bold py-3 rounded-xl text-sm transition-colors"
+                  >
+                    <ShoppingCart className="w-4 h-4" />
+                    Book This Look
                   </button>
                 </div>
               </div>

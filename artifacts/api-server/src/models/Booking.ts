@@ -8,6 +8,7 @@ export interface IBooking extends Document {
   selectedSize: string;
   ignored: boolean;
   seenByAdmin: boolean;
+  tryOnImage?: string;
   createdAt: Date;
 }
 
@@ -20,6 +21,7 @@ const BookingSchema = new Schema<IBooking>(
     selectedSize: { type: String, required: true },
     ignored: { type: Boolean, default: false },
     seenByAdmin: { type: Boolean, default: false },
+    tryOnImage: { type: String },
   },
   { timestamps: true }
 );
