@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   MapPin, Clock, CalendarDays, MessageCircle, Heart, ShoppingBag,
   ChevronLeft, Search, X, Camera, Loader2, BookMarked, RefreshCw,
-  CheckCircle2, Phone, TrendingDown,
+  CheckCircle2, Phone, TrendingDown, ShoppingCart,
 } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 
@@ -938,10 +938,10 @@ export default function PublicStore() {
         </div>
         <button
           onClick={() => setView("mybookings")}
-          className="relative flex-shrink-0 flex flex-col items-center gap-0.5 bg-rose-50 text-rose-600 px-3 py-2 rounded-xl text-[11px] font-bold border border-rose-100"
+          className="relative flex-shrink-0 flex flex-col items-center gap-0.5 bg-gray-50 text-gray-500 px-3 py-2 rounded-xl text-[11px] font-bold border border-gray-200"
         >
-          <BookMarked className="w-4 h-4" />
-          <span>My Bookings</span>
+          <ShoppingCart className="w-5 h-5 text-gray-500" />
+          <span>Cart</span>
           {myBookings.length > 0 && (
             <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
               {myBookings.length}
