@@ -426,20 +426,57 @@ export default function PublicStore() {
                 <label className="block text-sm font-semibold text-gray-700 mb-1">WhatsApp Number *</label>
                 <input
                   type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
                   value={bookingForm.whatsapp}
-                  onChange={(e) => setBookingForm((f) => ({ ...f, whatsapp: e.target.value }))}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
+                    setBookingForm((f) => ({ ...f, whatsapp: digits }));
+                  }}
                   placeholder="10-digit WhatsApp number"
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 bg-white"
+                  className={`w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 bg-white ${
+                    bookingForm.whatsapp.length > 0 && (() => {
+                      const w = bookingForm.whatsapp;
+                      if (w.length < 10) return true;
+                      if (/^(\d)\1{9}$/.test(w)) return true;
+                      return false;
+                    })()
+                      ? "border-red-400 focus:ring-red-300"
+                      : "border-gray-200 focus:ring-rose-300"
+                  }`}
                 />
+                {bookingForm.whatsapp.length > 0 && (() => {
+                  const w = bookingForm.whatsapp;
+                  if (w.length < 10) return (
+                    <p className="text-[11px] text-red-500 mt-1">
+                      {10 - w.length} more digit{10 - w.length !== 1 ? "s" : ""} needed
+                    </p>
+                  );
+                  if (/^(\d)\1{9}$/.test(w)) return (
+                    <p className="text-[11px] text-red-500 mt-1">
+                      Repeated number not allowed (e.g. {w[0].repeat(10)})
+                    </p>
+                  );
+                  return (
+                    <p className="text-[11px] text-green-600 mt-1">✓ Valid number</p>
+                  );
+                })()}
               </div>
-              <button
-                onClick={submitBooking}
-                disabled={bookingLoading || !bookingForm.name || !bookingForm.whatsapp}
-                className="w-full bg-rose-500 hover:bg-rose-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2"
-              >
-                {bookingLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                Book Product
-              </button>
+              {(() => {
+                const w = bookingForm.whatsapp;
+                const isValidPhone = w.length === 10 && !/^(\d)\1{9}$/.test(w);
+                const canBook = !bookingLoading && !!bookingForm.name && isValidPhone;
+                return (
+                  <button
+                    onClick={submitBooking}
+                    disabled={!canBook}
+                    className="w-full bg-rose-500 hover:bg-rose-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2"
+                  >
+                    {bookingLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                    Book Product
+                  </button>
+                );
+              })()}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-12 text-center">
