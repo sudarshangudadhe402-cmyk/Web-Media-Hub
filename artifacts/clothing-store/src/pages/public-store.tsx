@@ -841,21 +841,28 @@ export default function PublicStore() {
         </div>
 
         {/* Fixed bottom bar */}
-        <div className="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-100 flex gap-0 shadow-lg">
-          <button
-            onClick={openTryOn}
-            className="flex-1 py-3.5 flex flex-col items-center gap-0.5 bg-violet-600 text-white font-bold text-xs hover:bg-violet-700 transition-colors"
-          >
-            <Camera className="w-5 h-5" />
-            Virtual Try-On
-          </button>
-          <button
-            onClick={openBooking}
-            className="flex-1 py-3.5 flex flex-col items-center gap-0.5 bg-[#ff3e6c] text-white font-bold text-xs hover:bg-rose-600 transition-colors"
-          >
-            <BookMarked className="w-5 h-5" />
-            Book Product
-          </button>
+        <div className="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-100 shadow-xl">
+          <div className="flex gap-3 px-4 py-3">
+            {/* Left — outlined white button */}
+            <button
+              onClick={openTryOn}
+              className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full border-2 border-gray-300 bg-white text-gray-800 font-bold text-sm active:bg-gray-50 transition-colors"
+            >
+              <Camera className="w-4 h-4" />
+              Virtual Try-On
+            </button>
+            {/* Right — yellow filled button with price */}
+            <button
+              onClick={openBooking}
+              className="flex-1 flex items-center justify-center gap-1.5 py-3.5 rounded-full bg-[#FFD000] text-gray-900 font-extrabold text-sm active:bg-yellow-400 transition-colors shadow-sm"
+            >
+              Book at ₹{selectedProduct.discountPrice.toLocaleString()}
+            </button>
+          </div>
+          {/* iOS-style home indicator */}
+          <div className="flex justify-center pb-2">
+            <div className="w-28 h-1 bg-gray-300 rounded-full" />
+          </div>
         </div>
       </div>
     );
