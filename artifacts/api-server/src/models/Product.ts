@@ -12,6 +12,7 @@ export interface IProduct extends Document {
   age?: string;
   gender?: string;
   likeCount: number;
+  tryOnLikeCount: number;
   storeId?: string;
   createdAt: Date;
 }
@@ -33,6 +34,7 @@ const ProductSchema = new Schema<IProduct>(
     age: { type: String },
     gender: { type: String },
     likeCount: { type: Number, default: 0 },
+    tryOnLikeCount: { type: Number, default: 0 },
     storeId: { type: String },
   },
   { timestamps: true }

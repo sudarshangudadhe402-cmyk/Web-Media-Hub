@@ -179,28 +179,4 @@ router.delete("/products/:id", requireAuth, async (req: AuthRequest, res) => {
   }
 });
 
-router.post("/products/:id/like", async (req, res) => {
-  try {
-    const product = await Product.findById(req.params.id);
-    if (!product) {
-      res.status(404).json({ error: "Product not found" });
-      return;
-    }
-    product.likeCount += 1;
-    await product.save();
-
-    await Notification.create({
-      type: "like",
-      message: `Someone liked "${product.name}"`,
-      relatedId: String(product._id),
-      storeId: product.storeId ?? undefined,
-    });
-
-    res.json({ likeCount: product.likeCount });
-  } catch (err) {
-    req.log.error({ err }, "Like product error");
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
 export default router;

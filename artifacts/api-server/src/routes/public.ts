@@ -37,6 +37,7 @@ router.get("/public/store/:slug", async (req, res) => {
         age: p.age ?? null,
         gender: p.gender ?? null,
         likeCount: p.likeCount,
+        tryOnLikeCount: p.tryOnLikeCount ?? 0,
       })),
     });
   } catch (err) {
@@ -58,7 +59,8 @@ router.get("/public/booking-status/:id", async (req, res) => {
   }
 });
 
-router.post("/public/products/:id/tryon", async (req, res) => {
+/* Public like — called from storefront, no auth required */
+router.post("/public/products/:id/like", async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) {
@@ -69,10 +71,34 @@ router.post("/public/products/:id/tryon", async (req, res) => {
     await product.save();
     await Notification.create({
       type: "like",
+      message: `Someone liked "${product.name}"`,
+      relatedId: String(product._id),
+      storeId: product.storeId ?? undefined,
+    });
+    res.json({ likeCount: product.likeCount });
+  } catch (err) {
+    req.log.error({ err }, "Public like error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* Virtual Try-On — increments tryOnLikeCount separately */
+router.post("/public/products/:id/tryon", async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+    product.tryOnLikeCount = (product.tryOnLikeCount ?? 0) + 1;
+    await product.save();
+    await Notification.create({
+      type: "like",
       message: `A customer tried "${product.name}" virtually (Virtual Try-On)`,
       relatedId: String(product._id),
+      storeId: product.storeId ?? undefined,
     });
-    res.json({ success: true, likeCount: product.likeCount });
+    res.json({ success: true, tryOnLikeCount: product.tryOnLikeCount });
   } catch (err) {
     req.log.error({ err }, "Try-on notification error");
     res.status(500).json({ error: "Internal server error" });

@@ -20,6 +20,7 @@ interface PublicProduct {
   age: string | null;
   gender: string | null;
   likeCount: number;
+  tryOnLikeCount: number;
 }
 
 interface PublicStoreData {
@@ -66,8 +67,16 @@ export default function PublicStore() {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
 
-  const [likedProducts, setLikedProducts] = useState<Set<string>>(new Set());
+  const [likedProducts, setLikedProducts] = useState<Set<string>>(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem(`wmh_likes_${slug}`) || "{}") as Record<string, number>;
+      const now = Date.now();
+      const valid = new Set(Object.entries(raw).filter(([, ts]) => now - ts < 86400000).map(([id]) => id));
+      return valid;
+    } catch { return new Set(); }
+  });
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
+  const [tryOnLikeCounts, setTryOnLikeCounts] = useState<Record<string, number>>({});
 
   const [customerPhoto, setCustomerPhoto] = useState<string | null>(null);
   const [tryOnResult, setTryOnResult] = useState<string | null>(null);
@@ -101,10 +110,31 @@ export default function PublicStore() {
   useEffect(() => {
     if (data?.products) {
       const counts: Record<string, number> = {};
-      data.products.forEach((p) => { counts[p.id] = p.likeCount; });
+      const tryCounts: Record<string, number> = {};
+      data.products.forEach((p) => {
+        counts[p.id] = p.likeCount;
+        tryCounts[p.id] = p.tryOnLikeCount ?? 0;
+      });
       setLikeCounts(counts);
+      setTryOnLikeCounts(tryCounts);
     }
   }, [data]);
+
+  function canActOnProduct(storeKey: string, productId: string): boolean {
+    try {
+      const raw = JSON.parse(localStorage.getItem(storeKey) || "{}") as Record<string, number>;
+      const ts = raw[productId];
+      return !ts || Date.now() - ts >= 86400000;
+    } catch { return true; }
+  }
+
+  function recordActionOnProduct(storeKey: string, productId: string) {
+    try {
+      const raw = JSON.parse(localStorage.getItem(storeKey) || "{}") as Record<string, number>;
+      raw[productId] = Date.now();
+      localStorage.setItem(storeKey, JSON.stringify(raw));
+    } catch {}
+  }
 
   /* Fetch seen-by-admin status for each booking when My Bookings opens */
   useEffect(() => {
@@ -162,13 +192,15 @@ export default function PublicStore() {
 
   async function handleLike(productId: string, e?: React.MouseEvent) {
     e?.stopPropagation();
-    if (likedProducts.has(productId)) return;
+    const likeKey = `wmh_likes_${slug}`;
+    if (likedProducts.has(productId) || !canActOnProduct(likeKey, productId)) return;
     try {
-      const res = await fetch(`/api/products/${productId}/like`, { method: "POST" });
+      const res = await fetch(`/api/public/products/${productId}/like`, { method: "POST" });
       if (res.ok) {
         const d = await res.json();
         setLikeCounts((prev) => ({ ...prev, [productId]: d.likeCount }));
         setLikedProducts((prev) => new Set([...prev, productId]));
+        recordActionOnProduct(likeKey, productId);
       }
     } catch {}
   }
@@ -248,7 +280,15 @@ export default function PublicStore() {
     setTryOnLoading(true);
     setTryOnResult(null);
     try {
-      await fetch(`/api/public/products/${selectedProduct.id}/tryon`, { method: "POST" });
+      const tryOnKey = `wmh_tryon_${slug}`;
+      if (canActOnProduct(tryOnKey, selectedProduct.id)) {
+        const res = await fetch(`/api/public/products/${selectedProduct.id}/tryon`, { method: "POST" });
+        if (res.ok) {
+          const d = await res.json();
+          setTryOnLikeCounts((prev) => ({ ...prev, [selectedProduct.id]: d.tryOnLikeCount }));
+          recordActionOnProduct(tryOnKey, selectedProduct.id);
+        }
+      }
       await new Promise<void>((resolve) => {
         const canvas = document.createElement("canvas");
         canvas.width = 400;
@@ -850,10 +890,18 @@ export default function PublicStore() {
               )}
             </div>
 
-            {/* Likes */}
-            <div className="flex items-center gap-1.5 text-sm text-gray-400 mb-1">
-              <Heart className="w-4 h-4 text-rose-400 fill-current" />
-              <span>{(likeCounts[selectedProduct.id] ?? selectedProduct.likeCount).toLocaleString("en-IN")} people liked this</span>
+            {/* Likes — two separate counts */}
+            <div className="flex flex-wrap gap-x-4 gap-y-1 mb-1">
+              <div className="flex items-center gap-1.5 text-sm text-gray-400">
+                <Heart className="w-4 h-4 text-rose-400 fill-current" />
+                <span>{(likeCounts[selectedProduct.id] ?? selectedProduct.likeCount).toLocaleString("en-IN")} liked</span>
+              </div>
+              {(tryOnLikeCounts[selectedProduct.id] ?? selectedProduct.tryOnLikeCount) > 0 && (
+                <div className="flex items-center gap-1.5 text-sm text-violet-400">
+                  <span>🪞</span>
+                  <span>{(tryOnLikeCounts[selectedProduct.id] ?? selectedProduct.tryOnLikeCount).toLocaleString("en-IN")} tried virtually</span>
+                </div>
+              )}
             </div>
           </div>
 
