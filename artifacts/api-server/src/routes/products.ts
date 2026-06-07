@@ -193,6 +193,7 @@ router.post("/products/:id/like", async (req, res) => {
       type: "like",
       message: `Someone liked "${product.name}"`,
       relatedId: String(product._id),
+      storeId: product.storeId ?? undefined,
     });
 
     res.json({ likeCount: product.likeCount });

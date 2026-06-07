@@ -38,7 +38,10 @@ export default function Dashboard() {
   const { data: bookings, isLoading: bookingsLoading } = useQuery<AdminBooking[]>({
     queryKey: ["admin-bookings"],
     queryFn: async () => {
-      const res = await fetch("/api/bookings", { credentials: "include" });
+      const token = localStorage.getItem("wmh_token");
+      const res = await fetch("/api/bookings", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
@@ -47,7 +50,11 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (view !== "detail" || !selectedBooking) return;
-    fetch(`/api/bookings/${selectedBooking.id}/seen`, { method: "PATCH", credentials: "include" })
+    const token = localStorage.getItem("wmh_token");
+    fetch(`/api/bookings/${selectedBooking.id}/seen`, {
+      method: "PATCH",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
       .then(() => {
         queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
         queryClient.invalidateQueries({ queryKey: ["admin-bookings"] });

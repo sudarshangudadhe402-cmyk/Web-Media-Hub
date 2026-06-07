@@ -1,13 +1,22 @@
 import { Router } from "express";
 import { Notification } from "../models/Notification";
-import { requireAuth } from "../middlewares/auth";
+import { Store } from "../models/Store";
+import { AuthRequest, requireAuth } from "../middlewares/auth";
 import { requireDb } from "../middlewares/dbCheck";
 
 const router = Router();
 
-router.get("/notifications", requireAuth, async (req, res) => {
+async function getMyStoreId(userId: string): Promise<string | null> {
+  const store = await Store.findOne({ ownerId: userId }).select("_id").lean();
+  return store ? String(store._id) : null;
+}
+
+router.get("/notifications", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const notifications = await Notification.find().sort({ createdAt: -1 }).limit(50);
+    const userId = String(req.user!._id);
+    const storeId = await getMyStoreId(userId);
+    const filter = storeId ? { storeId } : { storeId: "__none__" };
+    const notifications = await Notification.find(filter).sort({ createdAt: -1 }).limit(50);
     res.json(
       notifications.map((n) => ({
         id: String(n._id),
@@ -24,9 +33,12 @@ router.get("/notifications", requireAuth, async (req, res) => {
   }
 });
 
-router.patch("/notifications/mark-read", requireAuth, async (req, res) => {
+router.patch("/notifications/mark-read", requireAuth, async (req: AuthRequest, res) => {
   try {
-    await Notification.updateMany({ read: false }, { read: true });
+    const userId = String(req.user!._id);
+    const storeId = await getMyStoreId(userId);
+    const filter = storeId ? { read: false, storeId } : { read: false, storeId: "__none__" };
+    await Notification.updateMany(filter, { read: true });
     res.json({ success: true, message: "All notifications marked as read" });
   } catch (err) {
     req.log.error({ err }, "Mark notifications read error");

@@ -30,7 +30,7 @@ router.get("/dashboard/summary", requireAuth, async (req: AuthRequest, res) => {
       Product.countDocuments({ ...storeFilter, productType: "Bottom" }),
       Product.countDocuments({ ...storeFilter, productType: "Full Outfit" }),
       Product.countDocuments({ ...storeFilter, productType: "Functional" }),
-      Notification.countDocuments({ read: false }),
+      storeId ? Notification.countDocuments({ read: false, storeId }) : Promise.resolve(0),
       Product.countDocuments({ ...storeFilter, functionCategory: { $exists: true, $nin: [null, ""] } }),
     ]);
 

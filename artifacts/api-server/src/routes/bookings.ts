@@ -92,6 +92,7 @@ router.post("/bookings", async (req, res) => {
       type: "booking",
       message: `New booking for "${product.name}" by ${customerName}`,
       relatedId: String(booking._id),
+      storeId: product.storeId ?? undefined,
     });
 
     res.status(201).json({

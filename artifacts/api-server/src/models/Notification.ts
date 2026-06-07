@@ -5,6 +5,7 @@ export interface INotification extends Document {
   message: string;
   read: boolean;
   relatedId?: string;
+  storeId?: string;
   createdAt: Date;
 }
 
@@ -18,6 +19,7 @@ const NotificationSchema = new Schema<INotification>(
     message: { type: String, required: true },
     read: { type: Boolean, default: false },
     relatedId: { type: String },
+    storeId: { type: String },
   },
   { timestamps: true }
 );
