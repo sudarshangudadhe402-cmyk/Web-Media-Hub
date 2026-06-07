@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   MapPin, Clock, CalendarDays, MessageCircle, Heart, ShoppingBag,
   ChevronLeft, Search, X, Camera, Loader2, BookMarked, RefreshCw,
-  CheckCircle2, Phone, TrendingDown, ShoppingCart,
+  CheckCircle2, Phone, TrendingDown, ShoppingCart, Download, Share2,
 } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 
@@ -204,6 +204,32 @@ export default function PublicStore() {
       setTryOnResult(null);
     };
     reader.readAsDataURL(file);
+  }
+
+  function saveTryOnImage() {
+    if (!tryOnResult) return;
+    const a = document.createElement("a");
+    a.href = tryOnResult;
+    a.download = "virtual-try-on.jpg";
+    a.click();
+  }
+
+  async function shareTryOnImage() {
+    if (!tryOnResult) return;
+    try {
+      const res = await fetch(tryOnResult);
+      const blob = await res.blob();
+      const file = new File([blob], "virtual-try-on.jpg", { type: "image/jpeg" });
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: "Virtual Try-On",
+          text: `Check out my virtual try-on for ${selectedProduct?.name}!`,
+        });
+      } else {
+        saveTryOnImage();
+      }
+    } catch {}
   }
 
   async function generateTryOn() {
@@ -618,7 +644,25 @@ export default function PublicStore() {
               </div>
             )}
             {!tryOnLoading && tryOnResult && (
-              <img src={tryOnResult} className="w-full h-full object-contain max-h-[460px]" />
+              <div className="flex flex-col items-center w-full">
+                <img src={tryOnResult} className="w-full object-contain max-h-[420px]" />
+                <div className="flex gap-3 mt-3 px-4 w-full">
+                  <button
+                    onClick={saveTryOnImage}
+                    className="flex-1 flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors"
+                  >
+                    <Download className="w-4 h-4" />
+                    Save
+                  </button>
+                  <button
+                    onClick={shareTryOnImage}
+                    className="flex-1 flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    Share
+                  </button>
+                </div>
+              </div>
             )}
             {!tryOnLoading && !tryOnResult && (
               <div className="flex flex-col items-center gap-3 px-6 text-center">
