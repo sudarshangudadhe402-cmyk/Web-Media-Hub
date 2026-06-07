@@ -92,9 +92,13 @@ router.post("/bookings", async (req, res) => {
       tryOnImage: tryOnImage || undefined,
     });
 
+    const notifMessage = tryOnImage
+      ? `🪞 Virtual Try-On booking for "${product.name}" by ${customerName}`
+      : `New booking for "${product.name}" by ${customerName}`;
+
     await Notification.create({
       type: "booking",
-      message: `New booking for "${product.name}" by ${customerName}`,
+      message: notifMessage,
       relatedId: String(booking._id),
       storeId: product.storeId ?? undefined,
     });

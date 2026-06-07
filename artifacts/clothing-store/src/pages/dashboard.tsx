@@ -163,11 +163,6 @@ export default function Dashboard() {
           <CardContent className="pt-4 space-y-2">
             <h2 className="font-bold text-base leading-snug">{p?.name}</h2>
             <div className="flex flex-wrap gap-1.5">
-              {selectedBooking.tryOnImage && (
-                <span className="text-[11px] bg-violet-50 text-violet-700 border border-violet-200 px-2 py-0.5 rounded-full font-medium">
-                  Virtual Try-On
-                </span>
-              )}
               <span className="text-[11px] bg-violet-50 text-violet-700 border border-violet-200 px-2 py-0.5 rounded-full font-medium">
                 {p?.productType}
               </span>
@@ -194,7 +189,14 @@ export default function Dashboard() {
         {/* Customer */}
         <Card>
           <CardContent className="pt-4 space-y-3">
-            <h3 className="font-semibold text-gray-800 text-sm">Customer Details</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-gray-800 text-sm">Customer Details</h3>
+              {selectedBooking.tryOnImage && (
+                <span className="text-[11px] bg-red-50 text-red-600 border border-red-300 px-2 py-0.5 rounded-full font-bold">
+                  🪞 Virtual Try-On
+                </span>
+              )}
+            </div>
             <div className="space-y-2.5">
               <div className="flex items-center gap-3">
                 <span className="text-xs text-gray-400 w-16 shrink-0">Name</span>
