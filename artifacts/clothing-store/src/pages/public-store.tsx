@@ -557,36 +557,33 @@ export default function PublicStore() {
                   <ShoppingBag className="w-10 h-10 text-white/20" />
                 </div>
               )}
-              <button
-                onClick={() => {
-                  const idx = (selectedProduct.images.indexOf(selectedProduct.images[imgIndex]) + 1) % selectedProduct.images.length;
-                  setImgIndex(idx);
-                }}
-                className="absolute bottom-2 right-2 text-[10px] bg-white/20 hover:bg-white/30 text-white px-2 py-1 rounded-full flex items-center gap-1"
-              >
-                <RefreshCw className="w-3 h-3" /> Change Clothes
-              </button>
             </div>
 
             {/* Customer photo */}
-            <div className="flex-1 relative bg-[#111] border-b border-white/10 min-h-[180px]">
+            <div
+              className="flex-1 relative bg-[#111] border-b border-white/10 min-h-[180px]"
+              onClick={!customerPhoto ? () => photoInputRef.current?.click() : undefined}
+              style={!customerPhoto ? { cursor: "pointer" } : undefined}
+            >
               <div className="absolute top-2 left-2 text-[10px] bg-white/20 text-white px-2 py-0.5 rounded-full z-10">
                 Your Photo
               </div>
               {customerPhoto ? (
-                <img src={customerPhoto} className="w-full h-full object-contain" style={{ maxHeight: "220px" }} />
+                <>
+                  <img src={customerPhoto} className="w-full h-full object-contain" style={{ maxHeight: "220px" }} />
+                  <button
+                    onClick={() => photoInputRef.current?.click()}
+                    className="absolute bottom-2 right-2 text-[10px] bg-white/20 hover:bg-white/30 text-white px-2 py-1 rounded-full flex items-center gap-1"
+                  >
+                    <Camera className="w-3 h-3" /> Change Photo
+                  </button>
+                </>
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center gap-2 min-h-[160px]">
                   <Camera className="w-8 h-8 text-white/30" />
-                  <p className="text-xs text-white/40">Upload your photo</p>
+                  <p className="text-xs text-white/40">Tap anywhere to upload your photo</p>
                 </div>
               )}
-              <button
-                onClick={() => photoInputRef.current?.click()}
-                className="absolute bottom-2 right-2 text-[10px] bg-white/20 hover:bg-white/30 text-white px-2 py-1 rounded-full flex items-center gap-1"
-              >
-                <Camera className="w-3 h-3" /> Change Photo
-              </button>
               <input
                 ref={photoInputRef}
                 type="file"
@@ -614,9 +611,6 @@ export default function PublicStore() {
 
           {/* Right panel — AI Result */}
           <div className="flex-1 bg-[#0d0d0d] flex flex-col items-center justify-center min-h-[300px]">
-            <div className="absolute top-16 right-2 text-[10px] bg-white/20 text-white px-2 py-0.5 rounded-full">
-              AI Result
-            </div>
             {tryOnLoading && (
               <div className="flex flex-col items-center gap-3">
                 <Loader2 className="w-10 h-10 text-violet-500 animate-spin" />
