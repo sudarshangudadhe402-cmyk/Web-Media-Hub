@@ -38,9 +38,12 @@ router.get("/dashboard/summary", requireAuth, async (req: AuthRequest, res) => {
       ? (await Product.find({ storeId }).select("_id").lean()).map((p) => String(p._id))
       : [];
 
-    const [activeBookings, recentBookingsDocs] = await Promise.all([
+    const [activeBookings, unseenBookings, recentBookingsDocs] = await Promise.all([
       myProductIds.length > 0
         ? Booking.countDocuments({ ignored: false, productId: { $in: myProductIds } })
+        : Promise.resolve(0),
+      myProductIds.length > 0
+        ? Booking.countDocuments({ ignored: false, seenByAdmin: false, productId: { $in: myProductIds } })
         : Promise.resolve(0),
       myProductIds.length > 0
         ? Booking.find({ ignored: false, productId: { $in: myProductIds } })
@@ -91,6 +94,7 @@ router.get("/dashboard/summary", requireAuth, async (req: AuthRequest, res) => {
         Functional: functionalTotal,
       },
       activeBookings,
+      unseenBookings,
       unreadNotifications,
       recentBookings,
     });
