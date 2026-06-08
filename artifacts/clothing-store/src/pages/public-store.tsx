@@ -766,7 +766,7 @@ export default function PublicStore() {
   if (view === "product" && selectedProduct) {
     const pDiscount = discount(selectedProduct);
     const productWaLink = waLink
-      ? `${waLink}?text=${encodeURIComponent(`Hi! I'm interested in "${selectedProduct.name}" (₹${selectedProduct.discountPrice}). Can you help me?`)}`
+      ? `${waLink}?text=${encodeURIComponent(`Hello team : ${data.name}\n\nI'm interested in your product\n\n📦Product: ${selectedProduct.name}\n💰Price: ₹${selectedProduct.discountPrice.toLocaleString()}\n🏷️Category: ${selectedProduct.productType}\n\nI am interested in purchasing this! Can you reply to confirm my order. ☺️`)}`
       : null;
     const relatedProducts = data.products.filter(
       (p) =>
