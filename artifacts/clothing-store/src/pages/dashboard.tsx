@@ -1,5 +1,6 @@
 import { useGetDashboardSummary, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Package, Tags, CalendarCheck, MessageCircle, ChevronLeft, ShoppingBag } from "lucide-react";
 import { useLocation } from "wouter";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -63,7 +64,26 @@ export default function Dashboard() {
       .catch(() => {});
   }, [view, selectedBooking?.id]);
 
-  if (isLoading) return <div className="p-6">Loading dashboard...</div>;
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-9 w-40" />
+        <div className="grid gap-4 md:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-4 w-4 rounded" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
   if (!summary) return null;
 
   const unseenCount = (summary as any).unseenBookings ?? 0;
@@ -80,7 +100,19 @@ export default function Dashboard() {
         </div>
 
         {bookingsLoading ? (
-          <div className="text-center py-12 text-muted-foreground">Loading...</div>
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 flex gap-3">
+                <Skeleton className="w-16 h-20 rounded-lg flex-shrink-0" />
+                <div className="flex-1 space-y-2 py-1">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-3 w-1/2" />
+                  <Skeleton className="h-3 w-1/3" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : !bookings?.length ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
