@@ -1075,12 +1075,6 @@ export default function PublicStore() {
                   <p className="text-[11px] text-white/80 leading-snug line-clamp-2">{data.address}</p>
                 </div>
               )}
-              {data.openingTime && (
-                <div className="flex items-center gap-1.5">
-                  <Clock className="w-3 h-3 text-white/70 shrink-0" />
-                  <p className="text-[11px] text-white/80 leading-tight">{data.openingTime}</p>
-                </div>
-              )}
               {data.openDays && (
                 <div className="flex items-center gap-1 flex-wrap">
                   <CalendarDays className="w-3 h-3 text-white/70 shrink-0" />
@@ -1094,6 +1088,12 @@ export default function PublicStore() {
                       >{abbr}</span>
                     );
                   })}
+                </div>
+              )}
+              {data.openingTime && (
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-3 h-3 text-white/70 shrink-0" />
+                  <p className="text-[11px] text-white/80 leading-tight">{data.openingTime}</p>
                 </div>
               )}
             </div>
