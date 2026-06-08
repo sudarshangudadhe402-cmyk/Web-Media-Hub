@@ -16,7 +16,7 @@ import {
   useMyStoreRequests,
   getMyStoreRequestsQueryKey,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import {
   Video,
   PlusCircle,
@@ -56,6 +56,19 @@ export default function AiVideo() {
   const approved = (myRequests ?? []).filter((r) => r.status === "approved");
   const rejected = (myRequests ?? []).filter((r) => r.status === "rejected");
   const rewardCoins = approved.length * 2000;
+
+  const { data: globalLinkData } = useQuery({
+    queryKey: ["settings", "global-link"],
+    queryFn: async () => {
+      const token = localStorage.getItem("wmh_token");
+      const res = await fetch("/api/settings/global-link", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) return { globalLink: null };
+      return res.json() as Promise<{ globalLink: string | null }>;
+    },
+  });
+  const globalLink = globalLinkData?.globalLink ?? null;
 
   function handleFormChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -136,7 +149,7 @@ export default function AiVideo() {
           <PlusCircle className="w-6 h-6 shrink-0" />
           <div className="text-left">
             <p className="font-semibold text-lg leading-tight">Add My Friend's Store</p>
-            <p className="text-green-100 text-sm">Refer a store and earn 20 AI videos on approval</p>
+            <p className="text-green-100 text-sm">Refer a store and earn 2000 coins on approval</p>
           </div>
         </div>
         <Store className="w-8 h-8 text-green-200 shrink-0" />
@@ -167,6 +180,30 @@ export default function AiVideo() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Global Link Row */}
+      {globalLink && (
+        <div className="flex items-center gap-3 px-4 py-3.5 bg-primary/5 border border-primary/20 rounded-xl">
+          <LinkIcon className="w-4 h-4 text-primary shrink-0" />
+          <a
+            href={globalLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 text-sm text-primary font-medium underline underline-offset-2 truncate"
+          >
+            {globalLink}
+          </a>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(globalLink);
+              toast({ title: "Link copied!" });
+            }}
+            className="p-1.5 rounded-lg hover:bg-primary/10 transition-colors shrink-0"
+          >
+            <Copy className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </div>
+      )}
 
       {/* Friends Store Section */}
       <div>
@@ -207,7 +244,7 @@ export default function AiVideo() {
                 <>
                   <CheckCircle className="w-12 h-12 mx-auto text-green-400/40" />
                   <p className="text-muted-foreground font-medium">No approved stores yet</p>
-                  <p className="text-sm text-muted-foreground/70">Once your referral is approved you'll earn 20 videos</p>
+                  <p className="text-sm text-muted-foreground/70">Once your referral is approved you'll earn 2000 coins</p>
                 </>
               )}
               {activeTab === "rejected" && (

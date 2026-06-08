@@ -757,7 +757,7 @@ export default function Products() {
                     <div
                       key={i}
                       className="shrink-0 w-full bg-white"
-                      style={{ scrollSnapAlign: "start", aspectRatio: "3/4", maxHeight: "48vh" }}
+                      style={{ scrollSnapAlign: "start", scrollSnapStop: "always", aspectRatio: "3/4", maxHeight: "48vh" }}
                     >
                       {img ? (
                         <img

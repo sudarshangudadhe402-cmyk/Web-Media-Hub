@@ -813,7 +813,7 @@ export default function PublicStore() {
                 <div
                   key={i}
                   className="shrink-0 w-full bg-white"
-                  style={{ scrollSnapAlign: "start", aspectRatio: "3/4", maxHeight: "48vh" }}
+                  style={{ scrollSnapAlign: "start", scrollSnapStop: "always", aspectRatio: "3/4", maxHeight: "48vh" }}
                 >
                   {img ? (
                     <img src={img} alt={selectedProduct.name} className="w-full h-full object-contain" draggable={false} />
