@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   MapPin, Clock, CalendarDays, MessageCircle, Heart, ShoppingBag,
   ChevronLeft, Search, X, Camera, Loader2, BookMarked, RefreshCw,
-  CheckCircle2, Phone, TrendingDown, ShoppingCart, Download, Share2,
+  CheckCircle2, Phone, TrendingDown, ShoppingCart, Download, Share2, SlidersHorizontal,
 } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 
@@ -66,7 +66,8 @@ export default function PublicStore() {
 
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
-  const [sortBy, setSortBy] = useState<"newest" | "most-liked" | "most-tried">("newest");
+  const [sortBy, setSortBy] = useState<"newest" | "most-liked" | "most-tried" | "trending">("newest");
+  const [showFilterSheet, setShowFilterSheet] = useState(false);
 
   const [likedProducts, setLikedProducts] = useState<Set<string>>(() => {
     try {
@@ -189,9 +190,20 @@ export default function PublicStore() {
       }
     }
     if (sortBy === "most-liked") {
+      list = list.filter((p) => (likeCounts[p.id] ?? p.likeCount) > 0);
       list.sort((a, b) => (likeCounts[b.id] ?? b.likeCount) - (likeCounts[a.id] ?? a.likeCount));
     } else if (sortBy === "most-tried") {
+      list = list.filter((p) => (tryOnLikeCounts[p.id] ?? p.tryOnLikeCount) > 0);
       list.sort((a, b) => (tryOnLikeCounts[b.id] ?? b.tryOnLikeCount) - (tryOnLikeCounts[a.id] ?? a.tryOnLikeCount));
+    } else if (sortBy === "trending") {
+      list = list.filter(
+        (p) => (likeCounts[p.id] ?? p.likeCount) > 0 && (tryOnLikeCounts[p.id] ?? p.tryOnLikeCount) > 0
+      );
+      list.sort(
+        (a, b) =>
+          ((likeCounts[b.id] ?? b.likeCount) + (tryOnLikeCounts[b.id] ?? b.tryOnLikeCount)) -
+          ((likeCounts[a.id] ?? a.likeCount) + (tryOnLikeCounts[a.id] ?? a.tryOnLikeCount))
+      );
     }
     return list;
   }, [data, search, activeCategory, sortBy, likeCounts, tryOnLikeCounts]);
@@ -1164,30 +1176,66 @@ export default function PublicStore() {
         </div>
       </div>
 
-      {/* ── Sort chips ── */}
-      <div className="bg-white border-b border-gray-100 px-3 py-2 flex items-center gap-2">
-        <span className="text-[11px] text-gray-400 font-medium shrink-0">Sort:</span>
-        {(["newest", "most-liked", "most-tried"] as const).map((s) => {
-          const labels: Record<string, string> = {
-            "newest": "Newest",
-            "most-liked": "❤️ Most Liked",
-            "most-tried": "🪞 Most Tried",
-          };
-          return (
-            <button
-              key={s}
-              onClick={() => setSortBy(s)}
-              className={`px-3 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all ${
-                sortBy === s
-                  ? "bg-rose-500 text-white shadow-sm"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              {labels[s]}
-            </button>
-          );
-        })}
+      {/* ── Filter button row ── */}
+      <div className="bg-white border-b border-gray-100 px-3 py-2 flex items-center justify-between">
+        <span className="text-[11px] text-gray-400">
+          {filteredProducts.length} product{filteredProducts.length !== 1 ? "s" : ""}
+        </span>
+        <button
+          onClick={() => setShowFilterSheet(true)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all border ${
+            sortBy !== "newest"
+              ? "bg-rose-500 text-white border-rose-500"
+              : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+          }`}
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5" />
+          {sortBy === "newest" ? "Filter" : sortBy === "most-liked" ? "❤️ Most Liked" : sortBy === "most-tried" ? "🪞 Most Tried" : "🔥 Trending"}
+        </button>
       </div>
+
+      {/* ── Filter bottom sheet ── */}
+      {showFilterSheet && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={() => setShowFilterSheet(false)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div
+            className="relative bg-white rounded-t-2xl px-4 pt-4 pb-8 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
+            <p className="text-sm font-bold text-gray-800 mb-4">Sort & Filter</p>
+            <div className="space-y-2">
+              {([
+                { key: "newest",    label: "Newest",             desc: "Latest products first",                        icon: "🆕" },
+                { key: "most-liked",label: "Most Liked",         desc: "Products with most ❤️ likes",                 icon: "❤️" },
+                { key: "most-tried",label: "Most Virtual Try-On",desc: "Products tried most via Virtual Try-On",       icon: "🪞" },
+                { key: "trending",  label: "Trending 🔥",        desc: "Products with both high likes & try-ons",     icon: "🔥" },
+              ] as const).map(({ key, label, desc, icon }) => (
+                <button
+                  key={key}
+                  onClick={() => { setSortBy(key); setShowFilterSheet(false); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all text-left ${
+                    sortBy === key
+                      ? "border-rose-500 bg-rose-50"
+                      : "border-gray-100 bg-gray-50 hover:border-gray-200"
+                  }`}
+                >
+                  <span className="text-xl">{icon}</span>
+                  <div className="flex-1">
+                    <p className={`text-sm font-bold ${sortBy === key ? "text-rose-600" : "text-gray-800"}`}>{label}</p>
+                    <p className="text-[11px] text-gray-400">{desc}</p>
+                  </div>
+                  {sortBy === key && (
+                    <div className="w-4 h-4 rounded-full bg-rose-500 flex items-center justify-center">
+                      <div className="w-2 h-2 rounded-full bg-white" />
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Products Grid (2 columns) ── */}
       <div className="flex-1">
@@ -1203,6 +1251,7 @@ export default function PublicStore() {
             {filteredProducts.map((p) => {
               const pDis = discount(p);
               const liked = likedProducts.has(p.id);
+              const isTrending = (likeCounts[p.id] ?? p.likeCount) > 0 && (tryOnLikeCounts[p.id] ?? p.tryOnLikeCount) > 0;
               return (
                 <div
                   key={p.id}
@@ -1220,6 +1269,12 @@ export default function PublicStore() {
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <ShoppingBag className="w-8 h-8 text-gray-300" />
+                      </div>
+                    )}
+                    {/* Trending badge */}
+                    {isTrending && (
+                      <div className="absolute top-2 left-2 bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-0.5">
+                        🔥 Trending
                       </div>
                     )}
                     {/* Heart / Like button */}
