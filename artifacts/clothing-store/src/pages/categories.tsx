@@ -255,7 +255,7 @@ export default function Categories() {
 
       {/* ── Product detail view (Meesho style) ── */}
       {selectedProduct && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-[#f4f4f4]">
+        <div className="fixed inset-0 z-50 flex flex-col bg-[#f4f4f4] animate-slide-up-page">
           {/* Top bar */}
           <div className="flex items-center gap-2 px-3 py-2 bg-white border-b shadow-sm">
             <button
@@ -270,7 +270,7 @@ export default function Categories() {
           </div>
 
           {/* Scrollable body */}
-          <div className="flex-1 overflow-y-auto">
+          <div key={selectedProduct.id} className="flex-1 overflow-y-auto animate-product-fade">
             {/* Swipeable image carousel */}
             <div className="relative bg-white">
               <div

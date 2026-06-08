@@ -174,3 +174,34 @@
     pointer-events: none;
   }
 }
+
+/* ── Flipkart / Meesho style product page animations ── */
+@keyframes slide-up-page {
+  from {
+    transform: translateY(100%);
+    opacity: 0.5;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes product-content-fade {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up-page {
+  animation: slide-up-page 0.38s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.animate-product-fade {
+  animation: product-content-fade 0.24s ease-out both;
+}

@@ -717,7 +717,8 @@ export default function Products() {
           open={!!selectedProduct}
           onOpenChange={(open) => !open && setSelectedProduct(null)}
         >
-          <DialogContent className="fixed inset-0 max-w-none w-full h-full rounded-none p-0 m-0 flex flex-col bg-[#f4f4f4] translate-x-0 translate-y-0 top-0 left-0">
+          <DialogContent className="fixed inset-0 max-w-none w-full h-full rounded-none p-0 m-0 overflow-hidden bg-[#f4f4f4] translate-x-0 translate-y-0 top-0 left-0">
+            <div className="flex flex-col h-full animate-slide-up-page">
 
             {/* ── Sticky top bar ── */}
             <div className="flex items-center gap-2 px-3 py-2 bg-white border-b sticky top-0 z-20 shadow-sm">
@@ -733,7 +734,7 @@ export default function Products() {
             </div>
 
             {/* ── Scrollable body ── */}
-            <div className="flex-1 overflow-y-auto">
+            <div key={selectedProduct.id} className="flex-1 overflow-y-auto animate-product-fade">
 
               {/* Swipeable image carousel */}
               <div className="relative bg-white">
@@ -972,6 +973,7 @@ export default function Products() {
               </button>
             </div>
 
+            </div>{/* end animate-slide-up-page wrapper */}
           </DialogContent>
         </Dialog>
       )}
