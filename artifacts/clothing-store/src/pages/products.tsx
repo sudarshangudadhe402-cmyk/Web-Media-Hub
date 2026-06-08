@@ -89,6 +89,7 @@ export default function Products() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [previousProductId, setPreviousProductId] = useState<string | null>(null);
   const [activeImgIdx, setActiveImgIdx] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
 
@@ -316,7 +317,7 @@ export default function Products() {
               <div
                 key={product.id}
                 className="bg-white cursor-pointer active:opacity-90"
-                onClick={() => { setSelectedProduct(product); setActiveImgIdx(0); }}
+                onClick={() => { setPreviousProductId(null); setSelectedProduct(product); setActiveImgIdx(0); }}
               >
                 {/* Image */}
                 <div className="aspect-[3/4] bg-gray-100 relative overflow-hidden">
@@ -718,7 +719,7 @@ export default function Products() {
           onOpenChange={(open) => !open && setSelectedProduct(null)}
         >
           <DialogContent className="fixed inset-0 max-w-none w-full h-full rounded-none p-0 m-0 overflow-hidden bg-[#f4f4f4] translate-x-0 translate-y-0 top-0 left-0">
-            <div className="flex flex-col h-full animate-slide-up-page">
+            <div key={selectedProduct?.id} className="flex flex-col h-full animate-slide-up-page">
 
             {/* ── Sticky top bar ── */}
             <div className="flex items-center gap-2 px-3 py-2 bg-white border-b sticky top-0 z-20 shadow-sm">
@@ -734,7 +735,7 @@ export default function Products() {
             </div>
 
             {/* ── Scrollable body ── */}
-            <div key={selectedProduct.id} className="flex-1 overflow-y-auto animate-product-fade">
+            <div className="flex-1 overflow-y-auto">
 
               {/* Swipeable image carousel */}
               <div className="relative bg-white">
@@ -889,6 +890,7 @@ export default function Products() {
                 const related = (products ?? []).filter(
                   (p) =>
                     p.id !== selectedProduct.id &&
+                    p.id !== previousProductId &&
                     p.productType === selectedProduct.productType
                 );
                 if (!related.length) return null;
@@ -913,7 +915,7 @@ export default function Products() {
                             key={p.id}
                             className="shrink-0 cursor-pointer"
                             style={{ width: 140, scrollSnapAlign: "start" }}
-                            onClick={() => { setSelectedProduct(p); setActiveImgIdx(0); carouselRef.current?.scrollTo({ left: 0 }); }}
+                            onClick={() => { setPreviousProductId(selectedProduct.id); setSelectedProduct(p); setActiveImgIdx(0); carouselRef.current?.scrollTo({ left: 0 }); }}
                           >
                             {/* Image */}
                             <div className="rounded-lg overflow-hidden bg-gray-100 relative" style={{ aspectRatio: "3/4" }}>

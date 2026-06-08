@@ -64,6 +64,7 @@ export default function PublicStore() {
 
   const [view, setView] = useState<ViewType>("store");
   const [selectedProduct, setSelectedProduct] = useState<PublicProduct | null>(null);
+  const [previousProductId, setPreviousProductId] = useState<string | null>(null);
   const [imgIndex, setImgIndex] = useState(0);
 
   const [search, setSearch] = useState("");
@@ -220,6 +221,7 @@ export default function PublicStore() {
   }
 
   function openProduct(product: PublicProduct) {
+    setPreviousProductId(null);
     setSelectedProduct(product);
     setImgIndex(0);
     setView("product");
@@ -767,11 +769,14 @@ export default function PublicStore() {
       ? `${waLink}?text=${encodeURIComponent(`Hi! I'm interested in "${selectedProduct.name}" (₹${selectedProduct.discountPrice}). Can you help me?`)}`
       : null;
     const relatedProducts = data.products.filter(
-      (p) => p.id !== selectedProduct.id && p.productType === selectedProduct.productType
+      (p) =>
+        p.id !== selectedProduct.id &&
+        p.id !== previousProductId &&
+        p.productType === selectedProduct.productType
     );
 
     return (
-      <div className="min-h-screen bg-[#f4f4f4] flex flex-col animate-slide-up-page">
+      <div key={selectedProduct.id} className="min-h-screen bg-[#f4f4f4] flex flex-col animate-slide-up-page">
 
         {/* ── Sticky top bar ── */}
         <div className="flex items-center gap-2 px-3 py-2 bg-white border-b sticky top-0 z-20 shadow-sm">
@@ -790,7 +795,7 @@ export default function PublicStore() {
         </div>
 
         {/* ── Scrollable body ── */}
-        <div key={selectedProduct.id} className="flex-1 overflow-y-auto pb-24 animate-product-fade">
+        <div className="flex-1 overflow-y-auto pb-24">
 
           {/* Swipeable image carousel */}
           <div className="relative bg-white">
@@ -966,7 +971,7 @@ export default function PublicStore() {
                       key={p.id}
                       className="shrink-0 cursor-pointer"
                       style={{ width: 140, scrollSnapAlign: "start" }}
-                      onClick={() => { setSelectedProduct(p); setImgIndex(0); carouselRef.current?.scrollTo({ left: 0 }); }}
+                      onClick={() => { setPreviousProductId(selectedProduct.id); setSelectedProduct(p); setImgIndex(0); carouselRef.current?.scrollTo({ left: 0 }); }}
                     >
                       <div className="rounded-lg overflow-hidden bg-gray-100 relative" style={{ aspectRatio: "3/4" }}>
                         {p.images[0] ? (
