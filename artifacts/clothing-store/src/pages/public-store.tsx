@@ -776,7 +776,7 @@ export default function PublicStore() {
     );
 
     return (
-      <div key={selectedProduct.id} className="min-h-screen bg-[#f4f4f4] flex flex-col animate-slide-up-page">
+      <div key={selectedProduct.id} className="h-screen overflow-hidden bg-[#f4f4f4] flex flex-col animate-slide-up-page">
 
         {/* ── Sticky top bar ── */}
         <div className="flex items-center gap-2 px-3 py-2 bg-white border-b sticky top-0 z-20 shadow-sm">
@@ -795,7 +795,7 @@ export default function PublicStore() {
         </div>
 
         {/* ── Scrollable body ── */}
-        <div className="flex-1 overflow-y-auto pb-24">
+        <div className="flex-1 overflow-y-auto min-h-0">
 
           {/* Swipeable image carousel */}
           <div className="relative bg-white">
@@ -1001,7 +1001,7 @@ export default function PublicStore() {
         </div>
 
         {/* Fixed bottom bar */}
-        <div className="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-100 shadow-xl">
+        <div className="shrink-0 z-20 bg-white border-t border-gray-100 shadow-xl">
           <div className="flex gap-3 px-4 py-3">
             {/* Left — outlined white button */}
             <button
