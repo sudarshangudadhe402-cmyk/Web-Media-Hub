@@ -298,14 +298,10 @@ export default function PublicStore() {
     setTryOnLoading(true);
     setTryOnResult(null);
     try {
-      const tryOnKey = `wmh_tryon_${slug}`;
-      if (canActOnProduct(tryOnKey, selectedProduct.id)) {
-        const res = await fetch(`/api/public/products/${selectedProduct.id}/tryon`, { method: "POST" });
-        if (res.ok) {
-          const d = await res.json();
-          setTryOnLikeCounts((prev) => ({ ...prev, [selectedProduct.id]: d.tryOnLikeCount }));
-          recordActionOnProduct(tryOnKey, selectedProduct.id);
-        }
+      const res = await fetch(`/api/public/products/${selectedProduct.id}/tryon`, { method: "POST" });
+      if (res.ok) {
+        const d = await res.json();
+        setTryOnLikeCounts((prev) => ({ ...prev, [selectedProduct.id]: d.tryOnLikeCount }));
       }
       await new Promise<void>((resolve) => {
         const canvas = document.createElement("canvas");

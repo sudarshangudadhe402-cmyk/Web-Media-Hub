@@ -6,7 +6,6 @@ import {
   useDeleteProduct,
   useUploadProductImage,
   useListCategories,
-  useLikeProduct,
   getListProductsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -96,7 +95,6 @@ export default function Products() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [localLikes, setLocalLikes] = useState<Record<string, number>>({});
 
   const { data: allProducts, isLoading } = useListProducts({});
   const { data: categories } = useListCategories();
@@ -110,8 +108,6 @@ export default function Products() {
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
   const uploadImage = useUploadProductImage();
-  const likeProduct = useLikeProduct();
-
   /* ── helpers ── */
   function resetForm() {
     setForm(EMPTY_FORM);
@@ -335,24 +331,12 @@ export default function Products() {
                       <ImageIcon className="w-8 h-8 text-gray-300" />
                     </div>
                   )}
-                  {/* Heart / Like button */}
-                  <button
-                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 flex items-center justify-center shadow-sm active:scale-90 transition-transform"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const prev = localLikes[product.id] ?? product.likeCount;
-                      setLocalLikes((l) => ({ ...l, [product.id]: prev + 1 }));
-                      likeProduct.mutate({ id: product.id });
-                    }}
-                  >
-                    <Heart className={`w-3.5 h-3.5 ${(localLikes[product.id] ?? product.likeCount) > 0 ? "fill-red-500 text-red-500" : "text-gray-400"}`} />
-                  </button>
-                  {/* Like count overlay at bottom-left */}
+                  {/* Like count overlay at bottom-left (read-only) */}
                   <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent pt-6 pb-1.5 px-2">
                     <div className="flex items-center gap-1">
                       <Heart className="w-3 h-3 fill-red-400 text-red-400" />
                       <span className="text-white text-[11px] font-semibold">
-                        {(localLikes[product.id] ?? product.likeCount).toLocaleString("en-IN")}
+                        {product.likeCount.toLocaleString("en-IN")}
                       </span>
                       <span className="text-white/70 text-[10px]">likes</span>
                     </div>
