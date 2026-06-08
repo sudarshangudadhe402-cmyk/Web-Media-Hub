@@ -776,7 +776,7 @@ export default function PublicStore() {
     );
 
     return (
-      <div key={selectedProduct.id} className="h-screen overflow-hidden bg-[#f4f4f4] flex flex-col animate-slide-up-page">
+      <div key={selectedProduct.id} className="fixed inset-0 z-50 bg-[#f4f4f4] flex flex-col animate-slide-up-page">
 
         {/* ── Sticky top bar ── */}
         <div className="flex items-center gap-2 px-3 py-2 bg-white border-b sticky top-0 z-20 shadow-sm">
