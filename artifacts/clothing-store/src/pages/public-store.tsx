@@ -1046,83 +1046,89 @@ export default function PublicStore() {
 
   return (
     <div className="min-h-screen bg-[#f4f4f4] flex flex-col">
-      {/* ── Store Header ── */}
-      <div className="bg-white border-b border-gray-100 flex">
 
-        {/* Left — Square banner */}
-        <div className="flex-shrink-0 bg-black" style={{ width: "50%", aspectRatio: "1/1" }}>
-          {data.bannerImage ? (
-            <img
-              src={data.bannerImage}
-              alt={data.name}
-              className="w-full h-full object-contain"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gray-100">
-              <ShoppingBag className="w-10 h-10 text-gray-300" />
-            </div>
-          )}
-        </div>
+      {/* ── Store Header — unified card ── */}
+      <div className="px-3 pt-3 pb-1">
+        <div
+          className="relative rounded-3xl overflow-hidden flex items-stretch"
+          style={{
+            background: "linear-gradient(135deg, #0047b3 0%, #0077e6 55%, #33aaff 100%)",
+            minHeight: "130px",
+          }}
+        >
+          {/* subtle glow circles for depth */}
+          <div className="absolute -top-8 -left-8 w-40 h-40 rounded-full opacity-20"
+            style={{ background: "radial-gradient(circle, #ffffff 0%, transparent 70%)" }} />
+          <div className="absolute -bottom-10 left-1/4 w-52 h-52 rounded-full opacity-10"
+            style={{ background: "radial-gradient(circle, #a0d8ff 0%, transparent 70%)" }} />
 
-        {/* Right — Info */}
-        <div className="flex-1 flex flex-col justify-between p-3 overflow-hidden min-w-0">
-          {/* Store name */}
-          <h1 className="text-sm font-extrabold text-gray-900 leading-tight tracking-tight line-clamp-2 mb-1">
-            {data.name}
-          </h1>
+          {/* ── Left: Info ── */}
+          <div className="flex-1 flex flex-col justify-center gap-2 px-4 py-4 z-10">
+            <h1 className="text-base font-extrabold text-white leading-tight tracking-tight line-clamp-2">
+              {data.name}
+            </h1>
 
-          {/* Address */}
-          {data.address && (
-            <div className="flex items-start gap-1 mb-1.5">
-              <MapPin className="w-3 h-3 text-rose-500 mt-0.5 shrink-0" />
-              <p className="text-[10px] text-gray-600 leading-snug line-clamp-2">{data.address}</p>
-            </div>
-          )}
-
-          {/* Days grid — 2 columns */}
-          {data.openDays && (
-            <div className="flex gap-2 mb-1.5">
-              {DAY_COLS.map((col, ci) => (
-                <div key={ci} className="flex flex-col gap-0.5">
-                  {col.map((abbr) => {
-                    const full = DAY_FULL[abbr];
-                    const isOpen = openDaySet.has(full);
+            <div className="flex flex-col gap-1">
+              {data.address && (
+                <div className="flex items-start gap-1.5">
+                  <MapPin className="w-3 h-3 text-white/70 mt-0.5 shrink-0" />
+                  <p className="text-[11px] text-white/80 leading-snug line-clamp-2">{data.address}</p>
+                </div>
+              )}
+              {data.openingTime && (
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-3 h-3 text-white/70 shrink-0" />
+                  <p className="text-[11px] text-white/80 leading-tight">{data.openingTime}</p>
+                </div>
+              )}
+              {data.openDays && (
+                <div className="flex items-center gap-1 flex-wrap">
+                  <CalendarDays className="w-3 h-3 text-white/70 shrink-0" />
+                  {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((abbr) => {
+                    const isOpen = openDaySet.has(DAY_FULL[abbr]);
                     return (
-                      <span
-                        key={abbr}
-                        className={`text-[9px] font-semibold leading-tight ${
-                          isOpen ? "text-green-600" : "text-gray-300"
+                      <span key={abbr}
+                        className={`text-[9px] font-bold px-1 py-0.5 rounded ${
+                          isOpen ? "bg-white/25 text-white" : "text-white/25"
                         }`}
-                      >
-                        {abbr}
-                      </span>
+                      >{abbr}</span>
                     );
                   })}
                 </div>
-              ))}
+              )}
             </div>
-          )}
 
-          {/* Timing */}
-          {data.openingTime && (
-            <div className="flex items-center gap-1 mb-1.5">
-              <Clock className="w-3 h-3 text-amber-500 shrink-0" />
-              <p className="text-[10px] text-gray-600 leading-tight">{data.openingTime}</p>
-            </div>
-          )}
+            {waLink && (
+              <a
+                href={waLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-[11px] text-white bg-[#25D366] rounded-full px-3 py-1.5 font-bold self-start shadow-md mt-0.5"
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+                WhatsApp
+              </a>
+            )}
+          </div>
 
-          {/* WhatsApp */}
-          {waLink && (
-            <a
-              href={waLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-[10px] text-white bg-[#25D366] rounded-full px-2.5 py-1 font-semibold self-start"
-            >
-              <MessageCircle className="w-3 h-3" />
-              WhatsApp
-            </a>
-          )}
+          {/* ── Right: Banner image ── */}
+          <div className="relative flex-shrink-0 flex items-center justify-center z-10"
+            style={{ width: "42%" }}>
+            {/* glassy frame behind image */}
+            <div className="absolute inset-2 rounded-2xl border border-white/20 bg-white/5 backdrop-blur-sm" />
+            {data.bannerImage ? (
+              <img
+                src={data.bannerImage}
+                alt={data.name}
+                className="relative w-full h-full object-cover rounded-2xl"
+                style={{ maxHeight: "150px" }}
+              />
+            ) : (
+              <div className="relative w-full flex items-center justify-center py-8">
+                <ShoppingBag className="w-14 h-14 text-white/30" />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
