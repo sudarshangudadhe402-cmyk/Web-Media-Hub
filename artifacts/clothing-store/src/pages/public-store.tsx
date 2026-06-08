@@ -21,6 +21,8 @@ interface PublicProduct {
   gender: string | null;
   likeCount: number;
   tryOnLikeCount: number;
+  recentLikeCount: number;
+  recentTryOnCount: number;
 }
 
 interface PublicStoreData {
@@ -196,14 +198,8 @@ export default function PublicStore() {
       list = list.filter((p) => (tryOnLikeCounts[p.id] ?? p.tryOnLikeCount) > 0);
       list.sort((a, b) => (tryOnLikeCounts[b.id] ?? b.tryOnLikeCount) - (tryOnLikeCounts[a.id] ?? a.tryOnLikeCount));
     } else if (sortBy === "trending") {
-      list = list.filter(
-        (p) => (likeCounts[p.id] ?? p.likeCount) > 0 && (tryOnLikeCounts[p.id] ?? p.tryOnLikeCount) > 0
-      );
-      list.sort(
-        (a, b) =>
-          ((likeCounts[b.id] ?? b.likeCount) + (tryOnLikeCounts[b.id] ?? b.tryOnLikeCount)) -
-          ((likeCounts[a.id] ?? a.likeCount) + (tryOnLikeCounts[a.id] ?? a.tryOnLikeCount))
-      );
+      list = list.filter((p) => p.recentLikeCount > 0 && p.recentTryOnCount > 0);
+      list.sort((a, b) => (b.recentLikeCount + b.recentTryOnCount) - (a.recentLikeCount + a.recentTryOnCount));
     }
     return list;
   }, [data, search, activeCategory, sortBy, likeCounts, tryOnLikeCounts]);
@@ -1208,10 +1204,10 @@ export default function PublicStore() {
             <p className="text-sm font-bold text-gray-800 mb-4">Sort & Filter</p>
             <div className="space-y-2">
               {([
-                { key: "newest",    label: "Newest",             desc: "Latest products first",                        icon: "🆕" },
-                { key: "most-liked",label: "Most Liked",         desc: "Products with most ❤️ likes",                 icon: "❤️" },
-                { key: "most-tried",label: "Most Virtual Try-On",desc: "Products tried most via Virtual Try-On",       icon: "🪞" },
-                { key: "trending",  label: "Trending 🔥",        desc: "Products with both high likes & try-ons",     icon: "🔥" },
+                { key: "newest",    label: "Newest",             desc: "Latest products first",                                    icon: "🆕" },
+                { key: "most-liked",label: "Most Liked",         desc: "Products they like most people",                          icon: "❤️" },
+                { key: "most-tried",label: "Most Virtual Try-On",desc: "Products they choose to virtual try-on tried people",     icon: "🪞" },
+                { key: "trending",  label: "Trending 🔥",        desc: "Products they are in trending now",                       icon: "🔥" },
               ] as const).map(({ key, label, desc, icon }) => (
                 <button
                   key={key}
@@ -1253,7 +1249,7 @@ export default function PublicStore() {
             {filteredProducts.map((p) => {
               const pDis = discount(p);
               const liked = likedProducts.has(p.id);
-              const isTrending = (likeCounts[p.id] ?? p.likeCount) > 0 && (tryOnLikeCounts[p.id] ?? p.tryOnLikeCount) > 0;
+              const isTrending = p.recentLikeCount > 0 && p.recentTryOnCount > 0;
               return (
                 <div
                   key={p.id}
