@@ -66,6 +66,7 @@ export default function PublicStore() {
 
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
+  const [sortBy, setSortBy] = useState<"newest" | "most-liked" | "most-tried">("newest");
 
   const [likedProducts, setLikedProducts] = useState<Set<string>>(() => {
     try {
@@ -170,7 +171,7 @@ export default function PublicStore() {
 
   const filteredProducts = useMemo(() => {
     if (!data) return [];
-    let list = data.products;
+    let list = [...data.products];
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -187,8 +188,13 @@ export default function PublicStore() {
         list = list.filter((p) => p.functionCategory === activeCategory);
       }
     }
+    if (sortBy === "most-liked") {
+      list.sort((a, b) => (likeCounts[b.id] ?? b.likeCount) - (likeCounts[a.id] ?? a.likeCount));
+    } else if (sortBy === "most-tried") {
+      list.sort((a, b) => (tryOnLikeCounts[b.id] ?? b.tryOnLikeCount) - (tryOnLikeCounts[a.id] ?? a.tryOnLikeCount));
+    }
     return list;
-  }, [data, search, activeCategory]);
+  }, [data, search, activeCategory, sortBy, likeCounts, tryOnLikeCounts]);
 
   async function handleLike(productId: string, e?: React.MouseEvent) {
     e?.stopPropagation();
@@ -1156,6 +1162,31 @@ export default function PublicStore() {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* ── Sort chips ── */}
+      <div className="bg-white border-b border-gray-100 px-3 py-2 flex items-center gap-2">
+        <span className="text-[11px] text-gray-400 font-medium shrink-0">Sort:</span>
+        {(["newest", "most-liked", "most-tried"] as const).map((s) => {
+          const labels: Record<string, string> = {
+            "newest": "Newest",
+            "most-liked": "❤️ Most Liked",
+            "most-tried": "🪞 Most Tried",
+          };
+          return (
+            <button
+              key={s}
+              onClick={() => setSortBy(s)}
+              className={`px-3 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all ${
+                sortBy === s
+                  ? "bg-rose-500 text-white shadow-sm"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {labels[s]}
+            </button>
+          );
+        })}
       </div>
 
       {/* ── Products Grid (2 columns) ── */}
