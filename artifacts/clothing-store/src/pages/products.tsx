@@ -50,7 +50,7 @@ const PRODUCT_TYPES = ["Top", "Bottom", "Full Outfit"] as const;
 type ProductType = (typeof PRODUCT_TYPES)[number];
 
 const SIZE_OPTIONS = ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "Free Size"];
-const AGE_OPTIONS = ["0-3M", "3-6M", "6-12M", "1Y", "2Y", "3Y", "4Y", "5Y", "6Y", "7Y", "8Y", "9Y", "10Y", "11Y", "12Y", "13Y+"];
+const AGE_OPTIONS = Array.from({ length: 50 }, (_, i) => `${i}-${i + 1}Y`);
 const GENDER_OPTIONS = ["Men", "Women", "Boys", "Girls", "Unisex"];
 
 interface ProductForm {
