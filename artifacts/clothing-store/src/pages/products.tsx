@@ -331,14 +331,22 @@ export default function Products() {
                       <ImageIcon className="w-8 h-8 text-gray-300" />
                     </div>
                   )}
-                  {/* Like count overlay at bottom-left (read-only) */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent pt-6 pb-1.5 px-2">
-                    <div className="flex items-center gap-1">
-                      <Heart className="w-3 h-3 fill-red-400 text-red-400" />
-                      <span className="text-white text-[11px] font-semibold">
-                        {product.likeCount.toLocaleString("en-IN")}
-                      </span>
-                      <span className="text-white/70 text-[10px]">likes</span>
+                  {/* Counts overlay — likes left, try-on right */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent pt-6 pb-1.5 px-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1">
+                        <Heart className="w-3 h-3 fill-red-400 text-red-400" />
+                        <span className="text-white text-[11px] font-semibold">
+                          {product.likeCount.toLocaleString("en-IN")}
+                        </span>
+                        <span className="text-white/70 text-[10px]">likes</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px]">🪞</span>
+                        <span className="text-white text-[11px] font-semibold">
+                          {((product as any).tryOnLikeCount ?? 0).toLocaleString("en-IN")}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -21,6 +21,7 @@ function formatProduct(p: InstanceType<typeof Product>) {
     age: p.age ?? null,
     gender: p.gender ?? null,
     likeCount: p.likeCount,
+    tryOnLikeCount: p.tryOnLikeCount ?? 0,
     storeId: p.storeId ?? null,
     createdAt: p.createdAt.toISOString(),
   };
