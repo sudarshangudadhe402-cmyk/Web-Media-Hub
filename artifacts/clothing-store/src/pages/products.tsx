@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { Link } from "wouter";
 import {
   useListProducts,
   useCreateProduct,
@@ -37,6 +38,7 @@ import {
   Pencil,
   Trash2,
   Tag,
+  Tags,
   ChevronLeft,
   Heart,
   TrendingDown,
@@ -247,13 +249,24 @@ export default function Products() {
             {filterCategory ? ` · ${filterCategory}` : ""}
           </p>
         </div>
-        <Button
-          onClick={openAdd}
-          className="bg-green-600 hover:bg-green-700 text-white font-semibold gap-1.5"
-        >
-          <Plus className="w-4 h-4" />
-          Add Product
-        </Button>
+        <div className="flex items-center gap-2">
+          <Link href="/categories">
+            <Button
+              variant="outline"
+              className="gap-1.5 border-primary/40 text-primary hover:bg-primary/5"
+            >
+              <Tags className="w-4 h-4" />
+              Add Category
+            </Button>
+          </Link>
+          <Button
+            onClick={openAdd}
+            className="bg-green-600 hover:bg-green-700 text-white font-semibold gap-1.5"
+          >
+            <Plus className="w-4 h-4" />
+            Add Product
+          </Button>
+        </div>
       </div>
 
       {/* Filter tabs */}

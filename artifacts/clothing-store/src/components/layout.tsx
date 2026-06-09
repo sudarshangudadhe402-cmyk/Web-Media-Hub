@@ -69,7 +69,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const navigation = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
     { name: "Products", href: "/products", icon: Package },
-    { name: "Categories", href: "/categories", icon: Tags },
     { name: "My Store", href: "/my-store", icon: Store },
     { name: "AI Promotional Video", href: "/ai-video", icon: Video },
     ...(user?.role === "super_admin"
