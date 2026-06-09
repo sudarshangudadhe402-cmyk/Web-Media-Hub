@@ -30,6 +30,7 @@ import {
   Copy,
   Phone,
   Link as LinkIcon,
+  ExternalLink,
 } from "lucide-react";
 
 type Tab = "friend" | "approved" | "rejected";
@@ -183,25 +184,33 @@ export default function AiVideo() {
 
       {/* Global Link Row */}
       {globalLink && (
-        <div className="flex items-center gap-3 px-4 py-3.5 bg-primary/5 border border-primary/20 rounded-xl">
-          <LinkIcon className="w-4 h-4 text-primary shrink-0" />
-          <a
-            href={globalLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 text-sm text-primary font-medium underline underline-offset-2 truncate"
-          >
-            {globalLink}
-          </a>
-          <button
-            onClick={() => {
-              navigator.clipboard.writeText(globalLink);
-              toast({ title: "Link copied!" });
-            }}
-            className="p-1.5 rounded-lg hover:bg-primary/10 transition-colors shrink-0"
-          >
-            <Copy className="w-4 h-4 text-muted-foreground" />
-          </button>
+        <div className="rounded-xl border border-primary/20 overflow-hidden">
+          {/* Header row */}
+          <div className="flex items-center justify-between px-4 py-2.5 bg-primary/5 border-b border-primary/20">
+            <span className="text-sm font-bold text-primary tracking-wide">NexGenStudio</span>
+            <span className="text-xs font-medium text-muted-foreground">How to claim rewards 🎁</span>
+          </div>
+          {/* Link row */}
+          <div className="flex items-center gap-3 px-4 py-3">
+            <LinkIcon className="w-4 h-4 text-primary shrink-0" />
+            <a
+              href={globalLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 text-sm text-primary font-medium underline underline-offset-2 truncate"
+            >
+              {globalLink}
+            </a>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(globalLink);
+                toast({ title: "Link copied!" });
+              }}
+              className="p-1.5 rounded-lg hover:bg-primary/10 transition-colors shrink-0"
+            >
+              <Copy className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
         </div>
       )}
 
@@ -369,11 +378,31 @@ export default function AiVideo() {
                   </div>
                   <div className="flex items-center justify-between px-4 py-3 gap-3">
                     <span className="text-sm text-muted-foreground flex items-center gap-1.5 shrink-0">
-                      <LinkIcon className="w-3.5 h-3.5" /> Store Link
+                      <LinkIcon className="w-3.5 h-3.5" /> NexGenStudio link
                     </span>
-                    <span className="text-sm text-muted-foreground/40 italic text-right">
-                      Coming soon...
-                    </span>
+                    {globalLink ? (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(globalLink);
+                            toast({ title: "Link copied!" });
+                          }}
+                          className="w-7 h-7 rounded-full bg-green-100 hover:bg-green-200 flex items-center justify-center text-green-700 transition-colors"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => window.open(globalLink, "_blank")}
+                          className="w-7 h-7 rounded-full bg-green-100 hover:bg-green-200 flex items-center justify-center text-green-700 transition-colors"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground/40 italic text-right">
+                        Coming soon...
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
