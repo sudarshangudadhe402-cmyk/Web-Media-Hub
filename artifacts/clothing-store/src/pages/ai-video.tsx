@@ -31,6 +31,7 @@ import {
   Phone,
   Link as LinkIcon,
   ExternalLink,
+  ChevronRight,
 } from "lucide-react";
 
 type Tab = "friend" | "approved" | "rejected";
@@ -40,6 +41,7 @@ export default function AiVideo() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("friend");
   const [selectedApproved, setSelectedApproved] = useState<any>(null);
+  const [claimHelpOpen, setClaimHelpOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -186,9 +188,8 @@ export default function AiVideo() {
       {globalLink && (
         <div className="rounded-xl border border-primary/20 overflow-hidden">
           {/* Header row */}
-          <div className="flex items-center justify-between px-4 py-2.5 bg-primary/5 border-b border-primary/20">
+          <div className="flex items-center px-4 py-2.5 bg-primary/5 border-b border-primary/20">
             <span className="text-sm font-bold text-primary tracking-wide">NexGenStudio</span>
-            <span className="text-xs font-medium text-muted-foreground">How to claim rewards 🎁</span>
           </div>
           {/* Link row */}
           <div className="flex items-center gap-3 px-4 py-3">
@@ -213,6 +214,18 @@ export default function AiVideo() {
           </div>
         </div>
       )}
+
+      {/* How to Claim Rewards — green button */}
+      <button
+        onClick={() => setClaimHelpOpen(true)}
+        className="w-full flex items-center justify-between gap-3 bg-green-600 hover:bg-green-700 active:bg-green-800 transition-colors text-white rounded-xl px-5 py-4"
+      >
+        <div className="flex items-center gap-3">
+          <Gift className="w-5 h-5 shrink-0" />
+          <span className="font-semibold text-base">How to claim rewards 🎁</span>
+        </div>
+        <ChevronRight className="w-5 h-5 text-green-200 shrink-0" />
+      </button>
 
       {/* Friends Store Section */}
       <div>
@@ -503,6 +516,41 @@ export default function AiVideo() {
               </div>
             </div>
             <Button className="w-full" onClick={() => setConfirmOpen(false)} data-testid="confirm-close-btn">Got it</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* How to Claim Rewards Dialog */}
+      <Dialog open={claimHelpOpen} onOpenChange={setClaimHelpOpen}>
+        <DialogContent className="sm:max-w-md max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 justify-center text-green-700">
+              <Gift className="w-5 h-5" />
+              How to claim your rewards ( coins ) 🎁
+            </DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto flex-1 space-y-3 pt-2 pr-1">
+            {[
+              "Go to approved friends section and click on the approved Admin",
+              "Copy the reward code from Store reward section",
+              "Open NexGenStudio site from Store reward section or reward section down side link / Copy the link and past on Google and open NexGenStudio site",
+              "Open the NexGenStudio site and click on coin section",
+              "Past code in Claim reward code section and click on Claim",
+              "Your coin added in your NexGenStudio account",
+              "Choose videos from catagory and make & download your store video",
+            ].map((step, i) => (
+              <div key={i} className="flex items-start gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                <div className="w-7 h-7 rounded-full bg-green-600 text-white flex items-center justify-center text-sm font-bold shrink-0 mt-0.5">
+                  {i + 1}
+                </div>
+                <p className="text-sm text-green-900 leading-relaxed">{step}</p>
+              </div>
+            ))}
+          </div>
+          <div className="pt-3">
+            <Button className="w-full bg-green-600 hover:bg-green-700 text-white" onClick={() => setClaimHelpOpen(false)}>
+              Got it ✅
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
