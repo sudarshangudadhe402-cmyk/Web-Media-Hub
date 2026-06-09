@@ -1,13 +1,24 @@
 import { Router } from "express";
 import { Category } from "../models/Category";
-import { requireAuth } from "../middlewares/auth";
+import { Store } from "../models/Store";
+import { AuthRequest, requireAuth } from "../middlewares/auth";
 import { requireDb } from "../middlewares/dbCheck";
 
 const router = Router();
 
-router.get("/categories", requireAuth, async (req, res) => {
+async function getMyStore(userId: string) {
+  return Store.findOne({ ownerId: userId });
+}
+
+router.get("/categories", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const categories = await Category.find().sort({ createdAt: -1 });
+    const userId = String(req.user!._id);
+    const store = await getMyStore(userId);
+    if (!store) {
+      res.json([]);
+      return;
+    }
+    const categories = await Category.find({ storeId: String(store._id) }).sort({ createdAt: -1 });
     res.json(
       categories.map((c) => ({
         id: String(c._id),
@@ -21,14 +32,20 @@ router.get("/categories", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/categories", requireAuth, async (req, res) => {
+router.post("/categories", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { name } = req.body;
     if (!name) {
       res.status(400).json({ error: "Name is required" });
       return;
     }
-    const category = await Category.create({ name });
+    const userId = String(req.user!._id);
+    const store = await getMyStore(userId);
+    if (!store) {
+      res.status(400).json({ error: "Store not found" });
+      return;
+    }
+    const category = await Category.create({ name, storeId: String(store._id) });
     res.status(201).json({
       id: String(category._id),
       name: category.name,
@@ -44,9 +61,15 @@ router.post("/categories", requireAuth, async (req, res) => {
   }
 });
 
-router.delete("/categories/:id", requireAuth, async (req, res) => {
+router.delete("/categories/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
-    await Category.findByIdAndDelete(req.params.id);
+    const userId = String(req.user!._id);
+    const store = await getMyStore(userId);
+    if (!store) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    await Category.findOneAndDelete({ _id: req.params.id, storeId: String(store._id) });
     res.json({ success: true, message: "Category deleted" });
   } catch (err) {
     req.log.error({ err }, "Delete category error");
