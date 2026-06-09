@@ -469,7 +469,7 @@ export default function AiVideo() {
                 <p className="font-semibold text-green-800 text-sm">Your Reward</p>
                 <p className="text-green-700 text-sm mt-1">
                   Once the store is approved, you will receive{" "}
-                  <span className="font-bold text-green-800">20 free AI Promotional Videos</span> added to your account.
+                  <span className="font-bold text-green-800">2000 free NGS Coins</span> added to your account.
                 </p>
               </div>
             </div>
