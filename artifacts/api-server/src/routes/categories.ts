@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { Category } from "../models/Category";
+import { Product } from "../models/Product";
 import { Store } from "../models/Store";
 import { AuthRequest, requireAuth } from "../middlewares/auth";
 import { requireDb } from "../middlewares/dbCheck";
@@ -69,8 +70,12 @@ router.delete("/categories/:id", requireAuth, async (req: AuthRequest, res) => {
       res.status(403).json({ error: "Forbidden" });
       return;
     }
-    await Category.findOneAndDelete({ _id: req.params.id, storeId: String(store._id) });
-    res.json({ success: true, message: "Category deleted" });
+    const storeId = String(store._id);
+    const category = await Category.findOneAndDelete({ _id: req.params.id, storeId });
+    if (category) {
+      await Product.deleteMany({ storeId, functionCategory: category.name });
+    }
+    res.json({ success: true, message: "Category and its products deleted" });
   } catch (err) {
     req.log.error({ err }, "Delete category error");
     res.status(500).json({ error: "Internal server error" });

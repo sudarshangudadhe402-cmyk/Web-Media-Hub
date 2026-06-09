@@ -42,6 +42,8 @@ import {
   ChevronLeft,
   Heart,
   TrendingDown,
+  CheckCircle2,
+  Circle,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -94,6 +96,8 @@ export default function Products() {
   const [previousProductId, setPreviousProductId] = useState<string | null>(null);
   const [activeImgIdx, setActiveImgIdx] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -235,6 +239,39 @@ export default function Products() {
     );
   }
 
+  async function handleBulkDelete() {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`Delete ${selectedIds.size} product${selectedIds.size > 1 ? "s" : ""}?`)) return;
+    const ids = Array.from(selectedIds);
+    let failed = 0;
+    for (const id of ids) {
+      try {
+        await deleteProduct.mutateAsync({ id });
+      } catch {
+        failed++;
+      }
+    }
+    queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
+    setSelectedIds(new Set());
+    setBulkMode(false);
+    if (failed === 0) toast({ title: `${ids.length} product${ids.length > 1 ? "s" : ""} deleted` });
+    else toast({ title: `${ids.length - failed} deleted, ${failed} failed`, variant: "destructive" });
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function exitBulkMode() {
+    setBulkMode(false);
+    setSelectedIds(new Set());
+  }
+
   const isPending = createProduct.isPending || updateProduct.isPending;
 
   /* ── render ── */
@@ -250,22 +287,64 @@ export default function Products() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/categories">
-            <Button
-              variant="outline"
-              className="gap-1.5 border-primary/40 text-primary hover:bg-primary/5"
-            >
-              <Tags className="w-4 h-4" />
-              Add Category
-            </Button>
-          </Link>
-          <Button
-            onClick={openAdd}
-            className="bg-green-600 hover:bg-green-700 text-white font-semibold gap-1.5"
-          >
-            <Plus className="w-4 h-4" />
-            Add Product
-          </Button>
+          {!bulkMode ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-muted-foreground"
+                onClick={() => setBulkMode(true)}
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                Select
+              </Button>
+              <Link href="/categories">
+                <Button
+                  variant="outline"
+                  className="gap-1.5 border-primary/40 text-primary hover:bg-primary/5"
+                >
+                  <Tags className="w-4 h-4" />
+                  Add Category
+                </Button>
+              </Link>
+              <Button
+                onClick={openAdd}
+                className="bg-green-600 hover:bg-green-700 text-white font-semibold gap-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                Add Product
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" size="sm" onClick={exitBulkMode}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  if (selectedIds.size === products.length) {
+                    setSelectedIds(new Set());
+                  } else {
+                    setSelectedIds(new Set(products.map((p) => p.id)));
+                  }
+                }}
+                className="gap-1.5"
+              >
+                {selectedIds.size === products.length ? "Deselect All" : "Select All"}
+              </Button>
+              <Button
+                size="sm"
+                disabled={selectedIds.size === 0 || deleteProduct.isPending}
+                onClick={handleBulkDelete}
+                className="bg-red-600 hover:bg-red-700 text-white gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -329,9 +408,24 @@ export default function Products() {
             return (
               <div
                 key={product.id}
-                className="bg-white cursor-pointer active:opacity-90"
-                onClick={() => { setPreviousProductId(null); setSelectedProduct(product); setActiveImgIdx(0); }}
+                className="bg-white cursor-pointer active:opacity-90 relative"
+                onClick={() => {
+                  if (bulkMode) { toggleSelect(product.id); return; }
+                  setPreviousProductId(null); setSelectedProduct(product); setActiveImgIdx(0);
+                }}
               >
+                {/* Bulk select checkbox */}
+                {bulkMode && (
+                  <div className="absolute top-2 left-2 z-10">
+                    {selectedIds.has(product.id)
+                      ? <CheckCircle2 className="w-6 h-6 text-white drop-shadow-md fill-red-500" />
+                      : <Circle className="w-6 h-6 text-white drop-shadow-md" />
+                    }
+                  </div>
+                )}
+                {bulkMode && selectedIds.has(product.id) && (
+                  <div className="absolute inset-0 bg-red-500/10 z-[5] pointer-events-none" />
+                )}
                 {/* Image */}
                 <div className="aspect-[3/4] bg-gray-100 relative overflow-hidden">
                   {product.images?.[0] ? (
