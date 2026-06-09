@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   MapPin, Clock, CalendarDays, MessageCircle, Heart, ShoppingBag,
   ChevronLeft, Search, X, Camera, Loader2, BookMarked, RefreshCw,
-  CheckCircle2, Phone, TrendingDown, ShoppingCart, Download, Share2, SlidersHorizontal,
+  CheckCircle2, TrendingDown, ShoppingCart, Download, Share2, SlidersHorizontal,
 } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 
@@ -58,6 +58,13 @@ function discount(p: PublicProduct) {
     : 0;
 }
 
+/* ── Shared gold divider ── */
+const GoldDivider = () => (
+  <div className="flex items-center gap-2 my-1">
+    <div className="flex-1 h-px" style={{ background: "linear-gradient(to right, transparent, #D4AF37, transparent)" }} />
+  </div>
+);
+
 export default function PublicStore() {
   const params = useParams<{ slug: string }>();
   const slug = params.slug;
@@ -76,8 +83,7 @@ export default function PublicStore() {
     try {
       const raw = JSON.parse(localStorage.getItem(`wmh_likes_${slug}`) || "{}") as Record<string, number>;
       const now = Date.now();
-      const valid = new Set(Object.entries(raw).filter(([, ts]) => now - ts < 86400000).map(([id]) => id));
-      return valid;
+      return new Set(Object.entries(raw).filter(([, ts]) => now - ts < 86400000).map(([id]) => id));
     } catch { return new Set(); }
   });
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
@@ -141,15 +147,12 @@ export default function PublicStore() {
     } catch {}
   }
 
-  /* Fetch seen-by-admin status for each booking when My Bookings opens */
   useEffect(() => {
     if (view !== "mybookings" || myBookings.length === 0) return;
     myBookings.forEach((bk) => {
       fetch(`/api/public/booking-status/${bk.id}`)
         .then((r) => r.ok ? r.json() : null)
-        .then((d) => {
-          if (d) setSeenStatus((prev) => ({ ...prev, [bk.id]: d.seenByAdmin }));
-        })
+        .then((d) => { if (d) setSeenStatus((prev) => ({ ...prev, [bk.id]: d.seenByAdmin })); })
         .catch(() => {});
     });
   }, [view]);
@@ -162,12 +165,10 @@ export default function PublicStore() {
     const seenFunc = new Set<string>();
     data.products.forEach((p) => {
       if (p.productType !== "Functional" && !seenTypes.has(p.productType)) {
-        seenTypes.add(p.productType);
-        types.push(p.productType);
+        seenTypes.add(p.productType); types.push(p.productType);
       }
       if (p.functionCategory && !seenFunc.has(p.functionCategory)) {
-        seenFunc.add(p.functionCategory);
-        funcCats.push(p.functionCategory);
+        seenFunc.add(p.functionCategory); funcCats.push(p.functionCategory);
       }
     });
     return [...types, ...funcCats];
@@ -178,11 +179,10 @@ export default function PublicStore() {
     let list = [...data.products];
     if (search.trim()) {
       const q = search.toLowerCase();
-      list = list.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.description?.toLowerCase().includes(q) ||
-          p.productType.toLowerCase().includes(q)
+      list = list.filter((p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.description?.toLowerCase().includes(q) ||
+        p.productType.toLowerCase().includes(q)
       );
     }
     if (activeCategory !== "all") {
@@ -233,44 +233,33 @@ export default function PublicStore() {
   }
 
   function openTryOn() {
-    setCustomerPhoto(null);
-    setTryOnResult(null);
-    setView("tryon");
+    setCustomerPhoto(null); setTryOnResult(null); setView("tryon");
   }
 
   function openBooking() {
     setTryOnBookingImage(null);
     setBookingForm({ name: "", city: "", whatsapp: "" });
     setSelectedSize(selectedProduct?.sizes[0] ?? "");
-    setBookingSuccess(false);
-    setView("booking");
+    setBookingSuccess(false); setView("booking");
   }
 
   function openTryOnBooking() {
     setTryOnBookingImage(tryOnResult);
     setBookingForm({ name: "", city: "", whatsapp: "" });
     setSelectedSize(selectedProduct?.sizes[0] ?? "");
-    setBookingSuccess(false);
-    setView("booking");
+    setBookingSuccess(false); setView("booking");
   }
 
   function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const file = e.target.files?.[0]; if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      setCustomerPhoto(ev.target?.result as string);
-      setTryOnResult(null);
-    };
+    reader.onload = (ev) => { setCustomerPhoto(ev.target?.result as string); setTryOnResult(null); };
     reader.readAsDataURL(file);
   }
 
   function saveTryOnImage() {
     if (!tryOnResult) return;
-    const a = document.createElement("a");
-    a.href = tryOnResult;
-    a.download = "virtual-try-on.jpg";
-    a.click();
+    const a = document.createElement("a"); a.href = tryOnResult; a.download = "virtual-try-on.jpg"; a.click();
   }
 
   async function shareTryOnImage() {
@@ -280,21 +269,14 @@ export default function PublicStore() {
       const blob = await res.blob();
       const file = new File([blob], "virtual-try-on.jpg", { type: "image/jpeg" });
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: "Virtual Try-On",
-          text: `Check out my virtual try-on for ${selectedProduct?.name}!`,
-        });
-      } else {
-        saveTryOnImage();
-      }
+        await navigator.share({ files: [file], title: "Virtual Try-On", text: `Check out my virtual try-on for ${selectedProduct?.name}!` });
+      } else { saveTryOnImage(); }
     } catch {}
   }
 
   async function generateTryOn() {
     if (!customerPhoto || !selectedProduct) return;
-    setTryOnLoading(true);
-    setTryOnResult(null);
+    setTryOnLoading(true); setTryOnResult(null);
     try {
       const res = await fetch(`/api/public/products/${selectedProduct.id}/tryon`, { method: "POST" });
       if (res.ok) {
@@ -303,8 +285,7 @@ export default function PublicStore() {
       }
       await new Promise<void>((resolve) => {
         const canvas = document.createElement("canvas");
-        canvas.width = 400;
-        canvas.height = 500;
+        canvas.width = 400; canvas.height = 500;
         const ctx = canvas.getContext("2d")!;
         const cImg = new Image();
         cImg.onload = () => {
@@ -315,17 +296,16 @@ export default function PublicStore() {
             ctx.globalAlpha = 0.5;
             ctx.drawImage(clothImg.complete && clothImg.naturalWidth ? clothImg : cImg, 70, 70, 260, 310);
             ctx.globalAlpha = 1;
-            ctx.fillStyle = "rgba(0,0,0,0.4)";
+            ctx.fillStyle = "rgba(0,0,0,0.5)";
             ctx.fillRect(0, 462, 400, 38);
-            ctx.fillStyle = "white";
+            ctx.fillStyle = "#D4AF37";
             ctx.font = "bold 12px sans-serif";
             ctx.textAlign = "center";
             ctx.fillText("AI Virtual Try-On • Web Media Hub", 200, 484);
             setTryOnResult(canvas.toDataURL("image/jpeg", 0.88));
             resolve();
           };
-          clothImg.onload = finish;
-          clothImg.onerror = finish;
+          clothImg.onload = finish; clothImg.onerror = finish;
           clothImg.src = selectedProduct.images[0] ?? "";
         };
         cImg.src = customerPhoto;
@@ -346,7 +326,7 @@ export default function PublicStore() {
           customerName: bookingForm.name,
           customerPhone: bookingForm.whatsapp,
           customerAddress: bookingForm.city,
-          selectedSize: selectedSize,
+          selectedSize,
           tryOnImage: tryOnBookingImage || undefined,
         }),
       });
@@ -372,17 +352,18 @@ export default function PublicStore() {
     finally { setBookingLoading(false); }
   }
 
+  /* ── Loading skeleton ── */
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <div className="h-36 bg-gradient-to-br from-violet-600 to-rose-500 animate-pulse" />
-        <div className="p-4 space-y-3">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-5 bg-gray-200 rounded animate-pulse" style={{ width: `${80 - i * 10}%` }} />
+      <div className="min-h-screen flex flex-col" style={{ background: "#0f0f0f", fontFamily: "'Inter', sans-serif" }}>
+        <div className="h-36 animate-pulse mx-3 mt-3 rounded-2xl" style={{ background: "#1a1a1a" }} />
+        <div className="p-4 space-y-3 mt-2">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-4 rounded animate-pulse" style={{ background: "#1a1a1a", width: `${80 - i * 10}%` }} />
           ))}
-          <div className="grid grid-cols-2 gap-3 mt-4">
+          <div className="grid grid-cols-2 gap-[2px] mt-4">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="aspect-[3/4] bg-gray-200 rounded-xl animate-pulse" />
+              <div key={i} className="aspect-[3/4] animate-pulse" style={{ background: "#1a1a1a" }} />
             ))}
           </div>
         </div>
@@ -390,12 +371,13 @@ export default function PublicStore() {
     );
   }
 
+  /* ── Error ── */
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center text-center px-4">
-        <ShoppingBag className="w-16 h-16 text-gray-200 mb-4" />
-        <h1 className="text-xl font-bold text-gray-700">Store not found</h1>
-        <p className="text-gray-400 mt-2 text-sm">This link may be invalid or the store may have been removed.</p>
+      <div className="min-h-screen flex flex-col items-center justify-center text-center px-4" style={{ background: "#0f0f0f" }}>
+        <ShoppingBag className="w-16 h-16 mb-4" style={{ color: "#D4AF37", opacity: 0.4 }} />
+        <h1 className="text-xl font-bold text-white" style={{ fontFamily: "'Montserrat', sans-serif" }}>Store not found</h1>
+        <p className="text-white/40 mt-2 text-sm">This link may be invalid or the store may have been removed.</p>
       </div>
     );
   }
@@ -404,56 +386,55 @@ export default function PublicStore() {
     ? `https://wa.me/${data.whatsappNumber.replace(/\D/g, "")}`
     : null;
 
-  /* ─────────────────── MY BOOKINGS VIEW ─────────────────── */
+  /* ═══════════════════════════════════════
+     MY BOOKINGS VIEW
+  ═══════════════════════════════════════ */
   if (view === "mybookings") {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <div className="sticky top-0 z-10 bg-white border-b border-gray-100 flex items-center gap-3 px-4 py-3">
-          <button onClick={() => setView("store")} className="p-1.5 rounded-full hover:bg-gray-100">
-            <ChevronLeft className="w-5 h-5" />
+      <div className="min-h-screen flex flex-col" style={{ background: "#0f0f0f", fontFamily: "'Inter', sans-serif" }}>
+        <div className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 border-b" style={{ background: "#0f0f0f", borderColor: "rgba(212,175,55,0.2)" }}>
+          <button onClick={() => setView("store")} className="p-1.5 rounded-full hover:bg-white/10 transition-colors">
+            <ChevronLeft className="w-5 h-5 text-white" />
           </button>
-          <span className="font-bold text-gray-900">My Bookings</span>
+          <span className="font-bold text-white" style={{ fontFamily: "'Montserrat', sans-serif" }}>My Bookings</span>
         </div>
         <div className="flex-1 p-4 space-y-3">
           {myBookings.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
-              <BookMarked className="w-12 h-12 text-gray-200 mb-3" />
-              <p className="text-gray-400 text-sm">No bookings yet</p>
+              <BookMarked className="w-12 h-12 mb-3" style={{ color: "#D4AF37", opacity: 0.3 }} />
+              <p className="text-white/40 text-sm">No bookings yet</p>
             </div>
           ) : (
             myBookings.map((bk) => {
               const seen = seenStatus[bk.id] ?? false;
               return (
-                <div key={bk.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex gap-3">
+                <div key={bk.id} className="rounded-xl border p-3 flex gap-3" style={{ background: "#1a1a1a", borderColor: "rgba(212,175,55,0.15)" }}>
                   {(bk.tryOnImage || bk.productImage) ? (
                     <img src={bk.tryOnImage || bk.productImage} className="w-16 h-20 object-cover rounded-lg flex-shrink-0" />
                   ) : (
-                    <div className="w-16 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <ShoppingBag className="w-6 h-6 text-gray-300" />
+                    <div className="w-16 h-20 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "#111" }}>
+                      <ShoppingBag className="w-6 h-6 text-white/20" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900 text-sm line-clamp-1">{bk.productName}</p>
+                    <p className="font-semibold text-white text-sm line-clamp-1" style={{ fontFamily: "'Poppins', sans-serif" }}>{bk.productName}</p>
                     {bk.selectedSize && (
-                      <span className="inline-block text-[10px] border border-gray-200 rounded px-1.5 py-0.5 text-gray-500 mt-1">
+                      <span className="inline-block text-[10px] rounded px-1.5 py-0.5 mt-1 font-medium" style={{ border: "1px solid rgba(212,175,55,0.3)", color: "#D4AF37", background: "rgba(212,175,55,0.08)" }}>
                         Size: {bk.selectedSize}
                       </span>
                     )}
-                    <p className="text-xs text-gray-500 mt-1">{bk.customerName} · {bk.city}</p>
-                    <p className="text-xs text-gray-400">{bk.whatsapp}</p>
-                    <p className="text-[10px] text-gray-300 mt-1">
+                    <p className="text-xs text-white/50 mt-1">{bk.customerName} · {bk.city}</p>
+                    <p className="text-xs text-white/30">{bk.whatsapp}</p>
+                    <p className="text-[10px] text-white/20 mt-1">
                       {new Date(bk.bookedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                     </p>
                   </div>
-                  {/* Double tick — gray=not seen, blue=seen by admin */}
-                  <div className="flex-shrink-0 mt-auto pb-0.5">
-                    <svg width="22" height="14" viewBox="0 0 22 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      {/* First tick (back) */}
-                      <path d="M1 7L5.5 11.5L13 3" stroke={seen ? "#53bdeb" : "#b0b8c1"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      {/* Second tick (front, offset right) */}
-                      <path d="M7 7L11.5 11.5L19 3" stroke={seen ? "#53bdeb" : "#b0b8c1"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <div className="flex-shrink-0 mt-auto pb-0.5 flex flex-col items-center gap-0.5">
+                    <svg width="22" height="14" viewBox="0 0 22 14" fill="none">
+                      <path d="M1 7L5.5 11.5L13 3" stroke={seen ? "#53bdeb" : "#555"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M7 7L11.5 11.5L19 3" stroke={seen ? "#53bdeb" : "#555"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
-                    <p className="text-[9px] text-center mt-0.5" style={{ color: seen ? "#53bdeb" : "#b0b8c1" }}>
+                    <p className="text-[9px] text-center" style={{ color: seen ? "#53bdeb" : "#555" }}>
                       {seen ? "Seen" : "Sent"}
                     </p>
                   </div>
@@ -466,59 +447,62 @@ export default function PublicStore() {
     );
   }
 
-  /* ─────────────────── BOOKING FORM VIEW ─────────────────── */
+  /* ═══════════════════════════════════════
+     BOOKING FORM VIEW
+  ═══════════════════════════════════════ */
   if (view === "booking" && selectedProduct) {
+    const isValidPhone = (w: string) => w.length === 10 && !/^(\d)\1{9}$/.test(w);
+    const canBook = bookingForm.name.trim().length >= 2 && isValidPhone(bookingForm.whatsapp) && !bookingLoading;
+
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <div className="sticky top-0 z-10 bg-white border-b border-gray-100 flex items-center gap-3 px-4 py-3">
-          <button onClick={goBack} className="p-1.5 rounded-full hover:bg-gray-100">
-            <ChevronLeft className="w-5 h-5" />
+      <div className="min-h-screen flex flex-col" style={{ background: "#0f0f0f", fontFamily: "'Inter', sans-serif" }}>
+        <div className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 border-b" style={{ background: "#0f0f0f", borderColor: "rgba(212,175,55,0.2)" }}>
+          <button onClick={goBack} className="p-1.5 rounded-full hover:bg-white/10">
+            <ChevronLeft className="w-5 h-5 text-white" />
           </button>
-          <span className="font-bold text-gray-900">
+          <span className="font-bold text-white" style={{ fontFamily: "'Montserrat', sans-serif" }}>
             {tryOnBookingImage ? "Book This Look" : "Book Product"}
           </span>
         </div>
 
         <div className="p-4 flex-1 overflow-y-auto">
-          {/* Product / Try-On preview */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex gap-3 mb-6">
-            {tryOnBookingImage ? (
-              <img src={tryOnBookingImage} className="w-16 h-20 object-cover rounded-lg flex-shrink-0" />
-            ) : selectedProduct.images[0] ? (
-              <img src={selectedProduct.images[0]} className="w-16 h-20 object-cover rounded-lg flex-shrink-0" />
+          {/* Product preview */}
+          <div className="rounded-xl border p-3 flex gap-3 mb-6" style={{ background: "#1a1a1a", borderColor: "rgba(212,175,55,0.2)" }}>
+            {(tryOnBookingImage ?? selectedProduct.images[0]) ? (
+              <img src={tryOnBookingImage ?? selectedProduct.images[0]} className="w-16 h-20 object-cover rounded-lg flex-shrink-0" />
             ) : (
-              <div className="w-16 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <ShoppingBag className="w-6 h-6 text-gray-300" />
+              <div className="w-16 h-20 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "#111" }}>
+                <ShoppingBag className="w-6 h-6 text-white/20" />
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-gray-900 text-sm line-clamp-2">{selectedProduct.name}</p>
+              <p className="font-semibold text-white text-sm line-clamp-2" style={{ fontFamily: "'Poppins', sans-serif" }}>{selectedProduct.name}</p>
               {tryOnBookingImage && (
-                <span className="inline-block text-[10px] bg-violet-50 text-violet-600 border border-violet-200 px-2 py-0.5 rounded-full font-medium mt-0.5">
+                <span className="inline-block text-[10px] px-2 py-0.5 rounded-full mt-0.5 font-medium" style={{ background: "rgba(212,175,55,0.15)", color: "#D4AF37", border: "1px solid rgba(212,175,55,0.3)" }}>
                   Virtual Try-On
                 </span>
               )}
-              <p className="text-base font-bold text-gray-900 mt-1">₹{selectedProduct.discountPrice.toLocaleString()}</p>
+              <p className="text-base font-bold text-white mt-1" style={{ fontFamily: "'Inter', sans-serif" }}>₹{selectedProduct.discountPrice.toLocaleString()}</p>
               {discount(selectedProduct) > 0 && (
-                <p className="text-xs text-gray-400 line-through">₹{selectedProduct.actualPrice.toLocaleString()}</p>
+                <p className="text-xs text-white/30 line-through">₹{selectedProduct.actualPrice.toLocaleString()}</p>
               )}
             </div>
           </div>
 
           {/* Size selector */}
           {selectedProduct.sizes.length > 0 && (
-            <div className="mb-4">
-              <p className="text-sm font-semibold text-gray-700 mb-2">Select Size</p>
+            <div className="mb-5">
+              <p className="text-xs font-bold text-white/60 mb-2 uppercase tracking-wider">Select Size</p>
               <div className="flex flex-wrap gap-2">
                 {selectedProduct.sizes.map((s) => (
                   <button
                     key={s}
                     onClick={() => setSelectedSize(s)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-all ${
-                      selectedSize === s
-                        ? "bg-rose-500 text-white border-rose-500"
-                        : "bg-white text-gray-700 border-gray-200 hover:border-rose-300"
-                    }`}
+                    className="px-4 py-2 rounded-lg text-sm font-semibold border transition-all"
+                    style={selectedSize === s
+                      ? { background: "#D4AF37", color: "#0f0f0f", borderColor: "#D4AF37" }
+                      : { background: "transparent", color: "rgba(255,255,255,0.6)", borderColor: "rgba(255,255,255,0.2)" }
+                    }
                   >
                     {s}
                   </button>
@@ -530,28 +514,26 @@ export default function PublicStore() {
           {/* Form */}
           {!bookingSuccess ? (
             <div className="space-y-4">
+              {[
+                { label: "Your Name *", key: "name", type: "text", placeholder: "Enter your full name" },
+                { label: "City / Village", key: "city", type: "text", placeholder: "Your city or village" },
+              ].map(({ label, key, type, placeholder }) => (
+                <div key={key}>
+                  <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-1.5">{label}</label>
+                  <input
+                    type={type}
+                    value={bookingForm[key as "name" | "city"]}
+                    onChange={(e) => setBookingForm((f) => ({ ...f, [key]: e.target.value }))}
+                    placeholder={placeholder}
+                    className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none border transition-colors"
+                    style={{ background: "#1a1a1a", borderColor: "rgba(212,175,55,0.2)" }}
+                    onFocus={(e) => (e.target.style.borderColor = "#D4AF37")}
+                    onBlur={(e) => (e.target.style.borderColor = "rgba(212,175,55,0.2)")}
+                  />
+                </div>
+              ))}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Your Name *</label>
-                <input
-                  type="text"
-                  value={bookingForm.name}
-                  onChange={(e) => setBookingForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder="Enter your full name"
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 bg-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">City / Village</label>
-                <input
-                  type="text"
-                  value={bookingForm.city}
-                  onChange={(e) => setBookingForm((f) => ({ ...f, city: e.target.value }))}
-                  placeholder="Your city or village"
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 bg-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">WhatsApp Number *</label>
+                <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-1.5">WhatsApp Number *</label>
                 <input
                   type="tel"
                   inputMode="numeric"
@@ -562,60 +544,45 @@ export default function PublicStore() {
                     setBookingForm((f) => ({ ...f, whatsapp: digits }));
                   }}
                   placeholder="10-digit WhatsApp number"
-                  className={`w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 bg-white ${
-                    bookingForm.whatsapp.length > 0 && (() => {
-                      const w = bookingForm.whatsapp;
-                      if (w.length < 10) return true;
-                      if (/^(\d)\1{9}$/.test(w)) return true;
-                      return false;
-                    })()
-                      ? "border-red-400 focus:ring-red-300"
-                      : "border-gray-200 focus:ring-rose-300"
-                  }`}
+                  className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none border transition-colors"
+                  style={{
+                    background: "#1a1a1a",
+                    borderColor: bookingForm.whatsapp.length > 0 && !isValidPhone(bookingForm.whatsapp)
+                      ? "#ef4444"
+                      : "rgba(212,175,55,0.2)"
+                  }}
                 />
-                {bookingForm.whatsapp.length > 0 && (() => {
-                  const w = bookingForm.whatsapp;
-                  if (w.length < 10) return (
-                    <p className="text-[11px] text-red-500 mt-1">
-                      {10 - w.length} more digit{10 - w.length !== 1 ? "s" : ""} needed
-                    </p>
-                  );
-                  if (/^(\d)\1{9}$/.test(w)) return (
-                    <p className="text-[11px] text-red-500 mt-1">
-                      Repeated number not allowed (e.g. {w[0].repeat(10)})
-                    </p>
-                  );
-                  return (
-                    <p className="text-[11px] text-green-600 mt-1">✓ Valid number</p>
-                  );
-                })()}
+                {bookingForm.whatsapp.length > 0 && !isValidPhone(bookingForm.whatsapp) && (
+                  <p className="text-xs mt-1" style={{ color: "#ef4444" }}>
+                    {bookingForm.whatsapp.length < 10 ? "Enter 10-digit number" : "Invalid number"}
+                  </p>
+                )}
               </div>
-              {(() => {
-                const w = bookingForm.whatsapp;
-                const isValidPhone = w.length === 10 && !/^(\d)\1{9}$/.test(w);
-                const canBook = !bookingLoading && !!bookingForm.name && isValidPhone;
-                return (
-                  <button
-                    onClick={submitBooking}
-                    disabled={!canBook}
-                    className="w-full bg-rose-500 hover:bg-rose-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2"
-                  >
-                    {bookingLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                    Book Product
-                  </button>
-                );
-              })()}
+              <button
+                onClick={submitBooking}
+                disabled={!canBook}
+                className="w-full font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 text-sm"
+                style={{
+                  background: canBook ? "#D4AF37" : "#2a2a2a",
+                  color: canBook ? "#0f0f0f" : "rgba(255,255,255,0.2)",
+                  fontFamily: "'Montserrat', sans-serif",
+                }}
+              >
+                {bookingLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                Book Product
+              </button>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <CheckCircle2 className="w-16 h-16 text-green-500 mb-4" />
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Booking Confirmed!</h3>
-              <p className="text-sm text-gray-500 mb-6">
-                Your booking for <strong>{selectedProduct.name}</strong> has been received. The store owner will contact you soon.
+              <CheckCircle2 className="w-16 h-16 mb-4" style={{ color: "#D4AF37" }} />
+              <h3 className="text-xl font-bold text-white mb-2" style={{ fontFamily: "'Montserrat', sans-serif" }}>Booking Confirmed!</h3>
+              <p className="text-sm text-white/50 mb-6">
+                Your booking for <strong className="text-white">{selectedProduct.name}</strong> has been received.
               </p>
               <button
                 onClick={() => setView("mybookings")}
-                className="text-sm text-rose-500 font-semibold underline"
+                className="text-sm font-bold underline"
+                style={{ color: "#D4AF37" }}
               >
                 View My Bookings
               </button>
@@ -626,32 +593,28 @@ export default function PublicStore() {
     );
   }
 
-  /* ─────────────────── VIRTUAL TRY-ON VIEW ─────────────────── */
+  /* ═══════════════════════════════════════
+     VIRTUAL TRY-ON VIEW
+  ═══════════════════════════════════════ */
   if (view === "tryon" && selectedProduct) {
     return (
-      <div className="min-h-screen bg-[#0f0f0f] flex flex-col text-white">
-        <div className="sticky top-0 z-10 bg-[#0f0f0f] border-b border-white/10 flex items-center gap-3 px-4 py-3">
+      <div className="min-h-screen flex flex-col text-white" style={{ background: "#0f0f0f", fontFamily: "'Inter', sans-serif" }}>
+        <div className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 border-b" style={{ background: "#0f0f0f", borderColor: "rgba(212,175,55,0.2)" }}>
           <button onClick={goBack} className="p-1.5 rounded-full hover:bg-white/10">
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <span className="font-bold">Virtual Try-On</span>
-          <span className="ml-auto text-[10px] text-white/40 bg-white/10 px-2 py-0.5 rounded-full">AI Powered</span>
+          <span className="font-bold" style={{ fontFamily: "'Montserrat', sans-serif" }}>Virtual Try-On</span>
+          <span className="ml-auto text-[10px] text-white/40 px-2 py-0.5 rounded-full border" style={{ borderColor: "rgba(212,175,55,0.3)", color: "#D4AF37" }}>
+            AI Powered
+          </span>
         </div>
 
         <div className="flex-1 flex flex-col sm:flex-row overflow-hidden">
-          {/* Left panel */}
-          <div className="flex-1 flex flex-col border-r border-white/10">
-            {/* Product image */}
-            <div className="flex-1 relative bg-[#1a1a1a] border-b border-white/10">
-              <div className="absolute top-2 left-2 text-[10px] bg-white/20 text-white px-2 py-0.5 rounded-full z-10">
-                Product
-              </div>
+          <div className="flex-1 flex flex-col border-r" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+            <div className="flex-1 relative border-b" style={{ background: "#1a1a1a", borderColor: "rgba(255,255,255,0.05)" }}>
+              <div className="absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-full" style={{ background: "rgba(212,175,55,0.2)", color: "#D4AF37" }}>Product</div>
               {selectedProduct.images[0] ? (
-                <img
-                  src={selectedProduct.images[0]}
-                  className="w-full h-full object-contain"
-                  style={{ maxHeight: "220px" }}
-                />
+                <img src={selectedProduct.images[0]} className="w-full h-full object-contain" style={{ maxHeight: "220px" }} />
               ) : (
                 <div className="w-full h-40 flex items-center justify-center">
                   <ShoppingBag className="w-10 h-10 text-white/20" />
@@ -659,89 +622,68 @@ export default function PublicStore() {
               )}
             </div>
 
-            {/* Customer photo */}
             <div
-              className="flex-1 relative bg-[#111] border-b border-white/10 min-h-[180px]"
+              className="flex-1 relative border-b min-h-[180px]"
+              style={{ background: "#111", borderColor: "rgba(255,255,255,0.05)", cursor: !customerPhoto ? "pointer" : undefined }}
               onClick={!customerPhoto ? () => photoInputRef.current?.click() : undefined}
-              style={!customerPhoto ? { cursor: "pointer" } : undefined}
             >
-              <div className="absolute top-2 left-2 text-[10px] bg-white/20 text-white px-2 py-0.5 rounded-full z-10">
-                Your Photo
-              </div>
+              <div className="absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-full" style={{ background: "rgba(212,175,55,0.2)", color: "#D4AF37" }}>Your Photo</div>
               {customerPhoto ? (
                 <>
                   <img src={customerPhoto} className="w-full h-full object-contain" style={{ maxHeight: "220px" }} />
                   <button
                     onClick={() => photoInputRef.current?.click()}
-                    className="absolute bottom-2 right-2 text-[10px] bg-white/20 hover:bg-white/30 text-white px-2 py-1 rounded-full flex items-center gap-1"
+                    className="absolute bottom-2 right-2 text-[10px] px-2 py-1 rounded-full flex items-center gap-1"
+                    style={{ background: "rgba(212,175,55,0.2)", color: "#D4AF37" }}
                   >
-                    <Camera className="w-3 h-3" /> Change Photo
+                    <Camera className="w-3 h-3" /> Change
                   </button>
                 </>
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center gap-2 min-h-[160px]">
-                  <Camera className="w-8 h-8 text-white/30" />
-                  <p className="text-xs text-white/40">Tap anywhere to upload your photo</p>
+                  <Camera className="w-8 h-8 text-white/20" />
+                  <p className="text-xs text-white/30">Tap to upload your photo</p>
                 </div>
               )}
-              <input
-                ref={photoInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handlePhotoUpload}
-              />
+              <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
             </div>
 
-            {/* Generate button */}
             <div className="p-3">
               <button
                 onClick={generateTryOn}
                 disabled={!customerPhoto || tryOnLoading}
-                className="w-full bg-violet-600 hover:bg-violet-700 disabled:bg-white/10 disabled:text-white/30 text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm"
+                className="w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 text-sm"
+                style={{
+                  background: customerPhoto && !tryOnLoading ? "#D4AF37" : "#2a2a2a",
+                  color: customerPhoto && !tryOnLoading ? "#0f0f0f" : "rgba(255,255,255,0.2)",
+                  fontFamily: "'Montserrat', sans-serif",
+                }}
               >
                 {tryOnLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 {tryOnLoading ? "Generating..." : "Generate Try-On"}
               </button>
-              {!customerPhoto && (
-                <p className="text-[10px] text-white/30 text-center mt-1">Upload your photo first</p>
-              )}
             </div>
           </div>
 
-          {/* Right panel — AI Result */}
-          <div className="flex-1 bg-[#0d0d0d] flex flex-col items-center justify-center min-h-[300px]">
+          <div className="flex-1 flex flex-col items-center justify-center min-h-[300px]" style={{ background: "#0d0d0d" }}>
             {tryOnLoading && (
               <div className="flex flex-col items-center gap-3">
-                <Loader2 className="w-10 h-10 text-violet-500 animate-spin" />
-                <p className="text-sm text-white/50">Generating try-on...</p>
+                <Loader2 className="w-10 h-10 animate-spin" style={{ color: "#D4AF37" }} />
+                <p className="text-sm text-white/40">Generating try-on...</p>
               </div>
             )}
             {!tryOnLoading && tryOnResult && (
               <div className="flex flex-col items-center w-full">
                 <img src={tryOnResult} className="w-full object-contain max-h-[420px]" />
                 <div className="flex gap-3 mt-3 px-4 w-full">
-                  <button
-                    onClick={saveTryOnImage}
-                    className="flex-1 flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors"
-                  >
-                    <Download className="w-4 h-4" />
-                    Save
-                  </button>
-                  <button
-                    onClick={shareTryOnImage}
-                    className="flex-1 flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors"
-                  >
-                    <Share2 className="w-4 h-4" />
-                    Share
-                  </button>
+                  {[{ fn: saveTryOnImage, icon: Download, label: "Save" }, { fn: shareTryOnImage, icon: Share2, label: "Share" }].map(({ fn, icon: Icon, label }) => (
+                    <button key={label} onClick={fn} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-colors" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.7)" }}>
+                      <Icon className="w-4 h-4" />{label}
+                    </button>
+                  ))}
                 </div>
                 <div className="px-4 w-full mt-2">
-                  <button
-                    onClick={openTryOnBooking}
-                    className="w-full flex items-center justify-center gap-2 bg-rose-500 hover:bg-rose-600 text-white font-bold py-3 rounded-xl text-sm transition-colors"
-                  >
-                    <ShoppingCart className="w-4 h-4" />
+                  <button onClick={openTryOnBooking} className="w-full flex items-center justify-center gap-2 font-bold py-3 rounded-xl text-sm" style={{ background: "#D4AF37", color: "#0f0f0f", fontFamily: "'Montserrat', sans-serif" }}>
                     Book This Look
                   </button>
                 </div>
@@ -749,11 +691,10 @@ export default function PublicStore() {
             )}
             {!tryOnLoading && !tryOnResult && (
               <div className="flex flex-col items-center gap-3 px-6 text-center">
-                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-2">
-                  <Camera className="w-7 h-7 text-white/20" />
+                <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: "rgba(212,175,55,0.08)" }}>
+                  <Camera className="w-7 h-7" style={{ color: "#D4AF37", opacity: 0.3 }} />
                 </div>
-                <p className="text-sm text-white/40">AI result will appear here</p>
-                <p className="text-[10px] text-white/20">Upload your photo and tap Generate</p>
+                <p className="text-sm text-white/30">AI result will appear here</p>
               </div>
             )}
           </div>
@@ -762,64 +703,57 @@ export default function PublicStore() {
     );
   }
 
-  /* ─────────────────── PRODUCT DETAIL VIEW ─────────────────── */
+  /* ═══════════════════════════════════════
+     PRODUCT DETAIL VIEW
+  ═══════════════════════════════════════ */
   if (view === "product" && selectedProduct) {
     const pDiscount = discount(selectedProduct);
     const productWaLink = waLink
-      ? `${waLink}?text=${encodeURIComponent(`Hello team : ${data.name}\n\nI'm interested in your product\n\n📦Product: ${selectedProduct.name}\n💰Price: ₹${selectedProduct.discountPrice.toLocaleString()}\n🏷️Category: ${selectedProduct.productType}\n\nI am interested in purchasing this! Can you reply to confirm my order. ☺️`)}`
+      ? `${waLink}?text=${encodeURIComponent(`Hello ${data.name}!\n\nI'm interested in your product:\n\n📦 ${selectedProduct.name}\n💰 ₹${selectedProduct.discountPrice.toLocaleString()}\n🏷️ ${selectedProduct.productType}\n\nCan you confirm my interest? ☺️`)}`
       : null;
     const relatedProducts = data.products.filter(
-      (p) =>
-        p.id !== selectedProduct.id &&
-        p.id !== previousProductId &&
-        p.productType === selectedProduct.productType
+      (p) => p.id !== selectedProduct.id && p.id !== previousProductId && p.productType === selectedProduct.productType
     );
 
     return (
-      <div key={selectedProduct.id} className="fixed inset-0 z-50 bg-[#f4f4f4] flex flex-col animate-slide-up-page">
+      <div key={selectedProduct.id} className="fixed inset-0 z-50 flex flex-col animate-slide-up-page" style={{ background: "#0f0f0f", fontFamily: "'Inter', sans-serif" }}>
 
-        {/* ── Sticky top bar ── */}
-        <div className="flex items-center gap-2 px-3 py-2 bg-white border-b sticky top-0 z-20 shadow-sm">
-          <button onClick={goBack} className="p-1.5 rounded-full hover:bg-gray-100 transition-colors">
-            <ChevronLeft className="w-5 h-5 text-gray-700" />
+        {/* Top bar */}
+        <div className="flex items-center gap-2 px-3 py-2 sticky top-0 z-20 border-b" style={{ background: "#0f0f0f", borderColor: "rgba(212,175,55,0.15)" }}>
+          <button onClick={goBack} className="p-1.5 rounded-full hover:bg-white/10 transition-colors">
+            <ChevronLeft className="w-5 h-5 text-white" />
           </button>
-          <h2 className="font-semibold text-sm line-clamp-1 flex-1 text-gray-800">{selectedProduct.name}</h2>
+          <h2 className="font-semibold text-sm line-clamp-1 flex-1 text-white" style={{ fontFamily: "'Poppins', sans-serif" }}>{selectedProduct.name}</h2>
           <button
             onClick={(e) => handleLike(selectedProduct.id, e)}
-            className={`p-1.5 rounded-full transition-all ${
-              likedProducts.has(selectedProduct.id) ? "bg-rose-50 text-rose-500" : "hover:bg-gray-100 text-gray-400"
-            }`}
+            className="p-1.5 rounded-full transition-all"
+            style={{ background: likedProducts.has(selectedProduct.id) ? "rgba(239,68,68,0.15)" : "transparent" }}
           >
-            <Heart className={`w-5 h-5 ${likedProducts.has(selectedProduct.id) ? "fill-current" : ""}`} />
+            <Heart className={`w-5 h-5 ${likedProducts.has(selectedProduct.id) ? "fill-red-500 text-red-500" : "text-white/40"}`} />
           </button>
         </div>
 
-        {/* ── Scrollable body ── */}
+        {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto min-h-0">
 
-          {/* Swipeable image carousel */}
-          <div className="relative bg-white">
+          {/* Image carousel */}
+          <div className="relative" style={{ background: "#1a1a1a" }}>
             <div
               ref={carouselRef}
               className="flex overflow-x-auto"
               style={{ scrollSnapType: "x mandatory", scrollBehavior: "smooth" }}
               onScroll={(e) => {
                 const el = e.currentTarget;
-                const idx = Math.round(el.scrollLeft / el.clientWidth);
-                setImgIndex(idx);
+                setImgIndex(Math.round(el.scrollLeft / el.clientWidth));
               }}
             >
               {(selectedProduct.images.length > 0 ? selectedProduct.images : [null]).map((img, i) => (
-                <div
-                  key={i}
-                  className="shrink-0 w-full bg-white"
-                  style={{ scrollSnapAlign: "start", scrollSnapStop: "always", aspectRatio: "3/4", maxHeight: "48vh" }}
-                >
+                <div key={i} className="shrink-0 w-full" style={{ scrollSnapAlign: "start", scrollSnapStop: "always", aspectRatio: "3/4", maxHeight: "48vh", background: "#1a1a1a" }}>
                   {img ? (
                     <img src={img} alt={selectedProduct.name} className="w-full h-full object-contain" draggable={false} />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                      <ShoppingBag className="w-20 h-20 opacity-20" />
+                    <div className="w-full h-full flex items-center justify-center">
+                      <ShoppingBag className="w-20 h-20 text-white/10" />
                     </div>
                   )}
                 </div>
@@ -828,105 +762,87 @@ export default function PublicStore() {
 
             {/* Discount badge */}
             {pDiscount > 0 && (
-              <div className="absolute top-3 left-3 bg-[#ff3e6c] text-white text-[11px] font-bold px-2 py-0.5 rounded-sm">
+              <div className="absolute top-3 left-3 text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: "#D4AF37", color: "#0f0f0f" }}>
                 {pDiscount}% OFF
               </div>
             )}
-
-            {/* Product type tag */}
-            <div className="absolute top-3 right-3 bg-black/50 text-white text-[10px] font-medium px-2 py-0.5 rounded-sm">
+            <div className="absolute top-3 right-3 text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ background: "rgba(0,0,0,0.6)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.1)" }}>
               {selectedProduct.productType}
             </div>
 
-            {/* Dot indicators */}
+            {/* Dots */}
             {selectedProduct.images.length > 1 && (
               <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
                 {selectedProduct.images.map((_, i) => (
                   <button
                     key={i}
-                    onClick={() => {
-                      carouselRef.current?.scrollTo({ left: i * (carouselRef.current?.clientWidth ?? 0), behavior: "smooth" });
-                      setImgIndex(i);
-                    }}
+                    onClick={() => { carouselRef.current?.scrollTo({ left: i * (carouselRef.current?.clientWidth ?? 0), behavior: "smooth" }); setImgIndex(i); }}
                     className="rounded-full transition-all"
-                    style={{
-                      width: i === imgIndex ? 20 : 6,
-                      height: 6,
-                      background: i === imgIndex ? "#ff3e6c" : "rgba(255,255,255,0.7)",
-                      border: "1px solid rgba(0,0,0,0.15)",
-                    }}
+                    style={{ width: i === imgIndex ? 20 : 6, height: 6, background: i === imgIndex ? "#D4AF37" : "rgba(255,255,255,0.3)" }}
                   />
                 ))}
               </div>
             )}
           </div>
 
-          {/* ── Info card ── */}
-          <div className="bg-white mt-2 px-4 pt-4 pb-2">
-            {/* Badges */}
-            <div className="flex flex-wrap gap-2 mb-3">
-              <span className="text-[11px] font-semibold bg-[#fff0f5] text-[#ff3e6c] border border-[#ffb3cb] px-2.5 py-0.5 rounded-full">
+          {/* Info card */}
+          <div className="mt-[2px] px-4 pt-4 pb-3" style={{ background: "#1a1a1a" }}>
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full" style={{ background: "rgba(212,175,55,0.15)", color: "#D4AF37", border: "1px solid rgba(212,175,55,0.3)" }}>
                 {selectedProduct.productType}
               </span>
               {selectedProduct.functionCategory && (
-                <span className="text-[11px] font-medium bg-gray-100 text-gray-600 border border-gray-200 px-2.5 py-0.5 rounded-full">
+                <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}>
                   {selectedProduct.functionCategory}
                 </span>
               )}
               {selectedProduct.age && (
-                <span className="text-[11px] font-medium bg-orange-50 text-orange-600 border border-orange-200 px-2.5 py-0.5 rounded-full">
+                <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full" style={{ background: "rgba(255,165,0,0.1)", color: "rgb(251,146,60)", border: "1px solid rgba(255,165,0,0.2)" }}>
                   {selectedProduct.age}
                 </span>
               )}
               {selectedProduct.gender && (
-                <span className="text-[11px] font-medium bg-blue-50 text-blue-600 border border-blue-200 px-2.5 py-0.5 rounded-full">
+                <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full" style={{ background: "rgba(96,165,250,0.1)", color: "rgb(96,165,250)", border: "1px solid rgba(96,165,250,0.2)" }}>
                   {selectedProduct.gender}
                 </span>
               )}
             </div>
 
-            {/* Product name */}
-            <h1 className="text-[15px] font-semibold text-gray-900 leading-snug mb-3">{selectedProduct.name}</h1>
+            <h1 className="text-[16px] font-semibold text-white leading-snug mb-3" style={{ fontFamily: "'Poppins', sans-serif" }}>{selectedProduct.name}</h1>
 
-            {/* Price row */}
             <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-[22px] font-extrabold text-gray-900">
+              <span className="text-[24px] font-bold text-white" style={{ fontFamily: "'Inter', sans-serif" }}>
                 ₹{selectedProduct.discountPrice.toLocaleString()}
               </span>
               {pDiscount > 0 && (
                 <>
-                  <span className="text-sm text-gray-400 line-through">
-                    ₹{selectedProduct.actualPrice.toLocaleString()}
-                  </span>
-                  <span className="text-sm font-bold text-[#2ecc71]">
-                    ↓{pDiscount}% off
-                  </span>
+                  <span className="text-sm text-white/30 line-through">₹{selectedProduct.actualPrice.toLocaleString()}</span>
+                  <span className="text-sm font-bold" style={{ color: "#4ade80" }}>↓{pDiscount}% off</span>
                 </>
               )}
             </div>
 
-            {/* Likes — two separate counts */}
-            <div className="flex flex-wrap gap-x-4 gap-y-1 mb-1">
-              <div className="flex items-center gap-1.5 text-sm text-gray-400">
-                <Heart className="w-4 h-4 text-rose-400 fill-current" />
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              <div className="flex items-center gap-1.5 text-sm text-white/40">
+                <Heart className="w-3.5 h-3.5 text-red-400 fill-current" />
                 <span>{(likeCounts[selectedProduct.id] ?? selectedProduct.likeCount).toLocaleString("en-IN")} liked</span>
               </div>
               {(tryOnLikeCounts[selectedProduct.id] ?? selectedProduct.tryOnLikeCount) > 0 && (
-                <div className="flex items-center gap-1.5 text-sm text-violet-400">
+                <div className="flex items-center gap-1.5 text-sm text-white/40">
                   <span>🪞</span>
-                  <span>{(tryOnLikeCounts[selectedProduct.id] ?? selectedProduct.tryOnLikeCount).toLocaleString("en-IN")} tried virtually</span>
+                  <span>{(tryOnLikeCounts[selectedProduct.id] ?? selectedProduct.tryOnLikeCount).toLocaleString("en-IN")} tried</span>
                 </div>
               )}
             </div>
           </div>
 
-          {/* ── Sizes ── */}
+          {/* Sizes */}
           {selectedProduct.sizes.length > 0 && (
-            <div className="bg-white mt-2 px-4 py-4">
-              <p className="text-[13px] font-bold text-gray-800 mb-3 tracking-wide uppercase">Select Size</p>
+            <div className="mt-[2px] px-4 py-4" style={{ background: "#1a1a1a" }}>
+              <p className="text-[11px] font-bold text-white/40 mb-3 tracking-widest uppercase">Available Sizes</p>
               <div className="flex flex-wrap gap-2">
                 {selectedProduct.sizes.map((s) => (
-                  <span key={s} className="px-4 py-1.5 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white">
+                  <span key={s} className="px-4 py-1.5 rounded-lg text-sm font-medium border" style={{ background: "transparent", borderColor: "rgba(212,175,55,0.3)", color: "rgba(255,255,255,0.7)" }}>
                     {s}
                   </span>
                 ))}
@@ -934,34 +850,34 @@ export default function PublicStore() {
             </div>
           )}
 
-          {/* ── Description ── */}
+          {/* Description */}
           {selectedProduct.description && (
-            <div className="bg-white mt-2 px-4 py-4">
-              <p className="text-[13px] font-bold text-gray-800 mb-2 tracking-wide uppercase">Description</p>
-              <p className="text-sm text-gray-500 leading-relaxed whitespace-pre-wrap">{selectedProduct.description}</p>
+            <div className="mt-[2px] px-4 py-4" style={{ background: "#1a1a1a" }}>
+              <p className="text-[11px] font-bold text-white/40 mb-2 tracking-widest uppercase">Description</p>
+              <p className="text-sm text-white/60 leading-relaxed whitespace-pre-wrap">{selectedProduct.description}</p>
             </div>
           )}
 
-          {/* ── WhatsApp ── */}
+          {/* WhatsApp */}
           {productWaLink && (
-            <div className="bg-white mt-2 px-4 py-3">
+            <div className="mt-[2px] px-4 py-3" style={{ background: "#1a1a1a" }}>
               <a
                 href={productWaLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 bg-[#25D366] text-white font-semibold py-3 px-4 rounded-xl w-full justify-center text-sm"
+                className="flex items-center gap-2 font-semibold py-3 px-4 rounded-xl w-full justify-center text-sm"
+                style={{ background: "#25D366", color: "white" }}
               >
-                <MessageCircle className="w-4 h-4" />
-                Ask on WhatsApp
+                <MessageCircle className="w-4 h-4" />Ask on WhatsApp
               </a>
             </div>
           )}
 
-          {/* ── More like this ── */}
+          {/* More like this */}
           {relatedProducts.length > 0 && (
-            <div className="bg-white mt-2 pb-4">
+            <div className="mt-[2px] pb-4" style={{ background: "#1a1a1a" }}>
               <div className="flex items-center justify-between px-4 pt-4 pb-3">
-                <span className="text-[15px] font-bold text-gray-900">More like this</span>
+                <span className="text-sm font-bold text-white" style={{ fontFamily: "'Montserrat', sans-serif" }}>More Like This</span>
               </div>
               <div className="flex gap-3 overflow-x-auto px-4 pb-1" style={{ scrollSnapType: "x mandatory" }}>
                 {relatedProducts.slice(0, 10).map((p) => {
@@ -970,27 +886,26 @@ export default function PublicStore() {
                     <div
                       key={p.id}
                       className="shrink-0 cursor-pointer"
-                      style={{ width: 140, scrollSnapAlign: "start" }}
+                      style={{ width: 130, scrollSnapAlign: "start" }}
                       onClick={() => { setPreviousProductId(selectedProduct.id); setSelectedProduct(p); setImgIndex(0); carouselRef.current?.scrollTo({ left: 0 }); }}
                     >
-                      <div className="rounded-lg overflow-hidden bg-gray-100 relative" style={{ aspectRatio: "3/4" }}>
+                      <div className="rounded-xl overflow-hidden relative" style={{ aspectRatio: "3/4", background: "#111" }}>
                         {p.images[0] ? (
                           <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
-                            <ShoppingBag className="w-8 h-8 opacity-20" />
+                            <ShoppingBag className="w-8 h-8 text-white/10" />
                           </div>
                         )}
                         {disc > 0 && (
-                          <span className="absolute bottom-1.5 left-1.5 bg-[#ff3e6c] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-sm">
+                          <span className="absolute bottom-1.5 left-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "#D4AF37", color: "#0f0f0f" }}>
                             {disc}% OFF
                           </span>
                         )}
                       </div>
                       <div className="mt-1.5 space-y-0.5">
-                        <p className="text-[11px] font-medium text-gray-800 line-clamp-2 leading-tight">{p.name}</p>
-                        {disc > 0 && <p className="text-[10px] font-bold text-[#2ecc71]">{disc}% OFF</p>}
-                        <p className="text-[12px] font-bold text-gray-900">₹{p.discountPrice.toLocaleString()}</p>
+                        <p className="text-[11px] font-medium text-white/70 line-clamp-2 leading-tight">{p.name}</p>
+                        <p className="text-[12px] font-bold text-white">₹{p.discountPrice.toLocaleString()}</p>
                       </div>
                     </div>
                   );
@@ -998,162 +913,142 @@ export default function PublicStore() {
               </div>
             </div>
           )}
+
+          <div className="pb-24" />
         </div>
 
         {/* Fixed bottom bar */}
-        <div className="shrink-0 z-20 bg-white border-t border-gray-100 shadow-xl">
+        <div className="shrink-0 z-20 border-t" style={{ background: "#0f0f0f", borderColor: "rgba(212,175,55,0.15)" }}>
           <div className="flex gap-3 px-4 py-3">
-            {/* Left — outlined white button */}
             <button
               onClick={openTryOn}
-              className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full border-2 border-gray-300 bg-white text-gray-800 font-bold text-sm active:bg-gray-50 transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full font-bold text-sm transition-colors border"
+              style={{ background: "transparent", borderColor: "rgba(212,175,55,0.4)", color: "#D4AF37", fontFamily: "'Poppins', sans-serif" }}
             >
               <Camera className="w-4 h-4" />
               Virtual Try-On
             </button>
-            {/* Right — yellow filled button with price */}
             <button
               onClick={openBooking}
-              className="flex-1 flex items-center justify-center gap-1.5 py-3.5 rounded-full bg-[#FFD000] text-gray-900 font-extrabold text-sm active:bg-yellow-400 transition-colors shadow-sm"
+              className="flex-1 flex items-center justify-center gap-1.5 py-3.5 rounded-full font-bold text-sm transition-colors"
+              style={{ background: "#D4AF37", color: "#0f0f0f", fontFamily: "'Montserrat', sans-serif" }}
             >
               Book at ₹{selectedProduct.discountPrice.toLocaleString()}
             </button>
           </div>
-          {/* iOS-style home indicator */}
           <div className="flex justify-center pb-2">
-            <div className="w-28 h-1 bg-gray-300 rounded-full" />
+            <div className="w-28 h-1 rounded-full" style={{ background: "rgba(255,255,255,0.1)" }} />
           </div>
         </div>
       </div>
     );
   }
 
-  /* ─────────────────── MAIN STORE VIEW ─────────────────── */
-  const openDaySet = new Set(
-    (data.openDays ?? "").split(",").map((d) => d.trim()).filter(Boolean)
-  );
-  const DAY_COLS = [
-    ["Sun", "Mon", "Tue", "Wed"],
-    ["Thu", "Fri", "Sat"],
-  ];
+  /* ═══════════════════════════════════════
+     MAIN STORE VIEW
+  ═══════════════════════════════════════ */
+  const openDaySet = new Set((data.openDays ?? "").split(",").map((d) => d.trim()).filter(Boolean));
   const DAY_FULL: Record<string, string> = {
     Sun: "Sunday", Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday",
     Thu: "Thursday", Fri: "Friday", Sat: "Saturday",
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f4f4] flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ background: "#0f0f0f", fontFamily: "'Inter', sans-serif" }}>
 
-      {/* ── Store Header — unified card ── */}
+      {/* ── Store Header ── */}
       <div className="px-3 pt-3 pb-1">
         <div
-          className="relative rounded-3xl overflow-hidden flex items-stretch"
-          style={{
-            background: "linear-gradient(135deg, #0047b3 0%, #0077e6 55%, #33aaff 100%)",
-            minHeight: "130px",
-          }}
+          className="relative rounded-2xl overflow-hidden flex items-stretch"
+          style={{ background: "linear-gradient(135deg, #111111 0%, #1a1a1a 100%)", minHeight: "130px", border: "1px solid rgba(212,175,55,0.25)" }}
         >
-          {/* subtle glow circles for depth */}
-          <div className="absolute -top-8 -left-8 w-40 h-40 rounded-full opacity-20"
-            style={{ background: "radial-gradient(circle, #ffffff 0%, transparent 70%)" }} />
-          <div className="absolute -bottom-10 left-1/4 w-52 h-52 rounded-full opacity-10"
-            style={{ background: "radial-gradient(circle, #a0d8ff 0%, transparent 70%)" }} />
+          {/* Gold shimmer line */}
+          <div className="absolute top-0 left-0 right-0 h-px" style={{ background: "linear-gradient(to right, transparent, #D4AF37, transparent)" }} />
 
-          {/* ── Left: Info ── */}
+          {/* Left: Info */}
           <div className="flex-1 flex flex-col justify-center gap-2 px-4 py-4 z-10">
-            <h1 className="text-base font-extrabold text-white leading-tight tracking-tight line-clamp-2">
+            <h1 className="text-base font-black text-white leading-tight tracking-tight line-clamp-2" style={{ fontFamily: "'Montserrat', sans-serif" }}>
               {data.name}
             </h1>
-
             <div className="flex flex-col gap-1">
               {data.address && (
                 <div className="flex items-start gap-1.5">
-                  <MapPin className="w-3 h-3 text-white/70 mt-0.5 shrink-0" />
-                  <p className="text-[11px] text-white/80 leading-snug line-clamp-2">{data.address}</p>
+                  <MapPin className="w-3 h-3 mt-0.5 shrink-0" style={{ color: "#D4AF37" }} />
+                  <p className="text-[11px] text-white/60 leading-snug line-clamp-2">{data.address}</p>
                 </div>
               )}
               {data.openDays && (
                 <div className="flex items-center gap-1 flex-wrap">
-                  <CalendarDays className="w-3 h-3 text-white/70 shrink-0" />
+                  <CalendarDays className="w-3 h-3 shrink-0" style={{ color: "#D4AF37" }} />
                   {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((abbr) => {
                     const isOpen = openDaySet.has(DAY_FULL[abbr]);
                     return (
-                      <span key={abbr}
-                        className={`text-[9px] font-bold px-1 py-0.5 rounded ${
-                          isOpen ? "bg-white/25 text-white" : "text-white/25"
-                        }`}
-                      >{abbr}</span>
+                      <span key={abbr} className="text-[9px] font-bold px-1 py-0.5 rounded" style={isOpen ? { background: "rgba(212,175,55,0.2)", color: "#D4AF37" } : { color: "rgba(255,255,255,0.2)" }}>
+                        {abbr}
+                      </span>
                     );
                   })}
                 </div>
               )}
               {data.openingTime && (
                 <div className="flex items-center gap-1.5">
-                  <Clock className="w-3 h-3 text-white/70 shrink-0" />
-                  <p className="text-[11px] text-white/80 leading-tight">{data.openingTime}</p>
+                  <Clock className="w-3 h-3 shrink-0" style={{ color: "#D4AF37" }} />
+                  <p className="text-[11px] text-white/60">{data.openingTime}</p>
                 </div>
               )}
             </div>
-
             {waLink && (
-              <a
-                href={waLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-[11px] text-white bg-[#25D366] rounded-full px-3 py-1.5 font-bold self-start shadow-md mt-0.5"
-              >
-                <MessageCircle className="w-3.5 h-3.5" />
-                WhatsApp
+              <a href={waLink} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-[11px] rounded-full px-3 py-1.5 font-bold self-start"
+                style={{ background: "#25D366", color: "white" }}>
+                <MessageCircle className="w-3.5 h-3.5" />WhatsApp
               </a>
             )}
           </div>
 
-          {/* ── Right: Banner image ── */}
-          <div className="relative flex-shrink-0 flex items-center justify-center z-10"
-            style={{ width: "42%" }}>
-            {/* glassy frame behind image */}
-            <div className="absolute inset-2 rounded-2xl border border-white/20 bg-white/5 backdrop-blur-sm" />
+          {/* Right: Banner */}
+          <div className="relative flex-shrink-0 flex items-center justify-center z-10" style={{ width: "42%" }}>
+            <div className="absolute inset-2 rounded-xl border" style={{ borderColor: "rgba(212,175,55,0.2)" }} />
             {data.bannerImage ? (
-              <img
-                src={data.bannerImage}
-                alt={data.name}
-                className="relative w-full h-full object-cover rounded-2xl"
-                style={{ maxHeight: "150px" }}
-              />
+              <img src={data.bannerImage} alt={data.name} className="relative w-full h-full object-cover rounded-xl" style={{ maxHeight: "150px" }} />
             ) : (
               <div className="relative w-full flex items-center justify-center py-8">
-                <ShoppingBag className="w-14 h-14 text-white/30" />
+                <ShoppingBag className="w-14 h-14" style={{ color: "#D4AF37", opacity: 0.2 }} />
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* ── Search + My Bookings ── */}
-      <div className="px-3 py-2 bg-white border-b border-gray-100 flex gap-2 items-center">
+      {/* ── Search + Cart ── */}
+      <div className="px-3 py-2 flex gap-2 items-center border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "rgba(255,255,255,0.3)" }} />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search products..."
-            className="w-full pl-9 pr-8 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-rose-300 bg-gray-50"
+            className="w-full pl-9 pr-8 py-2 text-sm rounded-xl focus:outline-none border transition-colors"
+            style={{ background: "#1a1a1a", borderColor: "rgba(212,175,55,0.15)", color: "white" }}
+            onFocus={(e) => (e.target.style.borderColor = "#D4AF37")}
+            onBlur={(e) => (e.target.style.borderColor = "rgba(212,175,55,0.15)")}
           />
           {search && (
             <button onClick={() => setSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2">
-              <X className="w-3.5 h-3.5 text-gray-400" />
+              <X className="w-3.5 h-3.5 text-white/30" />
             </button>
           )}
         </div>
         <button
           onClick={() => setView("mybookings")}
-          className="relative flex-shrink-0 flex flex-col items-center gap-0.5 bg-gray-50 text-gray-500 px-3 py-2 rounded-xl text-[11px] font-bold border border-gray-200"
+          className="relative flex-shrink-0 flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl text-[11px] font-bold border transition-colors"
+          style={{ background: "#1a1a1a", borderColor: "rgba(212,175,55,0.2)", color: "#D4AF37" }}
         >
-          <ShoppingCart className="w-5 h-5 text-gray-500" />
+          <ShoppingCart className="w-5 h-5" />
           <span>Cart</span>
           {myBookings.length > 0 && (
-            <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+            <span className="absolute -top-1 -right-1 text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold" style={{ background: "#D4AF37", color: "#0f0f0f" }}>
               {myBookings.length}
             </span>
           )}
@@ -1161,17 +1056,17 @@ export default function PublicStore() {
       </div>
 
       {/* ── Category Tabs ── */}
-      <div className="bg-white border-b border-gray-100 overflow-x-auto">
+      <div className="overflow-x-auto border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
         <div className="flex gap-0 px-3 py-2 min-w-max">
           {["all", ...categories].map((cat) => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold mr-1.5 whitespace-nowrap transition-all ${
-                activeCategory === cat
-                  ? "bg-rose-500 text-white shadow-sm"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
+              className="px-3 py-1.5 rounded-full text-xs font-semibold mr-1.5 whitespace-nowrap transition-all"
+              style={activeCategory === cat
+                ? { background: "#D4AF37", color: "#0f0f0f" }
+                : { background: "#1a1a1a", color: "rgba(255,255,255,0.5)" }
+              }
             >
               {cat === "all" ? "All" : cat}
             </button>
@@ -1179,60 +1074,57 @@ export default function PublicStore() {
         </div>
       </div>
 
-      {/* ── Filter button row ── */}
-      <div className="bg-white border-b border-gray-100 px-3 py-2 flex items-center justify-between">
-        <span className="text-[11px] text-gray-400">
+      {/* ── Filter row ── */}
+      <div className="px-3 py-2 flex items-center justify-between border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+        <span className="text-[11px] text-white/30">
           {filteredProducts.length} product{filteredProducts.length !== 1 ? "s" : ""}
         </span>
         <button
           onClick={() => setShowFilterSheet(true)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all border ${
-            sortBy !== "newest"
-              ? "bg-rose-500 text-white border-rose-500"
-              : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
-          }`}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all border"
+          style={sortBy !== "newest"
+            ? { background: "#D4AF37", color: "#0f0f0f", borderColor: "#D4AF37" }
+            : { background: "transparent", color: "rgba(255,255,255,0.5)", borderColor: "rgba(255,255,255,0.15)" }
+          }
         >
           <SlidersHorizontal className="w-3.5 h-3.5" />
           {sortBy === "newest" ? "Filter" : sortBy === "most-liked" ? "❤️ Most Liked" : sortBy === "most-tried" ? "🪞 Most Tried" : "🔥 Trending"}
         </button>
       </div>
 
-      {/* ── Filter bottom sheet ── */}
+      {/* ── Filter sheet ── */}
       {showFilterSheet && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={() => setShowFilterSheet(false)}>
-          <div className="absolute inset-0 bg-black/40" />
+          <div className="absolute inset-0 bg-black/70" />
           <div
-            className="relative bg-white rounded-t-2xl px-4 pt-4 pb-8 shadow-2xl"
+            className="relative rounded-t-2xl px-4 pt-4 pb-8 border-t"
+            style={{ background: "#1a1a1a", borderColor: "rgba(212,175,55,0.3)" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
-            <p className="text-sm font-bold text-gray-800 mb-4">Sort & Filter</p>
+            <div className="w-10 h-1 rounded-full mx-auto mb-5" style={{ background: "rgba(212,175,55,0.3)" }} />
+            <p className="text-sm font-bold text-white mb-4" style={{ fontFamily: "'Montserrat', sans-serif" }}>Sort & Filter</p>
             <div className="space-y-2">
               {([
-                { key: "newest",    label: "Newest",             desc: "Latest products first",                                    icon: "🆕" },
-                { key: "most-liked",label: "Most Liked",         desc: "Products they like most people",                          icon: "❤️" },
-                { key: "most-tried",label: "Most Virtual Try-On",desc: "Products they choose to virtual try-on tried people",     icon: "🪞" },
-                { key: "trending",  label: "Trending 🔥",        desc: "Products they are in trending now",                       icon: "🔥" },
+                { key: "newest", label: "Newest", desc: "Latest products first", icon: "🆕" },
+                { key: "most-liked", label: "Most Liked", desc: "Most popular products", icon: "❤️" },
+                { key: "most-tried", label: "Most Virtual Try-On", desc: "Most virtually tried", icon: "🪞" },
+                { key: "trending", label: "Trending", desc: "Hot right now", icon: "🔥" },
               ] as const).map(({ key, label, desc, icon }) => (
                 <button
                   key={key}
                   onClick={() => { setSortBy(key); setShowFilterSheet(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all text-left ${
-                    sortBy === key
-                      ? "border-rose-500 bg-rose-50"
-                      : "border-gray-100 bg-gray-50 hover:border-gray-200"
-                  }`}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all text-left"
+                  style={sortBy === key
+                    ? { borderColor: "#D4AF37", background: "rgba(212,175,55,0.08)" }
+                    : { borderColor: "rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.03)" }
+                  }
                 >
                   <span className="text-xl">{icon}</span>
                   <div className="flex-1">
-                    <p className={`text-sm font-bold ${sortBy === key ? "text-rose-600" : "text-gray-800"}`}>{label}</p>
-                    <p className="text-[11px] text-gray-400">{desc}</p>
+                    <p className="text-sm font-bold" style={{ color: sortBy === key ? "#D4AF37" : "rgba(255,255,255,0.8)" }}>{label}</p>
+                    <p className="text-[11px] text-white/30">{desc}</p>
                   </div>
-                  {sortBy === key && (
-                    <div className="w-4 h-4 rounded-full bg-rose-500 flex items-center justify-center">
-                      <div className="w-2 h-2 rounded-full bg-white" />
-                    </div>
-                  )}
+                  {sortBy === key && <div className="w-4 h-4 rounded-full flex items-center justify-center" style={{ background: "#D4AF37" }}><div className="w-2 h-2 rounded-full bg-black" /></div>}
                 </button>
               ))}
             </div>
@@ -1240,17 +1132,17 @@ export default function PublicStore() {
         </div>
       )}
 
-      {/* ── Products Grid (2 columns) ── */}
+      {/* ── Products Grid ── */}
       <div className="flex-1">
         {filteredProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <ShoppingBag className="w-12 h-12 text-gray-200 mb-3" />
-            <p className="text-gray-400 text-sm">
+            <ShoppingBag className="w-12 h-12 mb-3" style={{ color: "#D4AF37", opacity: 0.2 }} />
+            <p className="text-white/30 text-sm">
               {search ? `No products found for "${search}"` : "No products in this category"}
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-[2px] bg-gray-200">
+          <div className="grid grid-cols-2 gap-[2px]" style={{ background: "#0f0f0f" }}>
             {filteredProducts.map((p) => {
               const pDis = discount(p);
               const liked = likedProducts.has(p.id);
@@ -1259,109 +1151,56 @@ export default function PublicStore() {
                 <div
                   key={p.id}
                   onClick={() => openProduct(p)}
-                  className="bg-white cursor-pointer active:opacity-90"
+                  className="cursor-pointer active:opacity-80 transition-opacity"
+                  style={{ background: "#1a1a1a" }}
                 >
                   {/* Image */}
-                  <div className="aspect-[3/4] bg-gray-100 relative overflow-hidden">
+                  <div className="aspect-[3/4] relative overflow-hidden" style={{ background: "#111" }}>
                     {p.images[0] ? (
-                      <img
-                        src={p.images[0]}
-                        alt={p.name}
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <ShoppingBag className="w-8 h-8 text-gray-300" />
+                        <ShoppingBag className="w-8 h-8 text-white/10" />
                       </div>
                     )}
-                    {/* Trending badge */}
+                    {/* Trending */}
                     {isTrending && (
-                      <div className="absolute top-2 left-2 bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-0.5">
-                        🔥 Trending
+                      <div className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5" style={{ background: "rgba(0,0,0,0.6)", color: "#D4AF37", border: "1px solid rgba(212,175,55,0.3)" }}>
+                        🔥
                       </div>
                     )}
-                    {/* Heart / Like button */}
+                    {/* Discount overlay badge */}
+                    {pDis > 0 && (
+                      <div className="absolute top-2 right-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "#D4AF37", color: "#0f0f0f" }}>
+                        {pDis}%
+                      </div>
+                    )}
+                    {/* Heart */}
                     <button
-                      className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 flex items-center justify-center shadow-sm active:scale-90 transition-transform"
+                      className="absolute bottom-2 right-2 w-7 h-7 rounded-full flex items-center justify-center shadow active:scale-90 transition-transform"
+                      style={{ background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}
                       onClick={(e) => { e.stopPropagation(); handleLike(p.id, e); }}
                     >
-                      <Heart className={`w-3.5 h-3.5 ${liked ? "fill-red-500 text-red-500" : "text-gray-400"}`} />
+                      <Heart className={`w-3.5 h-3.5 ${liked ? "fill-red-500 text-red-500" : "text-white/50"}`} />
                     </button>
-                    {/* Like count overlay */}
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent pt-6 pb-1.5 px-2">
-                      <div className="flex items-center gap-1">
-                        <Heart className="w-3 h-3 fill-red-400 text-red-400" />
-                        <span className="text-white text-[11px] font-semibold">
-                          {(likeCounts[p.id] ?? p.likeCount).toLocaleString("en-IN")}
-                        </span>
-                        <span className="text-white/70 text-[10px]">likes</span>
-                      </div>
-                    </div>
                   </div>
 
-                  {/* Card info */}
-                  <div className="p-2 pb-3 space-y-0.5">
-                    {p.functionCategory && (
-                      <p className="text-[11px] font-bold text-purple-600 leading-tight uppercase tracking-wide truncate">
-                        {p.functionCategory}
-                      </p>
-                    )}
-                    <p className="text-[12px] text-gray-700 leading-tight line-clamp-2">{p.name}</p>
-
-                    {/* Pricing row */}
-                    <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
-                      {pDis > 0 && (
-                        <span className="flex items-center gap-0.5 text-[11px] font-bold text-green-600">
-                          <TrendingDown className="w-3 h-3" />
-                          {pDis}%
-                        </span>
-                      )}
-                      {p.actualPrice > p.discountPrice && (
-                        <span className="text-[11px] text-gray-400 line-through">
-                          ₹{p.actualPrice.toLocaleString()}
-                        </span>
-                      )}
-                      <span className="text-[13px] font-bold text-gray-900">
+                  {/* Card info — Image + Name + Price + Discount only */}
+                  <div className="px-2.5 pt-2 pb-3">
+                    <p className="text-[12px] font-semibold text-white leading-tight line-clamp-2 mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                      {p.name}
+                    </p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[13px] font-bold text-white" style={{ fontFamily: "'Inter', sans-serif" }}>
                         ₹{p.discountPrice.toLocaleString()}
                       </span>
+                      {pDis > 0 && (
+                        <>
+                          <span className="text-[10px] text-white/30 line-through">₹{p.actualPrice.toLocaleString()}</span>
+                          <span className="text-[10px] font-bold" style={{ color: "#4ade80" }}>↓{pDis}%</span>
+                        </>
+                      )}
                     </div>
-
-                    {/* Size */}
-                    {p.sizes.length > 0 && (
-                      <div className="pt-1">
-                        <p className="text-[10px] font-semibold text-gray-500 mb-0.5">Size</p>
-                        <div className="flex flex-wrap gap-1">
-                          {p.sizes.slice(0, 4).map((s) => (
-                            <span key={s} className="text-[9px] border border-gray-300 rounded px-1.5 py-0.5 text-gray-600 bg-gray-50">
-                              {s}
-                            </span>
-                          ))}
-                          {p.sizes.length > 4 && (
-                            <span className="text-[9px] text-gray-400">+{p.sizes.length - 4}</span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Age */}
-                    {p.age && (
-                      <div className="pt-0.5">
-                        <p className="text-[10px] font-semibold text-gray-500 mb-0.5">Age</p>
-                        <span className="text-[9px] bg-orange-50 text-orange-600 border border-orange-200 rounded px-1.5 py-0.5 font-medium">
-                          {p.age}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Gender */}
-                    {p.gender && (
-                      <div className="pt-0.5">
-                        <p className="text-[10px] font-semibold text-gray-500 mb-0.5">Gender</p>
-                        <span className="text-[9px] bg-blue-50 text-blue-600 border border-blue-200 rounded px-1.5 py-0.5 font-medium">
-                          {p.gender}
-                        </span>
-                      </div>
-                    )}
                   </div>
                 </div>
               );
@@ -1371,8 +1210,8 @@ export default function PublicStore() {
       </div>
 
       {/* Footer */}
-      <div className="text-center py-6 text-[11px] text-gray-300 border-t border-gray-100 bg-white">
-        Powered by Web Media Hub
+      <div className="text-center py-6 text-[11px] border-t" style={{ borderColor: "rgba(212,175,55,0.1)", color: "rgba(212,175,55,0.4)" }}>
+        Powered by <span style={{ color: "#D4AF37" }}>Web Media Hub</span>
       </div>
     </div>
   );
