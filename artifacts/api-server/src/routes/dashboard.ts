@@ -98,6 +98,7 @@ router.get("/dashboard/summary", requireAuth, async (req: AuthRequest, res) => {
       unseenBookings,
       unreadNotifications,
       recentBookings,
+      storeName: store?.name ?? "",
     });
   } catch (err) {
     req.log.error({ err }, "Dashboard summary error");

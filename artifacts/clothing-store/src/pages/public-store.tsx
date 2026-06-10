@@ -519,8 +519,8 @@ export default function PublicStore() {
               <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: "rgba(234,179,8,0.15)", border: "2px solid rgba(234,179,8,0.4)" }}>
                 <Loader2 className="w-7 h-7 animate-spin" style={{ color: "#eab308" }} />
               </div>
-              <p className="text-base font-bold text-white" style={{ fontFamily: "'Montserrat', sans-serif" }}>Request Pending</p>
-              <p className="text-xs text-white/40">Your Loyalty Card request is being reviewed by the store admin.</p>
+              <p className="text-base font-bold text-white" style={{ fontFamily: "'Montserrat', sans-serif" }}>Request Submitted</p>
+              <p className="text-xs text-white/40 px-4 text-center">Your Loyalty Card request is submitted , please wait for approved by admin</p>
             </div>
           ) : (
             <div className="space-y-4">

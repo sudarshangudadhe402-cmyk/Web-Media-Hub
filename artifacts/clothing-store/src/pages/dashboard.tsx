@@ -97,7 +97,7 @@ export default function Dashboard() {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     if (res.ok) {
-      const msg = `Congratulations 🎉 Your Loyalty card is approved`;
+      const msg = `Congratulations 🎉 Your Loyalty card is approved , Team ${summary?.storeName ?? ""}`.trim();
       const waLink = `https://wa.me/${card.mobileNumber.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`;
       window.open(waLink, "_blank");
       const t = localStorage.getItem("wmh_token");
@@ -463,7 +463,7 @@ export default function Dashboard() {
 
                 {loyaltyTab === "approved" && (
                   <a
-                    href={`https://wa.me/${card.mobileNumber.replace(/\D/g, "")}?text=${encodeURIComponent("Congratulations 🎉 Your Loyalty card is approved")}`}
+                    href={`https://wa.me/${card.mobileNumber.replace(/\D/g, "")}?text=${encodeURIComponent(`Congratulations 🎉 Your Loyalty card is approved , Team ${summary?.storeName ?? ""}`.trim())}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-[#25D366] text-white text-sm font-bold"
