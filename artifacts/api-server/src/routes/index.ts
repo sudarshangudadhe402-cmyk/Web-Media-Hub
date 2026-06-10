@@ -11,6 +11,7 @@ import dashboardRouter from "./dashboard";
 import storeRequestsRouter from "./storeRequests";
 import publicRouter from "./public";
 import settingsRouter from "./settings";
+import loyaltyCardsRouter from "./loyaltyCards";
 import { requireDb } from "../middlewares/dbCheck";
 
 const router: IRouter = Router();
@@ -30,5 +31,6 @@ router.use(dashboardRouter);
 router.use(storeRequestsRouter);
 router.use(publicRouter);
 router.use(settingsRouter);
+router.use(loyaltyCardsRouter);
 
 export default router;

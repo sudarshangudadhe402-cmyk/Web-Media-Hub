@@ -62,6 +62,7 @@ router.get("/bookings", requireAuth, async (req: AuthRequest, res) => {
         ignored: b.ignored,
         seenByAdmin: b.seenByAdmin,
         tryOnImage: b.tryOnImage ?? null,
+        loyaltyCardApplied: b.loyaltyCardApplied ?? false,
         createdAt: b.createdAt.toISOString(),
       }))
     );
@@ -73,15 +74,13 @@ router.get("/bookings", requireAuth, async (req: AuthRequest, res) => {
 
 router.post("/bookings", async (req, res) => {
   try {
-    const { productId, customerName, customerPhone, customerAddress, selectedSize } = req.body;
+    const { productId, customerName, customerPhone, customerAddress, selectedSize, tryOnImage, loyaltyCardApplied, loyaltyCardId } = req.body;
 
     const product = await Product.findById(productId);
     if (!product) {
       res.status(404).json({ error: "Product not found" });
       return;
     }
-
-    const { tryOnImage } = req.body;
 
     const booking = await Booking.create({
       productId,
@@ -90,9 +89,13 @@ router.post("/bookings", async (req, res) => {
       customerAddress,
       selectedSize,
       tryOnImage: tryOnImage || undefined,
+      loyaltyCardApplied: !!loyaltyCardApplied,
+      loyaltyCardId: loyaltyCardId || undefined,
     });
 
-    const notifMessage = tryOnImage
+    const notifMessage = loyaltyCardApplied
+      ? `🎫 Loyalty Card booking for "${product.name}" by ${customerName}`
+      : tryOnImage
       ? `🪞 Virtual Try-On booking for "${product.name}" by ${customerName}`
       : `New booking for "${product.name}" by ${customerName}`;
 
@@ -112,6 +115,7 @@ router.post("/bookings", async (req, res) => {
       customerAddress: booking.customerAddress,
       selectedSize: booking.selectedSize,
       ignored: booking.ignored,
+      loyaltyCardApplied: booking.loyaltyCardApplied,
       createdAt: booking.createdAt.toISOString(),
     });
   } catch (err) {

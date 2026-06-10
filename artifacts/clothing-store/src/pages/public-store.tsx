@@ -4,6 +4,7 @@ import {
   MapPin, Clock, CalendarDays, MessageCircle, Heart, ShoppingBag,
   ChevronLeft, Search, X, Camera, Loader2, BookMarked, RefreshCw,
   CheckCircle2, TrendingDown, ShoppingCart, Download, Share2, SlidersHorizontal,
+  CreditCard, CheckCircle, AlertCircle,
 } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 
@@ -48,9 +49,17 @@ interface SavedBooking {
   whatsapp: string;
   selectedSize: string;
   bookedAt: string;
+  addedToLoyaltyCard?: boolean;
 }
 
-type ViewType = "store" | "product" | "tryon" | "booking" | "mybookings";
+interface LoyaltyCardInfo {
+  id: string;
+  name: string;
+  mobile: string;
+  status: "requested" | "approved" | "rejected";
+}
+
+type ViewType = "store" | "product" | "tryon" | "booking" | "mybookings" | "loyaltycard" | "loyaltycardapply";
 
 function discount(p: PublicProduct) {
   return p.actualPrice > p.discountPrice
@@ -105,6 +114,19 @@ export default function PublicStore() {
   });
   const [seenStatus, setSeenStatus] = useState<Record<string, boolean>>({});
 
+  const [loyaltyCardInfo, setLoyaltyCardInfo] = useState<LoyaltyCardInfo | null>(() => {
+    try { return JSON.parse(localStorage.getItem(`wmh_loyalty_${slug}`) || "null"); }
+    catch { return null; }
+  });
+  const [loyaltyCardForm, setLoyaltyCardForm] = useState({ name: "", mobile: "", password: "" });
+  const [loyaltyCardLoading, setLoyaltyCardLoading] = useState(false);
+  const [loyaltyCardError, setLoyaltyCardError] = useState<string | null>(null);
+  const [loyaltyApplyForm, setLoyaltyApplyForm] = useState({ name: "", mobile: "", password: "" });
+  const [loyaltyApplyLoading, setLoyaltyApplyLoading] = useState(false);
+  const [loyaltyApplyError, setLoyaltyApplyError] = useState<string | null>(null);
+  const [loyaltyApplied, setLoyaltyApplied] = useState(false);
+  const [loyaltyAppliedCardId, setLoyaltyAppliedCardId] = useState<string | null>(null);
+
   const photoInputRef = useRef<HTMLInputElement>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
 
@@ -155,6 +177,20 @@ export default function PublicStore() {
         .then((d) => { if (d) setSeenStatus((prev) => ({ ...prev, [bk.id]: d.seenByAdmin })); })
         .catch(() => {});
     });
+  }, [view]);
+
+  useEffect(() => {
+    if (!loyaltyCardInfo?.id) return;
+    fetch(`/api/public/loyalty-card/status/${loyaltyCardInfo.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d && d.status !== loyaltyCardInfo.status) {
+          const updated = { ...loyaltyCardInfo, status: d.status as LoyaltyCardInfo["status"] };
+          setLoyaltyCardInfo(updated);
+          localStorage.setItem(`wmh_loyalty_${slug}`, JSON.stringify(updated));
+        }
+      })
+      .catch(() => {});
   }, [view]);
 
   const categories = useMemo(() => {
@@ -228,7 +264,9 @@ export default function PublicStore() {
   }
 
   function goBack() {
-    if (view === "tryon" || view === "booking") setView("product");
+    if (view === "loyaltycardapply") setView("booking");
+    else if (view === "loyaltycard") setView("mybookings");
+    else if (view === "tryon" || view === "booking") setView("product");
     else { setView("store"); setSelectedProduct(null); }
   }
 
@@ -240,14 +278,20 @@ export default function PublicStore() {
     setTryOnBookingImage(null);
     setBookingForm({ name: "", city: "", whatsapp: "" });
     setSelectedSize(selectedProduct?.sizes[0] ?? "");
-    setBookingSuccess(false); setView("booking");
+    setBookingSuccess(false);
+    setLoyaltyApplied(false);
+    setLoyaltyAppliedCardId(null);
+    setView("booking");
   }
 
   function openTryOnBooking() {
     setTryOnBookingImage(tryOnResult);
     setBookingForm({ name: "", city: "", whatsapp: "" });
     setSelectedSize(selectedProduct?.sizes[0] ?? "");
-    setBookingSuccess(false); setView("booking");
+    setBookingSuccess(false);
+    setLoyaltyApplied(false);
+    setLoyaltyAppliedCardId(null);
+    setView("booking");
   }
 
   function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -272,6 +316,46 @@ export default function PublicStore() {
         await navigator.share({ files: [file], title: "Virtual Try-On", text: `Check out my virtual try-on for ${selectedProduct?.name}!` });
       } else { saveTryOnImage(); }
     } catch {}
+  }
+
+  async function submitLoyaltyCardRequest() {
+    const { name, mobile, password } = loyaltyCardForm;
+    if (!name.trim() || !mobile || !password) return;
+    setLoyaltyCardLoading(true);
+    setLoyaltyCardError(null);
+    try {
+      const res = await fetch("/api/public/loyalty-card/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storeSlug: slug, customerName: name.trim(), mobileNumber: mobile, password }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setLoyaltyCardError(d.error || "Request failed"); return; }
+      const info: LoyaltyCardInfo = { id: d.id, name: d.customerName, mobile: d.mobileNumber, status: "requested" };
+      setLoyaltyCardInfo(info);
+      localStorage.setItem(`wmh_loyalty_${slug}`, JSON.stringify(info));
+    } catch { setLoyaltyCardError("Something went wrong. Please try again."); }
+    finally { setLoyaltyCardLoading(false); }
+  }
+
+  async function verifyAndApplyLoyaltyCard() {
+    const { name, mobile, password } = loyaltyApplyForm;
+    if (!name.trim() || !mobile || !password) return;
+    setLoyaltyApplyLoading(true);
+    setLoyaltyApplyError(null);
+    try {
+      const res = await fetch("/api/public/loyalty-card/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storeSlug: slug, customerName: name.trim(), mobileNumber: mobile, password }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setLoyaltyApplyError(d.error || "Loyalty card doesn't exist"); return; }
+      setLoyaltyApplied(true);
+      setLoyaltyAppliedCardId(d.cardId);
+      setView("booking");
+    } catch { setLoyaltyApplyError("Something went wrong. Please try again."); }
+    finally { setLoyaltyApplyLoading(false); }
   }
 
   async function generateTryOn() {
@@ -328,6 +412,8 @@ export default function PublicStore() {
           customerAddress: bookingForm.city,
           selectedSize,
           tryOnImage: tryOnBookingImage || undefined,
+          loyaltyCardApplied: loyaltyApplied,
+          loyaltyCardId: loyaltyAppliedCardId || undefined,
         }),
       });
       if (res.ok) {
@@ -342,7 +428,10 @@ export default function PublicStore() {
           whatsapp: bookingForm.whatsapp,
           selectedSize,
           bookedAt: new Date().toISOString(),
+          addedToLoyaltyCard: loyaltyApplied,
         };
+        setLoyaltyApplied(false);
+        setLoyaltyAppliedCardId(null);
         const updated = [saved, ...myBookings];
         setMyBookings(updated);
         localStorage.setItem(`wmh_bookings_${slug}`, JSON.stringify(updated));
@@ -387,6 +476,216 @@ export default function PublicStore() {
     : null;
 
   /* ═══════════════════════════════════════
+     LOYALTY CARD VIEW
+  ═══════════════════════════════════════ */
+  if (view === "loyaltycard") {
+    const lcFormValid =
+      loyaltyCardForm.name.trim().length >= 3 &&
+      !/\d/.test(loyaltyCardForm.name) &&
+      /^\d{10}$/.test(loyaltyCardForm.mobile) &&
+      !/^(\d)\1{9}$/.test(loyaltyCardForm.mobile) &&
+      /^\d{10}$/.test(loyaltyCardForm.password) &&
+      !loyaltyCardLoading;
+
+    return (
+      <div className="min-h-screen flex flex-col" style={{ background: "#0f0f0f", fontFamily: "'Inter', sans-serif" }}>
+        <div className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 border-b" style={{ background: "#0f0f0f", borderColor: "rgba(212,175,55,0.2)" }}>
+          <button onClick={() => setView("mybookings")} className="p-1.5 rounded-full hover:bg-white/10">
+            <ChevronLeft className="w-5 h-5 text-white" />
+          </button>
+          <span className="font-bold text-white" style={{ fontFamily: "'Montserrat', sans-serif" }}>Loyalty Card</span>
+        </div>
+
+        <div className="flex-1 p-4">
+          {/* Card placeholder */}
+          <div className="w-full rounded-2xl mb-6 flex items-center justify-center" style={{ background: "#1a1a1a", border: "1px dashed rgba(212,175,55,0.3)", minHeight: "160px" }}>
+            <div className="flex flex-col items-center gap-2 py-6">
+              <CreditCard className="w-12 h-12" style={{ color: "#D4AF37", opacity: 0.4 }} />
+              <p className="text-xs text-white/30">Loyalty Card</p>
+            </div>
+          </div>
+
+          {loyaltyCardInfo?.status === "approved" ? (
+            <div className="flex flex-col items-center text-center gap-3 py-6">
+              <CheckCircle className="w-14 h-14" style={{ color: "#22c55e" }} />
+              <p className="text-lg font-bold text-white" style={{ fontFamily: "'Montserrat', sans-serif" }}>
+                Congratulations 🎉
+              </p>
+              <p className="text-sm font-semibold" style={{ color: "#22c55e" }}>Your Loyalty card is approved</p>
+              <p className="text-xs text-white/40 mt-1">Name: {loyaltyCardInfo.name}</p>
+            </div>
+          ) : loyaltyCardInfo?.status === "requested" ? (
+            <div className="flex flex-col items-center text-center gap-3 py-6">
+              <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: "rgba(234,179,8,0.15)", border: "2px solid rgba(234,179,8,0.4)" }}>
+                <Loader2 className="w-7 h-7 animate-spin" style={{ color: "#eab308" }} />
+              </div>
+              <p className="text-base font-bold text-white" style={{ fontFamily: "'Montserrat', sans-serif" }}>Request Pending</p>
+              <p className="text-xs text-white/40">Your Loyalty Card request is being reviewed by the store admin.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: "#D4AF37" }}>Request Loyalty Card</p>
+
+              {loyaltyCardError && (
+                <div className="flex items-start gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)" }}>
+                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#ef4444" }} />
+                  <p className="text-xs" style={{ color: "#ef4444" }}>{loyaltyCardError}</p>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-1.5">Customer Name *</label>
+                <input
+                  type="text"
+                  value={loyaltyCardForm.name}
+                  onChange={(e) => setLoyaltyCardForm(f => ({ ...f, name: e.target.value }))}
+                  placeholder="Enter your real name (no nicknames)"
+                  className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none border"
+                  style={{ background: "#1a1a1a", borderColor: "rgba(212,175,55,0.2)" }}
+                />
+                <p className="text-[10px] text-white/30 mt-1">Real name only — fake names not allowed</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-1.5">Mobile Number *</label>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  value={loyaltyCardForm.mobile}
+                  onChange={(e) => setLoyaltyCardForm(f => ({ ...f, mobile: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
+                  placeholder="10-digit mobile number"
+                  className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none border"
+                  style={{ background: "#1a1a1a", borderColor: "rgba(212,175,55,0.2)" }}
+                />
+                <p className="text-[10px] text-white/30 mt-1">Repeated & spam numbers not allowed</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-1.5">Password *</label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={10}
+                  value={loyaltyCardForm.password}
+                  onChange={(e) => setLoyaltyCardForm(f => ({ ...f, password: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
+                  placeholder="10-digit numeric password"
+                  className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none border"
+                  style={{ background: "#1a1a1a", borderColor: "rgba(212,175,55,0.2)" }}
+                />
+                <p className="text-[10px] text-white/30 mt-1">Must be exactly 10 digits</p>
+              </div>
+
+              <button
+                onClick={submitLoyaltyCardRequest}
+                disabled={!lcFormValid}
+                className="w-full font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 transition-all mt-2"
+                style={{
+                  background: lcFormValid ? "#22c55e" : "#2a2a2a",
+                  color: lcFormValid ? "white" : "rgba(255,255,255,0.2)",
+                  fontFamily: "'Montserrat', sans-serif",
+                }}
+              >
+                {loyaltyCardLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                Done
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  /* ═══════════════════════════════════════
+     LOYALTY CARD APPLY VIEW
+  ═══════════════════════════════════════ */
+  if (view === "loyaltycardapply" && selectedProduct) {
+    const lcApplyValid =
+      loyaltyApplyForm.name.trim().length >= 2 &&
+      /^\d{10}$/.test(loyaltyApplyForm.mobile) &&
+      /^\d{10}$/.test(loyaltyApplyForm.password) &&
+      !loyaltyApplyLoading;
+
+    return (
+      <div className="min-h-screen flex flex-col" style={{ background: "#0f0f0f", fontFamily: "'Inter', sans-serif" }}>
+        <div className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 border-b" style={{ background: "#0f0f0f", borderColor: "rgba(212,175,55,0.2)" }}>
+          <button onClick={() => setView("booking")} className="p-1.5 rounded-full hover:bg-white/10">
+            <ChevronLeft className="w-5 h-5 text-white" />
+          </button>
+          <span className="font-bold text-white" style={{ fontFamily: "'Montserrat', sans-serif" }}>Add to Loyalty Card</span>
+        </div>
+
+        <div className="flex-1 p-4 space-y-4">
+          <div className="rounded-xl px-4 py-3 text-sm text-white/60" style={{ background: "#1a1a1a", border: "1px solid rgba(212,175,55,0.15)" }}>
+            Enter your Loyalty Card details to link this product booking.
+          </div>
+
+          {loyaltyApplyError && (
+            <div className="flex items-start gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)" }}>
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#ef4444" }} />
+              <p className="text-sm font-semibold" style={{ color: "#ef4444" }}>{loyaltyApplyError}</p>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-1.5">Name</label>
+            <input
+              type="text"
+              value={loyaltyApplyForm.name}
+              onChange={(e) => setLoyaltyApplyForm(f => ({ ...f, name: e.target.value }))}
+              placeholder="Your loyalty card name"
+              className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none border"
+              style={{ background: "#1a1a1a", borderColor: "rgba(212,175,55,0.2)" }}
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-1.5">Mobile Number</label>
+            <input
+              type="tel"
+              inputMode="numeric"
+              maxLength={10}
+              value={loyaltyApplyForm.mobile}
+              onChange={(e) => setLoyaltyApplyForm(f => ({ ...f, mobile: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
+              placeholder="10-digit mobile number"
+              className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none border"
+              style={{ background: "#1a1a1a", borderColor: "rgba(212,175,55,0.2)" }}
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-1.5">Password</label>
+            <input
+              type="password"
+              inputMode="numeric"
+              maxLength={10}
+              value={loyaltyApplyForm.password}
+              onChange={(e) => setLoyaltyApplyForm(f => ({ ...f, password: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
+              placeholder="10-digit loyalty card password"
+              className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none border"
+              style={{ background: "#1a1a1a", borderColor: "rgba(212,175,55,0.2)" }}
+            />
+          </div>
+
+          <button
+            onClick={verifyAndApplyLoyaltyCard}
+            disabled={!lcApplyValid}
+            className="w-full font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 transition-all"
+            style={{
+              background: lcApplyValid ? "#22c55e" : "#2a2a2a",
+              color: lcApplyValid ? "white" : "rgba(255,255,255,0.2)",
+              fontFamily: "'Montserrat', sans-serif",
+            }}
+          >
+            {loyaltyApplyLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+            Done
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ═══════════════════════════════════════
      MY BOOKINGS VIEW
   ═══════════════════════════════════════ */
   if (view === "mybookings") {
@@ -398,7 +697,7 @@ export default function PublicStore() {
           </button>
           <span className="font-bold text-white" style={{ fontFamily: "'Montserrat', sans-serif" }}>My Bookings</span>
         </div>
-        <div className="flex-1 p-4 space-y-3">
+        <div className="flex-1 p-4 space-y-3 pb-24">
           {myBookings.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <BookMarked className="w-12 h-12 mb-3" style={{ color: "#D4AF37", opacity: 0.3 }} />
@@ -428,6 +727,11 @@ export default function PublicStore() {
                     <p className="text-[10px] text-white/20 mt-1">
                       {new Date(bk.bookedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                     </p>
+                    {bk.addedToLoyaltyCard && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full mt-1.5" style={{ background: "rgba(34,197,94,0.12)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.3)" }}>
+                        🎫 This product is added in Loyalty Card
+                      </span>
+                    )}
                   </div>
                   <div className="flex-shrink-0 mt-auto pb-0.5 flex flex-col items-center gap-0.5">
                     <svg width="22" height="14" viewBox="0 0 22 14" fill="none">
@@ -442,6 +746,18 @@ export default function PublicStore() {
               );
             })
           )}
+        </div>
+
+        {/* Sticky Loyalty Card button */}
+        <div className="fixed bottom-0 left-0 right-0 z-30 px-4 py-3 border-t" style={{ background: "#0f0f0f", borderColor: "rgba(34,197,94,0.3)" }}>
+          <button
+            onClick={() => { setLoyaltyCardError(null); setView("loyaltycard"); }}
+            className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-bold text-sm transition-colors active:opacity-90"
+            style={{ background: "#22c55e", color: "white", fontFamily: "'Montserrat', sans-serif" }}
+          >
+            <CreditCard className="w-5 h-5" />
+            Request Loyalty Card
+          </button>
         </div>
       </div>
     );
@@ -488,6 +804,23 @@ export default function PublicStore() {
               )}
             </div>
           </div>
+
+          {/* Add to Loyalty Card */}
+          {loyaltyApplied ? (
+            <div className="flex items-center gap-2 rounded-xl px-4 py-3 mb-4" style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)" }}>
+              <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: "#22c55e" }} />
+              <p className="text-sm font-semibold" style={{ color: "#22c55e" }}>Product is added to Loyalty Card</p>
+            </div>
+          ) : (
+            <button
+              onClick={() => { setLoyaltyApplyForm({ name: "", mobile: "", password: "" }); setLoyaltyApplyError(null); setView("loyaltycardapply"); }}
+              className="w-full flex items-center justify-center gap-2 mb-4 py-3 rounded-xl text-sm font-bold border-2 transition-colors"
+              style={{ borderColor: "#22c55e", color: "#22c55e", background: "transparent" }}
+            >
+              <CreditCard className="w-4 h-4" />
+              Add to Loyalty Card
+            </button>
+          )}
 
           {/* Size selector */}
           {selectedProduct.sizes.length > 0 && (
