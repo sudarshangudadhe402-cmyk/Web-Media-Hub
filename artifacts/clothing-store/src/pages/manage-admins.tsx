@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   useListAdmins,
+  useCreateAdmin,
   useListStoreRequests,
   useApproveStoreRequest,
   useRejectStoreRequest,
@@ -23,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import {
   Shield,
+  UserPlus,
   Store,
   CheckCircle,
   XCircle,
@@ -47,16 +49,43 @@ export default function ManageAdmins() {
   const queryClient = useQueryClient();
 
   const { data: admins } = useListAdmins();
+  const createAdmin = useCreateAdmin();
 
   const { data: allRequests, isLoading: reqLoading } = useListStoreRequests();
   const approveRequest = useApproveStoreRequest();
   const rejectRequest = useRejectStoreRequest();
 
+  const [addOpen, setAddOpen] = useState(false);
+  const [form, setForm] = useState({ username: "", password: "", adminNumber: "" });
   const [activeTab, setActiveTab] = useState<StoreTab>("pending");
   const [selectedRequest, setSelectedRequest] = useState<NonNullable<typeof allRequests>[number] | null>(null);
   const [requestDetailOpen, setRequestDetailOpen] = useState(false);
   const [linkInput, setLinkInput] = useState("");
   const [isEditingLink, setIsEditingLink] = useState(false);
+
+  function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    createAdmin.mutate(
+      { data: { username: form.username, password: form.password, adminNumber: form.adminNumber } },
+      {
+        onSuccess: () => {
+          toast({ title: "Admin created successfully" });
+          queryClient.invalidateQueries({ queryKey: getListAdminsQueryKey() });
+          setForm({ username: "", password: "", adminNumber: "" });
+          setAddOpen(false);
+        },
+        onError: (err: any) => {
+          const msg = err?.response?.data?.error || err?.message || "Failed to create admin";
+          const isUsernameConflict = msg.toLowerCase().includes("already exists") || msg.toLowerCase().includes("username");
+          toast({
+            variant: "destructive",
+            title: isUsernameConflict ? "Username already exists" : "Failed",
+            description: isUsernameConflict ? "Please try a different username" : msg,
+          });
+        },
+      }
+    );
+  }
 
   function authFetch(url: string, options?: RequestInit) {
     const token = localStorage.getItem("wmh_token");
@@ -198,8 +227,23 @@ export default function ManageAdmins() {
     <div className="space-y-6 max-w-4xl mx-auto pb-12">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Manage Admins</h1>
-        <p className="text-muted-foreground text-sm mt-1">Review store requests and manage global settings</p>
+        <p className="text-muted-foreground text-sm mt-1">Create admins, review store requests and manage global settings</p>
       </div>
+
+      {/* ── Add Admin CTA ── */}
+      <button
+        onClick={() => setAddOpen(true)}
+        className="w-full flex items-center justify-between gap-4 bg-green-600 hover:bg-green-700 active:bg-green-800 transition-colors text-white rounded-xl px-6 py-5 shadow-lg"
+      >
+        <div className="flex items-center gap-3">
+          <UserPlus className="w-6 h-6 shrink-0" />
+          <div className="text-left">
+            <p className="font-semibold text-lg leading-tight">Add Admin</p>
+            <p className="text-green-100 text-sm">Create a new admin account</p>
+          </div>
+        </div>
+        <Shield className="w-8 h-8 text-green-200 shrink-0" />
+      </button>
 
       {/* ── Store Approval Section ── */}
       <div>
@@ -507,6 +551,69 @@ export default function ManageAdmins() {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Admin Dialog */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-green-600" />
+              Add Admin
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <label htmlFor="ma-username" className="text-sm font-medium">Username</label>
+              <Input
+                id="ma-username"
+                placeholder="admin_username"
+                value={form.username}
+                onChange={(e) => setForm((p) => ({ ...p, username: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="ma-password" className="text-sm font-medium">Password</label>
+              <Input
+                id="ma-password"
+                type="password"
+                placeholder="••••••••"
+                value={form.password}
+                onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="ma-admin-number" className="text-sm font-medium flex items-center gap-1.5">
+                <Phone className="w-3.5 h-3.5" /> Admin Number
+              </label>
+              <div className="flex items-center border border-input rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-ring">
+                <span className="px-3 py-2 bg-muted text-sm font-medium text-muted-foreground border-r border-input shrink-0">+91</span>
+                <input
+                  id="ma-admin-number"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  placeholder="9876543210"
+                  value={form.adminNumber}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                    setForm((p) => ({ ...p, adminNumber: val }));
+                  }}
+                  className="flex-1 px-3 py-2 text-sm bg-background outline-none"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">10-digit mobile number (optional)</p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button type="button" variant="outline" className="flex-1" onClick={() => setAddOpen(false)}>Cancel</Button>
+              <Button type="submit" className="flex-1 bg-green-600 hover:bg-green-700 text-white" disabled={createAdmin.isPending}>
+                {createAdmin.isPending ? "Creating..." : "Create Admin"}
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

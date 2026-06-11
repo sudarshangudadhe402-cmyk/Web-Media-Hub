@@ -1,15 +1,12 @@
 import { useState } from "react";
 import {
   useListAdmins,
-  useCreateAdmin,
   useDeleteAdmin,
   getListAdminsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -22,9 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import {
   Shield,
-  UserPlus,
   Users,
-  Star,
   ChevronRight,
   Eye,
   EyeOff,
@@ -39,52 +34,13 @@ export default function Admins() {
   const queryClient = useQueryClient();
 
   const { data: admins, isLoading } = useListAdmins();
-  const createAdmin = useCreateAdmin();
   const deleteAdmin = useDeleteAdmin();
 
-  const [addOpen, setAddOpen] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<NonNullable<typeof admins>[number] | null>(null);
   const [adminDetailOpen, setAdminDetailOpen] = useState(false);
   const [adminActive, setAdminActive] = useState<Record<string, boolean>>({});
   const [showPass, setShowPass] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-
-  const [form, setForm] = useState({ username: "", password: "", adminNumber: "", whatsapp: "" });
-
-  function handleFormChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
-  }
-
-  function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    if (form.whatsapp) {
-      const digits = form.whatsapp.replace(/\D/g, "");
-      if (digits.length !== 10 || /^0+$/.test(digits) || /^(\d)\1{9}$/.test(digits)) {
-        toast({ variant: "destructive", title: "Invalid WhatsApp number", description: "Please enter a valid 10-digit Indian mobile number" });
-        return;
-      }
-    }
-    createAdmin.mutate(
-      { data: { username: form.username, password: form.password, adminNumber: form.adminNumber } },
-      {
-        onSuccess: () => {
-          toast({ title: "Admin created successfully" });
-          queryClient.invalidateQueries({ queryKey: getListAdminsQueryKey() });
-          setForm({ username: "", password: "", adminNumber: "", whatsapp: "" });
-          setAddOpen(false);
-        },
-        onError: (err: any) => {
-          const msg = err?.response?.data?.error || err?.message || "Failed to create admin";
-          const isUsernameConflict = msg.toLowerCase().includes("already exists") || msg.toLowerCase().includes("username");
-          toast({
-            variant: "destructive",
-            title: isUsernameConflict ? "Username already exists" : "Failed",
-            description: isUsernameConflict ? "Please try a different username" : msg,
-          });
-        },
-      }
-    );
-  }
 
   function openAdminDetail(admin: NonNullable<typeof admins>[number]) {
     setSelectedAdmin(admin);
@@ -122,25 +78,9 @@ export default function Admins() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-12">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Admins</h1>
-        <p className="text-muted-foreground text-sm mt-1">History and management of all admin accounts</p>
+        <h1 className="text-2xl font-bold tracking-tight">Admin History</h1>
+        <p className="text-muted-foreground text-sm mt-1">All admin accounts created so far</p>
       </div>
-
-      {/* Add Admin CTA */}
-      <button
-        data-testid="add-admin-btn"
-        onClick={() => setAddOpen(true)}
-        className="w-full flex items-center justify-between gap-4 bg-green-600 hover:bg-green-700 active:bg-green-800 transition-colors text-white rounded-xl px-6 py-5 shadow-lg"
-      >
-        <div className="flex items-center gap-3">
-          <UserPlus className="w-6 h-6 shrink-0" />
-          <div className="text-left">
-            <p className="font-semibold text-lg leading-tight">Add Admin</p>
-            <p className="text-green-100 text-sm">Create a new admin account for your store</p>
-          </div>
-        </div>
-        <Shield className="w-8 h-8 text-green-200 shrink-0" />
-      </button>
 
       {/* Admin List */}
       <div>
@@ -160,7 +100,7 @@ export default function Admins() {
           <Card className="border-dashed">
             <CardContent className="py-12 text-center text-muted-foreground">
               <Shield className="w-10 h-10 mx-auto mb-3 opacity-20" />
-              <p>No admins yet. Add one above.</p>
+              <p>No admins yet. Add one from Manage Admins.</p>
             </CardContent>
           </Card>
         ) : (
@@ -170,7 +110,6 @@ export default function Admins() {
               return (
                 <button
                   key={admin.id}
-                  data-testid={`admin-row-${admin.id}`}
                   onClick={() => openAdminDetail(admin)}
                   className="w-full text-left"
                 >
@@ -215,83 +154,6 @@ export default function Admins() {
           </div>
         )}
       </div>
-
-      {/* Add Admin Dialog */}
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-green-600" />
-              Add Admin
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleCreate} className="space-y-4 pt-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="username">Username</Label>
-              <Input id="username" name="username" placeholder="admin_username" value={form.username} onChange={handleFormChange} required data-testid="new-admin-username" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" name="password" type="password" placeholder="••••••••" value={form.password} onChange={handleFormChange} required data-testid="new-admin-password" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="adminNumber" className="flex items-center gap-1.5">
-                Admin Number
-                <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-              </Label>
-              <div className="flex items-center border border-input rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-ring">
-                <span className="px-3 py-2 bg-muted text-sm font-medium text-muted-foreground border-r border-input shrink-0">+91</span>
-                <input
-                  id="adminNumber"
-                  name="adminNumber"
-                  type="tel"
-                  inputMode="numeric"
-                  maxLength={10}
-                  placeholder="9876543210"
-                  value={form.adminNumber}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, "").slice(0, 10);
-                    setForm((p) => ({ ...p, adminNumber: val }));
-                  }}
-                  className="flex-1 px-3 py-2 text-sm bg-background outline-none"
-                  data-testid="new-admin-number"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">Admin's mobile number (10 digits)</p>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="whatsapp" className="flex items-center gap-1.5">
-                Store Owner WhatsApp Number
-              </Label>
-              <div className="flex items-center border border-input rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-ring">
-                <span className="px-3 py-2 bg-muted text-sm font-medium text-muted-foreground border-r border-input shrink-0">+91</span>
-                <input
-                  id="whatsapp"
-                  name="whatsapp"
-                  type="tel"
-                  inputMode="numeric"
-                  maxLength={10}
-                  placeholder="9876543210"
-                  value={form.whatsapp}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, "").slice(0, 10);
-                    setForm((p) => ({ ...p, whatsapp: val }));
-                  }}
-                  className="flex-1 px-3 py-2 text-sm bg-background outline-none"
-                  data-testid="new-admin-whatsapp"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">Enter 10-digit mobile number</p>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <Button type="button" variant="outline" className="flex-1" onClick={() => setAddOpen(false)}>Cancel</Button>
-              <Button type="submit" className="flex-1 bg-green-600 hover:bg-green-700 text-white" disabled={createAdmin.isPending}>
-                {createAdmin.isPending ? "Creating..." : "Create Admin"}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       {/* Admin Detail Dialog */}
       <Dialog open={adminDetailOpen} onOpenChange={setAdminDetailOpen}>
@@ -344,7 +206,9 @@ export default function Admins() {
                 <div className="flex items-center justify-between px-4 py-3">
                   <span className="text-sm text-muted-foreground">Added</span>
                   <span className="text-sm font-medium">
-                    {selectedAdmin.createdAt ? new Date(selectedAdmin.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+                    {selectedAdmin.createdAt
+                      ? new Date(selectedAdmin.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                      : "—"}
                   </span>
                 </div>
               </div>
@@ -358,11 +222,9 @@ export default function Admins() {
                 <Switch
                   checked={adminActive[selectedAdmin.id] !== false}
                   onCheckedChange={(val) => setAdminActive((p) => ({ ...p, [selectedAdmin.id]: val }))}
-                  data-testid="admin-active-toggle"
                 />
               </div>
 
-              {/* Delete */}
               {deleteConfirmId === selectedAdmin.id ? (
                 <div className="space-y-2">
                   <p className="text-sm text-destructive font-medium text-center">Are you sure you want to delete this admin?</p>
