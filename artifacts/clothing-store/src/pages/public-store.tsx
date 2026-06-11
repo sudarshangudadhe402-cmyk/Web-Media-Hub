@@ -782,12 +782,13 @@ export default function PublicStore() {
                         </div>
                       )}
                       <div>
-                        <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-1.5">Name *</label>
+                        <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-1.5">Name or Number *</label>
                         <input
                           type="text"
+                          inputMode="text"
                           value={lcLoginForm.name}
                           onChange={(e) => setLcLoginForm(f => ({ ...f, name: e.target.value }))}
-                          placeholder="Your registered name"
+                          placeholder="Enter name or 10-digit mobile"
                           className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none border"
                           style={{ background: "#1a1a1a", borderColor: "rgba(212,175,55,0.2)" }}
                         />
