@@ -33,6 +33,25 @@ async function getMyProductIds(userId: string): Promise<string[]> {
   return products.map((p) => String(p._id));
 }
 
+function formatBooking(b: InstanceType<typeof Booking>) {
+  return {
+    id: String(b._id),
+    productId: String(b.productId),
+    product: formatProduct(b.populated("productId") ? (b.productId as unknown as InstanceType<typeof Product>) : null),
+    customerName: b.customerName,
+    customerPhone: b.customerPhone,
+    customerAddress: b.customerAddress,
+    selectedSize: b.selectedSize,
+    ignored: b.ignored,
+    seenByAdmin: b.seenByAdmin,
+    tryOnImage: b.tryOnImage ?? null,
+    loyaltyCardApplied: b.loyaltyCardApplied ?? false,
+    completed: b.completed ?? false,
+    completedAt: b.completedAt ? b.completedAt.toISOString() : null,
+    createdAt: b.createdAt.toISOString(),
+  };
+}
+
 router.get("/bookings", requireAuth, async (req: AuthRequest, res) => {
   try {
     const userId = String(req.user!._id);
@@ -45,29 +64,39 @@ router.get("/bookings", requireAuth, async (req: AuthRequest, res) => {
 
     const bookings = await Booking.find({
       ignored: false,
+      completed: { $ne: true },
       productId: { $in: myProductIds },
     })
       .populate("productId")
       .sort({ createdAt: -1 });
 
-    res.json(
-      bookings.map((b) => ({
-        id: String(b._id),
-        productId: String(b.productId),
-        product: formatProduct(b.populated("productId") ? (b.productId as unknown as InstanceType<typeof Product>) : null),
-        customerName: b.customerName,
-        customerPhone: b.customerPhone,
-        customerAddress: b.customerAddress,
-        selectedSize: b.selectedSize,
-        ignored: b.ignored,
-        seenByAdmin: b.seenByAdmin,
-        tryOnImage: b.tryOnImage ?? null,
-        loyaltyCardApplied: b.loyaltyCardApplied ?? false,
-        createdAt: b.createdAt.toISOString(),
-      }))
-    );
+    res.json(bookings.map(formatBooking));
   } catch (err) {
     req.log.error({ err }, "List bookings error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/bookings/completed", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const userId = String(req.user!._id);
+    const myProductIds = await getMyProductIds(userId);
+
+    if (myProductIds.length === 0) {
+      res.json([]);
+      return;
+    }
+
+    const bookings = await Booking.find({
+      completed: true,
+      productId: { $in: myProductIds },
+    })
+      .populate("productId")
+      .sort({ completedAt: -1 });
+
+    res.json(bookings.map(formatBooking));
+  } catch (err) {
+    req.log.error({ err }, "List completed bookings error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -120,6 +149,26 @@ router.post("/bookings", async (req, res) => {
     });
   } catch (err) {
     req.log.error({ err }, "Create booking error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.patch("/bookings/:id/complete", requireAuth, async (req, res) => {
+  try {
+    const booking = await Booking.findByIdAndUpdate(
+      req.params.id,
+      { completed: true, completedAt: new Date() },
+      { new: true }
+    ).populate("productId");
+
+    if (!booking) {
+      res.status(404).json({ error: "Booking not found" });
+      return;
+    }
+
+    res.json(formatBooking(booking));
+  } catch (err) {
+    req.log.error({ err }, "Complete booking error");
     res.status(500).json({ error: "Internal server error" });
   }
 });

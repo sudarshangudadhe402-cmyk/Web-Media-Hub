@@ -113,6 +113,7 @@ export default function PublicStore() {
     catch { return []; }
   });
   const [seenStatus, setSeenStatus] = useState<Record<string, boolean>>({});
+  const [completedStatus, setCompletedStatus] = useState<Record<string, boolean>>({});
 
   const [loyaltyCardInfo, setLoyaltyCardInfo] = useState<LoyaltyCardInfo | null>(() => {
     try { return JSON.parse(localStorage.getItem(`wmh_loyalty_${slug}`) || "null"); }
@@ -127,7 +128,7 @@ export default function PublicStore() {
   const [loyaltyApplied, setLoyaltyApplied] = useState(false);
   const [loyaltyAppliedCardId, setLoyaltyAppliedCardId] = useState<string | null>(null);
 
-  const [bookingFilter, setBookingFilter] = useState<"all" | "loyalty">("all");
+  const [bookingFilter, setBookingFilter] = useState<"all" | "loyalty" | "completed">("all");
   const [lcTab, setLcTab] = useState<"registration" | "login">("registration");
   const [lcLoginForm, setLcLoginForm] = useState({ name: "", password: "" });
   const [lcLoginLoading, setLcLoginLoading] = useState(false);
@@ -185,7 +186,12 @@ export default function PublicStore() {
     myBookings.forEach((bk) => {
       fetch(`/api/public/booking-status/${bk.id}`)
         .then((r) => r.ok ? r.json() : null)
-        .then((d) => { if (d) setSeenStatus((prev) => ({ ...prev, [bk.id]: d.seenByAdmin })); })
+        .then((d) => {
+          if (d) {
+            setSeenStatus((prev) => ({ ...prev, [bk.id]: d.seenByAdmin }));
+            setCompletedStatus((prev) => ({ ...prev, [bk.id]: d.completed ?? false }));
+          }
+        })
         .catch(() => {});
     });
   }, [view]);
@@ -939,9 +945,11 @@ export default function PublicStore() {
   ═══════════════════════════════════════ */
   if (view === "mybookings") {
     const loyaltyCount = myBookings.filter(b => b.addedToLoyaltyCard).length;
-    const visibleBookings = bookingFilter === "loyalty"
-      ? myBookings.filter(b => b.addedToLoyaltyCard)
-      : myBookings;
+    const completedCount = myBookings.filter(b => completedStatus[b.id]).length;
+    const visibleBookings =
+      bookingFilter === "loyalty" ? myBookings.filter(b => b.addedToLoyaltyCard && !completedStatus[b.id]) :
+      bookingFilter === "completed" ? myBookings.filter(b => completedStatus[b.id]) :
+      myBookings.filter(b => !completedStatus[b.id]);
 
     return (
       <div className="min-h-screen flex flex-col" style={{ background: "#0f0f0f", fontFamily: "'Inter', sans-serif" }}>
@@ -954,47 +962,45 @@ export default function PublicStore() {
             <span className="font-bold text-white" style={{ fontFamily: "'Montserrat', sans-serif" }}>My Bookings</span>
           </div>
 
-          {/* Sliding tab filter */}
+          {/* Sliding tab filter — 3 tabs */}
           <div className="relative rounded-xl p-1 mb-3" style={{ background: "#1a1a1a" }}>
             {/* Sliding pill */}
             <div
-              className="absolute top-1 bottom-1 rounded-lg transition-all"
+              className="absolute top-1 bottom-1 rounded-lg"
               style={{
-                width: "calc(50% - 4px)",
-                left: bookingFilter === "all" ? "4px" : "calc(50%)",
+                width: "calc(33.333% - 3px)",
+                left: bookingFilter === "all" ? "4px" : bookingFilter === "loyalty" ? "calc(33.333%)" : "calc(66.666%)",
                 transition: "left 0.3s cubic-bezier(0.4,0,0.2,1)",
                 background: bookingFilter === "loyalty"
                   ? "linear-gradient(135deg,#16a34a,#22c55e)"
+                  : bookingFilter === "completed"
+                  ? "linear-gradient(135deg,#1d4ed8,#3b82f6)"
                   : "linear-gradient(135deg,#b8860b,#D4AF37)",
               }}
             />
             <div className="relative flex">
-              <button
-                onClick={() => setBookingFilter("all")}
-                className="flex-1 py-2.5 text-xs font-bold z-10 flex items-center justify-center gap-1.5 rounded-lg"
-                style={{
-                  color: bookingFilter === "all" ? "#0f0f0f" : "rgba(255,255,255,0.4)",
-                  fontFamily: "'Montserrat', sans-serif",
-                  transition: "color 0.25s",
-                }}
-              >
-                <BookMarked className="w-3.5 h-3.5" />
-                All Booking
-                <span className="text-[10px] font-extrabold opacity-80">({myBookings.length})</span>
-              </button>
-              <button
-                onClick={() => setBookingFilter("loyalty")}
-                className="flex-1 py-2.5 text-xs font-bold z-10 flex items-center justify-center gap-1.5 rounded-lg"
-                style={{
-                  color: bookingFilter === "loyalty" ? "white" : "rgba(255,255,255,0.4)",
-                  fontFamily: "'Montserrat', sans-serif",
-                  transition: "color 0.25s",
-                }}
-              >
-                <CreditCard className="w-3.5 h-3.5" />
-                Loyalty Card
-                <span className="text-[10px] font-extrabold opacity-80">({loyaltyCount})</span>
-              </button>
+              {([
+                { key: "all" as const, icon: <BookMarked className="w-3 h-3" />, label: "All", count: myBookings.filter(b => !completedStatus[b.id]).length },
+                { key: "loyalty" as const, icon: <CreditCard className="w-3 h-3" />, label: "Loyalty", count: loyaltyCount },
+                { key: "completed" as const, icon: <span className="text-[11px]">✅</span>, label: "Completed", count: completedCount },
+              ]).map(({ key, icon, label, count }) => (
+                <button
+                  key={key}
+                  onClick={() => setBookingFilter(key)}
+                  className="flex-1 py-2.5 text-[11px] font-bold z-10 flex flex-col items-center gap-0.5 rounded-lg"
+                  style={{
+                    color: bookingFilter === key
+                      ? key === "all" ? "#0f0f0f" : "white"
+                      : "rgba(255,255,255,0.35)",
+                    fontFamily: "'Montserrat', sans-serif",
+                    transition: "color 0.25s",
+                  }}
+                >
+                  {icon}
+                  {label}
+                  <span className="text-[10px] font-extrabold opacity-80">({count})</span>
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -1008,6 +1014,12 @@ export default function PublicStore() {
                   <CreditCard className="w-12 h-12 mb-3" style={{ color: "#22c55e", opacity: 0.3 }} />
                   <p className="text-white/40 text-sm">No loyalty card bookings yet</p>
                   <p className="text-white/20 text-xs mt-1">Add products to your loyalty card while booking</p>
+                </>
+              ) : bookingFilter === "completed" ? (
+                <>
+                  <span className="text-5xl mb-3 opacity-30">✅</span>
+                  <p className="text-white/40 text-sm">No completed orders yet</p>
+                  <p className="text-white/20 text-xs mt-1">Completed orders will appear here</p>
                 </>
               ) : (
                 <>

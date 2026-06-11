@@ -73,12 +73,16 @@ router.get("/public/store/:slug", async (req, res) => {
 
 router.get("/public/booking-status/:id", async (req, res) => {
   try {
-    const booking = await Booking.findById(req.params.id).select("seenByAdmin").lean();
+    const booking = await Booking.findById(req.params.id).select("seenByAdmin completed completedAt").lean();
     if (!booking) {
       res.status(404).json({ error: "Not found" });
       return;
     }
-    res.json({ seenByAdmin: booking.seenByAdmin ?? false });
+    res.json({
+      seenByAdmin: booking.seenByAdmin ?? false,
+      completed: (booking as any).completed ?? false,
+      completedAt: (booking as any).completedAt ?? null,
+    });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
   }

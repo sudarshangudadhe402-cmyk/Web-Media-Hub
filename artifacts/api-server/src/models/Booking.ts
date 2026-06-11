@@ -11,6 +11,8 @@ export interface IBooking extends Document {
   tryOnImage?: string;
   loyaltyCardApplied: boolean;
   loyaltyCardId?: string;
+  completed: boolean;
+  completedAt?: Date;
   createdAt: Date;
 }
 
@@ -26,6 +28,8 @@ const BookingSchema = new Schema<IBooking>(
     tryOnImage: { type: String },
     loyaltyCardApplied: { type: Boolean, default: false },
     loyaltyCardId: { type: String },
+    completed: { type: Boolean, default: false },
+    completedAt: { type: Date },
   },
   { timestamps: true }
 );

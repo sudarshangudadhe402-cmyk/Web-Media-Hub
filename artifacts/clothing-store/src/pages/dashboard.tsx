@@ -1,7 +1,7 @@
 import { useGetDashboardSummary, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Package, Tags, CalendarCheck, MessageCircle, ChevronLeft, ShoppingBag, CreditCard, CheckCircle, X, Clock } from "lucide-react";
+import { Package, Tags, CalendarCheck, MessageCircle, ChevronLeft, ShoppingBag, CreditCard, CheckCircle, X, Clock, BookMarked, CheckCheck } from "lucide-react";
 import { useLocation } from "wouter";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useState, useEffect, type ReactNode } from "react";
@@ -26,6 +26,8 @@ interface AdminBooking {
   seenByAdmin: boolean;
   tryOnImage: string | null;
   loyaltyCardApplied: boolean;
+  completed: boolean;
+  completedAt: string | null;
   createdAt: string;
 }
 
@@ -51,6 +53,11 @@ export default function Dashboard() {
   const [loyaltyCards, setLoyaltyCards] = useState<{ requested: LoyaltyCardItem[]; approved: LoyaltyCardItem[]; rejected: LoyaltyCardItem[] } | null>(null);
   const [loyaltyCardsLoading, setLoyaltyCardsLoading] = useState(false);
   const [loyaltyTab, setLoyaltyTab] = useState<"requested" | "approved" | "rejected">("requested");
+  const [adminBookingTab, setAdminBookingTab] = useState<"all" | "loyalty" | "completed">("all");
+  const [completedBookings, setCompletedBookings] = useState<AdminBooking[]>([]);
+  const [completedBookingsLoading, setCompletedBookingsLoading] = useState(false);
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [completeLoading, setCompleteLoading] = useState(false);
 
   const { data: bookings, isLoading: bookingsLoading } = useQuery<AdminBooking[]>({
     queryKey: ["admin-bookings"],
@@ -108,6 +115,34 @@ export default function Dashboard() {
     }
   }
 
+  useEffect(() => {
+    if (adminBookingTab !== "completed" || view !== "bookings") return;
+    setCompletedBookingsLoading(true);
+    const token = localStorage.getItem("wmh_token");
+    fetch("/api/bookings/completed", { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then(r => r.ok ? r.json() : [])
+      .then(d => setCompletedBookings(d))
+      .catch(() => {})
+      .finally(() => setCompletedBookingsLoading(false));
+  }, [adminBookingTab, view]);
+
+  async function completeOrder(id: string) {
+    setCompleteLoading(true);
+    const token = localStorage.getItem("wmh_token");
+    const res = await fetch(`/api/bookings/${id}/complete`, {
+      method: "PATCH",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (res.ok) {
+      setShowCompleteModal(false);
+      queryClient.invalidateQueries({ queryKey: ["admin-bookings"] });
+      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+      setView("bookings");
+      setAdminBookingTab("completed");
+    }
+    setCompleteLoading(false);
+  }
+
   async function rejectLoyaltyCard(card: LoyaltyCardItem) {
     const token = localStorage.getItem("wmh_token");
     const res = await fetch(`/api/loyalty-cards/${card.id}/reject`, {
@@ -149,16 +184,53 @@ export default function Dashboard() {
 
   /* ── BOOKING LIST ── */
   if (view === "bookings") {
+    const loyaltyTabCount = bookings?.filter(b => b.loyaltyCardApplied).length ?? 0;
+    const visibleBookings =
+      adminBookingTab === "loyalty" ? (bookings ?? []).filter(b => b.loyaltyCardApplied) :
+      adminBookingTab === "completed" ? completedBookings :
+      (bookings ?? []);
+    const isLoading2 = adminBookingTab === "completed" ? completedBookingsLoading : bookingsLoading;
+
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <button onClick={() => setView("summary")} className="p-1.5 rounded-full hover:bg-gray-100">
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-xl font-bold tracking-tight">Active Bookings</h1>
+          <h1 className="text-xl font-bold tracking-tight">Bookings</h1>
         </div>
 
-        {bookingsLoading ? (
+        {/* 3-tab filter */}
+        <div className="relative rounded-xl p-1 bg-gray-100">
+          <div
+            className="absolute top-1 bottom-1 rounded-lg bg-white shadow-sm transition-all"
+            style={{
+              width: "calc(33.333% - 4px)",
+              left: adminBookingTab === "all" ? "4px" : adminBookingTab === "loyalty" ? "calc(33.333%)" : "calc(66.666%)",
+              transition: "left 0.3s cubic-bezier(0.4,0,0.2,1)",
+            }}
+          />
+          <div className="relative flex">
+            {([
+              { key: "all", label: "All Booking", icon: <BookMarked className="w-3.5 h-3.5" />, count: bookings?.length ?? 0 },
+              { key: "loyalty", label: "Loyalty Card", icon: <CreditCard className="w-3.5 h-3.5" />, count: loyaltyTabCount },
+              { key: "completed", label: "Complete", icon: <CheckCheck className="w-3.5 h-3.5" />, count: completedBookings.length },
+            ] as const).map(({ key, label, icon, count }) => (
+              <button
+                key={key}
+                onClick={() => setAdminBookingTab(key)}
+                className="flex-1 py-2 text-[11px] font-bold z-10 flex flex-col items-center gap-0.5 rounded-lg"
+                style={{ color: adminBookingTab === key ? (key === "completed" ? "#16a34a" : key === "loyalty" ? "#7c3aed" : "#1d4ed8") : "#9ca3af" }}
+              >
+                {icon}
+                {label}
+                <span className="text-[10px] font-extrabold">({count})</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {isLoading2 ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
               <div key={i} className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 flex gap-3">
@@ -172,20 +244,22 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
-        ) : !bookings?.length ? (
+        ) : !visibleBookings.length ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <CalendarCheck className="w-12 h-12 mb-4 opacity-20" />
-              <p>No active bookings</p>
+              {adminBookingTab === "completed"
+                ? <><CheckCheck className="w-12 h-12 mb-4 opacity-20" /><p>No completed orders yet</p></>
+                : <><CalendarCheck className="w-12 h-12 mb-4 opacity-20" /><p>No bookings</p></>
+              }
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-3">
-            {bookings.map((bk) => (
+            {visibleBookings.map((bk) => (
               <div
                 key={bk.id}
-                onClick={() => { setSelectedBooking(bk); setView("detail"); }}
-                className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 flex gap-3 cursor-pointer hover:border-primary/40 transition-colors active:bg-gray-50"
+                onClick={() => { if (adminBookingTab !== "completed") { setSelectedBooking(bk); setView("detail"); } }}
+                className={`bg-white rounded-xl border shadow-sm p-3 flex gap-3 transition-colors ${adminBookingTab !== "completed" ? "cursor-pointer hover:border-primary/40 active:bg-gray-50" : "border-green-100"}`}
               >
                 {(bk.tryOnImage || bk.product?.images?.[0]) ? (
                   <img src={bk.tryOnImage || bk.product!.images[0]} className="w-16 h-20 object-cover rounded-lg flex-shrink-0" />
@@ -211,15 +285,23 @@ export default function Dashboard() {
                       🎫 Loyalty Card
                     </span>
                   )}
+                  {bk.completed && bk.completedAt && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full mt-1" style={{ background: "rgba(34,197,94,0.1)", color: "#15803d", border: "1px solid rgba(34,197,94,0.3)" }}>
+                      ✅ Completed · {new Date(bk.completedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                    </span>
+                  )}
                 </div>
                 <div className="flex-shrink-0 mt-auto pb-0.5 flex flex-col items-center gap-0.5">
-                  <svg width="22" height="14" viewBox="0 0 22 14" fill="none">
-                    <path d="M1 7L5.5 11.5L13 3" stroke={bk.seenByAdmin ? "#53bdeb" : "#b0b8c1"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M7 7L11.5 11.5L19 3" stroke={bk.seenByAdmin ? "#53bdeb" : "#b0b8c1"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  {!bk.seenByAdmin && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                  )}
+                  {bk.completed
+                    ? <CheckCheck className="w-5 h-5 text-green-500" />
+                    : <>
+                        <svg width="22" height="14" viewBox="0 0 22 14" fill="none">
+                          <path d="M1 7L5.5 11.5L13 3" stroke={bk.seenByAdmin ? "#53bdeb" : "#b0b8c1"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M7 7L11.5 11.5L19 3" stroke={bk.seenByAdmin ? "#53bdeb" : "#b0b8c1"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        {!bk.seenByAdmin && <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />}
+                      </>
+                  }
                 </div>
               </div>
             ))}
@@ -237,6 +319,7 @@ export default function Dashboard() {
     const waLink = `https://wa.me/${selectedBooking.customerPhone.replace(/\D/g, "")}?text=${encodeURIComponent(waText)}`;
 
     return (
+      <>
       <div className="space-y-4 max-w-lg">
         <div className="flex items-center gap-2">
           <button onClick={() => setView("bookings")} className="p-1.5 rounded-full hover:bg-gray-100">
@@ -347,7 +430,64 @@ export default function Dashboard() {
             </a>
           </CardContent>
         </Card>
+
+        {/* Extra spacing so sticky button doesn't overlap last card */}
+        <div className="h-20" />
       </div>
+
+      {/* Sticky Complete Order button */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-white border-t border-red-100">
+        <button
+          onClick={() => setShowCompleteModal(true)}
+          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm bg-red-500 hover:bg-red-600 active:bg-red-700 text-white transition-colors"
+        >
+          <CheckCheck className="w-5 h-5" />
+          Complete Order
+        </button>
+      </div>
+
+      {/* Confirm Complete Modal */}
+      {showCompleteModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowCompleteModal(false)}>
+          <div
+            className="w-full max-w-lg bg-white rounded-t-3xl p-6 space-y-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex justify-center mb-1">
+              <div className="w-10 h-1.5 rounded-full bg-gray-200" />
+            </div>
+            <div className="flex items-center justify-center w-14 h-14 rounded-full bg-green-50 border-2 border-green-200 mx-auto">
+              <CheckCheck className="w-7 h-7 text-green-600" />
+            </div>
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-bold text-gray-900">Complete This Order?</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Have you completed this order?<br />
+                Did the customer buy this product from your store?
+              </p>
+              <p className="text-xs text-gray-400 bg-gray-50 rounded-xl p-3">
+                If you have completed this order, click on <strong>Done</strong>. This booking will be removed from Active Bookings and moved to Complete Orders.
+              </p>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => setShowCompleteModal(false)}
+                className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => completeOrder(selectedBooking!.id)}
+                disabled={completeLoading}
+                className="flex-1 py-3 rounded-xl bg-green-500 hover:bg-green-600 text-white font-bold text-sm transition-colors disabled:opacity-60"
+              >
+                {completeLoading ? "Processing…" : "✅ Done"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      </>
     );
   }
 
