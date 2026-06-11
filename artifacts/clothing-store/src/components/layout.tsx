@@ -66,15 +66,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
     return <ShoppingBag className="w-4 h-4 text-primary" />;
   };
 
-  const navigation = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard },
-    { name: "Products", href: "/products", icon: Package },
-    { name: "My Store", href: "/my-store", icon: Store },
-    { name: "AI Promotional Video", href: "/ai-video", icon: Video },
-    ...(user?.role === "super_admin"
-      ? [{ name: "Manage Admins", href: "/manage-admins", icon: Users }]
-      : []),
-  ];
+  const navigation = user?.role === "super_admin"
+    ? [{ name: "Manage Admins", href: "/manage-admins", icon: Users }]
+    : [
+        { name: "Dashboard", href: "/", icon: LayoutDashboard },
+        { name: "Products", href: "/products", icon: Package },
+        { name: "My Store", href: "/my-store", icon: Store },
+        { name: "AI Promotional Video", href: "/ai-video", icon: Video },
+      ];
 
   const handleMarkRead = () => {
     if (unreadCount > 0) {
@@ -172,6 +171,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-4">
+            {user?.role !== "super_admin" && (
             <DropdownMenu open={notifOpen} onOpenChange={handleNotifOpenChange}>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative">
@@ -254,6 +254,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
+            )}
             
             <div className="hidden sm:flex items-center gap-2 border-l border-border pl-4">
               <div className="flex flex-col items-end">

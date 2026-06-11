@@ -28,6 +28,8 @@ function ProtectedRoute({ component: Component, adminOnly = false }: { component
       setLocation("/login");
     } else if (!isLoading && user && adminOnly && user.role !== "super_admin") {
       setLocation("/");
+    } else if (!isLoading && user && user.role === "super_admin" && !adminOnly) {
+      setLocation("/manage-admins");
     }
   }, [user, isLoading, setLocation, adminOnly]);
 
@@ -40,6 +42,10 @@ function ProtectedRoute({ component: Component, adminOnly = false }: { component
   }
 
   if (adminOnly && user.role !== "super_admin") {
+    return null;
+  }
+
+  if (!adminOnly && user.role === "super_admin") {
     return null;
   }
 
