@@ -39,6 +39,14 @@ export default function Login() {
   function onSubmit(values: z.infer<typeof loginSchema>) {
     loginMutation.mutate({ data: values }, {
       onSuccess: (response) => {
+        if (response.user.role === "super_admin") {
+          toast({
+            variant: "destructive",
+            title: "Access Denied",
+            description: "Super admins must use the dedicated Super Admin portal to login.",
+          });
+          return;
+        }
         login(response.token);
         toast({
           title: "Logged in successfully",
