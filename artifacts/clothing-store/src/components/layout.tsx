@@ -8,6 +8,7 @@ import {
   Store,
   Video,
   Users,
+  Shield,
   Bell,
   Menu,
   LogOut,
@@ -67,7 +68,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
   };
 
   const navigation = user?.role === "super_admin"
-    ? [{ name: "Manage Admins", href: "/manage-admins", icon: Users }]
+    ? [
+        { name: "Manage Admins", href: "/manage-admins", icon: Users },
+        { name: "Admins", href: "/admins", icon: Shield },
+      ]
     : [
         { name: "Dashboard", href: "/", icon: LayoutDashboard },
         { name: "Products", href: "/products", icon: Package },

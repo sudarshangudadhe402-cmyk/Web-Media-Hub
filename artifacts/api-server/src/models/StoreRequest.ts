@@ -5,6 +5,7 @@ export interface IStoreRequest extends Document {
   password: string;
   storeName: string;
   whatsapp: string;
+  adminNumber: string;
   status: "pending" | "approved" | "rejected";
   submittedBy: string;
   rewardCode?: string;
@@ -17,6 +18,7 @@ const StoreRequestSchema = new Schema<IStoreRequest>(
     password: { type: String, required: true },
     storeName: { type: String, required: true, trim: true },
     whatsapp: { type: String, required: true },
+    adminNumber: { type: String, default: "" },
     status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
     submittedBy: { type: String, required: true },
     rewardCode: { type: String },

@@ -41,6 +41,7 @@ export interface User {
   id: string;
   username: string;
   plainPassword?: string;
+  adminNumber?: string;
   role: UserRole;
   createdAt?: string;
 }
@@ -53,6 +54,7 @@ export interface AuthResponse {
 export interface AdminInput {
   username: string;
   password: string;
+  adminNumber?: string;
 }
 
 export type ProductProductType = typeof ProductProductType[keyof typeof ProductProductType];

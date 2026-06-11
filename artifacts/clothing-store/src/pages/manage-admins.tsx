@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   useListAdmins,
-  useCreateAdmin,
   useListStoreRequests,
   useApproveStoreRequest,
   useRejectStoreRequest,
@@ -13,10 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -27,23 +23,19 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import {
   Shield,
-  UserPlus,
-  Users,
-  Star,
-  ChevronRight,
-  ChevronDown,
   Store,
   CheckCircle,
   XCircle,
   MessageCircle,
-  Eye,
-  EyeOff,
   Clock,
   Link as LinkIcon,
   Copy,
   Trash2,
   ExternalLink,
   Pencil,
+  Star,
+  ChevronRight,
+  Phone,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -54,25 +46,15 @@ export default function ManageAdmins() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: admins, isLoading } = useListAdmins();
-  const createAdmin = useCreateAdmin();
+  const { data: admins } = useListAdmins();
 
-  // Store requests — fetched from MongoDB
   const { data: allRequests, isLoading: reqLoading } = useListStoreRequests();
   const approveRequest = useApproveStoreRequest();
   const rejectRequest = useRejectStoreRequest();
 
-  const [addOpen, setAddOpen] = useState(false);
-  const [selectedAdmin, setSelectedAdmin] = useState<(typeof admins extends (infer T)[] | undefined ? T : never) | null>(null);
-  const [adminDetailOpen, setAdminDetailOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<StoreTab>("pending");
-  const [adminsOpen, setAdminsOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<NonNullable<typeof allRequests>[number] | null>(null);
   const [requestDetailOpen, setRequestDetailOpen] = useState(false);
-  const [adminActive, setAdminActive] = useState<Record<string, boolean>>({});
-  const [showPass, setShowPass] = useState(false);
-
-  const [form, setForm] = useState({ username: "", password: "", whatsapp: "" });
   const [linkInput, setLinkInput] = useState("");
   const [isEditingLink, setIsEditingLink] = useState(false);
 
@@ -141,47 +123,6 @@ export default function ManageAdmins() {
   const approved = (allRequests ?? []).filter((r) => r.status === "approved");
   const rejected = (allRequests ?? []).filter((r) => r.status === "rejected");
   const tabData: Record<StoreTab, typeof pending> = { pending, approved, rejected };
-
-  function handleFormChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
-  }
-
-  function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    if (form.whatsapp) {
-      const digits = form.whatsapp.replace(/\D/g, "");
-      if (digits.length !== 10 || /^0+$/.test(digits) || /^(\d)\1{9}$/.test(digits)) {
-        toast({ variant: "destructive", title: "Invalid WhatsApp number", description: "Please enter a valid 10-digit Indian mobile number" });
-        return;
-      }
-    }
-    createAdmin.mutate(
-      { data: { username: form.username, password: form.password } },
-      {
-        onSuccess: () => {
-          toast({ title: "Admin created successfully" });
-          queryClient.invalidateQueries({ queryKey: getListAdminsQueryKey() });
-          setForm({ username: "", password: "", whatsapp: "" });
-          setAddOpen(false);
-        },
-        onError: (err: any) => {
-          const msg = err?.response?.data?.error || err?.message || "Failed to create admin";
-          const isUsernameConflict = msg.toLowerCase().includes("already exists") || msg.toLowerCase().includes("username");
-          toast({
-            variant: "destructive",
-            title: isUsernameConflict ? "Username already exists" : "Failed",
-            description: isUsernameConflict ? "Please try a different username" : msg,
-          });
-        },
-      }
-    );
-  }
-
-  function openAdminDetail(admin: NonNullable<typeof admins>[number]) {
-    setSelectedAdmin(admin);
-    setAdminDetailOpen(true);
-    setShowPass(false);
-  }
 
   function openWhatsApp(number: string) {
     window.open(`https://wa.me/${number.replace(/\D/g, "")}`, "_blank");
@@ -253,162 +194,12 @@ export default function ManageAdmins() {
     );
   }
 
-  const adminCount = admins?.length ?? 0;
-
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-12">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Manage Admins</h1>
-        <p className="text-muted-foreground text-sm mt-1">Create and manage admin accounts</p>
+        <p className="text-muted-foreground text-sm mt-1">Review store requests and manage global settings</p>
       </div>
-
-      {/* Add Admin — Green CTA */}
-      <button
-        data-testid="add-admin-btn"
-        onClick={() => setAddOpen(true)}
-        className="w-full flex items-center justify-between gap-4 bg-green-600 hover:bg-green-700 active:bg-green-800 transition-colors text-white rounded-xl px-6 py-5 shadow-lg"
-      >
-        <div className="flex items-center gap-3">
-          <UserPlus className="w-6 h-6 shrink-0" />
-          <div className="text-left">
-            <p className="font-semibold text-lg leading-tight">Add Admin</p>
-            <p className="text-green-100 text-sm">Create a new admin account for your store</p>
-          </div>
-        </div>
-        <Shield className="w-8 h-8 text-green-200 shrink-0" />
-      </button>
-
-      {/* Admins List */}
-      <Collapsible open={adminsOpen} onOpenChange={setAdminsOpen}>
-        <CollapsibleTrigger asChild>
-          <button className="w-full flex items-center justify-between gap-2 mb-4">
-            <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-primary" />
-              <h2 className="text-lg font-semibold">Admins</h2>
-              <Badge className="ml-1">{adminCount}</Badge>
-            </div>
-            <ChevronDown
-              className={`w-5 h-5 text-muted-foreground transition-transform duration-200 ${adminsOpen ? "rotate-180" : ""}`}
-            />
-          </button>
-        </CollapsibleTrigger>
-
-        {/* Always show latest 2 admins */}
-        {isLoading ? (
-          <div className="space-y-3">
-            {[1, 2].map((i) => (
-              <Skeleton key={i} className="h-16 w-full rounded-xl" />
-            ))}
-          </div>
-        ) : adminCount === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="py-12 text-center text-muted-foreground">
-              <Shield className="w-10 h-10 mx-auto mb-3 opacity-20" />
-              <p>No admins yet. Add one above.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-2">
-            {admins?.slice(0, 2).map((admin) => {
-              const isActive = adminActive[admin.id] !== false;
-              return (
-                <button
-                  key={admin.id}
-                  data-testid={`admin-row-${admin.id}`}
-                  onClick={() => openAdminDetail(admin)}
-                  className="w-full text-left"
-                >
-                  <Card className="hover:border-primary/40 transition-colors cursor-pointer">
-                    <CardContent className="p-4 flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold uppercase shrink-0">
-                        {admin.username.substring(0, 2)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold truncate">{admin.username}</span>
-                          {admin.id === user?.id && (
-                            <Badge variant="secondary" className="text-[10px]">You</Badge>
-                          )}
-                          <Badge variant={admin.role === "super_admin" ? "default" : "outline"} className="capitalize text-[10px]">
-                            {admin.role.replace("_", " ")}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className={`text-xs font-medium ${isActive ? "text-green-600" : "text-muted-foreground"}`}>
-                            {isActive ? "Active" : "Inactive"}
-                          </span>
-                          {admin.createdAt && (
-                            <span className="text-xs text-muted-foreground">
-                              · Added {new Date(admin.createdAt).toLocaleDateString()}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-                    </CardContent>
-                  </Card>
-                </button>
-              );
-            })}
-
-            {/* Remaining admins — visible only when open */}
-            <CollapsibleContent>
-              <div className="space-y-2 mt-2">
-                {admins?.slice(2).map((admin) => {
-                  const isActive = adminActive[admin.id] !== false;
-                  return (
-                    <button
-                      key={admin.id}
-                      data-testid={`admin-row-${admin.id}`}
-                      onClick={() => openAdminDetail(admin)}
-                      className="w-full text-left"
-                    >
-                      <Card className="hover:border-primary/40 transition-colors cursor-pointer">
-                        <CardContent className="p-4 flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold uppercase shrink-0">
-                            {admin.username.substring(0, 2)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-semibold truncate">{admin.username}</span>
-                              {admin.id === user?.id && (
-                                <Badge variant="secondary" className="text-[10px]">You</Badge>
-                              )}
-                              <Badge variant={admin.role === "super_admin" ? "default" : "outline"} className="capitalize text-[10px]">
-                                {admin.role.replace("_", " ")}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className={`text-xs font-medium ${isActive ? "text-green-600" : "text-muted-foreground"}`}>
-                                {isActive ? "Active" : "Inactive"}
-                              </span>
-                              {admin.createdAt && (
-                                <span className="text-xs text-muted-foreground">
-                                  · Added {new Date(admin.createdAt).toLocaleDateString()}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-                        </CardContent>
-                      </Card>
-                    </button>
-                  );
-                })}
-              </div>
-            </CollapsibleContent>
-
-            {adminCount > 2 && (
-              <button
-                onClick={() => setAdminsOpen((o) => !o)}
-                className="w-full text-center text-sm text-primary font-medium py-2 hover:underline"
-              >
-                {adminsOpen ? "Show less" : `+${adminCount - 2} more admins`}
-              </button>
-            )}
-          </div>
-        )}
-      </Collapsible>
 
       {/* ── Store Approval Section ── */}
       <div>
@@ -420,7 +211,6 @@ export default function ManageAdmins() {
           )}
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-2 mb-4">
           {(
             [
@@ -444,7 +234,6 @@ export default function ManageAdmins() {
           ))}
         </div>
 
-        {/* Tab Content */}
         {reqLoading ? (
           <div className="space-y-3">
             {[1, 2].map((i) => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
@@ -492,7 +281,7 @@ export default function ManageAdmins() {
         )}
       </div>
 
-      {/* ── Global Link Section (Super Admin only) ── */}
+      {/* ── Global Link Section ── */}
       {user?.role === "super_admin" && (
         <div>
           <div className="flex items-center gap-2 mb-4">
@@ -515,37 +304,20 @@ export default function ManageAdmins() {
                   </a>
                 </div>
                 <div className="flex gap-2 pt-1">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1 gap-1.5"
-                    onClick={() => { navigator.clipboard.writeText(globalLink); toast({ title: "Link copied!" }); }}
-                  >
+                  <Button size="sm" variant="outline" className="flex-1 gap-1.5"
+                    onClick={() => { navigator.clipboard.writeText(globalLink); toast({ title: "Link copied!" }); }}>
                     <Copy className="w-3.5 h-3.5" /> Copy
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1 gap-1.5"
-                    onClick={() => window.open(globalLink, "_blank")}
-                  >
+                  <Button size="sm" variant="outline" className="flex-1 gap-1.5"
+                    onClick={() => window.open(globalLink, "_blank")}>
                     <ExternalLink className="w-3.5 h-3.5" /> Open
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1 gap-1.5"
-                    onClick={() => { setLinkInput(globalLink); setIsEditingLink(true); }}
-                  >
+                  <Button size="sm" variant="outline" className="flex-1 gap-1.5"
+                    onClick={() => { setLinkInput(globalLink); setIsEditingLink(true); }}>
                     <Pencil className="w-3.5 h-3.5" /> Edit
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="gap-1.5 text-red-600 border-red-200 hover:bg-red-50"
-                    onClick={() => deleteGlobalLink.mutate()}
-                    disabled={deleteGlobalLink.isPending}
-                  >
+                  <Button size="sm" variant="outline" className="gap-1.5 text-red-600 border-red-200 hover:bg-red-50"
+                    onClick={() => deleteGlobalLink.mutate()} disabled={deleteGlobalLink.isPending}>
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
                 </div>
@@ -565,21 +337,14 @@ export default function ManageAdmins() {
                     className="flex-1"
                   />
                   <Button
-                    onClick={() => {
-                      const trimmed = linkInput.trim();
-                      if (!trimmed) return;
-                      saveGlobalLink.mutate(trimmed);
-                    }}
+                    onClick={() => { const t = linkInput.trim(); if (!t) return; saveGlobalLink.mutate(t); }}
                     disabled={saveGlobalLink.isPending || !linkInput.trim()}
                     className="bg-primary text-primary-foreground"
                   >
                     {saveGlobalLink.isPending ? "Saving..." : isEditingLink ? "Update" : "Save"}
                   </Button>
                   {isEditingLink && (
-                    <Button
-                      variant="outline"
-                      onClick={() => { setIsEditingLink(false); setLinkInput(""); }}
-                    >
+                    <Button variant="outline" onClick={() => { setIsEditingLink(false); setLinkInput(""); }}>
                       Cancel
                     </Button>
                   )}
@@ -589,124 +354,6 @@ export default function ManageAdmins() {
           )}
         </div>
       )}
-
-      {/* Add Admin Dialog */}
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-green-600" />
-              Add Admin
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleCreate} className="space-y-4 pt-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="username">Username</Label>
-              <Input id="username" name="username" placeholder="admin_username" value={form.username} onChange={handleFormChange} required data-testid="new-admin-username" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" name="password" type="password" placeholder="••••••••" value={form.password} onChange={handleFormChange} required data-testid="new-admin-password" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="whatsapp" className="flex items-center gap-1.5">
-                Store Owner WhatsApp Number
-                <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-              </Label>
-              <div className="flex items-center border border-input rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-ring">
-                <span className="px-3 py-2 bg-muted text-sm font-medium text-muted-foreground border-r border-input shrink-0">+91</span>
-                <input
-                  id="whatsapp"
-                  name="whatsapp"
-                  type="tel"
-                  inputMode="numeric"
-                  maxLength={10}
-                  placeholder="9876543210"
-                  value={form.whatsapp}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, "").slice(0, 10);
-                    setForm((p) => ({ ...p, whatsapp: val }));
-                  }}
-                  className="flex-1 px-3 py-2 text-sm bg-background outline-none"
-                  data-testid="new-admin-whatsapp"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">Enter 10-digit mobile number (e.g. 9876543210)</p>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <Button type="button" variant="outline" className="flex-1" onClick={() => setAddOpen(false)}>Cancel</Button>
-              <Button type="submit" className="flex-1 bg-green-600 hover:bg-green-700 text-white" disabled={createAdmin.isPending}>
-                {createAdmin.isPending ? "Creating..." : "Create Admin"}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Admin Detail Dialog */}
-      <Dialog open={adminDetailOpen} onOpenChange={setAdminDetailOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-primary" />
-              Admin Information
-            </DialogTitle>
-          </DialogHeader>
-          {selectedAdmin && (
-            <div className="space-y-5 pt-2">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xl uppercase">
-                  {selectedAdmin.username.substring(0, 2)}
-                </div>
-                <div>
-                  <p className="font-bold text-lg">{selectedAdmin.username}</p>
-                  <Badge variant={selectedAdmin.role === "super_admin" ? "default" : "outline"} className="capitalize text-xs mt-1">
-                    {selectedAdmin.role.replace("_", " ")}
-                  </Badge>
-                </div>
-              </div>
-              <div className="bg-muted rounded-xl divide-y divide-border">
-                <div className="flex items-center justify-between px-4 py-3">
-                  <span className="text-sm text-muted-foreground">Username</span>
-                  <span className="text-sm font-medium">{selectedAdmin.username}</span>
-                </div>
-                <div className="flex items-center justify-between px-4 py-3">
-                  <span className="text-sm text-muted-foreground">Password</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium font-mono">
-                      {showPass
-                        ? (selectedAdmin.plainPassword || "—")
-                        : "••••••••"}
-                    </span>
-                    <button onClick={() => setShowPass((p) => !p)} className="text-muted-foreground hover:text-foreground">
-                      {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between px-4 py-3">
-                  <span className="text-sm text-muted-foreground">Added</span>
-                  <span className="text-sm font-medium">
-                    {selectedAdmin.createdAt ? new Date(selectedAdmin.createdAt).toLocaleDateString() : "—"}
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between bg-muted rounded-xl px-4 py-3">
-                <div>
-                  <p className="font-medium text-sm">Active Admin</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {(adminActive[selectedAdmin.id] !== false) ? "Admin is currently active" : "Admin is currently inactive"}
-                  </p>
-                </div>
-                <Switch
-                  checked={adminActive[selectedAdmin.id] !== false}
-                  onCheckedChange={(val) => setAdminActive((p) => ({ ...p, [selectedAdmin.id]: val }))}
-                  data-testid="admin-active-toggle"
-                />
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Store Request Detail Dialog */}
       <Dialog open={requestDetailOpen} onOpenChange={setRequestDetailOpen}>
@@ -734,6 +381,16 @@ export default function ManageAdmins() {
                 </div>
                 <div className="flex items-center justify-between px-4 py-3">
                   <span className="text-sm text-muted-foreground flex items-center gap-1">
+                    <Phone className="w-3.5 h-3.5" /> Admin Number
+                  </span>
+                  <span className="text-sm font-medium">
+                    {selectedRequest.adminNumber
+                      ? `+91 ${selectedRequest.adminNumber.replace(/^\+?91/, "").trim()}`
+                      : "—"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-sm text-muted-foreground flex items-center gap-1">
                     WhatsApp <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
                   </span>
                   <div className="flex items-center gap-2">
@@ -742,13 +399,9 @@ export default function ManageAdmins() {
                     </span>
                     <button
                       onClick={() => {
-                        if (selectedRequest.status === "approved") {
-                          sendApprovalWhatsApp(selectedRequest);
-                        } else if (selectedRequest.status === "rejected") {
-                          sendRejectionWhatsApp(selectedRequest);
-                        } else {
-                          openWhatsApp(selectedRequest.whatsapp);
-                        }
+                        if (selectedRequest.status === "approved") sendApprovalWhatsApp(selectedRequest);
+                        else if (selectedRequest.status === "rejected") sendRejectionWhatsApp(selectedRequest);
+                        else openWhatsApp(selectedRequest.whatsapp);
                       }}
                       className="w-7 h-7 rounded-full bg-green-500 hover:bg-green-600 flex items-center justify-center text-white transition-colors"
                       data-testid="whatsapp-btn"
@@ -797,9 +450,7 @@ export default function ManageAdmins() {
                     </div>
                     <div className="flex items-center justify-between px-4 py-3">
                       <span className="text-sm text-muted-foreground">WhatsApp</span>
-                      <span className="text-sm font-medium">
-                        +91 {selectedRequest.whatsapp.replace(/^\+?91/, "").trim()}
-                      </span>
+                      <span className="text-sm font-medium">+91 {selectedRequest.whatsapp.replace(/^\+?91/, "").trim()}</span>
                     </div>
                     <div className="flex items-center justify-between px-4 py-3">
                       <span className="text-sm text-muted-foreground">Reward Code</span>
@@ -823,7 +474,7 @@ export default function ManageAdmins() {
                     <div className="flex items-start gap-2 bg-destructive/10 border border-destructive/30 rounded-xl px-4 py-3">
                       <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
                       <p className="text-sm text-destructive font-medium">
-                        Username <span className="font-bold">@{selectedRequest.username}</span> already exists — this request cannot be approved. Ask the applicant to resubmit with a different username.
+                        Username <span className="font-bold">@{selectedRequest.username}</span> already exists — this request cannot be approved.
                       </p>
                     </div>
                   )}

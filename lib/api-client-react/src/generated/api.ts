@@ -1975,6 +1975,7 @@ export interface StoreRequestItem {
   password: string;
   storeName: string;
   whatsapp: string;
+  adminNumber: string;
   status: "pending" | "approved" | "rejected";
   submittedBy: string;
   createdAt: string;
@@ -1986,6 +1987,7 @@ export interface StoreRequestInput {
   password: string;
   storeName: string;
   whatsapp: string;
+  adminNumber?: string;
 }
 
 // ── submitStoreRequest ────────────────────────────────────────────────────────

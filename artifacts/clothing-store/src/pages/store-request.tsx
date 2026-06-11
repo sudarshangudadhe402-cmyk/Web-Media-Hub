@@ -43,6 +43,7 @@ export default function StoreRequest() {
     storeName: "",
     username: "",
     password: "",
+    adminNumber: "",
     whatsapp: "",
   });
   const [showPass, setShowPass] = useState(false);
@@ -69,6 +70,7 @@ export default function StoreRequest() {
           storeName: form.storeName,
           username: form.username,
           password: form.password,
+          adminNumber: form.adminNumber || undefined,
           whatsapp: `+91${form.whatsapp}`,
         },
       },
@@ -76,7 +78,7 @@ export default function StoreRequest() {
         onSuccess: () => {
           toast({ title: "Request submitted ✅", description: "Your store request has been sent to the super-admin for approval." });
           queryClient.invalidateQueries({ queryKey: getMyStoreRequestsQueryKey() });
-          setForm({ storeName: "", username: "", password: "", whatsapp: "" });
+          setForm({ storeName: "", username: "", password: "", adminNumber: "", whatsapp: "" });
         },
         onError: (err: any) => {
           // Try every possible path the ApiError might put the message
@@ -175,6 +177,35 @@ export default function StoreRequest() {
               {showPass ? "Hide" : "Show"}
             </button>
           </div>
+        </div>
+
+        {/* Admin Number */}
+        <div className="space-y-1.5">
+          <Label htmlFor="req-admin-number" className="flex items-center gap-1.5">
+            <Phone className="w-4 h-4 text-muted-foreground" />
+            Admin Number
+          </Label>
+          <div className="flex items-center border border-input rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-ring">
+            <span className="px-3 py-2 bg-muted text-sm font-medium text-muted-foreground border-r border-input shrink-0">
+              +91
+            </span>
+            <input
+              id="req-admin-number"
+              type="tel"
+              inputMode="numeric"
+              maxLength={10}
+              placeholder="9876543210"
+              value={form.adminNumber}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                setForm((p) => ({ ...p, adminNumber: val }));
+              }}
+              className="flex-1 px-3 py-2 text-sm bg-background outline-none"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Your mobile number (10 digits, optional)
+          </p>
         </div>
 
         {/* WhatsApp */}

@@ -13,6 +13,7 @@ router.get("/admins", requireSuperAdmin, async (req, res) => {
         id: String(a._id),
         username: a.username,
         plainPassword: a.plainPassword ?? "",
+        adminNumber: a.adminNumber ?? "",
         role: a.role,
         createdAt: a.createdAt.toISOString(),
       }))
@@ -25,7 +26,7 @@ router.get("/admins", requireSuperAdmin, async (req, res) => {
 
 router.post("/admins", requireSuperAdmin, async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, adminNumber } = req.body;
     if (!username || !password) {
       res.status(400).json({ error: "Username and password are required" });
       return;
@@ -37,11 +38,12 @@ router.post("/admins", requireSuperAdmin, async (req, res) => {
       return;
     }
 
-    const admin = await User.create({ username, password, plainPassword: password, role: "admin" });
+    const admin = await User.create({ username, password, plainPassword: password, adminNumber: adminNumber ?? "", role: "admin" });
     res.status(201).json({
       id: String(admin._id),
       username: admin.username,
       plainPassword: password,
+      adminNumber: admin.adminNumber ?? "",
       role: admin.role,
       createdAt: admin.createdAt.toISOString(),
     });

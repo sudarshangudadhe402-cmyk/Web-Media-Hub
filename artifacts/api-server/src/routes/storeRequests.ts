@@ -30,6 +30,7 @@ function fmt(s: InstanceType<typeof StoreRequest>) {
     password: s.password,
     storeName: s.storeName,
     whatsapp: s.whatsapp,
+    adminNumber: s.adminNumber ?? "",
     status: s.status,
     submittedBy: s.submittedBy,
     rewardCode: s.rewardCode ?? null,
@@ -50,7 +51,7 @@ router.get("/store-requests/my", requireAuth, async (req: any, res) => {
 
 router.post("/store-requests", requireAuth, async (req: any, res) => {
   try {
-    const { username, password, storeName, whatsapp } = req.body;
+    const { username, password, storeName, whatsapp, adminNumber } = req.body;
     if (!username || !password || !storeName || !whatsapp) {
       res.status(400).json({ error: "All fields are required" });
       return;
@@ -65,6 +66,7 @@ router.post("/store-requests", requireAuth, async (req: any, res) => {
       password,
       storeName,
       whatsapp,
+      adminNumber: adminNumber ?? "",
       status: "pending",
       submittedBy: req.user?.id ?? "unknown",
     });
@@ -117,6 +119,7 @@ router.patch("/store-requests/:id/approve", requireSuperAdmin, async (req, res) 
       username: request.username,
       password: request.password,
       plainPassword: request.password,
+      adminNumber: request.adminNumber ?? "",
       role: "admin",
     });
 
