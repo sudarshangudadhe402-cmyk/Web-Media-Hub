@@ -127,6 +127,16 @@ export default function PublicStore() {
   const [loyaltyApplied, setLoyaltyApplied] = useState(false);
   const [loyaltyAppliedCardId, setLoyaltyAppliedCardId] = useState<string | null>(null);
 
+  const [lcTab, setLcTab] = useState<"registration" | "login">("registration");
+  const [lcLoginForm, setLcLoginForm] = useState({ name: "", password: "" });
+  const [lcLoginLoading, setLcLoginLoading] = useState(false);
+  const [lcLoginError, setLcLoginError] = useState<string | null>(null);
+  const [lcLoginAttempts, setLcLoginAttempts] = useState(0);
+  const [lcForgotVisible, setLcForgotVisible] = useState(false);
+  const [lcForgotForm, setLcForgotForm] = useState({ name: "", mobile: "", password: "" });
+  const [lcForgotLoading, setLcForgotLoading] = useState(false);
+  const [lcForgotError, setLcForgotError] = useState<string | null>(null);
+
   const photoInputRef = useRef<HTMLInputElement>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
 
@@ -338,6 +348,55 @@ export default function PublicStore() {
     finally { setLoyaltyCardLoading(false); }
   }
 
+  async function lcLoginSubmit() {
+    const { name, password } = lcLoginForm;
+    if (!name.trim() || !password) return;
+    setLcLoginLoading(true);
+    setLcLoginError(null);
+    try {
+      const res = await fetch("/api/public/loyalty-card/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storeSlug: slug, customerName: name.trim(), password }),
+      });
+      const d = await res.json();
+      if (!res.ok) {
+        const attempts = lcLoginAttempts + 1;
+        setLcLoginAttempts(attempts);
+        setLcLoginError(d.error || "Wrong name or password");
+        if (attempts >= 3) setLcForgotVisible(true);
+        return;
+      }
+      const info: LoyaltyCardInfo = { id: d.id, name: d.customerName, mobile: d.mobileNumber, status: d.status };
+      setLoyaltyCardInfo(info);
+      localStorage.setItem(`wmh_loyalty_${slug}`, JSON.stringify(info));
+      setLcLoginAttempts(0);
+      setLcForgotVisible(false);
+    } catch { setLcLoginError("Something went wrong. Please try again."); }
+    finally { setLcLoginLoading(false); }
+  }
+
+  async function lcRecoverSubmit() {
+    const { name, mobile, password } = lcForgotForm;
+    if (!name.trim() || !mobile || !password) return;
+    setLcForgotLoading(true);
+    setLcForgotError(null);
+    try {
+      const res = await fetch("/api/public/loyalty-card/recover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storeSlug: slug, customerName: name.trim(), mobileNumber: mobile, password }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setLcForgotError(d.error || "Details not found"); return; }
+      const info: LoyaltyCardInfo = { id: d.id, name: d.customerName, mobile: d.mobileNumber, status: d.status };
+      setLoyaltyCardInfo(info);
+      localStorage.setItem(`wmh_loyalty_${slug}`, JSON.stringify(info));
+      setLcForgotVisible(false);
+    } catch { setLcForgotError("Something went wrong. Please try again."); }
+    finally { setLcForgotLoading(false); }
+  }
+
   async function verifyAndApplyLoyaltyCard() {
     const { name, mobile, password } = loyaltyApplyForm;
     if (!name.trim() || !mobile || !password) return;
@@ -487,113 +546,374 @@ export default function PublicStore() {
       /^\d{10}$/.test(loyaltyCardForm.password) &&
       !loyaltyCardLoading;
 
+    const lcLoginValid =
+      lcLoginForm.name.trim().length >= 2 &&
+      /^\d{10}$/.test(lcLoginForm.password) &&
+      !lcLoginLoading;
+
+    const lcForgotValid =
+      lcForgotForm.name.trim().length >= 2 &&
+      /^\d{10}$/.test(lcForgotForm.mobile) &&
+      /^\d{10}$/.test(lcForgotForm.password) &&
+      !lcForgotLoading;
+
     return (
       <div className="min-h-screen flex flex-col" style={{ background: "#0f0f0f", fontFamily: "'Inter', sans-serif" }}>
-        <div className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 border-b" style={{ background: "#0f0f0f", borderColor: "rgba(212,175,55,0.2)" }}>
-          <button onClick={() => setView("mybookings")} className="p-1.5 rounded-full hover:bg-white/10">
+        {/* Header */}
+        <div className="sticky top-0 z-20 flex items-center gap-3 px-4 py-3 border-b" style={{ background: "#0f0f0f", borderColor: "rgba(212,175,55,0.2)" }}>
+          <button
+            onClick={() => {
+              setView("mybookings");
+              setLcTab("registration");
+              setLcLoginForm({ name: "", password: "" });
+              setLcLoginError(null);
+              setLcLoginAttempts(0);
+              setLcForgotVisible(false);
+            }}
+            className="p-1.5 rounded-full hover:bg-white/10"
+          >
             <ChevronLeft className="w-5 h-5 text-white" />
           </button>
           <span className="font-bold text-white" style={{ fontFamily: "'Montserrat', sans-serif" }}>Loyalty Card</span>
         </div>
 
-        <div className="flex-1 p-4">
-          {/* Card placeholder */}
-          <div className="w-full rounded-2xl mb-6 flex items-center justify-center" style={{ background: "#1a1a1a", border: "1px dashed rgba(212,175,55,0.3)", minHeight: "160px" }}>
-            <div className="flex flex-col items-center gap-2 py-6">
-              <CreditCard className="w-12 h-12" style={{ color: "#D4AF37", opacity: 0.4 }} />
-              <p className="text-xs text-white/30">Loyalty Card</p>
-            </div>
-          </div>
+        <div className="flex-1 p-4 overflow-hidden">
 
-          {loyaltyCardInfo?.status === "approved" ? (
-            <div className="flex flex-col items-center text-center gap-3 py-6">
-              <div className="w-20 h-20 rounded-2xl flex items-center justify-center" style={{ background: "rgba(34,197,94,0.12)", border: "2px solid #22c55e" }}>
-                <CreditCard className="w-10 h-10" style={{ color: "#22c55e" }} />
+          {/* ── Already has a card: show status ── */}
+          {loyaltyCardInfo ? (
+            <div className="flex flex-col items-center">
+              {/* Visual card */}
+              <div className="w-full rounded-2xl mb-6 px-5 py-5 flex items-center justify-between"
+                style={{
+                  background: loyaltyCardInfo.status === "approved"
+                    ? "linear-gradient(135deg,#14532d,#16a34a)"
+                    : "linear-gradient(135deg,#1c1c1c,#2a2a2a)",
+                  border: loyaltyCardInfo.status === "approved"
+                    ? "1px solid rgba(34,197,94,0.4)"
+                    : "1px dashed rgba(255,255,255,0.1)",
+                  minHeight: "100px",
+                }}>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest mb-1"
+                    style={{ color: loyaltyCardInfo.status === "approved" ? "rgba(134,239,172,0.8)" : "rgba(255,255,255,0.3)" }}>
+                    Loyalty Card
+                  </p>
+                  <p className="text-base font-bold text-white">{loyaltyCardInfo.name}</p>
+                  <p className="text-xs mt-0.5" style={{ color: loyaltyCardInfo.status === "approved" ? "rgba(134,239,172,0.7)" : "rgba(255,255,255,0.3)" }}>
+                    {loyaltyCardInfo.status === "approved" ? "Active Member" : "Pending Approval"}
+                  </p>
+                </div>
+                <CreditCard
+                  className="w-10 h-10"
+                  style={{ color: loyaltyCardInfo.status === "approved" ? "#22c55e" : "rgba(255,255,255,0.15)" }}
+                />
               </div>
-              <p className="text-lg font-bold text-white" style={{ fontFamily: "'Montserrat', sans-serif" }}>
-                Congratulations 🎉
-              </p>
-              <p className="text-sm font-semibold" style={{ color: "#22c55e" }}>Your Loyalty card is approved</p>
-              <p className="text-xs text-white/40 mt-1">Name: {loyaltyCardInfo.name}</p>
+
+              {loyaltyCardInfo.status === "approved" ? (
+                <div className="flex flex-col items-center text-center gap-3 py-4">
+                  <div className="w-20 h-20 rounded-2xl flex items-center justify-center" style={{ background: "rgba(34,197,94,0.12)", border: "2px solid #22c55e" }}>
+                    <CreditCard className="w-10 h-10" style={{ color: "#22c55e" }} />
+                  </div>
+                  <p className="text-lg font-bold text-white" style={{ fontFamily: "'Montserrat', sans-serif" }}>Congratulations 🎉</p>
+                  <p className="text-sm font-semibold" style={{ color: "#22c55e" }}>Your Loyalty card is approved</p>
+                  <p className="text-xs text-white/40 mt-1">Name: {loyaltyCardInfo.name}</p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center text-center gap-3 py-4">
+                  <div className="w-20 h-20 rounded-2xl flex items-center justify-center" style={{ background: "rgba(255,255,255,0.04)", border: "2px solid rgba(255,255,255,0.15)" }}>
+                    <CreditCard className="w-10 h-10" style={{ color: "rgba(255,255,255,0.25)" }} />
+                  </div>
+                  <p className="text-base font-bold text-white" style={{ fontFamily: "'Montserrat', sans-serif" }}>Request Submitted</p>
+                  <p className="text-xs text-white/40 px-4 text-center">Your Loyalty Card request is submitted , please wait for approved by admin</p>
+                </div>
+              )}
+
+              <button
+                onClick={() => {
+                  setLoyaltyCardInfo(null);
+                  localStorage.removeItem(`wmh_loyalty_${slug}`);
+                  setLcTab("login");
+                }}
+                className="mt-6 text-xs text-white/25 underline"
+              >
+                Switch account
+              </button>
             </div>
-          ) : loyaltyCardInfo?.status === "requested" ? (
-            <div className="flex flex-col items-center text-center gap-3 py-6">
-              <div className="w-20 h-20 rounded-2xl flex items-center justify-center" style={{ background: "rgba(255,255,255,0.04)", border: "2px solid rgba(255,255,255,0.15)" }}>
-                <CreditCard className="w-10 h-10" style={{ color: "rgba(255,255,255,0.25)" }} />
-              </div>
-              <p className="text-base font-bold text-white" style={{ fontFamily: "'Montserrat', sans-serif" }}>Request Submitted</p>
-              <p className="text-xs text-white/40 px-4 text-center">Your Loyalty Card request is submitted , please wait for approved by admin</p>
-            </div>
+
           ) : (
-            <div className="space-y-4">
-              <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: "#D4AF37" }}>Request Loyalty Card</p>
+            /* ── No card yet: Registration / Login tabs ── */
+            <>
+              {/* Card graphic */}
+              <div className="w-full rounded-2xl mb-5 px-5 py-5 flex items-center justify-between"
+                style={{
+                  background: "linear-gradient(135deg,#1c1c1c,#2a2a2a)",
+                  border: "1px dashed rgba(212,175,55,0.25)",
+                  minHeight: "96px",
+                }}>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: "rgba(212,175,55,0.5)" }}>Loyalty Card</p>
+                  <p className="text-base font-bold text-white/20">— — — —</p>
+                </div>
+                <CreditCard className="w-9 h-9" style={{ color: "rgba(212,175,55,0.3)" }} />
+              </div>
 
-              {loyaltyCardError && (
+              {/* ─── Sliding tab switcher ─── */}
+              <div className="relative rounded-2xl p-1 mb-5" style={{ background: "#1a1a1a" }}>
+                {/* Sliding pill */}
+                <div
+                  className="absolute top-1 bottom-1 rounded-xl transition-all"
+                  style={{
+                    width: "calc(50% - 4px)",
+                    left: lcTab === "registration" ? "4px" : "calc(50%)",
+                    background: "linear-gradient(135deg,#16a34a,#22c55e)",
+                    transition: "left 0.35s cubic-bezier(0.4,0,0.2,1)",
+                    boxShadow: "0 2px 12px rgba(34,197,94,0.35)",
+                  }}
+                />
+                <div className="relative flex">
+                  <button
+                    onClick={() => { setLcTab("registration"); setLcLoginError(null); }}
+                    className="flex-1 py-3 text-sm font-bold z-10 transition-colors rounded-xl"
+                    style={{
+                      color: lcTab === "registration" ? "#fff" : "rgba(255,255,255,0.4)",
+                      fontFamily: "'Montserrat', sans-serif",
+                      transition: "color 0.25s",
+                    }}
+                  >
+                    Registration
+                  </button>
+                  <button
+                    onClick={() => { setLcTab("login"); setLoyaltyCardError(null); }}
+                    className="flex-1 py-3 text-sm font-bold z-10 transition-colors rounded-xl"
+                    style={{
+                      color: lcTab === "login" ? "#fff" : "rgba(255,255,255,0.4)",
+                      fontFamily: "'Montserrat', sans-serif",
+                      transition: "color 0.25s",
+                    }}
+                  >
+                    Login
+                  </button>
+                </div>
+              </div>
+
+              {/* ─── Sliding form panels ─── */}
+              <div style={{ overflow: "hidden" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    width: "200%",
+                    transform: `translateX(${lcTab === "registration" ? "0%" : "-50%"})`,
+                    transition: "transform 0.35s cubic-bezier(0.4,0,0.2,1)",
+                  }}
+                >
+                  {/* ══ REGISTRATION PANEL ══ */}
+                  <div style={{ width: "50%", paddingRight: "8px" }}>
+                    <div className="space-y-4">
+                      {loyaltyCardError && (
+                        <div className="flex items-start gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)" }}>
+                          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#ef4444" }} />
+                          <p className="text-xs" style={{ color: "#ef4444" }}>{loyaltyCardError}</p>
+                        </div>
+                      )}
+                      <div>
+                        <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-1.5">Customer Name *</label>
+                        <input
+                          type="text"
+                          value={loyaltyCardForm.name}
+                          onChange={(e) => setLoyaltyCardForm(f => ({ ...f, name: e.target.value }))}
+                          placeholder="Enter your real name"
+                          className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none border"
+                          style={{ background: "#1a1a1a", borderColor: "rgba(212,175,55,0.2)" }}
+                        />
+                        <p className="text-[10px] text-white/30 mt-1">Real name only — fake names not allowed</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-1.5">Mobile Number *</label>
+                        <input
+                          type="tel"
+                          inputMode="numeric"
+                          maxLength={10}
+                          value={loyaltyCardForm.mobile}
+                          onChange={(e) => setLoyaltyCardForm(f => ({ ...f, mobile: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
+                          placeholder="10-digit mobile number"
+                          className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none border"
+                          style={{ background: "#1a1a1a", borderColor: "rgba(212,175,55,0.2)" }}
+                        />
+                        <p className="text-[10px] text-white/30 mt-1">Repeated & spam numbers not allowed</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-1.5">Password *</label>
+                        <input
+                          type="password"
+                          inputMode="numeric"
+                          maxLength={10}
+                          value={loyaltyCardForm.password}
+                          onChange={(e) => setLoyaltyCardForm(f => ({ ...f, password: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
+                          placeholder="10-digit numeric password"
+                          className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none border"
+                          style={{ background: "#1a1a1a", borderColor: "rgba(212,175,55,0.2)" }}
+                        />
+                        <p className="text-[10px] text-white/30 mt-1">Must be exactly 10 digits</p>
+                      </div>
+                      <button
+                        onClick={submitLoyaltyCardRequest}
+                        disabled={!lcFormValid}
+                        className="w-full font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 transition-all"
+                        style={{
+                          background: lcFormValid ? "linear-gradient(135deg,#16a34a,#22c55e)" : "#2a2a2a",
+                          color: lcFormValid ? "white" : "rgba(255,255,255,0.2)",
+                          fontFamily: "'Montserrat', sans-serif",
+                        }}
+                      >
+                        {loyaltyCardLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                        Request Card
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* ══ LOGIN PANEL ══ */}
+                  <div style={{ width: "50%", paddingLeft: "8px" }}>
+                    <div className="space-y-4">
+                      {lcLoginError && (
+                        <div className="flex items-start gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)" }}>
+                          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#ef4444" }} />
+                          <p className="text-xs" style={{ color: "#ef4444" }}>{lcLoginError}</p>
+                        </div>
+                      )}
+                      <div>
+                        <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-1.5">Name *</label>
+                        <input
+                          type="text"
+                          value={lcLoginForm.name}
+                          onChange={(e) => setLcLoginForm(f => ({ ...f, name: e.target.value }))}
+                          placeholder="Your registered name"
+                          className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none border"
+                          style={{ background: "#1a1a1a", borderColor: "rgba(212,175,55,0.2)" }}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-1.5">Password *</label>
+                        <input
+                          type="password"
+                          inputMode="numeric"
+                          maxLength={10}
+                          value={lcLoginForm.password}
+                          onChange={(e) => setLcLoginForm(f => ({ ...f, password: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
+                          placeholder="10-digit password"
+                          className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none border"
+                          style={{ background: "#1a1a1a", borderColor: "rgba(212,175,55,0.2)" }}
+                        />
+                      </div>
+                      <button
+                        onClick={lcLoginSubmit}
+                        disabled={!lcLoginValid}
+                        className="w-full font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 transition-all"
+                        style={{
+                          background: lcLoginValid ? "linear-gradient(135deg,#16a34a,#22c55e)" : "#2a2a2a",
+                          color: lcLoginValid ? "white" : "rgba(255,255,255,0.2)",
+                          fontFamily: "'Montserrat', sans-serif",
+                        }}
+                      >
+                        {lcLoginLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                        Login
+                      </button>
+
+                      {/* Forget password hint — appears after 3 failed attempts */}
+                      {lcForgotVisible && (
+                        <button
+                          onClick={() => { setLcForgotForm({ name: lcLoginForm.name, mobile: "", password: "" }); }}
+                          className="w-full text-center text-xs py-2.5 rounded-xl font-semibold transition-all"
+                          style={{ background: "rgba(234,179,8,0.1)", color: "#eab308", border: "1px solid rgba(234,179,8,0.25)" }}
+                        >
+                          Forget Password? Login with number →
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* ── Forgot Password Bottom Sheet ── */}
+        {lcForgotVisible && lcForgotForm.mobile !== undefined && (
+          <div
+            className="fixed inset-0 z-50 flex items-end"
+            style={{ background: "rgba(0,0,0,0.7)" }}
+            onClick={(e) => { if (e.target === e.currentTarget) setLcForgotVisible(false); }}
+          >
+            <div
+              className="w-full rounded-t-3xl p-5 space-y-4"
+              style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.08)" }}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <p className="font-bold text-white" style={{ fontFamily: "'Montserrat', sans-serif" }}>Login with Number</p>
+                <button onClick={() => setLcForgotVisible(false)} className="p-1 rounded-full hover:bg-white/10">
+                  <X className="w-4 h-4 text-white/50" />
+                </button>
+              </div>
+
+              {lcForgotError && (
                 <div className="flex items-start gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)" }}>
                   <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#ef4444" }} />
-                  <p className="text-xs" style={{ color: "#ef4444" }}>{loyaltyCardError}</p>
+                  <p className="text-xs" style={{ color: "#ef4444" }}>{lcForgotError}</p>
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-1.5">Customer Name *</label>
+                <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-1.5">Name *</label>
                 <input
                   type="text"
-                  value={loyaltyCardForm.name}
-                  onChange={(e) => setLoyaltyCardForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder="Enter your real name (no nicknames)"
+                  value={lcForgotForm.name}
+                  onChange={(e) => setLcForgotForm(f => ({ ...f, name: e.target.value }))}
+                  placeholder="Registered name"
                   className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none border"
                   style={{ background: "#1a1a1a", borderColor: "rgba(212,175,55,0.2)" }}
                 />
-                <p className="text-[10px] text-white/30 mt-1">Real name only — fake names not allowed</p>
               </div>
-
               <div>
                 <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-1.5">Mobile Number *</label>
                 <input
                   type="tel"
                   inputMode="numeric"
                   maxLength={10}
-                  value={loyaltyCardForm.mobile}
-                  onChange={(e) => setLoyaltyCardForm(f => ({ ...f, mobile: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
-                  placeholder="10-digit mobile number"
+                  value={lcForgotForm.mobile}
+                  onChange={(e) => setLcForgotForm(f => ({ ...f, mobile: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
+                  placeholder="10-digit mobile"
                   className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none border"
                   style={{ background: "#1a1a1a", borderColor: "rgba(212,175,55,0.2)" }}
                 />
-                <p className="text-[10px] text-white/30 mt-1">Repeated & spam numbers not allowed</p>
               </div>
-
               <div>
                 <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-1.5">Password *</label>
                 <input
                   type="password"
                   inputMode="numeric"
                   maxLength={10}
-                  value={loyaltyCardForm.password}
-                  onChange={(e) => setLoyaltyCardForm(f => ({ ...f, password: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
-                  placeholder="10-digit numeric password"
+                  value={lcForgotForm.password}
+                  onChange={(e) => setLcForgotForm(f => ({ ...f, password: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
+                  placeholder="10-digit password"
                   className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none border"
                   style={{ background: "#1a1a1a", borderColor: "rgba(212,175,55,0.2)" }}
                 />
-                <p className="text-[10px] text-white/30 mt-1">Must be exactly 10 digits</p>
               </div>
-
               <button
-                onClick={submitLoyaltyCardRequest}
-                disabled={!lcFormValid}
-                className="w-full font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 transition-all mt-2"
+                onClick={lcRecoverSubmit}
+                disabled={!lcForgotValid}
+                className="w-full font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2"
                 style={{
-                  background: lcFormValid ? "#22c55e" : "#2a2a2a",
-                  color: lcFormValid ? "white" : "rgba(255,255,255,0.2)",
+                  background: lcForgotValid ? "linear-gradient(135deg,#16a34a,#22c55e)" : "#2a2a2a",
+                  color: lcForgotValid ? "white" : "rgba(255,255,255,0.2)",
                   fontFamily: "'Montserrat', sans-serif",
                 }}
               >
-                {loyaltyCardLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                Done
+                {lcForgotLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                Verify & Login
               </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     );
   }

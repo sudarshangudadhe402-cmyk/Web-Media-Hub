@@ -162,6 +162,67 @@ router.post("/public/loyalty-card/verify", async (req, res) => {
   }
 });
 
+router.post("/public/loyalty-card/login", async (req, res) => {
+  try {
+    const { storeSlug, customerName, password } = req.body;
+    if (!storeSlug || !customerName || !password) {
+      res.status(400).json({ error: "All fields are required" });
+      return;
+    }
+    const store = await Store.findOne({ publicSlug: storeSlug });
+    if (!store) { res.status(404).json({ error: "Store not found" }); return; }
+    const storeId = String(store._id);
+    const card = await LoyaltyCard.findOne({
+      storeId,
+      customerName: new RegExp(`^${customerName.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
+      password,
+    });
+    if (!card) {
+      res.status(401).json({ error: "Wrong name or password" });
+      return;
+    }
+    res.json({
+      id: String(card._id),
+      customerName: card.customerName,
+      mobileNumber: card.mobileNumber,
+      status: card.status,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/public/loyalty-card/recover", async (req, res) => {
+  try {
+    const { storeSlug, customerName, mobileNumber, password } = req.body;
+    if (!storeSlug || !customerName || !mobileNumber || !password) {
+      res.status(400).json({ error: "All fields are required" });
+      return;
+    }
+    const store = await Store.findOne({ publicSlug: storeSlug });
+    if (!store) { res.status(404).json({ error: "Store not found" }); return; }
+    const storeId = String(store._id);
+    const card = await LoyaltyCard.findOne({
+      storeId,
+      customerName: new RegExp(`^${customerName.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
+      mobileNumber,
+      password,
+    });
+    if (!card) {
+      res.status(404).json({ error: "No Loyalty card found with these details" });
+      return;
+    }
+    res.json({
+      id: String(card._id),
+      customerName: card.customerName,
+      mobileNumber: card.mobileNumber,
+      status: card.status,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/loyalty-cards", requireAuth, async (req: AuthRequest, res) => {
   try {
     const userId = String(req.user!._id);
