@@ -172,20 +172,27 @@ router.post("/public/loyalty-card/login", async (req, res) => {
     const store = await Store.findOne({ publicSlug: storeSlug });
     if (!store) { res.status(404).json({ error: "Store not found" }); return; }
     const storeId = String(store._id);
-    const card = await LoyaltyCard.findOne({
+
+    const nameMatch = await LoyaltyCard.findOne({
       storeId,
       customerName: new RegExp(`^${customerName.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
-      password,
     });
-    if (!card) {
-      res.status(401).json({ error: "Wrong name or password" });
+
+    if (!nameMatch) {
+      res.status(404).json({ error: "No Loyalty card found with this name", code: "name_not_found" });
       return;
     }
+
+    if (nameMatch.password !== password) {
+      res.status(401).json({ error: "Wrong password please try current password", code: "wrong_password" });
+      return;
+    }
+
     res.json({
-      id: String(card._id),
-      customerName: card.customerName,
-      mobileNumber: card.mobileNumber,
-      status: card.status,
+      id: String(nameMatch._id),
+      customerName: nameMatch.customerName,
+      mobileNumber: nameMatch.mobileNumber,
+      status: nameMatch.status,
     });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });

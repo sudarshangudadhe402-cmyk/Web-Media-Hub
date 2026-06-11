@@ -818,15 +818,19 @@ export default function PublicStore() {
                         Login
                       </button>
 
-                      {/* Forget password hint — appears after 3 failed attempts */}
-                      {lcForgotVisible && (
-                        <button
-                          onClick={() => { setLcForgotForm({ name: lcLoginForm.name, mobile: "", password: "" }); }}
-                          className="w-full text-center text-xs py-2.5 rounded-xl font-semibold transition-all"
-                          style={{ background: "rgba(234,179,8,0.1)", color: "#eab308", border: "1px solid rgba(234,179,8,0.25)" }}
+                      {/* Forgot Password — always visible, opens admin WhatsApp */}
+                      {waLink && (
+                        <a
+                          href={`${waLink}?text=${encodeURIComponent(
+                            `Hay team ${data.name}\n\nI unfortunately lost my loyalty card password , please find & sent me my loyalty card password\n\nName : ${lcLoginForm.name.trim() || "fill this"}\nMobile number: fill this\n\nPlease find my loyalty card In your account and sent me my loyalty card password`
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block w-full text-center text-xs py-2.5 rounded-xl font-semibold"
+                          style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)" }}
                         >
-                          Forget Password? Login with number →
-                        </button>
+                          Forgot Password?
+                        </a>
                       )}
                     </div>
                   </div>
@@ -835,85 +839,6 @@ export default function PublicStore() {
             </>
           )}
         </div>
-
-        {/* ── Forgot Password Bottom Sheet ── */}
-        {lcForgotVisible && lcForgotForm.mobile !== undefined && (
-          <div
-            className="fixed inset-0 z-50 flex items-end"
-            style={{ background: "rgba(0,0,0,0.7)" }}
-            onClick={(e) => { if (e.target === e.currentTarget) setLcForgotVisible(false); }}
-          >
-            <div
-              className="w-full rounded-t-3xl p-5 space-y-4"
-              style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.08)" }}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <p className="font-bold text-white" style={{ fontFamily: "'Montserrat', sans-serif" }}>Login with Number</p>
-                <button onClick={() => setLcForgotVisible(false)} className="p-1 rounded-full hover:bg-white/10">
-                  <X className="w-4 h-4 text-white/50" />
-                </button>
-              </div>
-
-              {lcForgotError && (
-                <div className="flex items-start gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)" }}>
-                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#ef4444" }} />
-                  <p className="text-xs" style={{ color: "#ef4444" }}>{lcForgotError}</p>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-1.5">Name *</label>
-                <input
-                  type="text"
-                  value={lcForgotForm.name}
-                  onChange={(e) => setLcForgotForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder="Registered name"
-                  className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none border"
-                  style={{ background: "#1a1a1a", borderColor: "rgba(212,175,55,0.2)" }}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-1.5">Mobile Number *</label>
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  maxLength={10}
-                  value={lcForgotForm.mobile}
-                  onChange={(e) => setLcForgotForm(f => ({ ...f, mobile: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
-                  placeholder="10-digit mobile"
-                  className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none border"
-                  style={{ background: "#1a1a1a", borderColor: "rgba(212,175,55,0.2)" }}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-1.5">Password *</label>
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={10}
-                  value={lcForgotForm.password}
-                  onChange={(e) => setLcForgotForm(f => ({ ...f, password: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
-                  placeholder="10-digit password"
-                  className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none border"
-                  style={{ background: "#1a1a1a", borderColor: "rgba(212,175,55,0.2)" }}
-                />
-              </div>
-              <button
-                onClick={lcRecoverSubmit}
-                disabled={!lcForgotValid}
-                className="w-full font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2"
-                style={{
-                  background: lcForgotValid ? "linear-gradient(135deg,#16a34a,#22c55e)" : "#2a2a2a",
-                  color: lcForgotValid ? "white" : "rgba(255,255,255,0.2)",
-                  fontFamily: "'Montserrat', sans-serif",
-                }}
-              >
-                {lcForgotLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                Verify & Login
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     );
   }
