@@ -507,7 +507,9 @@ export default function PublicStore() {
 
           {loyaltyCardInfo?.status === "approved" ? (
             <div className="flex flex-col items-center text-center gap-3 py-6">
-              <CheckCircle className="w-14 h-14" style={{ color: "#22c55e" }} />
+              <div className="w-20 h-20 rounded-2xl flex items-center justify-center" style={{ background: "rgba(34,197,94,0.12)", border: "2px solid #22c55e" }}>
+                <CreditCard className="w-10 h-10" style={{ color: "#22c55e" }} />
+              </div>
               <p className="text-lg font-bold text-white" style={{ fontFamily: "'Montserrat', sans-serif" }}>
                 Congratulations 🎉
               </p>
@@ -516,8 +518,8 @@ export default function PublicStore() {
             </div>
           ) : loyaltyCardInfo?.status === "requested" ? (
             <div className="flex flex-col items-center text-center gap-3 py-6">
-              <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: "rgba(234,179,8,0.15)", border: "2px solid rgba(234,179,8,0.4)" }}>
-                <Loader2 className="w-7 h-7 animate-spin" style={{ color: "#eab308" }} />
+              <div className="w-20 h-20 rounded-2xl flex items-center justify-center" style={{ background: "rgba(255,255,255,0.04)", border: "2px solid rgba(255,255,255,0.15)" }}>
+                <CreditCard className="w-10 h-10" style={{ color: "rgba(255,255,255,0.25)" }} />
               </div>
               <p className="text-base font-bold text-white" style={{ fontFamily: "'Montserrat', sans-serif" }}>Request Submitted</p>
               <p className="text-xs text-white/40 px-4 text-center">Your Loyalty Card request is submitted , please wait for approved by admin</p>
