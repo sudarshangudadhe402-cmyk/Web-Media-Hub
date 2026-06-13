@@ -125,6 +125,7 @@ export default function PublicStore() {
   const [loyaltyApplyForm, setLoyaltyApplyForm] = useState({ name: "", mobile: "", password: "" });
   const [loyaltyApplyLoading, setLoyaltyApplyLoading] = useState(false);
   const [loyaltyApplyError, setLoyaltyApplyError] = useState<string | null>(null);
+  const [useAccountCard, setUseAccountCard] = useState(false);
   const [loyaltyApplied, setLoyaltyApplied] = useState(false);
   const [loyaltyAppliedCardId, setLoyaltyAppliedCardId] = useState<string | null>(null);
 
@@ -405,6 +406,12 @@ export default function PublicStore() {
   }
 
   async function verifyAndApplyLoyaltyCard() {
+    if (useAccountCard && loyaltyCardInfo) {
+      setLoyaltyApplied(true);
+      setLoyaltyAppliedCardId(loyaltyCardInfo.id);
+      setView("booking");
+      return;
+    }
     const { name, mobile, password } = loyaltyApplyForm;
     if (!name.trim() || !mobile || !password) return;
     setLoyaltyApplyLoading(true);
@@ -845,11 +852,14 @@ export default function PublicStore() {
      LOYALTY CARD APPLY VIEW
   ═══════════════════════════════════════ */
   if (view === "loyaltycardapply" && selectedProduct) {
-    const lcApplyValid =
-      loyaltyApplyForm.name.trim().length >= 2 &&
-      /^\d{10}$/.test(loyaltyApplyForm.mobile) &&
-      /^\d{10}$/.test(loyaltyApplyForm.password) &&
-      !loyaltyApplyLoading;
+    const hasAccountCard = !!loyaltyCardInfo;
+    const formDisabled = useAccountCard && hasAccountCard;
+    const lcApplyValid = formDisabled
+      ? true
+      : loyaltyApplyForm.name.trim().length >= 2 &&
+        /^\d{10}$/.test(loyaltyApplyForm.mobile) &&
+        /^\d{10}$/.test(loyaltyApplyForm.password) &&
+        !loyaltyApplyLoading;
 
     return (
       <div className="min-h-screen flex flex-col" style={{ background: "#f1f3f6", fontFamily: "'Inter', sans-serif" }}>
@@ -861,55 +871,104 @@ export default function PublicStore() {
         </div>
 
         <div className="flex-1 p-4 space-y-4">
+
+          {/* ── Use saved account card option ── */}
+          {hasAccountCard && (
+            <button
+              onClick={() => setUseAccountCard(v => !v)}
+              className="w-full flex items-center gap-3 rounded-2xl px-4 py-3.5 transition-all"
+              style={{
+                background: useAccountCard ? "rgba(34,197,94,0.1)" : "#ffffff",
+                border: useAccountCard ? "2px solid #22c55e" : "2px solid rgba(40,116,240,0.2)",
+              }}
+            >
+              {/* Checkbox */}
+              <div
+                className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 transition-all"
+                style={{
+                  background: useAccountCard ? "#22c55e" : "#f0f0f0",
+                  border: useAccountCard ? "2px solid #22c55e" : "2px solid #d0d0d0",
+                }}
+              >
+                {useAccountCard && (
+                  <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
+                    <path d="M1 5L4.5 8.5L12 1" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-bold" style={{ color: useAccountCard ? "#16a34a" : "#374151" }}>
+                  Loyalty card save in account
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: useAccountCard ? "#22c55e" : "#9ca3af" }}>
+                  {useAccountCard
+                    ? `✅ Using: ${loyaltyCardInfo!.name} · ${loyaltyCardInfo!.mobile}`
+                    : "Tick to use your saved loyalty card"}
+                </p>
+              </div>
+              <CreditCard className="w-5 h-5 flex-shrink-0" style={{ color: useAccountCard ? "#22c55e" : "#d1d5db" }} />
+            </button>
+          )}
+
           <div className="rounded-xl px-4 py-3 text-sm text-gray-500" style={{ background: "#ffffff", border: "1px solid rgba(40,116,240,0.15)" }}>
-            Enter your Loyalty Card details to link this product booking.
+            {formDisabled
+              ? "Your saved loyalty card will be used for this booking."
+              : "Enter your Loyalty Card details to link this product booking."}
           </div>
 
-          {loyaltyApplyError && (
+          {loyaltyApplyError && !formDisabled && (
             <div className="flex items-start gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)" }}>
               <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#ef4444" }} />
               <p className="text-sm font-semibold" style={{ color: "#ef4444" }}>{loyaltyApplyError}</p>
             </div>
           )}
 
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Name</label>
-            <input
-              type="text"
-              value={loyaltyApplyForm.name}
-              onChange={(e) => setLoyaltyApplyForm(f => ({ ...f, name: e.target.value }))}
-              placeholder="Your loyalty card name"
-              className="w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-300 focus:outline-none border"
-              style={{ background: "#ffffff", borderColor: "rgba(40,116,240,0.2)" }}
-            />
-          </div>
+          {/* Form fields — inactive when account card is selected */}
+          <div style={{ opacity: formDisabled ? 0.35 : 1, pointerEvents: formDisabled ? "none" : "auto", transition: "opacity 0.2s" }}>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Name</label>
+                <input
+                  type="text"
+                  value={loyaltyApplyForm.name}
+                  onChange={(e) => setLoyaltyApplyForm(f => ({ ...f, name: e.target.value }))}
+                  placeholder="Your loyalty card name"
+                  className="w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-300 focus:outline-none border"
+                  style={{ background: "#ffffff", borderColor: "rgba(40,116,240,0.2)" }}
+                  disabled={formDisabled}
+                />
+              </div>
 
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Mobile Number</label>
-            <input
-              type="tel"
-              inputMode="numeric"
-              maxLength={10}
-              value={loyaltyApplyForm.mobile}
-              onChange={(e) => setLoyaltyApplyForm(f => ({ ...f, mobile: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
-              placeholder="10-digit mobile number"
-              className="w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-300 focus:outline-none border"
-              style={{ background: "#ffffff", borderColor: "rgba(40,116,240,0.2)" }}
-            />
-          </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Mobile Number</label>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  value={loyaltyApplyForm.mobile}
+                  onChange={(e) => setLoyaltyApplyForm(f => ({ ...f, mobile: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
+                  placeholder="10-digit mobile number"
+                  className="w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-300 focus:outline-none border"
+                  style={{ background: "#ffffff", borderColor: "rgba(40,116,240,0.2)" }}
+                  disabled={formDisabled}
+                />
+              </div>
 
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Password</label>
-            <input
-              type="password"
-              inputMode="numeric"
-              maxLength={10}
-              value={loyaltyApplyForm.password}
-              onChange={(e) => setLoyaltyApplyForm(f => ({ ...f, password: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
-              placeholder="10-digit loyalty card password"
-              className="w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-300 focus:outline-none border"
-              style={{ background: "#ffffff", borderColor: "rgba(40,116,240,0.2)" }}
-            />
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Password</label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={10}
+                  value={loyaltyApplyForm.password}
+                  onChange={(e) => setLoyaltyApplyForm(f => ({ ...f, password: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
+                  placeholder="10-digit loyalty card password"
+                  className="w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-300 focus:outline-none border"
+                  style={{ background: "#ffffff", borderColor: "rgba(40,116,240,0.2)" }}
+                  disabled={formDisabled}
+                />
+              </div>
+            </div>
           </div>
 
           <button
@@ -917,13 +976,13 @@ export default function PublicStore() {
             disabled={!lcApplyValid}
             className="w-full font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 transition-all"
             style={{
-              background: lcApplyValid ? "#22c55e" : "#2a2a2a",
-              color: lcApplyValid ? "white" : "rgba(255,255,255,0.2)",
+              background: lcApplyValid ? "#22c55e" : "#e5e7eb",
+              color: lcApplyValid ? "white" : "#9ca3af",
               fontFamily: "'Montserrat', sans-serif",
             }}
           >
             {loyaltyApplyLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-            Done
+            {formDisabled ? "Use This Card" : "Done"}
           </button>
         </div>
       </div>
@@ -1142,7 +1201,7 @@ export default function PublicStore() {
             </div>
           ) : (
             <button
-              onClick={() => { setLoyaltyApplyForm({ name: "", mobile: "", password: "" }); setLoyaltyApplyError(null); setView("loyaltycardapply"); }}
+              onClick={() => { setLoyaltyApplyForm({ name: "", mobile: "", password: "" }); setLoyaltyApplyError(null); setUseAccountCard(false); setView("loyaltycardapply"); }}
               className="w-full flex items-center justify-center gap-2 mb-4 py-3 rounded-xl text-sm font-bold border-2 transition-colors"
               style={{ borderColor: "#22c55e", color: "#22c55e", background: "transparent" }}
             >
