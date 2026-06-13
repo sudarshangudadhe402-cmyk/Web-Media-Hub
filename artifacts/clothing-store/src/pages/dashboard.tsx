@@ -509,6 +509,16 @@ export default function Dashboard() {
           <h1 className="text-xl font-bold tracking-tight">Digital Loyalty Cards</h1>
         </div>
 
+        {/* Loyalty card image — above tabs */}
+        <div className="w-full rounded-2xl overflow-hidden" style={{ boxShadow: "0 4px 32px rgba(0,0,0,0.18)" }}>
+          <img
+            src="/loyalty-card-original.png"
+            alt="Web Media Hub Loyalty Card"
+            className="w-full object-cover"
+            style={{ maxHeight: "190px", objectPosition: "center 30%" }}
+          />
+        </div>
+
         {/* 3 tabs */}
         <div className="grid grid-cols-3 gap-2">
           {tabs.map(({ key, label, icon }) => (
@@ -551,7 +561,17 @@ export default function Dashboard() {
         ) : (
           <div className="space-y-3">
             {currentCards.map((card) => (
-              <div key={card.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
+              <div key={card.id} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden space-y-0">
+                {/* Card image — shown for every tab */}
+                <div className="w-full overflow-hidden" style={{ maxHeight: "140px" }}>
+                  <img
+                    src="/loyalty-card-original.png"
+                    alt="Web Media Hub Loyalty Card"
+                    className="w-full object-cover"
+                    style={{ maxHeight: "140px", objectPosition: "center 30%" }}
+                  />
+                </div>
+                <div className="p-4 space-y-3">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="font-bold text-gray-900">{card.customerName}</p>
@@ -612,6 +632,7 @@ export default function Dashboard() {
                     Send WhatsApp
                   </a>
                 )}
+              </div>
               </div>
             ))}
           </div>

@@ -589,30 +589,21 @@ export default function PublicStore() {
           {/* ── Already has a card: show status ── */}
           {loyaltyCardInfo ? (
             <div className="flex flex-col items-center">
-              {/* Visual card */}
-              <div className="w-full rounded-2xl mb-6 px-5 py-5 flex items-center justify-between"
+              {/* Loyalty card actual image */}
+              <div className="w-full rounded-2xl overflow-hidden mb-6"
                 style={{
-                  background: loyaltyCardInfo.status === "approved"
-                    ? "linear-gradient(135deg,#14532d,#16a34a)"
-                    : "linear-gradient(135deg,#1c1c1c,#2a2a2a)",
+                  boxShadow: loyaltyCardInfo.status === "approved"
+                    ? "0 4px 32px rgba(34,197,94,0.35)"
+                    : "0 4px 24px rgba(0,0,0,0.55)",
                   border: loyaltyCardInfo.status === "approved"
-                    ? "1px solid rgba(34,197,94,0.4)"
-                    : "1px dashed rgba(255,255,255,0.1)",
-                  minHeight: "100px",
+                    ? "2px solid rgba(34,197,94,0.5)"
+                    : "1px solid rgba(255,255,255,0.08)",
                 }}>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest mb-1"
-                    style={{ color: loyaltyCardInfo.status === "approved" ? "rgba(134,239,172,0.8)" : "rgba(255,255,255,0.3)" }}>
-                    Loyalty Card
-                  </p>
-                  <p className="text-base font-bold text-white">{loyaltyCardInfo.name}</p>
-                  <p className="text-xs mt-0.5" style={{ color: loyaltyCardInfo.status === "approved" ? "rgba(134,239,172,0.7)" : "rgba(255,255,255,0.3)" }}>
-                    {loyaltyCardInfo.status === "approved" ? "Active Member" : "Pending Approval"}
-                  </p>
-                </div>
-                <CreditCard
-                  className="w-10 h-10"
-                  style={{ color: loyaltyCardInfo.status === "approved" ? "#22c55e" : "rgba(255,255,255,0.15)" }}
+                <img
+                  src="/loyalty-card-original.png"
+                  alt="Web Media Hub Loyalty Card"
+                  className="w-full object-cover"
+                  style={{ maxHeight: "210px", objectPosition: "center 30%" }}
                 />
               </div>
 
@@ -650,18 +641,20 @@ export default function PublicStore() {
           ) : (
             /* ── No card yet: Registration / Login tabs ── */
             <>
-              {/* Card graphic */}
-              <div className="w-full rounded-2xl mb-5 px-5 py-5 flex items-center justify-between"
-                style={{
-                  background: "linear-gradient(135deg,#1c1c1c,#2a2a2a)",
-                  border: "1px dashed rgba(212,175,55,0.25)",
-                  minHeight: "96px",
-                }}>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: "rgba(212,175,55,0.5)" }}>Loyalty Card</p>
-                  <p className="text-base font-bold text-white/20">— — — —</p>
+              {/* Card image with heading */}
+              <div className="mb-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <CreditCard className="w-5 h-5" style={{ color: "#D4AF37" }} />
+                  <p className="font-bold text-white text-base" style={{ fontFamily: "'Montserrat', sans-serif" }}>Digital Loyalty Card</p>
                 </div>
-                <CreditCard className="w-9 h-9" style={{ color: "rgba(212,175,55,0.3)" }} />
+                <div className="w-full rounded-2xl overflow-hidden" style={{ boxShadow: "0 4px 24px rgba(0,0,0,0.55)", border: "1px solid rgba(212,175,55,0.2)" }}>
+                  <img
+                    src="/loyalty-card-original.png"
+                    alt="Web Media Hub Loyalty Card"
+                    className="w-full object-cover"
+                    style={{ maxHeight: "190px", objectPosition: "center 30%" }}
+                  />
+                </div>
               </div>
 
               {/* ─── Sliding tab switcher ─── */}
@@ -1074,15 +1067,27 @@ export default function PublicStore() {
         </div>
 
         {/* Sticky Loyalty Card button */}
-        <div className="fixed bottom-0 left-0 right-0 z-30 px-4 py-3 border-t" style={{ background: "#0f0f0f", borderColor: "rgba(34,197,94,0.3)" }}>
-          <button
-            onClick={() => { setLoyaltyCardError(null); setView("loyaltycard"); }}
-            className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-bold text-sm transition-colors active:opacity-90"
-            style={{ background: "#22c55e", color: "white", fontFamily: "'Montserrat', sans-serif" }}
-          >
-            <CreditCard className="w-5 h-5" />
-            {loyaltyCardInfo ? "My Loyalty Card" : "Request Loyalty Card"}
-          </button>
+        <div className="fixed bottom-0 left-0 right-0 z-30 border-t" style={{ background: "#0f0f0f", borderColor: "rgba(34,197,94,0.3)" }}>
+          {loyaltyCardInfo && (
+            <div className="px-4 pt-2.5 pb-0">
+              <img
+                src="/loyalty-card-original.png"
+                alt="Loyalty Card"
+                className="w-full object-cover rounded-xl"
+                style={{ maxHeight: "72px", objectPosition: "center 30%" }}
+              />
+            </div>
+          )}
+          <div className="px-4 py-3">
+            <button
+              onClick={() => { setLoyaltyCardError(null); setView("loyaltycard"); }}
+              className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-bold text-sm transition-colors active:opacity-90"
+              style={{ background: "#22c55e", color: "white", fontFamily: "'Montserrat', sans-serif" }}
+            >
+              <CreditCard className="w-5 h-5" />
+              {loyaltyCardInfo ? "My Loyalty Card" : "Request Loyalty Card"}
+            </button>
+          </div>
         </div>
       </div>
     );
