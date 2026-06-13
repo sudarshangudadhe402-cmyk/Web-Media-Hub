@@ -509,14 +509,13 @@ export default function Dashboard() {
           <h1 className="text-xl font-bold tracking-tight">Digital Loyalty Cards</h1>
         </div>
 
-        {/* Loyalty card image — above tabs */}
-        <div className="w-full rounded-2xl flex items-center justify-center py-4 px-4"
-          style={{ background: "linear-gradient(135deg,#1a1a1a,#2d2d2d)", boxShadow: "0 6px 36px rgba(0,0,0,0.28)", minHeight: "160px" }}>
+        {/* Loyalty card image — above tabs, full width */}
+        <div className="w-full rounded-2xl overflow-hidden" style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}>
           <img
             src="/loyalty-card-original.png"
             alt="Web Media Hub Loyalty Card"
-            className="w-full object-contain drop-shadow-2xl"
-            style={{ maxHeight: "160px" }}
+            className="w-full object-contain"
+            style={{ display: "block" }}
           />
         </div>
 
@@ -563,14 +562,13 @@ export default function Dashboard() {
           <div className="space-y-3">
             {currentCards.map((card) => (
               <div key={card.id} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden space-y-0">
-                {/* Card image — shown for every tab */}
-                <div className="w-full flex items-center justify-center py-3 px-4"
-                  style={{ background: "linear-gradient(135deg,#1a1a1a,#2d2d2d)", minHeight: "120px" }}>
+                {/* Card image — full width, no dark background */}
+                <div className="w-full overflow-hidden">
                   <img
                     src="/loyalty-card-original.png"
                     alt="Web Media Hub Loyalty Card"
-                    className="w-full object-contain drop-shadow-xl"
-                    style={{ maxHeight: "120px" }}
+                    className="w-full object-contain"
+                    style={{ display: "block" }}
                   />
                 </div>
                 <div className="p-4 space-y-3">

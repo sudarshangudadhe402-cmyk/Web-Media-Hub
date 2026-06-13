@@ -590,22 +590,17 @@ export default function PublicStore() {
           {loyaltyCardInfo ? (
             <div className="flex flex-col items-center">
               {/* Loyalty card actual image */}
-              <div className="w-full rounded-2xl flex items-center justify-center py-4 px-3 mb-6"
+              <div className="w-full rounded-2xl overflow-hidden mb-6"
                 style={{
-                  background: "#111",
-                  boxShadow: loyaltyCardInfo.status === "approved"
-                    ? "0 4px 36px rgba(34,197,94,0.35)"
-                    : "0 4px 24px rgba(0,0,0,0.7)",
                   border: loyaltyCardInfo.status === "approved"
                     ? "2px solid rgba(34,197,94,0.45)"
                     : "1px solid rgba(255,255,255,0.07)",
-                  minHeight: "160px",
                 }}>
                 <img
                   src="/loyalty-card-original.png"
                   alt="Web Media Hub Loyalty Card"
-                  className="w-full object-contain drop-shadow-2xl"
-                  style={{ maxHeight: "160px" }}
+                  className="w-full object-contain"
+                  style={{ display: "block" }}
                 />
               </div>
 
@@ -649,13 +644,12 @@ export default function PublicStore() {
                   <CreditCard className="w-5 h-5" style={{ color: "#D4AF37" }} />
                   <p className="font-bold text-white text-base" style={{ fontFamily: "'Montserrat', sans-serif" }}>Digital Loyalty Card</p>
                 </div>
-                <div className="w-full rounded-2xl flex items-center justify-center py-4 px-3"
-                  style={{ background: "#111", boxShadow: "0 4px 28px rgba(0,0,0,0.7)", border: "1px solid rgba(212,175,55,0.2)", minHeight: "150px" }}>
+                <div className="w-full rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(212,175,55,0.2)" }}>
                   <img
                     src="/loyalty-card-original.png"
                     alt="Web Media Hub Loyalty Card"
-                    className="w-full object-contain drop-shadow-2xl"
-                    style={{ maxHeight: "150px" }}
+                    className="w-full object-contain"
+                    style={{ display: "block" }}
                   />
                 </div>
               </div>
@@ -1073,13 +1067,12 @@ export default function PublicStore() {
         <div className="fixed bottom-0 left-0 right-0 z-30 border-t" style={{ background: "#0f0f0f", borderColor: "rgba(34,197,94,0.3)" }}>
           {loyaltyCardInfo && (
             <div className="px-4 pt-2.5 pb-0">
-              <div className="w-full rounded-xl flex items-center justify-center py-1.5"
-                style={{ background: "#111", minHeight: "64px" }}>
+              <div className="w-full rounded-xl overflow-hidden">
                 <img
                   src="/loyalty-card-original.png"
                   alt="Loyalty Card"
-                  className="object-contain drop-shadow-xl"
-                  style={{ maxHeight: "60px", maxWidth: "100%" }}
+                  className="w-full object-contain"
+                  style={{ display: "block", maxHeight: "70px" }}
                 />
               </div>
             </div>
