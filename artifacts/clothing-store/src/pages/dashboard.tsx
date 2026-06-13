@@ -510,12 +510,13 @@ export default function Dashboard() {
         </div>
 
         {/* Loyalty card image — above tabs */}
-        <div className="w-full rounded-2xl overflow-hidden" style={{ boxShadow: "0 4px 32px rgba(0,0,0,0.18)" }}>
+        <div className="w-full rounded-2xl flex items-center justify-center py-4 px-4"
+          style={{ background: "linear-gradient(135deg,#1a1a1a,#2d2d2d)", boxShadow: "0 6px 36px rgba(0,0,0,0.28)", minHeight: "160px" }}>
           <img
             src="/loyalty-card-original.png"
             alt="Web Media Hub Loyalty Card"
-            className="w-full object-cover"
-            style={{ maxHeight: "190px", objectPosition: "center 30%" }}
+            className="w-full object-contain drop-shadow-2xl"
+            style={{ maxHeight: "160px" }}
           />
         </div>
 
@@ -563,12 +564,13 @@ export default function Dashboard() {
             {currentCards.map((card) => (
               <div key={card.id} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden space-y-0">
                 {/* Card image — shown for every tab */}
-                <div className="w-full overflow-hidden" style={{ maxHeight: "140px" }}>
+                <div className="w-full flex items-center justify-center py-3 px-4"
+                  style={{ background: "linear-gradient(135deg,#1a1a1a,#2d2d2d)", minHeight: "120px" }}>
                   <img
                     src="/loyalty-card-original.png"
                     alt="Web Media Hub Loyalty Card"
-                    className="w-full object-cover"
-                    style={{ maxHeight: "140px", objectPosition: "center 30%" }}
+                    className="w-full object-contain drop-shadow-xl"
+                    style={{ maxHeight: "120px" }}
                   />
                 </div>
                 <div className="p-4 space-y-3">
