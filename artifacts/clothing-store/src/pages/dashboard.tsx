@@ -1,7 +1,7 @@
 import { useGetDashboardSummary, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Package, Tags, CalendarCheck, MessageCircle, ChevronLeft, ShoppingBag, CreditCard, CheckCircle, X, Clock, BookMarked, CheckCheck } from "lucide-react";
+import { Package, Tags, CalendarCheck, MessageCircle, ChevronLeft, ShoppingBag, CreditCard, CheckCircle, X, Clock, BookMarked, CheckCheck, Search } from "lucide-react";
 import { useLocation } from "wouter";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useState, useEffect, type ReactNode } from "react";
@@ -53,6 +53,7 @@ export default function Dashboard() {
   const [loyaltyCards, setLoyaltyCards] = useState<{ requested: LoyaltyCardItem[]; approved: LoyaltyCardItem[]; rejected: LoyaltyCardItem[] } | null>(null);
   const [loyaltyCardsLoading, setLoyaltyCardsLoading] = useState(false);
   const [loyaltyTab, setLoyaltyTab] = useState<"requested" | "approved" | "rejected">("requested");
+  const [lcSearch, setLcSearch] = useState("");
   const [adminBookingTab, setAdminBookingTab] = useState<"all" | "loyalty" | "completed">("all");
   const [completedBookings, setCompletedBookings] = useState<AdminBooking[]>([]);
   const [completedBookingsLoading, setCompletedBookingsLoading] = useState(false);
@@ -498,10 +499,22 @@ export default function Dashboard() {
       { key: "approved", label: "Approved", icon: <CheckCircle className="w-3.5 h-3.5" /> },
       { key: "rejected", label: "Rejected", icon: <X className="w-3.5 h-3.5" /> },
     ];
-    const currentCards = loyaltyCards?.[loyaltyTab] ?? [];
+    const allCurrentCards = loyaltyCards?.[loyaltyTab] ?? [];
+    const searchQ = lcSearch.trim().toLowerCase();
+    const currentCards = searchQ
+      ? allCurrentCards.filter(c =>
+          c.customerName.toLowerCase().includes(searchQ) ||
+          c.mobileNumber.includes(searchQ)
+        )
+      : allCurrentCards;
+
+    const statusColor = (tab: string) =>
+      tab === "approved" ? "#16a34a" : tab === "rejected" ? "#ef4444" : "#2563eb";
+    const statusBg = (tab: string) =>
+      tab === "approved" ? "rgba(34,197,94,0.1)" : tab === "rejected" ? "rgba(239,68,68,0.1)" : "rgba(37,99,235,0.08)";
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="flex items-center gap-2">
           <button onClick={() => setView("summary")} className="p-1.5 rounded-full hover:bg-gray-100">
             <ChevronLeft className="w-5 h-5" />
@@ -509,130 +522,147 @@ export default function Dashboard() {
           <h1 className="text-xl font-bold tracking-tight">Digital Loyalty Cards</h1>
         </div>
 
-        {/* Loyalty card image — above tabs, full width */}
-        <div className="w-full rounded-2xl overflow-hidden" style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}>
-          <img
-            src="/loyalty-card-original.png"
-            alt="Web Media Hub Loyalty Card"
-            className="w-full object-contain"
-            style={{ display: "block" }}
-          />
-        </div>
+        {/* Top loyalty card image — no background wrapper, just the image */}
+        <img
+          src="/loyalty-card-original.png"
+          alt="Web Media Hub Loyalty Card"
+          className="w-full object-contain rounded-2xl"
+          style={{ display: "block" }}
+        />
 
         {/* 3 tabs */}
         <div className="grid grid-cols-3 gap-2">
           {tabs.map(({ key, label, icon }) => (
             <button
               key={key}
-              onClick={() => setLoyaltyTab(key)}
-              className={`flex flex-col items-center gap-1 py-3 rounded-xl border-2 text-xs font-bold transition-all ${
+              onClick={() => { setLoyaltyTab(key); setLcSearch(""); }}
+              className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border-2 text-xs font-bold transition-all ${
                 loyaltyTab === key
                   ? key === "approved" ? "border-green-500 bg-green-50 text-green-700"
                     : key === "rejected" ? "border-red-400 bg-red-50 text-red-600"
-                    : "border-primary bg-primary/5 text-primary"
-                  : "border-gray-200 bg-white text-gray-500"
+                    : "border-blue-500 bg-blue-50 text-blue-700"
+                  : "border-gray-200 bg-white text-gray-400"
               }`}
             >
               {icon}
               {label}
-              <span className={`text-base font-extrabold ${loyaltyTab === key ? "" : "text-gray-700"}`}>
-                {loyaltyCards?.[key]?.length ?? 0}
-              </span>
+              <span className="text-sm font-extrabold">{loyaltyCards?.[key]?.length ?? 0}</span>
             </button>
           ))}
         </div>
 
+        {/* Search bar */}
+        <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border-2 bg-white"
+          style={{ borderColor: lcSearch ? "#2563eb" : "#e5e7eb" }}>
+          <Search className="w-4 h-4 flex-shrink-0" style={{ color: lcSearch ? "#2563eb" : "#9ca3af" }} />
+          <input
+            type="text"
+            value={lcSearch}
+            onChange={e => setLcSearch(e.target.value)}
+            placeholder="Name ya number dalo"
+            className="flex-1 text-sm text-gray-800 placeholder-gray-400 focus:outline-none bg-transparent"
+          />
+          {lcSearch && (
+            <button onClick={() => setLcSearch("")} className="text-gray-400 hover:text-gray-600">
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
         {loyaltyCardsLoading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-                <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4 mb-2" />
-                <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2" />
+          <div className="space-y-2">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="rounded-xl border border-gray-100 p-3 flex gap-3 bg-white">
+                <div className="w-24 h-14 bg-gray-100 rounded-lg animate-pulse flex-shrink-0" />
+                <div className="flex-1 space-y-2 py-1">
+                  <div className="h-3 bg-gray-200 rounded animate-pulse w-3/4" />
+                  <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2" />
+                </div>
               </div>
             ))}
           </div>
         ) : currentCards.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <CreditCard className="w-12 h-12 mb-4 opacity-20" />
-              <p>No {loyaltyTab} loyalty cards</p>
-            </CardContent>
-          </Card>
+          <div className="flex flex-col items-center justify-center py-10 text-center text-gray-400">
+            <Search className="w-10 h-10 mb-2 opacity-20" />
+            <p className="text-sm font-medium">
+              {searchQ ? `No results for "${searchQ}"` : `No ${loyaltyTab} loyalty cards`}
+            </p>
+            {searchQ && <p className="text-xs mt-1 opacity-70">Try a different name or number</p>}
+          </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {currentCards.map((card) => (
-              <div key={card.id} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden space-y-0">
-                {/* Card image — full width, no dark background */}
-                <div className="w-full overflow-hidden">
+              <div key={card.id} className="rounded-xl border border-gray-100 overflow-hidden" style={{ background: "transparent" }}>
+                {/* Compact row: mini card image + info side by side */}
+                <div className="flex gap-2.5 p-2">
+                  {/* Mini loyalty card image — no background */}
                   <img
                     src="/loyalty-card-original.png"
-                    alt="Web Media Hub Loyalty Card"
-                    className="w-full object-contain"
-                    style={{ display: "block" }}
+                    alt="LC"
+                    className="w-28 h-16 object-cover rounded-lg flex-shrink-0"
+                    style={{ objectPosition: "center" }}
                   />
-                </div>
-                <div className="p-4 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-bold text-gray-900">{card.customerName}</p>
-                    <p className="text-sm text-gray-500 mt-0.5">{card.mobileNumber}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">Password: {card.password}</p>
-                  </div>
-                  <div className="text-right text-[11px] text-gray-400">
-                    <p>Requested</p>
-                    <p className="font-medium text-gray-600">
-                      {new Date(card.requestedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                    </p>
-                    {card.approvedAt && (
-                      <>
-                        <p className="mt-1 text-green-600">Approved</p>
-                        <p className="font-medium text-green-600">
-                          {new Date(card.approvedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                  {/* Info */}
+                  <div className="flex-1 min-w-0 py-0.5">
+                    <div className="flex items-start justify-between gap-1">
+                      <p className="font-bold text-gray-900 text-sm leading-tight truncate">{card.customerName}</p>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                        style={{ background: statusBg(loyaltyTab), color: statusColor(loyaltyTab) }}>
+                        {loyaltyTab === "approved" ? "✅ Active" : loyaltyTab === "rejected" ? "❌ Rejected" : "⏳ Pending"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">{card.mobileNumber}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-[10px] text-gray-400">
+                        {new Date(card.requestedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "2-digit" })}
+                      </p>
+                      {card.approvedAt && (
+                        <p className="text-[10px] text-green-600">
+                          · Approved {new Date(card.approvedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                         </p>
-                      </>
-                    )}
-                    {card.rejectedAt && (
-                      <>
-                        <p className="mt-1 text-red-500">Rejected</p>
-                        <p className="font-medium text-red-500">
-                          {new Date(card.rejectedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                      )}
+                      {card.rejectedAt && (
+                        <p className="text-[10px] text-red-500">
+                          · Rejected {new Date(card.rejectedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                         </p>
-                      </>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
 
+                {/* Action buttons — compact */}
                 {loyaltyTab === "requested" && (
-                  <div className="flex gap-2 pt-1">
+                  <div className="flex gap-1.5 px-2 pb-2">
                     <button
                       onClick={() => approveLoyaltyCard(card, "")}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-green-500 text-white text-sm font-bold hover:bg-green-600 transition-colors"
+                      className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-green-500 text-white text-xs font-bold hover:bg-green-600 transition-colors"
                     >
-                      <CheckCircle className="w-4 h-4" />
+                      <CheckCircle className="w-3.5 h-3.5" />
                       Approve
                     </button>
                     <button
                       onClick={() => rejectLoyaltyCard(card)}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition-colors"
+                      className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-red-500 text-white text-xs font-bold hover:bg-red-600 transition-colors"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-3.5 h-3.5" />
                       Reject
                     </button>
                   </div>
                 )}
 
                 {loyaltyTab === "approved" && (
-                  <a
-                    href={`https://wa.me/${card.mobileNumber.replace(/\D/g, "")}?text=${encodeURIComponent(`Congratulations 🎉 Your Loyalty card is approved , Team ${summary?.storeName ?? ""}`.trim())}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-[#25D366] text-white text-sm font-bold"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    Send WhatsApp
-                  </a>
+                  <div className="px-2 pb-2">
+                    <a
+                      href={`https://wa.me/${card.mobileNumber.replace(/\D/g, "")}?text=${encodeURIComponent(`Congratulations 🎉 Your Loyalty card is approved , Team ${summary?.storeName ?? ""}`.trim())}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-1.5 w-full py-1.5 rounded-lg bg-[#25D366] text-white text-xs font-bold"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      Send WhatsApp
+                    </a>
+                  </div>
                 )}
-              </div>
               </div>
             ))}
           </div>
