@@ -1057,8 +1057,8 @@ export default function PublicStore() {
                   className="flex-1 py-2.5 text-[11px] font-bold z-10 flex flex-col items-center gap-0.5 rounded-lg"
                   style={{
                     color: bookingFilter === key
-                      ? key === "all" ? "#0f0f0f" : "white"
-                      : "rgba(255,255,255,0.35)",
+                      ? "white"
+                      : "rgba(0,0,0,0.45)",
                     fontFamily: "'Montserrat', sans-serif",
                     transition: "color 0.25s",
                   }}
