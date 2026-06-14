@@ -101,6 +101,7 @@ export default function PublicStore() {
   const [customerPhoto, setCustomerPhoto] = useState<string | null>(null);
   const [tryOnResult, setTryOnResult] = useState<string | null>(null);
   const [tryOnLoading, setTryOnLoading] = useState(false);
+  const [lastCountedPhoto, setLastCountedPhoto] = useState<string | null>(null);
 
   const [bookingForm, setBookingForm] = useState(() => {
     try {
@@ -323,6 +324,7 @@ export default function PublicStore() {
     const reader = new FileReader();
     reader.onload = (ev) => { setCustomerPhoto(ev.target?.result as string); setTryOnResult(null); };
     reader.readAsDataURL(file);
+    e.target.value = "";
   }
 
   function saveTryOnImage() {
@@ -441,10 +443,14 @@ export default function PublicStore() {
     if (!customerPhoto || !selectedProduct) return;
     setTryOnLoading(true); setTryOnResult(null);
     try {
-      const res = await fetch(`/api/public/products/${selectedProduct.id}/tryon`, { method: "POST" });
-      if (res.ok) {
-        const d = await res.json();
-        setTryOnLikeCounts((prev) => ({ ...prev, [selectedProduct.id]: d.tryOnLikeCount }));
+      const isNewPhoto = customerPhoto !== lastCountedPhoto;
+      if (isNewPhoto) {
+        const res = await fetch(`/api/public/products/${selectedProduct.id}/tryon`, { method: "POST" });
+        if (res.ok) {
+          const d = await res.json();
+          setTryOnLikeCounts((prev) => ({ ...prev, [selectedProduct.id]: d.tryOnLikeCount }));
+          setLastCountedPhoto(customerPhoto);
+        }
       }
       await new Promise<void>((resolve) => {
         const canvas = document.createElement("canvas");
