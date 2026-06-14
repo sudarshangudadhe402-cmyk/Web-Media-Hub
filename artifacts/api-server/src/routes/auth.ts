@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { User } from "../models/User";
+import { Store } from "../models/Store";
 import { signToken, requireAuth, AuthRequest } from "../middlewares/auth";
 import { requireDb } from "../middlewares/dbCheck";
 
@@ -48,11 +49,17 @@ router.post("/auth/login", requireDb, async (req, res) => {
 
 router.get("/auth/me", requireDb, requireAuth, async (req: AuthRequest, res) => {
   const user = req.user!;
+  let storeName: string | null = null;
+  if (user.role === "admin") {
+    const store = await Store.findOne({ ownerId: String(user._id) }).select("name");
+    storeName = store?.name ?? null;
+  }
   res.json({
     id: String(user._id),
     username: user.username,
     role: user.role,
     createdAt: user.createdAt,
+    storeName,
   });
 });
 

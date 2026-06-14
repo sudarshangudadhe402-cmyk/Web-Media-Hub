@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { AdminLegalAcceptance } from "../models/AdminLegalAcceptance";
+import { Store } from "../models/Store";
 import { requireAuth, requireSuperAdmin, AuthRequest } from "../middlewares/auth";
 
 const router = Router();
@@ -50,11 +51,15 @@ router.post("/legal/accept", requireAuth, async (req: AuthRequest, res) => {
       hour12: true,
     });
 
+    const store = await Store.findOne({ ownerId: String(user._id) }).select("name");
+    const store_name = store?.name ?? "";
+
     const record = await AdminLegalAcceptance.findOneAndUpdate(
       { admin_id: String(user._id) },
       {
         admin_id: String(user._id),
         admin_name: user.username,
+        store_name,
         terms_accepted: true,
         privacy_accepted: true,
         refund_accepted: true,
@@ -84,7 +89,10 @@ router.get("/legal/acceptances", requireSuperAdmin, async (req: AuthRequest, res
     const filter: Record<string, any> = {};
 
     if (search && typeof search === "string") {
-      filter.admin_name = { $regex: search, $options: "i" };
+      filter.$or = [
+        { store_name: { $regex: search, $options: "i" } },
+        { admin_name: { $regex: search, $options: "i" } },
+      ];
     }
 
     if (from || to) {

@@ -27,8 +27,10 @@ import {
   Store,
   Copy,
   ExternalLink,
+  Search,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 
 const TOKEN_KEY = "wmh_super_token";
 
@@ -107,7 +109,16 @@ export default function Admins() {
     toast({ title: "Link copied!" });
   }
 
+  const [storeSearch, setStoreSearch] = useState("");
   const adminCount = admins?.length ?? 0;
+
+  const filteredAdmins = storeSearch.trim()
+    ? admins?.filter((a) =>
+        ((a as any).storeName as string | null)
+          ?.toLowerCase()
+          .includes(storeSearch.trim().toLowerCase())
+      )
+    : admins;
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-12">
@@ -116,11 +127,22 @@ export default function Admins() {
         <p className="text-muted-foreground text-sm mt-1">All admin accounts created so far</p>
       </div>
 
+      {/* Store name search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Search by store name..."
+          value={storeSearch}
+          onChange={(e) => setStoreSearch(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
       <div>
         <div className="flex items-center gap-2 mb-4">
           <Users className="w-5 h-5 text-primary" />
           <h2 className="text-lg font-semibold">All Admins</h2>
-          <Badge className="ml-1">{adminCount}</Badge>
+          <Badge className="ml-1">{filteredAdmins?.length ?? 0}</Badge>
         </div>
 
         {isLoading ? (
@@ -136,10 +158,19 @@ export default function Admins() {
               <p>No admins yet. Add one from Manage Admins.</p>
             </CardContent>
           </Card>
+        ) : filteredAdmins?.length === 0 ? (
+          <Card className="border-dashed">
+            <CardContent className="py-12 text-center text-muted-foreground">
+              <Store className="w-10 h-10 mx-auto mb-3 opacity-20" />
+              <p>No stores found matching "<strong>{storeSearch}</strong>"</p>
+            </CardContent>
+          </Card>
         ) : (
           <div className="space-y-2">
-            {admins?.map((admin) => {
+            {filteredAdmins?.map((admin) => {
               const isActive = (admin as any).isActive !== false;
+              const storeName = (admin as any).storeName as string | null;
+              const displayName = storeName || admin.username;
               return (
                 <button
                   key={admin.id}
@@ -149,11 +180,11 @@ export default function Admins() {
                   <Card className="hover:border-primary/40 transition-colors cursor-pointer">
                     <CardContent className="p-4 flex items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold uppercase shrink-0">
-                        {admin.username.substring(0, 2)}
+                        {displayName.substring(0, 2)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold truncate">{admin.username}</span>
+                          <span className="font-semibold truncate">{displayName}</span>
                           <Badge variant={admin.role === "super_admin" ? "default" : "outline"} className="capitalize text-[10px]">
                             {admin.role.replace("_", " ")}
                           </Badge>
@@ -165,6 +196,7 @@ export default function Admins() {
                           <span className={`text-xs font-medium ${isActive ? "text-green-600" : "text-red-500"}`}>
                             {isActive ? "Active" : "Inactive"}
                           </span>
+                          <span className="text-xs text-muted-foreground">@{admin.username}</span>
                           {admin.createdAt && (
                             <span className="text-xs text-muted-foreground">
                               Added {new Date(admin.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
@@ -174,12 +206,6 @@ export default function Admins() {
                             <span className="text-xs text-muted-foreground flex items-center gap-1">
                               <Phone className="w-3 h-3" />
                               +91 {(admin as any).adminNumber}
-                            </span>
-                          )}
-                          {(admin as any).storeName && (
-                            <span className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Store className="w-3 h-3" />
-                              {(admin as any).storeName}
                             </span>
                           )}
                         </div>

@@ -262,7 +262,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             
             <div className="hidden sm:flex items-center gap-2 border-l border-border pl-4">
               <div className="flex flex-col items-end">
-                <span className="text-sm font-medium">{user?.username}</span>
+                <span className="text-sm font-medium">{(user as any)?.storeName || user?.username}</span>
                 <span className="text-xs text-muted-foreground capitalize">{user?.role.replace("_", " ")}</span>
               </div>
             </div>

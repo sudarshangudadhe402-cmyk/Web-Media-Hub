@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface IAdminLegalAcceptance extends Document {
   admin_id: string;
   admin_name: string;
+  store_name: string;
   terms_accepted: boolean;
   privacy_accepted: boolean;
   refund_accepted: boolean;
@@ -22,6 +23,7 @@ const AdminLegalAcceptanceSchema = new Schema<IAdminLegalAcceptance>(
   {
     admin_id: { type: String, required: true, unique: true },
     admin_name: { type: String, required: true },
+    store_name: { type: String, default: "" },
     terms_accepted: { type: Boolean, default: false },
     privacy_accepted: { type: Boolean, default: false },
     refund_accepted: { type: Boolean, default: false },

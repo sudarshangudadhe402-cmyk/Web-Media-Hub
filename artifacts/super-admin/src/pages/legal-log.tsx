@@ -14,6 +14,7 @@ interface LegalRecord {
   _id: string;
   admin_id: string;
   admin_name: string;
+  store_name: string;
   accepted_date: string;
   accepted_time: string;
   accepted_timestamp: string;
@@ -100,6 +101,7 @@ const POLICIES = [
 ];
 
 function generateAgreementHTML(record: LegalRecord): string {
+  const displayName = record.store_name || record.admin_name;
   const policyHTML = POLICIES.map((policy, index) => `
     <div class="policy-block">
       <h2 class="policy-title">Page ${index + 1} of 4 — ${policy.title}</h2>
@@ -120,7 +122,7 @@ function generateAgreementHTML(record: LegalRecord): string {
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <title>Legal Agreement — ${record.admin_name}</title>
+  <title>Legal Agreement — ${displayName}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Georgia', serif; color: #1a1a1a; background: #fff; padding: 48px 56px; max-width: 860px; margin: 0 auto; }
@@ -165,6 +167,7 @@ function generateAgreementHTML(record: LegalRecord): string {
 
   <div class="admin-info">
     <table>
+      ${record.store_name ? `<tr><td>Store Name</td><td>${record.store_name}</td></tr>` : ""}
       <tr><td>Admin Username</td><td>${record.admin_name}</td></tr>
       <tr><td>Admin ID</td><td>${record.admin_id}</td></tr>
       <tr><td>Agreement Status</td><td>${record.final_acceptance ? "✅ Completed" : "❌ Incomplete"}</td></tr>
@@ -360,7 +363,7 @@ export default function LegalLog() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search by admin name..."
+                placeholder="Search by store name..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleFilter()}
@@ -434,12 +437,15 @@ export default function LegalLog() {
                   <CardContent className="p-4">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold uppercase shrink-0">
-                        {record.admin_name.substring(0, 2)}
+                        {(record.store_name || record.admin_name).substring(0, 2)}
                       </div>
 
                       <div className="flex-1 min-w-0 space-y-2">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold">{record.admin_name}</span>
+                          <span className="font-semibold">{record.store_name || record.admin_name}</span>
+                          {record.store_name && (
+                            <span className="text-xs text-muted-foreground">@{record.admin_name}</span>
+                          )}
                           <Badge
                             variant={record.final_acceptance ? "default" : "destructive"}
                             className="text-[10px]"
