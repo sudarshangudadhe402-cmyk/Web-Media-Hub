@@ -98,6 +98,21 @@ export default function Dashboard() {
       .finally(() => setLoyaltyCardsLoading(false));
   }, [view]);
 
+  useEffect(() => {
+    if (!lcSearch.trim() || !loyaltyCards || view !== "loyaltycards") return;
+    const q = lcSearch.trim().toLowerCase();
+    const matches = (tab: "requested" | "approved" | "rejected") =>
+      (loyaltyCards[tab] ?? []).some(c =>
+        c.customerName.toLowerCase().includes(q) || c.mobileNumber.includes(q)
+      );
+    if (!matches(loyaltyTab)) {
+      const found = (["requested", "approved", "rejected"] as const).find(
+        t => t !== loyaltyTab && matches(t)
+      );
+      if (found) setLoyaltyTab(found);
+    }
+  }, [lcSearch, loyaltyCards]);
+
   async function approveLoyaltyCard(card: LoyaltyCardItem, adminWhatsapp: string) {
     const token = localStorage.getItem("wmh_token");
     const res = await fetch(`/api/loyalty-cards/${card.id}/approve`, {
@@ -508,6 +523,16 @@ export default function Dashboard() {
         )
       : allCurrentCards;
 
+    const notFoundAnywhere = searchQ && loyaltyCards
+      ? !(["requested", "approved", "rejected"] as const).some(tab =>
+          (loyaltyCards[tab] ?? []).some(c =>
+            c.customerName.toLowerCase().includes(searchQ) || c.mobileNumber.includes(searchQ)
+          )
+        )
+      : false;
+
+    const tabLabel = (tab: string) =>
+      tab === "approved" ? "Approved ✅" : tab === "rejected" ? "Rejected ❌" : "Pending ⏳";
     const statusColor = (tab: string) =>
       tab === "approved" ? "#16a34a" : tab === "rejected" ? "#ef4444" : "#2563eb";
     const statusBg = (tab: string) =>
@@ -559,7 +584,7 @@ export default function Dashboard() {
             type="text"
             value={lcSearch}
             onChange={e => setLcSearch(e.target.value)}
-            placeholder="Name ya number dalo"
+            placeholder="Name ya number dalo — kisi bhi section ka"
             className="flex-1 text-sm text-gray-800 placeholder-gray-400 focus:outline-none bg-transparent"
           />
           {lcSearch && (
@@ -568,6 +593,23 @@ export default function Dashboard() {
             </button>
           )}
         </div>
+
+        {/* Auto-switch banner */}
+        {searchQ && currentCards.length > 0 && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold"
+            style={{ background: statusBg(loyaltyTab), color: statusColor(loyaltyTab) }}>
+            <Search className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>Card mila: <strong>{tabLabel(loyaltyTab)}</strong> section mein</span>
+          </div>
+        )}
+
+        {/* Not found anywhere banner */}
+        {notFoundAnywhere && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-red-50 text-red-500">
+            <X className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>Kisi bhi section mein nahi mila — naam ya number check karo</span>
+          </div>
+        )}
 
         {loyaltyCardsLoading ? (
           <div className="space-y-2">
