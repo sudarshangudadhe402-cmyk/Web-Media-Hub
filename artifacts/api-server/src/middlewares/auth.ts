@@ -29,6 +29,11 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
       return;
     }
 
+    if (user.isActive === false) {
+      res.status(403).json({ error: "Account has been deactivated" });
+      return;
+    }
+
     if (decoded.sessionId && user.sessionId) {
       const sessionValid = decoded.sessionId === user.sessionId;
       if (!sessionValid) {

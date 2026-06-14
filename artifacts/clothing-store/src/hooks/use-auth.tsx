@@ -17,21 +17,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     typeof window !== "undefined" ? localStorage.getItem("wmh_token") : null
   );
 
-  const { data: user, isLoading: isMeLoading, refetch } = useGetMe({
-    query: {
-      enabled: !!token,
-      retry: false,
-    },
-  });
-
-  const isLoading = !!token && isMeLoading;
-
-  const login = (newToken: string) => {
-    localStorage.setItem("wmh_token", newToken);
-    setToken(newToken);
-    refetch();
-  };
-
   const logout = () => {
     const currentToken = localStorage.getItem("wmh_token");
     if (currentToken) {
@@ -43,6 +28,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("wmh_token");
     setToken(null);
     queryClient.clear();
+  };
+
+  const { data: user, isLoading: isMeLoading, refetch, isError, error } = useGetMe({
+    query: {
+      enabled: !!token,
+      retry: false,
+      refetchInterval: 10000,
+      refetchIntervalInBackground: true,
+    },
+  });
+
+  useEffect(() => {
+    if (!isError || !token) return;
+    const err = error as { status?: number } | null;
+    if (err?.status === 401 || err?.status === 403) {
+      logout();
+    }
+  }, [isError, error, token]);
+
+  const isLoading = !!token && isMeLoading;
+
+  const login = (newToken: string) => {
+    localStorage.setItem("wmh_token", newToken);
+    setToken(newToken);
+    refetch();
   };
 
   return (

@@ -77,9 +77,13 @@ router.patch("/admins/:id/toggle-active", requireSuperAdmin, async (req, res) =>
       res.status(400).json({ error: "isActive must be a boolean" });
       return;
     }
+    const updateFields: Record<string, unknown> = { isActive };
+    if (!isActive) {
+      updateFields.sessionId = null;
+    }
     const admin = await User.findByIdAndUpdate(
       req.params.id,
-      { isActive },
+      updateFields,
       { new: true }
     );
     if (!admin) {
