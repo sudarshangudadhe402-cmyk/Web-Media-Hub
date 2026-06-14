@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import Login from "@/pages/login";
 import ManageAdmins from "@/pages/manage-admins";
 import Admins from "@/pages/admins";
+import LegalLog from "@/pages/legal-log";
 import Layout from "@/components/layout";
 import NotFound from "@/pages/not-found";
 
@@ -50,6 +51,11 @@ function Router() {
       <Route path="/admins">
         <ProtectedRoute>
           <Admins />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/legal-log">
+        <ProtectedRoute>
+          <LegalLog />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />

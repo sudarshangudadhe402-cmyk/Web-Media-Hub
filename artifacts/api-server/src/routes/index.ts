@@ -12,6 +12,7 @@ import storeRequestsRouter from "./storeRequests";
 import publicRouter from "./public";
 import settingsRouter from "./settings";
 import loyaltyCardsRouter from "./loyaltyCards";
+import legalRouter from "./legal";
 import { requireDb } from "../middlewares/dbCheck";
 
 const router: IRouter = Router();
@@ -21,6 +22,7 @@ router.use(healthRouter);
 router.use(requireDb);
 
 router.use(authRouter);
+router.use(legalRouter);
 router.use(productsRouter);
 router.use(categoriesRouter);
 router.use(bookingsRouter);

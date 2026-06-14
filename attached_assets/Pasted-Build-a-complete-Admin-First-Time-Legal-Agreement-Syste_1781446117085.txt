@@ -1,0 +1,254 @@
+Build a complete Admin First-Time Legal Agreement System for my multi-store platform.
+
+OBJECTIVE
+
+When an Admin logs in for the very first time, they must complete and accept 4 legal pages before accessing any dashboard, store, products, loyalty card, Virtual Try-On, rewards, or other platform features.
+
+The 4 required pages are:
+
+1. Terms & Conditions
+2. Privacy Policy
+3. Refund Policy
+4. Disclaimer
+
+Admin must accept all 4 pages before account setup is completed.
+
+--------------------------------------------------
+
+FIRST LOGIN FLOW
+
+When a newly created Admin logs in for the first time:
+
+• Automatically redirect to Legal Agreement Setup.
+• Lock all dashboard pages until setup is completed.
+• Prevent bypassing through URL manipulation.
+• Show progress bar:
+
+Step 1 of 4 → Terms & Conditions
+Step 2 of 4 → Privacy Policy
+Step 3 of 4 → Refund Policy
+Step 4 of 4 → Disclaimer
+
+Admin cannot continue until the checkbox on the current page is selected.
+
+--------------------------------------------------
+
+PAGE 1 – TERMS & CONDITIONS
+
+Title:
+Terms & Conditions
+
+Show professional legal content.
+
+Content must clearly state:
+
+• The platform only provides store management technology.
+• The platform is not a seller of products.
+• The store owner/admin is fully responsible for all listed products.
+• The store owner/admin is responsible for product quality, pricing, descriptions, images, and customer communication.
+• Illegal, counterfeit, copyrighted, misleading, or prohibited products are not allowed.
+• The platform is not responsible for customer complaints or disputes.
+• The platform is not responsible for business losses.
+• The platform may suspend or terminate accounts violating platform policies.
+• The admin is responsible for complying with all applicable laws and regulations.
+
+Required Checkbox:
+
+☐ I have read and agree to the Terms & Conditions.
+
+Next button remains disabled until checked.
+
+--------------------------------------------------
+
+PAGE 2 – PRIVACY POLICY
+
+Title:
+Privacy Policy
+
+Content must state:
+
+• The platform stores account information.
+• The platform stores product information uploaded by admins.
+• The platform stores loyalty card data.
+• The platform stores Virtual Try-On related information when required.
+• Analytics may be used to improve platform performance.
+• Reasonable security measures are used to protect stored information.
+• Admin data will not be sold to third parties.
+• Data may be used for platform functionality and support purposes.
+
+Required Checkbox:
+
+☐ I have read and agree to the Privacy Policy.
+
+Next button remains disabled until checked.
+
+--------------------------------------------------
+
+PAGE 3 – REFUND POLICY
+
+Title:
+Refund Policy
+
+Content must state:
+
+• Subscription or platform fees are charged for software access.
+• Fees are generally non-refundable.
+• Refund requests may be reviewed individually.
+• Violation of platform policies may result in account suspension or termination.
+• Platform owner reserves the right to approve or reject refund requests.
+
+Required Checkbox:
+
+☐ I have read and agree to the Refund Policy.
+
+Next button remains disabled until checked.
+
+--------------------------------------------------
+
+PAGE 4 – DISCLAIMER
+
+Title:
+Disclaimer
+
+Content must state:
+
+• The platform only provides technology services.
+• The platform does not sell products directly.
+• The platform does not guarantee sales, customers, revenue, or profits.
+• Virtual Try-On results are AI-generated previews.
+• Actual product appearance may differ from AI previews.
+• The platform is not liable for customer claims against store owners.
+• The platform is not responsible for product accuracy or product performance.
+• The platform is not responsible for third-party actions.
+
+Required Checkbox:
+
+☐ I have read and agree to the Disclaimer.
+
+Next button remains disabled until checked.
+
+--------------------------------------------------
+
+FINAL CONFIRMATION PAGE
+
+After all 4 pages are accepted:
+
+Display confirmation message:
+
+"I confirm that I have read, understood, and accepted all platform policies."
+
+Required Checkbox:
+
+☐ I Agree To All Policies
+
+Button:
+
+[ Complete Setup ]
+
+--------------------------------------------------
+
+DATABASE STORAGE
+
+Create database table:
+
+AdminLegalAcceptance
+
+Fields:
+
+id
+admin_id
+admin_name
+terms_accepted
+privacy_accepted
+refund_accepted
+disclaimer_accepted
+final_acceptance
+accepted_date
+accepted_time
+accepted_timestamp
+device_type
+browser_name
+ip_address
+created_at
+
+--------------------------------------------------
+
+SAVE LEGAL ACCEPTANCE DATA
+
+When admin clicks Complete Setup:
+
+Store:
+
+• Admin ID
+• Admin Name
+• Acceptance Date
+• Acceptance Time
+• Full Timestamp
+• Device Type
+• Browser Name
+• IP Address
+• Terms Accepted = True
+• Privacy Accepted = True
+• Refund Accepted = True
+• Disclaimer Accepted = True
+• Final Acceptance = True
+
+--------------------------------------------------
+
+FUTURE LOGIN LOGIC
+
+IF final_acceptance = TRUE
+
+Then:
+
+• Never show these legal pages again.
+• Open dashboard directly.
+
+IF final_acceptance = FALSE
+
+Then:
+
+• Force admin to complete legal agreement setup before accessing the platform.
+
+--------------------------------------------------
+
+SUPER ADMIN FEATURE
+
+Create page:
+
+Legal Agreements Log
+
+Visible only to Super Admin.
+
+Show table with:
+
+• Admin Name
+• Admin ID
+• Acceptance Date
+• Acceptance Time
+• Device Type
+• Browser
+• IP Address
+• Status
+
+Add:
+
+• Search Admin
+• Date Filter
+• Export CSV
+
+--------------------------------------------------
+
+UI REQUIREMENTS
+
+• Premium modern design
+• Mobile responsive
+• Professional legal page layout
+• Sticky progress indicator
+• Smooth transitions
+• Dark mode support
+• Light mode support
+• Secure database storage
+• URL bypass protection
+• Production-ready implementation
+• Fully integrated with existing admin authentication system

@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import NotFound from "@/pages/not-found";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
@@ -16,39 +16,63 @@ import UsernamePassword from "@/pages/username-password";
 import ManageAdmins from "@/pages/manage-admins";
 import AdminsPage from "@/pages/admins";
 import PublicStore from "@/pages/public-store";
+import LegalAgreement from "@/pages/legal-agreement";
 import { Layout } from "@/components/layout";
 
 const queryClient = new QueryClient();
 
-function ProtectedRoute({ component: Component, adminOnly = false }: { component: any, adminOnly?: boolean }) {
-  const { user, isLoading } = useAuth();
-  const [_, setLocation] = useLocation();
+function useLegalStatus(userId: string | undefined, role: string | undefined) {
+  const [legalDone, setLegalDone] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      setLocation("/login");
-    } else if (!isLoading && user && adminOnly && user.role !== "super_admin") {
-      setLocation("/");
-    } else if (!isLoading && user && user.role === "super_admin" && !adminOnly) {
-      setLocation("/manage-admins");
+    if (!userId || role === "super_admin") {
+      setLegalDone(true);
+      return;
     }
-  }, [user, isLoading, setLocation, adminOnly]);
+    const token = localStorage.getItem("wmh_token");
+    fetch("/api/legal/status", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((data) => setLegalDone(data.completed))
+      .catch(() => setLegalDone(true));
+  }, [userId, role]);
 
-  if (isLoading) {
+  return { legalDone, setLegalDone };
+}
+
+function ProtectedRoute({ component: Component, adminOnly = false }: { component: any; adminOnly?: boolean }) {
+  const { user, isLoading } = useAuth();
+  const [_, setLocation] = useLocation();
+  const { legalDone } = useLegalStatus(user?.id, user?.role);
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!user) {
+      setLocation("/login");
+      return;
+    }
+    if (adminOnly && user.role !== "super_admin") {
+      setLocation("/");
+      return;
+    }
+    if (!adminOnly && user.role === "super_admin") {
+      setLocation("/manage-admins");
+      return;
+    }
+    if (legalDone === false) {
+      setLocation("/legal-agreement");
+    }
+  }, [user, isLoading, setLocation, adminOnly, legalDone]);
+
+  if (isLoading || legalDone === null) {
     return <div className="h-screen w-full flex items-center justify-center">Loading...</div>;
   }
 
-  if (!user) {
-    return null;
-  }
-
-  if (adminOnly && user.role !== "super_admin") {
-    return null;
-  }
-
-  if (!adminOnly && user.role === "super_admin") {
-    return null;
-  }
+  if (!user) return null;
+  if (adminOnly && user.role !== "super_admin") return null;
+  if (!adminOnly && user.role === "super_admin") return null;
+  if (legalDone === false) return null;
 
   return (
     <Layout>
@@ -61,6 +85,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
+      <Route path="/legal-agreement" component={LegalAgreement} />
       <Route path="/">
         {() => <ProtectedRoute component={Dashboard} />}
       </Route>

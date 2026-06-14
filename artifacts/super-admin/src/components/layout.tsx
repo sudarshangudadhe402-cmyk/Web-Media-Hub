@@ -9,11 +9,13 @@ import {
   Shield,
   Users,
   ShieldCheck,
+  FileText,
 } from "lucide-react";
 
 const navItems = [
   { path: "/manage-admins", name: "Manage Admins", icon: Shield },
   { path: "/admins", name: "Admin History", icon: Users },
+  { path: "/legal-log", name: "Legal Agreements Log", icon: FileText },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
