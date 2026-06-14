@@ -68,10 +68,19 @@ export default function Admins() {
       return res.json();
     },
     onSuccess: (_, { isActive }) => {
-      toast({ title: isActive ? "Admin activated ✅" : "Admin deactivated" });
+      toast({ title: isActive ? "Admin activated ✅" : "Admin deactivated 🔴" });
       queryClient.invalidateQueries({ queryKey: getListAdminsQueryKey() });
       if (selectedAdmin) {
         setSelectedAdmin((prev) => prev ? { ...prev, isActive } as any : prev);
+      }
+      if (!isActive && selectedAdmin) {
+        const phone = (selectedAdmin as any).adminNumber as string | undefined;
+        if (phone && phone.trim()) {
+          const cleanPhone = `91${phone.replace(/\D/g, "")}`;
+          const msg = `🔴 *Account Deactivated*\n\nHello *${selectedAdmin.username}*,\n\nYour admin account on *Web Media Hub* has been *deactivated* by the super admin.\n\nYou have been logged out automatically. Please contact the super admin for more information.`;
+          const waLink = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+          window.open(waLink, "_blank");
+        }
       }
     },
     onError: () => toast({ variant: "destructive", title: "Failed to update admin status" }),
