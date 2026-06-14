@@ -228,6 +228,7 @@ export default function LegalAgreement() {
             <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
               <CheckCircle2 className="w-8 h-8 text-primary" />
             </div>
+            <p className="text-xs font-bold uppercase tracking-widest text-primary mb-1">Legal Agreement of Web Media Hub</p>
             <h1 className="text-2xl font-bold text-foreground">Final Confirmation</h1>
             <p className="text-muted-foreground mt-2">You have reviewed all 4 policies. Please confirm your acceptance below.</p>
           </div>
@@ -290,6 +291,7 @@ export default function LegalAgreement() {
           <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
             <Shield className="w-8 h-8 text-primary" />
           </div>
+          <p className="text-xs font-bold uppercase tracking-widest text-primary mb-1">Legal Agreement of Web Media Hub</p>
           <h1 className="text-2xl font-bold text-foreground">Web Media Hub</h1>
           <p className="text-muted-foreground text-sm mt-1">Legal Agreement Setup — Required Before Access</p>
         </div>
