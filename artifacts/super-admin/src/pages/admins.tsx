@@ -77,6 +77,25 @@ export default function Admins() {
     onError: () => toast({ variant: "destructive", title: "Failed to update admin status" }),
   });
 
+  const toggleMultiDevice = useMutation({
+    mutationFn: async ({ id, multiDeviceAllowed }: { id: string; multiDeviceAllowed: boolean }) => {
+      const res = await authFetch(`/api/admins/${id}/multi-device`, {
+        method: "PATCH",
+        body: JSON.stringify({ multiDeviceAllowed }),
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      return res.json();
+    },
+    onSuccess: (_, { multiDeviceAllowed }) => {
+      toast({ title: multiDeviceAllowed ? "Multi-device login enabled ✅" : "Single device only — multi-device disabled" });
+      queryClient.invalidateQueries({ queryKey: getListAdminsQueryKey() });
+      if (selectedAdmin) {
+        setSelectedAdmin((prev) => prev ? { ...prev, multiDeviceAllowed } as any : prev);
+      }
+    },
+    onError: () => toast({ variant: "destructive", title: "Failed to update multi-device setting" }),
+  });
+
   function openAdminDetail(admin: NonNullable<typeof admins>[number]) {
     setSelectedAdmin(admin);
     setAdminDetailOpen(true);
@@ -339,6 +358,30 @@ export default function Admins() {
                     }}
                   />
                 </div>
+
+                {/* Multi-Device Toggle */}
+                {selectedAdmin.role !== "super_admin" && (() => {
+                  const multiDevice = (selectedAdmin as any).multiDeviceAllowed === true;
+                  return (
+                    <div className="flex items-center justify-between bg-muted rounded-xl px-4 py-3">
+                      <div>
+                        <p className="font-medium text-sm">Multi-Device Login</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {multiDevice
+                            ? "Admin can login from multiple devices simultaneously"
+                            : "Only 1 device allowed — new login kicks out old session"}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={multiDevice}
+                        disabled={toggleMultiDevice.isPending}
+                        onCheckedChange={(val) => {
+                          toggleMultiDevice.mutate({ id: selectedAdmin.id, multiDeviceAllowed: val });
+                        }}
+                      />
+                    </div>
+                  );
+                })()}
 
                 {selectedAdmin.role !== "super_admin" && (
                   deleteConfirmId === selectedAdmin.id ? (

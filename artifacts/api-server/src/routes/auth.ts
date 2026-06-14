@@ -1,8 +1,11 @@
 import { Router } from "express";
+import crypto from "crypto";
 import { User } from "../models/User";
 import { Store } from "../models/Store";
 import { signToken, requireAuth, AuthRequest } from "../middlewares/auth";
 import { requireDb } from "../middlewares/dbCheck";
+
+const SUPER_ADMIN_ACCESS_CODE = process.env.SUPER_ADMIN_ACCESS_CODE || "WMH@2024";
 
 const router = Router();
 
@@ -31,7 +34,19 @@ router.post("/auth/login", requireDb, async (req, res) => {
       return;
     }
 
-    const token = signToken(String(user._id));
+    if (user.role === "super_admin") {
+      const { accessCode } = req.body;
+      if (!accessCode || accessCode !== SUPER_ADMIN_ACCESS_CODE) {
+        res.status(401).json({ error: "Invalid access code. Super admin login requires a valid secret access code." });
+        return;
+      }
+    }
+
+    const sessionId = crypto.randomUUID();
+    user.sessionId = sessionId;
+    await user.save();
+
+    const token = signToken(String(user._id), sessionId);
     res.json({
       token,
       user: {

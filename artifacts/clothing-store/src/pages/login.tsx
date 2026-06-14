@@ -56,13 +56,16 @@ export default function Login() {
       onError: (error: any) => {
         const msg: string = error?.data?.error || error?.message || "Invalid credentials";
         const isInactive = msg.toLowerCase().includes("not-active");
+        const isAnotherDevice = msg.toLowerCase().includes("another device");
         toast({
           variant: "destructive",
-          title: isInactive ? "Account Inactive" : "Login failed",
+          title: isInactive ? "Account Inactive" : isAnotherDevice ? "Logged In Elsewhere" : "Login failed",
           description: isInactive
             ? "Admin is currently not-active, please contact to super-admin"
+            : isAnotherDevice
+            ? "You have been logged in from another device. Please login again or contact super admin to enable multi-device access."
             : msg,
-          duration: isInactive ? 6000 : 4000,
+          duration: (isInactive || isAnotherDevice) ? 7000 : 4000,
         });
       }
     });

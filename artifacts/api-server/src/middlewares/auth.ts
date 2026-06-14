@@ -8,8 +8,8 @@ export interface AuthRequest extends Request {
   user?: IUser;
 }
 
-export function signToken(userId: string): string {
-  return jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: "7d" });
+export function signToken(userId: string, sessionId: string): string {
+  return jwt.sign({ id: userId, sessionId }, JWT_SECRET, { expiresIn: "7d" });
 }
 
 export async function requireAuth(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
@@ -21,12 +21,24 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
     }
 
     const token = authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
+    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; sessionId?: string };
 
     const user = await User.findById(decoded.id);
     if (!user) {
       res.status(401).json({ error: "User not found" });
       return;
+    }
+
+    if (decoded.sessionId && user.sessionId) {
+      const sessionValid = decoded.sessionId === user.sessionId;
+      if (!sessionValid) {
+        const isSuperAdmin = user.role === "super_admin";
+        const multiDeviceOk = user.role === "admin" && user.multiDeviceAllowed === true;
+        if (isSuperAdmin || !multiDeviceOk) {
+          res.status(401).json({ error: "Session expired — you have been logged in from another device" });
+          return;
+        }
+      }
     }
 
     req.user = user;

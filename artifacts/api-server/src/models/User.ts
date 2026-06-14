@@ -8,6 +8,8 @@ export interface IUser extends Document {
   adminNumber: string;
   role: "super_admin" | "admin";
   isActive: boolean;
+  sessionId: string;
+  multiDeviceAllowed: boolean;
   createdAt: Date;
   comparePassword(candidate: string): Promise<boolean>;
 }
@@ -20,6 +22,8 @@ const UserSchema = new Schema<IUser>(
     adminNumber: { type: String, default: "" },
     role: { type: String, enum: ["super_admin", "admin"], default: "admin" },
     isActive: { type: Boolean, default: true },
+    sessionId: { type: String, default: "" },
+    multiDeviceAllowed: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

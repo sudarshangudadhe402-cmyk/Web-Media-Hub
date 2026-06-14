@@ -25,6 +25,7 @@ router.get("/admins", requireSuperAdmin, async (req, res) => {
         adminNumber: a.adminNumber ?? "",
         role: a.role,
         isActive: a.isActive !== false,
+        multiDeviceAllowed: a.multiDeviceAllowed === true,
         storeSlug: storeMap[String(a._id)]?.publicSlug ?? null,
         storeName: storeMap[String(a._id)]?.name ?? null,
         createdAt: a.createdAt.toISOString(),
@@ -58,6 +59,7 @@ router.post("/admins", requireSuperAdmin, async (req, res) => {
       adminNumber: admin.adminNumber ?? "",
       role: admin.role,
       isActive: true,
+      multiDeviceAllowed: false,
       storeSlug: null,
       storeName: null,
       createdAt: admin.createdAt.toISOString(),
@@ -87,6 +89,29 @@ router.patch("/admins/:id/toggle-active", requireSuperAdmin, async (req, res) =>
     res.json({ id: String(admin._id), isActive: admin.isActive });
   } catch (err) {
     req.log.error({ err }, "Toggle active error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.patch("/admins/:id/multi-device", requireSuperAdmin, async (req, res) => {
+  try {
+    const { multiDeviceAllowed } = req.body;
+    if (typeof multiDeviceAllowed !== "boolean") {
+      res.status(400).json({ error: "multiDeviceAllowed must be a boolean" });
+      return;
+    }
+    const admin = await User.findByIdAndUpdate(
+      req.params.id,
+      { multiDeviceAllowed },
+      { new: true }
+    );
+    if (!admin) {
+      res.status(404).json({ error: "Admin not found" });
+      return;
+    }
+    res.json({ id: String(admin._id), multiDeviceAllowed: admin.multiDeviceAllowed });
+  } catch (err) {
+    req.log.error({ err }, "Toggle multi-device error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
