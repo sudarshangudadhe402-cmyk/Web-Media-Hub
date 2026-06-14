@@ -54,10 +54,15 @@ export default function Login() {
         setLocation("/");
       },
       onError: (error: any) => {
+        const msg: string = error?.data?.error || error?.message || "Invalid credentials";
+        const isInactive = msg.toLowerCase().includes("not-active");
         toast({
           variant: "destructive",
-          title: "Login failed",
-          description: error.message || "Invalid credentials",
+          title: isInactive ? "Account Inactive" : "Login failed",
+          description: isInactive
+            ? "Admin is currently not-active, please contact to super-admin"
+            : msg,
+          duration: isInactive ? 6000 : 4000,
         });
       }
     });

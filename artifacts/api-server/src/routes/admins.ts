@@ -1,13 +1,22 @@
 import { Router } from "express";
 import { User } from "../models/User";
+import { Store } from "../models/Store";
 import { requireSuperAdmin } from "../middlewares/auth";
-import { requireDb } from "../middlewares/dbCheck";
 
 const router = Router();
 
 router.get("/admins", requireSuperAdmin, async (req, res) => {
   try {
     const admins = await User.find({ role: "admin" }).sort({ createdAt: -1 });
+
+    const adminIds = admins.map((a) => String(a._id));
+    const stores = await Store.find({ ownerId: { $in: adminIds } }).select("ownerId publicSlug name");
+
+    const storeMap: Record<string, { publicSlug: string; name: string }> = {};
+    for (const s of stores) {
+      if (s.ownerId) storeMap[s.ownerId] = { publicSlug: s.publicSlug, name: s.name };
+    }
+
     res.json(
       admins.map((a) => ({
         id: String(a._id),
@@ -15,6 +24,9 @@ router.get("/admins", requireSuperAdmin, async (req, res) => {
         plainPassword: a.plainPassword ?? "",
         adminNumber: a.adminNumber ?? "",
         role: a.role,
+        isActive: a.isActive !== false,
+        storeSlug: storeMap[String(a._id)]?.publicSlug ?? null,
+        storeName: storeMap[String(a._id)]?.name ?? null,
         createdAt: a.createdAt.toISOString(),
       }))
     );
@@ -38,17 +50,43 @@ router.post("/admins", requireSuperAdmin, async (req, res) => {
       return;
     }
 
-    const admin = await User.create({ username, password, plainPassword: password, adminNumber: adminNumber ?? "", role: "admin" });
+    const admin = await User.create({ username, password, plainPassword: password, adminNumber: adminNumber ?? "", role: "admin", isActive: true });
     res.status(201).json({
       id: String(admin._id),
       username: admin.username,
       plainPassword: password,
       adminNumber: admin.adminNumber ?? "",
       role: admin.role,
+      isActive: true,
+      storeSlug: null,
+      storeName: null,
       createdAt: admin.createdAt.toISOString(),
     });
   } catch (err) {
     req.log.error({ err }, "Create admin error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.patch("/admins/:id/toggle-active", requireSuperAdmin, async (req, res) => {
+  try {
+    const { isActive } = req.body;
+    if (typeof isActive !== "boolean") {
+      res.status(400).json({ error: "isActive must be a boolean" });
+      return;
+    }
+    const admin = await User.findByIdAndUpdate(
+      req.params.id,
+      { isActive },
+      { new: true }
+    );
+    if (!admin) {
+      res.status(404).json({ error: "Admin not found" });
+      return;
+    }
+    res.json({ id: String(admin._id), isActive: admin.isActive });
+  } catch (err) {
+    req.log.error({ err }, "Toggle active error");
     res.status(500).json({ error: "Internal server error" });
   }
 });

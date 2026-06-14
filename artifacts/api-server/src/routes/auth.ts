@@ -25,6 +25,11 @@ router.post("/auth/login", requireDb, async (req, res) => {
       return;
     }
 
+    if (user.role === "admin" && user.isActive === false) {
+      res.status(403).json({ error: "Admin is currently not-active, please contact to super-admin" });
+      return;
+    }
+
     const token = signToken(String(user._id));
     res.json({
       token,
