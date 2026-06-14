@@ -584,7 +584,7 @@ export default function Dashboard() {
             type="text"
             value={lcSearch}
             onChange={e => setLcSearch(e.target.value)}
-            placeholder="Name ya number dalo — kisi bhi section ka"
+            placeholder="Search by name or number — across all sections"
             className="flex-1 text-sm text-gray-800 placeholder-gray-400 focus:outline-none bg-transparent"
           />
           {lcSearch && (
@@ -599,7 +599,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold"
             style={{ background: statusBg(loyaltyTab), color: statusColor(loyaltyTab) }}>
             <Search className="w-3.5 h-3.5 flex-shrink-0" />
-            <span>Card mila: <strong>{tabLabel(loyaltyTab)}</strong> section mein</span>
+            <span>Card found in: <strong>{tabLabel(loyaltyTab)}</strong> section</span>
           </div>
         )}
 
@@ -607,7 +607,7 @@ export default function Dashboard() {
         {notFoundAnywhere && (
           <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-red-50 text-red-500">
             <X className="w-3.5 h-3.5 flex-shrink-0" />
-            <span>Kisi bhi section mein nahi mila — naam ya number check karo</span>
+            <span>No card found in any section — please check the name or number</span>
           </div>
         )}
 
