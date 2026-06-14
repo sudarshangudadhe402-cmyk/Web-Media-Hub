@@ -57,15 +57,24 @@ export default function Login() {
         const msg: string = error?.data?.error || error?.message || "Invalid credentials";
         const isInactive = msg.toLowerCase().includes("not-active");
         const isAnotherDevice = msg.toLowerCase().includes("another device");
+        const isMultiDeviceBlocked = msg.toLowerCase().includes("multy-device not allowed") || msg.toLowerCase().includes("multi-device not allowed");
         toast({
           variant: "destructive",
-          title: isInactive ? "Account Inactive" : isAnotherDevice ? "Logged In Elsewhere" : "Login failed",
+          title: isInactive
+            ? "Account Inactive"
+            : isAnotherDevice
+            ? "Logged In Elsewhere"
+            : isMultiDeviceBlocked
+            ? "Multi-Device Not Allowed"
+            : "Login failed",
           description: isInactive
             ? "Admin is currently not-active, please contact to super-admin"
             : isAnotherDevice
             ? "You have been logged in from another device. Please login again or contact super admin to enable multi-device access."
+            : isMultiDeviceBlocked
+            ? "Multy-device not allowed from super-admin, please allow first"
             : msg,
-          duration: (isInactive || isAnotherDevice) ? 7000 : 4000,
+          duration: (isInactive || isAnotherDevice || isMultiDeviceBlocked) ? 7000 : 4000,
         });
       }
     });

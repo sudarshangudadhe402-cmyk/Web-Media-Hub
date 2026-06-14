@@ -42,6 +42,11 @@ router.post("/auth/login", requireDb, async (req, res) => {
       }
     }
 
+    if (user.role === "admin" && !user.multiDeviceAllowed && user.sessionId && user.sessionId !== "") {
+      res.status(403).json({ error: "Multy-device not allowed from super-admin, please allow first" });
+      return;
+    }
+
     const sessionId = crypto.randomUUID();
     user.sessionId = sessionId;
     await user.save();
@@ -58,6 +63,18 @@ router.post("/auth/login", requireDb, async (req, res) => {
     });
   } catch (err) {
     req.log.error({ err }, "Login error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/auth/logout", requireDb, requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const user = req.user!;
+    user.sessionId = "";
+    await user.save();
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error({ err }, "Logout error");
     res.status(500).json({ error: "Internal server error" });
   }
 });

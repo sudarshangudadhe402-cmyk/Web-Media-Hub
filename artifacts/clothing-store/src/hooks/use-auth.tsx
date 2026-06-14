@@ -33,6 +33,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
+    const currentToken = localStorage.getItem("wmh_token");
+    if (currentToken) {
+      fetch("/api/auth/logout", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${currentToken}` },
+      }).catch(() => {});
+    }
     localStorage.removeItem("wmh_token");
     setToken(null);
     queryClient.clear();
