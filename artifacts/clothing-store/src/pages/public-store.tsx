@@ -102,7 +102,13 @@ export default function PublicStore() {
   const [tryOnResult, setTryOnResult] = useState<string | null>(null);
   const [tryOnLoading, setTryOnLoading] = useState(false);
 
-  const [bookingForm, setBookingForm] = useState({ name: "", city: "", whatsapp: "" });
+  const [bookingForm, setBookingForm] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(`wmh_customer_${slug}`) || "null");
+      if (saved && saved.name) return { name: saved.name || "", city: saved.city || "", whatsapp: saved.whatsapp || "" };
+    } catch {}
+    return { name: "", city: "", whatsapp: "" };
+  });
   const [selectedSize, setSelectedSize] = useState("");
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
@@ -508,6 +514,12 @@ export default function PublicStore() {
         const updated = [saved, ...myBookings];
         setMyBookings(updated);
         localStorage.setItem(`wmh_bookings_${slug}`, JSON.stringify(updated));
+        localStorage.setItem(`wmh_customer_${slug}`, JSON.stringify({
+          name: bookingForm.name,
+          whatsapp: bookingForm.whatsapp,
+          city: bookingForm.city,
+          savedAt: Date.now(),
+        }));
         setBookingSuccess(true);
       }
     } catch {}
