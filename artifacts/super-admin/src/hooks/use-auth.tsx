@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useGetMe, User, setAuthTokenGetter } from "@workspace/api-client-react";
+import { closeGate } from "@/lib/gate";
 
 const TOKEN_KEY = "wmh_super_token";
 
@@ -55,6 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(null);
     setAuthTokenGetter(() => null);
     queryClient.clear();
+    closeGate();
   };
 
   return (

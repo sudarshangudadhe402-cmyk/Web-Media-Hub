@@ -10,19 +10,13 @@ import Admins from "@/pages/admins";
 import LegalLog from "@/pages/legal-log";
 import Layout from "@/components/layout";
 import NotFound from "@/pages/not-found";
+import { useState, useEffect } from "react";
+import { isGateOpen, openGate, closeGate } from "@/lib/gate";
 
 const queryClient = new QueryClient();
 
 // ─── Gateway protection ───────────────────────────────────────────────────────
 const GATE_CODE = import.meta.env.VITE_GATE_CODE || "";
-
-function isGateOpen(): boolean {
-  try { return sessionStorage.getItem("wmh_gate") === "1"; } catch { return false; }
-}
-
-function openGate(): void {
-  try { sessionStorage.setItem("wmh_gate", "1"); } catch {}
-}
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -45,18 +39,28 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function LoginRoute() {
-  // Check for gateway key in URL
-  const params = new URLSearchParams(window.location.search);
-  const k = params.get("k");
-  if (k && GATE_CODE && k === GATE_CODE) {
-    openGate();
-    // Remove key from URL bar so it's not visible/copyable
-    window.history.replaceState({}, "", window.location.pathname);
-  }
+  const [gateOpen, setGateOpen] = useState<boolean>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const k = params.get("k");
+    if (k && GATE_CODE && k === GATE_CODE) {
+      openGate();
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+    return isGateOpen();
+  });
 
-  // If gate is not open, show nothing (looks like a dead/404 page)
-  if (!isGateOpen()) return <NotFound />;
+  useEffect(() => {
+    if (!gateOpen) return;
+    const interval = setInterval(() => {
+      if (!isGateOpen()) {
+        closeGate();
+        setGateOpen(false);
+      }
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, [gateOpen]);
 
+  if (!gateOpen) return <NotFound />;
   return <Login />;
 }
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useAuth } from "./use-auth";
+import { refreshGate } from "@/lib/gate";
 
 const TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes of inactivity
 
@@ -22,6 +23,7 @@ export function useInactivityLogout() {
 
     const reset = () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      refreshGate();
       timerRef.current = setTimeout(() => {
         logout();
       }, TIMEOUT_MS);
