@@ -37,6 +37,8 @@ import {
   Pencil,
   Star,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Phone,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -63,6 +65,7 @@ export default function ManageAdmins() {
   const [requestDetailOpen, setRequestDetailOpen] = useState(false);
   const [linkInput, setLinkInput] = useState("");
   const [isEditingLink, setIsEditingLink] = useState(false);
+  const [storeRequestsOpen, setStoreRequestsOpen] = useState(false);
 
   function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -235,84 +238,6 @@ export default function ManageAdmins() {
         <Shield className="w-8 h-8 text-green-200 shrink-0" />
       </button>
 
-      {/* ── Store Approval Section ── */}
-      <div>
-        <div className="flex items-center gap-2 mb-4">
-          <Store className="w-5 h-5 text-primary" />
-          <h2 className="text-lg font-semibold">Store Approval Requests</h2>
-          {pending.length > 0 && (
-            <Badge className="bg-amber-500 text-white ml-1">{pending.length} pending</Badge>
-          )}
-        </div>
-
-        <div className="flex gap-2 mb-4">
-          {(
-            [
-              { key: "pending" as StoreTab, label: "Pending Approval", icon: Clock, count: pending.length, activeClass: "bg-amber-500 text-white border-amber-500" },
-              { key: "approved" as StoreTab, label: "Approved", icon: CheckCircle, count: approved.length, activeClass: "bg-green-600 text-white border-green-600" },
-              { key: "rejected" as StoreTab, label: "Rejected", icon: XCircle, count: rejected.length, activeClass: "bg-red-600 text-white border-red-600" },
-            ]
-          ).map(({ key, label, icon: Icon, count, activeClass }) => (
-            <button
-              key={key}
-              onClick={() => setActiveTab(key)}
-              className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 px-2 rounded-xl text-xs font-medium border transition-colors ${
-                activeTab === key ? activeClass : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              <span className="text-center leading-tight">{label}</span>
-              <Badge variant="secondary" className="text-[10px] mt-0.5">{count}</Badge>
-            </button>
-          ))}
-        </div>
-
-        {reqLoading ? (
-          <div className="space-y-3">
-            {[1, 2].map((i) => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
-          </div>
-        ) : tabData[activeTab].length === 0 ? (
-          <Card className="border-dashed border-2">
-            <CardContent className="py-12 text-center space-y-2">
-              {activeTab === "pending" && <><Clock className="w-10 h-10 mx-auto text-muted-foreground/30" /><p className="text-muted-foreground font-medium">No pending store requests</p><p className="text-sm text-muted-foreground/60">Store approval requests will appear here</p></>}
-              {activeTab === "approved" && <><CheckCircle className="w-10 h-10 mx-auto text-green-400/40" /><p className="text-muted-foreground font-medium">No approved stores yet</p></>}
-              {activeTab === "rejected" && <><XCircle className="w-10 h-10 mx-auto text-red-400/40" /><p className="text-muted-foreground font-medium">No rejected stores</p></>}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-2">
-            {tabData[activeTab].map((req) => (
-              <button
-                key={req.id}
-                onClick={() => { setSelectedRequest(req); setRequestDetailOpen(true); }}
-                className="w-full text-left"
-              >
-                <Card className="hover:border-primary/40 transition-colors cursor-pointer">
-                  <CardContent className="p-4 flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                      req.status === "approved" ? "bg-green-100" :
-                      req.status === "rejected" ? "bg-red-100" : "bg-amber-100"
-                    }`}>
-                      {req.status === "approved" ? <CheckCircle className="w-5 h-5 text-green-600" /> :
-                       req.status === "rejected" ? <XCircle className="w-5 h-5 text-red-600" /> :
-                       <Clock className="w-5 h-5 text-amber-600" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">{req.storeName}</p>
-                      <p className="text-sm text-muted-foreground">@{req.username}</p>
-                      <p className="text-xs text-muted-foreground/60 mt-0.5">
-                        {new Date(req.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                      </p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-                  </CardContent>
-                </Card>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
       {/* ── Global Link Section ── */}
       <div>
         <div className="flex items-center gap-2 mb-4">
@@ -382,6 +307,98 @@ export default function ManageAdmins() {
               </div>
             </CardContent>
           </Card>
+        )}
+      </div>
+
+      {/* ── Store Approval Section (Collapsible) ── */}
+      <div>
+        <button
+          onClick={() => setStoreRequestsOpen((v) => !v)}
+          className="w-full flex items-center justify-between gap-3 bg-muted hover:bg-muted/80 transition-colors rounded-xl px-4 py-3"
+        >
+          <div className="flex items-center gap-2">
+            <Store className="w-5 h-5 text-primary" />
+            <h2 className="text-base font-semibold">Store Approval Requests</h2>
+            {pending.length > 0 && (
+              <Badge className="bg-amber-500 text-white">{pending.length} pending</Badge>
+            )}
+          </div>
+          {storeRequestsOpen ? (
+            <ChevronUp className="w-5 h-5 text-muted-foreground shrink-0" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0" />
+          )}
+        </button>
+
+        {storeRequestsOpen && (
+          <div className="mt-4 space-y-4">
+            <div className="flex gap-2">
+              {(
+                [
+                  { key: "pending" as StoreTab, label: "Pending Approval", icon: Clock, count: pending.length, activeClass: "bg-amber-500 text-white border-amber-500" },
+                  { key: "approved" as StoreTab, label: "Approved", icon: CheckCircle, count: approved.length, activeClass: "bg-green-600 text-white border-green-600" },
+                  { key: "rejected" as StoreTab, label: "Rejected", icon: XCircle, count: rejected.length, activeClass: "bg-red-600 text-white border-red-600" },
+                ]
+              ).map(({ key, label, icon: Icon, count, activeClass }) => (
+                <button
+                  key={key}
+                  onClick={() => setActiveTab(key)}
+                  className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 px-2 rounded-xl text-xs font-medium border transition-colors ${
+                    activeTab === key ? activeClass : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="text-center leading-tight">{label}</span>
+                  <Badge variant="secondary" className="text-[10px] mt-0.5">{count}</Badge>
+                </button>
+              ))}
+            </div>
+
+            {reqLoading ? (
+              <div className="space-y-3">
+                {[1, 2].map((i) => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
+              </div>
+            ) : tabData[activeTab].length === 0 ? (
+              <Card className="border-dashed border-2">
+                <CardContent className="py-12 text-center space-y-2">
+                  {activeTab === "pending" && <><Clock className="w-10 h-10 mx-auto text-muted-foreground/30" /><p className="text-muted-foreground font-medium">No pending store requests</p><p className="text-sm text-muted-foreground/60">Store approval requests will appear here</p></>}
+                  {activeTab === "approved" && <><CheckCircle className="w-10 h-10 mx-auto text-green-400/40" /><p className="text-muted-foreground font-medium">No approved stores yet</p></>}
+                  {activeTab === "rejected" && <><XCircle className="w-10 h-10 mx-auto text-red-400/40" /><p className="text-muted-foreground font-medium">No rejected stores</p></>}
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-2">
+                {tabData[activeTab].map((req) => (
+                  <button
+                    key={req.id}
+                    onClick={() => { setSelectedRequest(req); setRequestDetailOpen(true); }}
+                    className="w-full text-left"
+                  >
+                    <Card className="hover:border-primary/40 transition-colors cursor-pointer">
+                      <CardContent className="p-4 flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                          req.status === "approved" ? "bg-green-100" :
+                          req.status === "rejected" ? "bg-red-100" : "bg-amber-100"
+                        }`}>
+                          {req.status === "approved" ? <CheckCircle className="w-5 h-5 text-green-600" /> :
+                           req.status === "rejected" ? <XCircle className="w-5 h-5 text-red-600" /> :
+                           <Clock className="w-5 h-5 text-amber-600" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold truncate">{req.storeName}</p>
+                          <p className="text-sm text-muted-foreground">@{req.username}</p>
+                          <p className="text-xs text-muted-foreground/60 mt-0.5">
+                            {new Date(req.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                          </p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                      </CardContent>
+                    </Card>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
 
