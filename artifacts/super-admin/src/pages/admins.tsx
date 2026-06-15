@@ -35,7 +35,7 @@ import { Input } from "@/components/ui/input";
 const TOKEN_KEY = "wmh_super_token";
 
 function authFetch(url: string, options?: RequestInit) {
-  const token = localStorage.getItem(TOKEN_KEY);
+  const token = sessionStorage.getItem(TOKEN_KEY);
   return fetch(url, {
     ...options,
     headers: {

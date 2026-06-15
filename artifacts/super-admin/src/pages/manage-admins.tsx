@@ -89,7 +89,7 @@ export default function ManageAdmins() {
   }
 
   function authFetch(url: string, options?: RequestInit) {
-    const token = localStorage.getItem(TOKEN_KEY);
+    const token = sessionStorage.getItem(TOKEN_KEY);
     return fetch(url, {
       ...options,
       headers: {
