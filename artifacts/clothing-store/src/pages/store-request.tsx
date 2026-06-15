@@ -79,7 +79,6 @@ export default function StoreRequest() {
           toast({ title: "Request submitted ✅", description: "Your store request has been sent to the super-admin for approval." });
           queryClient.invalidateQueries({ queryKey: getMyStoreRequestsQueryKey() });
           setForm({ storeName: "", username: "", password: "", adminNumber: "", whatsapp: "" });
-          setSelectedPlan(null);
         },
         onError: (err: any) => {
           // Try every possible path the ApiError might put the message
