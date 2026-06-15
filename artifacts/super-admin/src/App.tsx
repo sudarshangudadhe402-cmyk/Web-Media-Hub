@@ -8,16 +8,16 @@ import Login from "@/pages/login";
 import ManageAdmins from "@/pages/manage-admins";
 import Admins from "@/pages/admins";
 import LegalLog from "@/pages/legal-log";
-import Pricing from "@/pages/pricing";
 import Layout from "@/components/layout";
 import NotFound from "@/pages/not-found";
 import { useState, useEffect } from "react";
 import { isGateOpen, openGate, closeGate } from "@/lib/gate";
 
 const queryClient = new QueryClient();
+console.log("[DBG] BASE_URL:", import.meta.env.BASE_URL, "GATE_CODE:", GATE_CODE);
 
 // ─── Gateway protection ───────────────────────────────────────────────────────
-const GATE_CODE = import.meta.env.VITE_GATE_CODE || "";
+const GATE_CODE = import.meta.env.VITE_GATE_CODE || "SID-WMH-SA";
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -45,10 +45,15 @@ function LoginRoute() {
     const k = params.get("k");
     if (k && GATE_CODE && k === GATE_CODE) {
       openGate();
-      window.history.replaceState({}, "", window.location.pathname);
     }
     return isGateOpen();
   });
+
+  useEffect(() => {
+    if (window.location.search.includes("k=")) {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
 
   useEffect(() => {
     if (!gateOpen) return;
@@ -91,11 +96,6 @@ function Router() {
       <Route path="/legal-log">
         <ProtectedRoute>
           <LegalLog />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/pricing">
-        <ProtectedRoute>
-          <Pricing />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />
