@@ -278,45 +278,31 @@ export default function Products() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Products</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">
-            {products.length} item{products.length !== 1 ? "s" : ""}
-            {filterCategory ? ` · ${filterCategory}` : ""}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <div className="space-y-2">
+        {/* Row 1: Title + Select / bulk actions */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Products</h1>
+            <p className="text-muted-foreground text-sm mt-0.5">
+              {products.length} item{products.length !== 1 ? "s" : ""}
+              {filterCategory ? ` · ${filterCategory}` : ""}
+            </p>
+          </div>
+
           {!bulkMode ? (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 text-muted-foreground"
-                onClick={() => setBulkMode(true)}
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                Select
-              </Button>
-              <Link href="/categories">
-                <Button
-                  variant="outline"
-                  className="gap-1.5 border-primary/40 text-primary hover:bg-primary/5"
-                >
-                  <Tags className="w-4 h-4" />
-                  Add Category
-                </Button>
-              </Link>
-              <Button
-                onClick={openAdd}
-                className="bg-green-600 hover:bg-green-700 text-white font-semibold gap-1.5"
-              >
-                <Plus className="w-4 h-4" />
-                Add Product
-              </Button>
-            </>
+            /* Select button — top right */
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-muted-foreground"
+              onClick={() => setBulkMode(true)}
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              Select
+            </Button>
           ) : (
-            <>
+            /* Bulk mode controls — top row */
+            <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={exitBulkMode}>
                 Cancel
               </Button>
@@ -343,9 +329,31 @@ export default function Products() {
                 <Trash2 className="w-4 h-4" />
                 Delete {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
               </Button>
-            </>
+            </div>
           )}
         </div>
+
+        {/* Row 2: Add buttons — always full width, fully visible */}
+        {!bulkMode && (
+          <div className="flex gap-2">
+            <Link href="/categories" className="flex-1">
+              <Button
+                variant="outline"
+                className="w-full gap-1.5 border-primary/40 text-primary hover:bg-primary/5"
+              >
+                <Tags className="w-4 h-4" />
+                Add Category
+              </Button>
+            </Link>
+            <Button
+              onClick={openAdd}
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold gap-1.5"
+            >
+              <Plus className="w-4 h-4" />
+              Add Product
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Filter tabs */}
