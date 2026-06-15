@@ -8,6 +8,7 @@ import Login from "@/pages/login";
 import ManageAdmins from "@/pages/manage-admins";
 import Admins from "@/pages/admins";
 import LegalLog from "@/pages/legal-log";
+import Pricing from "@/pages/pricing";
 import Layout from "@/components/layout";
 import NotFound from "@/pages/not-found";
 import { useState, useEffect } from "react";
@@ -90,6 +91,11 @@ function Router() {
       <Route path="/legal-log">
         <ProtectedRoute>
           <LegalLog />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/pricing">
+        <ProtectedRoute>
+          <Pricing />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />
