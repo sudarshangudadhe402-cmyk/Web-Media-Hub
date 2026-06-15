@@ -476,7 +476,20 @@ export default function AiVideo() {
                 Enter 10-digit mobile number (repeated digits like 9999999999 not allowed)
               </p>
             </div>
-            <div className="flex gap-3 pt-2">
+            {/* Choose Plan */}
+            <button
+              type="button"
+              onClick={() => window.open("/pricing/", "_blank")}
+              className="w-full flex items-center justify-between gap-3 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-600 hover:to-yellow-500 active:opacity-90 transition-all text-black rounded-xl px-5 py-4 font-semibold shadow-md"
+            >
+              <div className="flex items-center gap-2">
+                <Star className="w-5 h-5 shrink-0" />
+                <span>Choose Plan</span>
+              </div>
+              <ChevronRight className="w-5 h-5 shrink-0" />
+            </button>
+
+            <div className="flex gap-3">
               <Button type="button" variant="outline" className="flex-1" onClick={() => setAddStoreOpen(false)}>Cancel</Button>
               <Button type="submit" className="flex-1 bg-green-600 hover:bg-green-700 text-white" disabled={submitRequest.isPending}>
                 {submitRequest.isPending ? "Submitting..." : "Done"}

@@ -9,7 +9,6 @@ import {
   getListAdminsQueryKey,
   getListStoreRequestsQueryKey,
 } from "@workspace/api-client-react";
-import PlanSelector, { type PlanId } from "@/components/plan-selector";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,7 +58,6 @@ export default function ManageAdmins() {
 
   const [addOpen, setAddOpen] = useState(false);
   const [form, setForm] = useState({ username: "", password: "", adminNumber: "" });
-  const [selectedPlan, setSelectedPlan] = useState<PlanId | null>(null);
   const [activeTab, setActiveTab] = useState<StoreTab>("pending");
   const [selectedRequest, setSelectedRequest] = useState<NonNullable<typeof allRequests>[number] | null>(null);
   const [requestDetailOpen, setRequestDetailOpen] = useState(false);
@@ -75,7 +73,6 @@ export default function ManageAdmins() {
           toast({ title: "Admin created successfully" });
           queryClient.invalidateQueries({ queryKey: getListAdminsQueryKey() });
           setForm({ username: "", password: "", adminNumber: "" });
-          setSelectedPlan(null);
           setAddOpen(false);
         },
         onError: (err: any) => {
@@ -431,26 +428,34 @@ export default function ManageAdmins() {
                 />
               </div>
             </div>
-            {/* Plan Selector */}
-            <div className="rounded-2xl bg-[#03020A] border border-white/10 p-4">
-              <PlanSelector selected={selectedPlan} onChange={setSelectedPlan} />
-            </div>
+            {/* Choose Plan */}
+            <button
+              type="button"
+              onClick={() => window.open("/pricing/", "_blank")}
+              className="w-full flex items-center justify-between gap-3 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-600 hover:to-yellow-500 active:opacity-90 transition-all text-black rounded-xl px-5 py-4 font-semibold shadow-md"
+            >
+              <div className="flex items-center gap-2">
+                <Star className="w-5 h-5 shrink-0" />
+                <span>Choose Plan</span>
+              </div>
+              <ChevronRight className="w-5 h-5 shrink-0" />
+            </button>
 
             <div className="flex gap-3 pt-2">
               <Button
                 type="button"
                 variant="outline"
                 className="flex-1"
-                onClick={() => { setAddOpen(false); setSelectedPlan(null); }}
+                onClick={() => setAddOpen(false)}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:opacity-40 disabled:cursor-not-allowed"
-                disabled={createAdmin.isPending || !selectedPlan}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                disabled={createAdmin.isPending}
               >
-                {createAdmin.isPending ? "Creating..." : !selectedPlan ? "Select a Plan" : "Create Admin"}
+                {createAdmin.isPending ? "Creating..." : "Create Admin"}
               </Button>
             </div>
           </form>
