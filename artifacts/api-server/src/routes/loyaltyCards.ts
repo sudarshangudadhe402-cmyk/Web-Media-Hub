@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { LoyaltyCard } from "../models/LoyaltyCard";
+import { Booking } from "../models/Booking";
 import { Store } from "../models/Store";
+import { Product } from "../models/Product";
 import { AuthRequest, requireAuth } from "../middlewares/auth";
 
 const router = Router();
@@ -110,6 +112,88 @@ router.get("/public/loyalty-card/status/:id", async (req, res) => {
       requestedAt: card.requestedAt,
       approvedAt: card.approvedAt ?? null,
       rejectedAt: card.rejectedAt ?? null,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* ── Loyalty Card booking slots (10 circles) ── */
+router.get("/public/loyalty-card/slots/:cardId", async (req, res) => {
+  try {
+    const card = await LoyaltyCard.findById(req.params.cardId);
+    if (!card) {
+      res.status(404).json({ error: "Card not found" });
+      return;
+    }
+
+    const cardId = String(card._id);
+    const currentGen = card.cardGeneration ?? 1;
+
+    // Pending carry-overs from previous generation
+    const carryOverBookings = currentGen > 1
+      ? await Booking.find({
+          loyaltyCardId: cardId,
+          loyaltyCardGeneration: currentGen - 1,
+          completed: false,
+          ignored: { $ne: true },
+        }).populate("productId").sort({ createdAt: 1 }).lean()
+      : [];
+
+    // All bookings for current generation
+    const currentGenBookings = await Booking.find({
+      loyaltyCardId: cardId,
+      loyaltyCardGeneration: currentGen,
+      ignored: { $ne: true },
+    }).populate("productId").sort({ createdAt: 1 }).lean();
+
+    type SlotStatus = "empty" | "pending" | "completed";
+    interface Slot {
+      status: SlotStatus;
+      bookingId?: string;
+      productName?: string;
+      createdAt?: string;
+      completedAt?: string;
+      isCarryOver?: boolean;
+    }
+
+    const slots: Slot[] = [];
+
+    for (const b of carryOverBookings) {
+      if (slots.length >= 10) break;
+      const prod = b.productId as any;
+      slots.push({
+        status: "pending",
+        bookingId: String(b._id),
+        productName: prod?.name ?? undefined,
+        createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : undefined,
+        isCarryOver: true,
+      });
+    }
+
+    for (const b of currentGenBookings) {
+      if (slots.length >= 10) break;
+      const prod = b.productId as any;
+      slots.push({
+        status: b.completed ? "completed" : "pending",
+        bookingId: String(b._id),
+        productName: prod?.name ?? undefined,
+        createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : undefined,
+        completedAt: b.completedAt ? new Date(b.completedAt).toISOString() : undefined,
+      });
+    }
+
+    while (slots.length < 10) {
+      slots.push({ status: "empty" });
+    }
+
+    res.json({
+      slots,
+      generation: currentGen,
+      totalCompleted: currentGenBookings.filter(b => b.completed).length,
+      totalPending: carryOverBookings.length + currentGenBookings.filter(b => !b.completed).length,
+      refreshed: !!card.refreshedAt,
+      refreshedAt: card.refreshedAt ? card.refreshedAt.toISOString() : null,
     });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
@@ -260,6 +344,7 @@ router.get("/loyalty-cards", requireAuth, async (req: AuthRequest, res) => {
       requestedAt: c.requestedAt,
       approvedAt: c.approvedAt ?? null,
       rejectedAt: c.rejectedAt ?? null,
+      cardGeneration: c.cardGeneration ?? 1,
     });
 
     res.json({

@@ -137,6 +137,12 @@ export default function PublicStore() {
   const [loyaltyAppliedCardId, setLoyaltyAppliedCardId] = useState<string | null>(null);
 
   const [bookingFilter, setBookingFilter] = useState<"all" | "loyalty" | "completed">("all");
+
+  type LoyaltySlot = { status: "empty" | "pending" | "completed"; bookingId?: string; productName?: string; isCarryOver?: boolean };
+  const [loyaltySlots, setLoyaltySlots] = useState<LoyaltySlot[]>([]);
+  const [loyaltySlotsLoading, setLoyaltySlotsLoading] = useState(false);
+  const [cardRefreshNotif, setCardRefreshNotif] = useState(false);
+
   const [lcTab, setLcTab] = useState<"registration" | "login">("registration");
   const [lcLoginForm, setLcLoginForm] = useState({ name: "", password: "" });
   const [lcLoginLoading, setLcLoginLoading] = useState(false);
@@ -217,6 +223,21 @@ export default function PublicStore() {
       })
       .catch(() => {});
   }, [view]);
+
+  function fetchLoyaltySlots(cardId: string) {
+    setLoyaltySlotsLoading(true);
+    fetch(`/api/public/loyalty-card/slots/${cardId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setLoyaltySlots(d.slots ?? []); })
+      .catch(() => {})
+      .finally(() => setLoyaltySlotsLoading(false));
+  }
+
+  useEffect(() => {
+    if (view === "loyaltycard" && loyaltyCardInfo?.id && loyaltyCardInfo.status === "approved") {
+      fetchLoyaltySlots(loyaltyCardInfo.id);
+    }
+  }, [view, loyaltyCardInfo?.id, loyaltyCardInfo?.status]);
 
   const categories = useMemo(() => {
     if (!data) return [];
@@ -515,6 +536,7 @@ export default function PublicStore() {
           bookedAt: new Date().toISOString(),
           addedToLoyaltyCard: loyaltyApplied,
         };
+        const appliedCardId = loyaltyAppliedCardId;
         setLoyaltyApplied(false);
         setLoyaltyAppliedCardId(null);
         const updated = [saved, ...myBookings];
@@ -526,6 +548,13 @@ export default function PublicStore() {
           city: bookingForm.city,
           savedAt: Date.now(),
         }));
+        if (bk.cardRefreshed) {
+          setCardRefreshNotif(true);
+          if (appliedCardId) fetchLoyaltySlots(appliedCardId);
+          setTimeout(() => setCardRefreshNotif(false), 6000);
+        } else if (appliedCardId) {
+          fetchLoyaltySlots(appliedCardId);
+        }
         setBookingSuccess(true);
       }
     } catch {}
@@ -630,13 +659,95 @@ export default function PublicStore() {
               </div>
 
               {loyaltyCardInfo.status === "approved" ? (
-                <div className="flex flex-col items-center text-center gap-3 py-4">
-                  <div className="w-20 h-20 rounded-2xl flex items-center justify-center" style={{ background: "rgba(34,197,94,0.12)", border: "2px solid #22c55e" }}>
-                    <CreditCard className="w-10 h-10" style={{ color: "#22c55e" }} />
+                <div className="w-full flex flex-col gap-4">
+                  {/* Card refresh notification */}
+                  {cardRefreshNotif && (
+                    <div className="w-full rounded-2xl px-4 py-3 flex items-center gap-3 animate-pulse"
+                      style={{ background: "linear-gradient(135deg,#16a34a,#22c55e)", boxShadow: "0 4px 20px rgba(34,197,94,0.4)" }}>
+                      <span className="text-2xl">🎉</span>
+                      <div>
+                        <p className="text-white font-bold text-sm" style={{ fontFamily: "'Montserrat', sans-serif" }}>Card is Refreshed!</p>
+                        <p className="text-green-100 text-xs">Your loyalty card has been renewed. New cycle started!</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 10 booking circles */}
+                  <div className="w-full rounded-2xl p-4" style={{ background: "#fff", border: "1px solid rgba(34,197,94,0.2)" }}>
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-bold text-gray-800" style={{ fontFamily: "'Montserrat', sans-serif" }}>Booking Progress</p>
+                      <div className="flex items-center gap-3 text-[10px] text-gray-400">
+                        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-yellow-400" />Pending</span>
+                        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-green-500" />Done</span>
+                        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full" style={{ background: "#e5e7eb" }} />Empty</span>
+                      </div>
+                    </div>
+
+                    {loyaltySlotsLoading ? (
+                      <div className="grid grid-cols-5 gap-3">
+                        {Array.from({ length: 10 }).map((_, i) => (
+                          <div key={i} className="flex flex-col items-center gap-1">
+                            <div className="w-10 h-10 rounded-full animate-pulse" style={{ background: "#e5e7eb" }} />
+                            <span className="text-[9px] text-gray-300">{i + 1}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-5 gap-3">
+                        {(loyaltySlots.length === 10 ? loyaltySlots : Array.from({ length: 10 }).map((_, i) => loyaltySlots[i] ?? { status: "empty" as const })).map((slot, i) => (
+                          <div key={i} className="flex flex-col items-center gap-1">
+                            <div
+                              className="w-10 h-10 rounded-full flex items-center justify-center transition-all"
+                              style={{
+                                background:
+                                  slot.status === "completed" ? "#22c55e" :
+                                  slot.status === "pending" ? "#fbbf24" :
+                                  "#e5e7eb",
+                                border:
+                                  slot.status === "completed" ? "2.5px solid #16a34a" :
+                                  slot.status === "pending" ? "2.5px solid #d97706" :
+                                  "2px solid #d1d5db",
+                                boxShadow:
+                                  slot.status === "completed" ? "0 2px 8px rgba(34,197,94,0.35)" :
+                                  slot.status === "pending" ? "0 2px 8px rgba(251,191,36,0.4)" :
+                                  "none",
+                              }}
+                            >
+                              {slot.status === "completed" && (
+                                <svg width="16" height="12" viewBox="0 0 16 12" fill="none">
+                                  <path d="M1.5 6L6 10.5L14.5 1.5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              )}
+                              {slot.status === "pending" && (
+                                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                  <circle cx="7" cy="7" r="3" fill="white" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className="text-[9px] font-semibold" style={{ color: slot.status === "empty" ? "#d1d5db" : slot.status === "completed" ? "#16a34a" : "#d97706" }}>{i + 1}</span>
+                            {slot.isCarryOver && (
+                              <span className="text-[8px] text-orange-400 font-bold leading-none">carry</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="mt-3 flex justify-between items-center">
+                      <p className="text-[10px] text-gray-400">
+                        {loyaltySlots.filter(s => s.status === "completed").length} completed · {loyaltySlots.filter(s => s.status === "pending").length} pending
+                      </p>
+                      <p className="text-[10px] font-bold" style={{ color: "#22c55e" }}>
+                        {loyaltySlots.filter(s => s.status !== "empty").length}/10
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-lg font-bold text-gray-900" style={{ fontFamily: "'Montserrat', sans-serif" }}>Congratulations 🎉</p>
-                  <p className="text-sm font-semibold" style={{ color: "#22c55e" }}>Your Loyalty card is approved</p>
-                  <p className="text-xs text-gray-400 mt-1">Name: {loyaltyCardInfo.name}</p>
+
+                  {/* Name badge */}
+                  <div className="flex flex-col items-center text-center gap-1 py-2">
+                    <p className="text-sm font-semibold text-gray-400">Name: {loyaltyCardInfo.name}</p>
+                    <p className="text-xs text-gray-300">{loyaltyCardInfo.mobile}</p>
+                  </div>
                 </div>
               ) : (
                 <div className="flex flex-col items-center text-center gap-3 py-4">

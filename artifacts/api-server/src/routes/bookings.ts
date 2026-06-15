@@ -3,6 +3,7 @@ import { Booking } from "../models/Booking";
 import { Product } from "../models/Product";
 import { Store } from "../models/Store";
 import { Notification } from "../models/Notification";
+import { LoyaltyCard } from "../models/LoyaltyCard";
 import { AuthRequest, requireAuth } from "../middlewares/auth";
 import { requireDb } from "../middlewares/dbCheck";
 
@@ -57,6 +58,8 @@ function formatBooking(b: InstanceType<typeof Booking>) {
     seenByAdmin: b.seenByAdmin,
     tryOnImage: b.tryOnImage ?? null,
     loyaltyCardApplied: b.loyaltyCardApplied ?? false,
+    loyaltyCardId: b.loyaltyCardId ?? null,
+    loyaltyCardGeneration: b.loyaltyCardGeneration ?? null,
     completed: b.completed ?? false,
     completedAt: b.completedAt ? b.completedAt.toISOString() : null,
     createdAt: b.createdAt.toISOString(),
@@ -122,6 +125,16 @@ router.post("/bookings", async (req, res) => {
       return;
     }
 
+    let loyaltyCardGeneration: number | undefined;
+    let cardDoc: InstanceType<typeof LoyaltyCard> | null = null;
+
+    if (loyaltyCardApplied && loyaltyCardId) {
+      cardDoc = await LoyaltyCard.findById(loyaltyCardId);
+      if (cardDoc) {
+        loyaltyCardGeneration = cardDoc.cardGeneration;
+      }
+    }
+
     const booking = await Booking.create({
       productId,
       customerName,
@@ -131,6 +144,7 @@ router.post("/bookings", async (req, res) => {
       tryOnImage: tryOnImage || undefined,
       loyaltyCardApplied: !!loyaltyCardApplied,
       loyaltyCardId: loyaltyCardId || undefined,
+      loyaltyCardGeneration,
     });
 
     const notifMessage = loyaltyCardApplied
@@ -146,6 +160,24 @@ router.post("/bookings", async (req, res) => {
       storeId: product.storeId ?? undefined,
     });
 
+    let cardRefreshed = false;
+
+    if (cardDoc && loyaltyCardGeneration !== undefined) {
+      const countInGen = await Booking.countDocuments({
+        loyaltyCardId: loyaltyCardId,
+        loyaltyCardGeneration: loyaltyCardGeneration,
+        ignored: { $ne: true },
+      });
+
+      if (countInGen >= 10) {
+        await LoyaltyCard.findByIdAndUpdate(loyaltyCardId, {
+          cardGeneration: loyaltyCardGeneration + 1,
+          refreshedAt: new Date(),
+        });
+        cardRefreshed = true;
+      }
+    }
+
     res.status(201).json({
       id: String(booking._id),
       productId: String(booking.productId),
@@ -156,7 +188,10 @@ router.post("/bookings", async (req, res) => {
       selectedSize: booking.selectedSize,
       ignored: booking.ignored,
       loyaltyCardApplied: booking.loyaltyCardApplied,
+      loyaltyCardId: booking.loyaltyCardId ?? null,
+      loyaltyCardGeneration: booking.loyaltyCardGeneration ?? null,
       createdAt: booking.createdAt.toISOString(),
+      cardRefreshed,
     });
   } catch (err) {
     req.log.error({ err }, "Create booking error");
