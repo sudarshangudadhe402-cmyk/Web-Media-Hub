@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
+import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
 import NotFound from "@/pages/not-found";
 import { useEffect, useState } from "react";
 
@@ -46,6 +47,7 @@ function ProtectedRoute({ component: Component, adminOnly = false }: { component
   const { user, isLoading } = useAuth();
   const [_, setLocation] = useLocation();
   const { legalDone } = useLegalStatus(user?.id, user?.role);
+  useInactivityLogout();
 
   useEffect(() => {
     if (isLoading) return;
