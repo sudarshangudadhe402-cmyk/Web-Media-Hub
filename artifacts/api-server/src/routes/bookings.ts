@@ -33,6 +33,17 @@ async function getMyProductIds(userId: string): Promise<string[]> {
   return products.map((p) => String(p._id));
 }
 
+/** Verify that a booking belongs to the calling admin's store */
+async function verifyBookingOwnership(bookingId: string, userId: string): Promise<boolean> {
+  const booking = await Booking.findById(bookingId).select("productId").lean();
+  if (!booking) return false;
+  const store = await Store.findOne({ ownerId: userId }).select("_id").lean();
+  if (!store) return false;
+  const product = await Product.findById(booking.productId).select("storeId").lean();
+  if (!product) return false;
+  return product.storeId === String(store._id);
+}
+
 function formatBooking(b: InstanceType<typeof Booking>) {
   return {
     id: String(b._id),
@@ -153,8 +164,15 @@ router.post("/bookings", async (req, res) => {
   }
 });
 
-router.patch("/bookings/:id/complete", requireAuth, async (req, res) => {
+router.patch("/bookings/:id/complete", requireAuth, async (req: AuthRequest, res) => {
   try {
+    const userId = String(req.user!._id);
+    const isOwner = await verifyBookingOwnership(req.params.id, userId);
+    if (!isOwner) {
+      res.status(403).json({ error: "Access denied: this booking does not belong to your store" });
+      return;
+    }
+
     const booking = await Booking.findByIdAndUpdate(
       req.params.id,
       { completed: true, completedAt: new Date() },
@@ -173,8 +191,15 @@ router.patch("/bookings/:id/complete", requireAuth, async (req, res) => {
   }
 });
 
-router.patch("/bookings/:id/seen", requireAuth, async (req, res) => {
+router.patch("/bookings/:id/seen", requireAuth, async (req: AuthRequest, res) => {
   try {
+    const userId = String(req.user!._id);
+    const isOwner = await verifyBookingOwnership(req.params.id, userId);
+    if (!isOwner) {
+      res.status(403).json({ error: "Access denied: this booking does not belong to your store" });
+      return;
+    }
+
     const booking = await Booking.findByIdAndUpdate(
       req.params.id,
       { seenByAdmin: true },
@@ -193,8 +218,15 @@ router.patch("/bookings/:id/seen", requireAuth, async (req, res) => {
   }
 });
 
-router.patch("/bookings/:id/ignore", requireAuth, async (req, res) => {
+router.patch("/bookings/:id/ignore", requireAuth, async (req: AuthRequest, res) => {
   try {
+    const userId = String(req.user!._id);
+    const isOwner = await verifyBookingOwnership(req.params.id, userId);
+    if (!isOwner) {
+      res.status(403).json({ error: "Access denied: this booking does not belong to your store" });
+      return;
+    }
+
     const booking = await Booking.findByIdAndUpdate(
       req.params.id,
       { ignored: true },

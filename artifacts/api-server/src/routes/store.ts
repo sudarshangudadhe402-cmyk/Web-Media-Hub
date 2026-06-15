@@ -29,17 +29,7 @@ function formatStore(s: InstanceType<typeof Store>) {
 }
 
 async function getStoreForUser(userId: string) {
-  // Try to find this admin's own store
-  let store = await Store.findOne({ ownerId: userId });
-  if (!store) {
-    // Migration: claim the first unclaimed store
-    store = await Store.findOneAndUpdate(
-      { ownerId: { $exists: false } },
-      { ownerId: userId },
-      { new: true }
-    );
-  }
-  return store;
+  return Store.findOne({ ownerId: userId });
 }
 
 router.get("/store", requireAuth, async (req: AuthRequest, res) => {
