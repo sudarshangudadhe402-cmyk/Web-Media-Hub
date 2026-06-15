@@ -491,12 +491,34 @@ export default function PublicStore() {
             ctx.globalAlpha = 0.5;
             ctx.drawImage(clothImg.complete && clothImg.naturalWidth ? clothImg : cImg, 70, 70, 260, 310);
             ctx.globalAlpha = 1;
+
+            // Bottom bar
             ctx.fillStyle = "rgba(0,0,0,0.5)";
             ctx.fillRect(0, 462, 400, 38);
             ctx.fillStyle = "#2874F0";
             ctx.font = "bold 12px sans-serif";
             ctx.textAlign = "center";
-            ctx.fillText("AI Virtual Try-On • Web Media Hub", 200, 484);
+            ctx.fillText("AI Virtual Try-On", 200, 484);
+
+            // Store name watermark — bottom-left corner
+            const storeName = data?.name ?? "";
+            if (storeName) {
+              const padding = 6;
+              ctx.font = "bold 11px sans-serif";
+              const textW = ctx.measureText(storeName).width;
+              const badgeW = textW + padding * 2;
+              const badgeH = 20;
+              const bx = 8;
+              const by = 436;
+              ctx.fillStyle = "rgba(0,0,0,0.55)";
+              ctx.beginPath();
+              ctx.roundRect(bx, by, badgeW, badgeH, 4);
+              ctx.fill();
+              ctx.fillStyle = "#ffffff";
+              ctx.textAlign = "left";
+              ctx.fillText(storeName, bx + padding, by + 14);
+            }
+
             setTryOnResult(canvas.toDataURL("image/jpeg", 0.88));
             resolve();
           };
