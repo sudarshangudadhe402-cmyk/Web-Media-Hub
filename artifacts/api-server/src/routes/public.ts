@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { Store } from "../models/Store";
 import { Product } from "../models/Product";
 import { Notification } from "../models/Notification";
@@ -8,6 +8,41 @@ import { LikeEvent } from "../models/LikeEvent";
 const router = Router();
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+// ─── In-memory IP rate limiter for public endpoints ──────────────────────────
+const _rlStore = new Map<string, { count: number; resetAt: number }>();
+
+// Clean stale entries every 10 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, rec] of _rlStore.entries()) {
+    if (now > rec.resetAt) _rlStore.delete(key);
+  }
+}, 10 * 60 * 1000);
+
+function ipRateLimit(maxReqs: number, windowMs: number) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const ip =
+      (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+      req.socket?.remoteAddress ||
+      "unknown";
+    const key = `${req.path}::${ip}`;
+    const now = Date.now();
+    const rec = _rlStore.get(key);
+
+    if (!rec || now > rec.resetAt) {
+      _rlStore.set(key, { count: 1, resetAt: now + windowMs });
+      return next();
+    }
+    rec.count++;
+    if (rec.count > maxReqs) {
+      res.status(429).json({ error: "Too many requests. Please slow down." });
+      return;
+    }
+    next();
+  };
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 router.get("/public/store/:slug", async (req, res) => {
   try {
@@ -88,52 +123,60 @@ router.get("/public/booking-status/:id", async (req, res) => {
   }
 });
 
-/* Public like — called from storefront, no auth required */
-router.post("/public/products/:id/like", async (req, res) => {
-  try {
-    const product = await Product.findById(req.params.id);
-    if (!product) {
-      res.status(404).json({ error: "Product not found" });
-      return;
+// Rate-limited: max 10 likes per IP per minute per product
+router.post(
+  "/public/products/:id/like",
+  ipRateLimit(10, 60_000),
+  async (req, res) => {
+    try {
+      const product = await Product.findById(req.params.id);
+      if (!product) {
+        res.status(404).json({ error: "Product not found" });
+        return;
+      }
+      product.likeCount += 1;
+      await product.save();
+      await LikeEvent.create({ productId: String(product._id), type: "like" });
+      await Notification.create({
+        type: "like",
+        message: `Someone liked "${product.name}"`,
+        relatedId: String(product._id),
+        storeId: product.storeId ?? undefined,
+      });
+      res.json({ likeCount: product.likeCount });
+    } catch (err) {
+      req.log.error({ err }, "Public like error");
+      res.status(500).json({ error: "Internal server error" });
     }
-    product.likeCount += 1;
-    await product.save();
-    await LikeEvent.create({ productId: String(product._id), type: "like" });
-    await Notification.create({
-      type: "like",
-      message: `Someone liked "${product.name}"`,
-      relatedId: String(product._id),
-      storeId: product.storeId ?? undefined,
-    });
-    res.json({ likeCount: product.likeCount });
-  } catch (err) {
-    req.log.error({ err }, "Public like error");
-    res.status(500).json({ error: "Internal server error" });
   }
-});
+);
 
-/* Virtual Try-On — increments tryOnLikeCount separately */
-router.post("/public/products/:id/tryon", async (req, res) => {
-  try {
-    const product = await Product.findById(req.params.id);
-    if (!product) {
-      res.status(404).json({ error: "Product not found" });
-      return;
+// Rate-limited: max 5 try-ons per IP per minute per product
+router.post(
+  "/public/products/:id/tryon",
+  ipRateLimit(5, 60_000),
+  async (req, res) => {
+    try {
+      const product = await Product.findById(req.params.id);
+      if (!product) {
+        res.status(404).json({ error: "Product not found" });
+        return;
+      }
+      product.tryOnLikeCount = (product.tryOnLikeCount ?? 0) + 1;
+      await product.save();
+      await LikeEvent.create({ productId: String(product._id), type: "tryon" });
+      await Notification.create({
+        type: "like",
+        message: `A customer tried "${product.name}" virtually (Virtual Try-On)`,
+        relatedId: String(product._id),
+        storeId: product.storeId ?? undefined,
+      });
+      res.json({ success: true, tryOnLikeCount: product.tryOnLikeCount });
+    } catch (err) {
+      req.log.error({ err }, "Try-on notification error");
+      res.status(500).json({ error: "Internal server error" });
     }
-    product.tryOnLikeCount = (product.tryOnLikeCount ?? 0) + 1;
-    await product.save();
-    await LikeEvent.create({ productId: String(product._id), type: "tryon" });
-    await Notification.create({
-      type: "like",
-      message: `A customer tried "${product.name}" virtually (Virtual Try-On)`,
-      relatedId: String(product._id),
-      storeId: product.storeId ?? undefined,
-    });
-    res.json({ success: true, tryOnLikeCount: product.tryOnLikeCount });
-  } catch (err) {
-    req.log.error({ err }, "Try-on notification error");
-    res.status(500).json({ error: "Internal server error" });
   }
-});
+);
 
 export default router;

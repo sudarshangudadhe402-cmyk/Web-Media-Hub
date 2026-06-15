@@ -89,7 +89,6 @@ router.post("/public/loyalty-card/request", async (req, res) => {
       requestedAt: card.requestedAt,
     });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

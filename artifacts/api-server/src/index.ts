@@ -5,12 +5,22 @@ import { User } from "./models/User";
 import { Store } from "./models/Store";
 import { Product } from "./models/Product";
 
+// ─── Global crash handlers — prevent silent server death ─────────────────────
+process.on("uncaughtException", (err) => {
+  logger.error({ err }, "Uncaught exception — shutting down safely");
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason) => {
+  logger.error({ reason }, "Unhandled promise rejection — shutting down safely");
+  process.exit(1);
+});
+// ─────────────────────────────────────────────────────────────────────────────
+
 const rawPort = process.env["PORT"];
 
 if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
+  throw new Error("PORT environment variable is required but was not provided.");
 }
 
 const port = Number(rawPort);
@@ -24,12 +34,15 @@ async function seedSuperAdmin() {
   try {
     const existing = await User.findOne({ role: "super_admin" });
     if (!existing) {
-      await User.create({
-        username: "Mr____Sid____55",
-        password: "7666220521_SID",
-        role: "super_admin",
-      });
-      logger.info("Default super admin created: Mr____Sid____55");
+      // Read credentials from env — never hardcode in source
+      const username = process.env.SEED_SUPER_ADMIN_USERNAME;
+      const password = process.env.SEED_SUPER_ADMIN_PASSWORD;
+      if (!username || !password) {
+        logger.warn("No super admin found and SEED_SUPER_ADMIN_USERNAME / SEED_SUPER_ADMIN_PASSWORD env vars not set — skipping seed");
+        return;
+      }
+      await User.create({ username, password, plainPassword: password, role: "super_admin" });
+      logger.info({ username }, "Default super admin created from env vars");
     }
   } catch (err) {
     logger.error({ err }, "Failed to seed super admin");
@@ -50,10 +63,7 @@ async function cleanupSuperAdminProducts() {
     if (count === 0) return;
 
     const result = await Product.deleteMany({ storeId });
-    logger.info(
-      { deleted: result.deletedCount },
-      "Cleaned up super-admin store products"
-    );
+    logger.info({ deleted: result.deletedCount }, "Cleaned up super-admin store products");
   } catch (err) {
     logger.error({ err }, "Failed to cleanup super-admin products");
   }

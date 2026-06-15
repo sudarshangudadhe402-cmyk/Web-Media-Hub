@@ -1,10 +1,52 @@
-import express, { type Express } from "express";
+import express, { type Express, Request, Response, NextFunction } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
+
+// ─── Security Headers ────────────────────────────────────────────────────────
+app.use((_req: Request, res: Response, next: NextFunction) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  res.removeHeader("X-Powered-By");
+  next();
+});
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ─── CORS — restrict to known origins ────────────────────────────────────────
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow same-origin (no Origin header) and Replit proxy requests
+      if (!origin) return callback(null, true);
+      // Allow if explicitly listed
+      if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) {
+        return callback(null, true);
+      }
+      // Allow Replit dev domains (*.replit.dev, *.repl.co, *.replit.app)
+      if (/\.(replit\.dev|repl\.co|replit\.app|janeway\.replit\.dev)$/.test(origin)) {
+        return callback(null, true);
+      }
+      // Allow localhost in development
+      if (process.env.NODE_ENV !== "production" && /^https?:\/\/localhost(:\d+)?$/.test(origin)) {
+        return callback(null, true);
+      }
+      callback(new Error("CORS: origin not allowed"));
+    },
+    credentials: true,
+  })
+);
+// ─────────────────────────────────────────────────────────────────────────────
 
 app.use(
   pinoHttp({
@@ -23,12 +65,28 @@ app.use(
         };
       },
     },
-  }),
+  })
 );
-app.use(cors());
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// Limit body size — 10 MB for image upload endpoints, 1 MB for everything else
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const isImageUpload = req.path.includes("/upload-image");
+  express.json({ limit: isImageUpload ? "10mb" : "1mb" })(req, res, next);
+});
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
 app.use("/api", router);
+
+// ─── Global error handler ─────────────────────────────────────────────────────
+app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
+  // Don't expose internal error details to clients
+  if (err.message?.startsWith("CORS")) {
+    res.status(403).json({ error: "Forbidden: origin not allowed" });
+    return;
+  }
+  (req as any).log?.error({ err }, "Unhandled route error");
+  res.status(500).json({ error: "Internal server error" });
+});
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default app;
