@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import {
   useSubmitStoreRequest,
   useMyStoreRequests,
@@ -34,6 +35,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function StoreRequest() {
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const submitRequest = useSubmitStoreRequest();
@@ -242,7 +244,7 @@ export default function StoreRequest() {
         {/* Choose Plan */}
         <button
           type="button"
-          onClick={() => window.open(import.meta.env.BASE_URL + "pricing", "_blank")}
+          onClick={() => setLocation("/pricing")}
           className="w-full flex items-center justify-between gap-3 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-600 hover:to-yellow-500 active:opacity-90 transition-all text-black rounded-xl px-5 py-4 font-semibold shadow-md"
         >
           <div className="flex items-center gap-2">
