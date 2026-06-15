@@ -14,7 +14,6 @@ import { useState, useEffect } from "react";
 import { isGateOpen, openGate, closeGate } from "@/lib/gate";
 
 const queryClient = new QueryClient();
-console.log("[DBG] BASE_URL:", import.meta.env.BASE_URL, "GATE_CODE:", GATE_CODE);
 
 // ─── Gateway protection ───────────────────────────────────────────────────────
 const GATE_CODE = import.meta.env.VITE_GATE_CODE || "SID-WMH-SA";
