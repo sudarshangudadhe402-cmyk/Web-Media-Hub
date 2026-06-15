@@ -808,7 +808,7 @@ export default function PublicStore() {
                     onClick={() => { setLcTab("registration"); setLcLoginError(null); }}
                     className="flex-1 py-3 text-sm font-bold z-10 transition-colors rounded-xl"
                     style={{
-                      color: lcTab === "registration" ? "#fff" : "rgba(255,255,255,0.4)",
+                      color: lcTab === "registration" ? "#fff" : "rgba(0,0,0,0.45)",
                       fontFamily: "'Montserrat', sans-serif",
                       transition: "color 0.25s",
                     }}
@@ -819,7 +819,7 @@ export default function PublicStore() {
                     onClick={() => { setLcTab("login"); setLoyaltyCardError(null); }}
                     className="flex-1 py-3 text-sm font-bold z-10 transition-colors rounded-xl"
                     style={{
-                      color: lcTab === "login" ? "#fff" : "rgba(255,255,255,0.4)",
+                      color: lcTab === "login" ? "#fff" : "rgba(0,0,0,0.45)",
                       fontFamily: "'Montserrat', sans-serif",
                       transition: "color 0.25s",
                     }}
@@ -893,8 +893,8 @@ export default function PublicStore() {
                         disabled={!lcFormValid}
                         className="w-full font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 transition-all"
                         style={{
-                          background: lcFormValid ? "linear-gradient(135deg,#16a34a,#22c55e)" : "#2a2a2a",
-                          color: lcFormValid ? "white" : "rgba(255,255,255,0.2)",
+                          background: lcFormValid ? "linear-gradient(135deg,#16a34a,#22c55e)" : "#e5e7eb",
+                          color: lcFormValid ? "white" : "#9ca3af",
                           fontFamily: "'Montserrat', sans-serif",
                         }}
                       >
@@ -943,8 +943,8 @@ export default function PublicStore() {
                         disabled={!lcLoginValid}
                         className="w-full font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 transition-all"
                         style={{
-                          background: lcLoginValid ? "linear-gradient(135deg,#16a34a,#22c55e)" : "#2a2a2a",
-                          color: lcLoginValid ? "white" : "rgba(255,255,255,0.2)",
+                          background: lcLoginValid ? "linear-gradient(135deg,#16a34a,#22c55e)" : "#e5e7eb",
+                          color: lcLoginValid ? "white" : "#9ca3af",
                           fontFamily: "'Montserrat', sans-serif",
                         }}
                       >
@@ -1413,8 +1413,8 @@ export default function PublicStore() {
                 disabled={!canBook}
                 className="w-full font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 text-sm"
                 style={{
-                  background: canBook ? "#2874F0" : "#2a2a2a",
-                  color: canBook ? "#0f0f0f" : "rgba(255,255,255,0.2)",
+                  background: canBook ? "#2874F0" : "#e5e7eb",
+                  color: canBook ? "#ffffff" : "#9ca3af",
                   fontFamily: "'Montserrat', sans-serif",
                 }}
               >
@@ -1427,7 +1427,7 @@ export default function PublicStore() {
               <CheckCircle2 className="w-16 h-16 mb-4" style={{ color: "#2874F0" }} />
               <h3 className="text-xl font-bold text-gray-900 mb-2" style={{ fontFamily: "'Montserrat', sans-serif" }}>Booking Confirmed!</h3>
               <p className="text-sm text-gray-500 mb-6">
-                Your booking for <strong className="text-white">{selectedProduct.name}</strong> has been received.
+                Your booking for <strong className="text-gray-900">{selectedProduct.name}</strong> has been received.
               </p>
               <button
                 onClick={() => setView("mybookings")}
@@ -1754,7 +1754,7 @@ export default function PublicStore() {
                         )}
                       </div>
                       <div className="mt-1.5 space-y-0.5">
-                        <p className="text-[11px] font-medium text-white/70 line-clamp-2 leading-tight">{p.name}</p>
+                        <p className="text-[11px] font-medium text-gray-700 line-clamp-2 leading-tight">{p.name}</p>
                         <p className="text-[12px] font-bold text-gray-900">₹{p.discountPrice.toLocaleString()}</p>
                       </div>
                     </div>
@@ -1971,7 +1971,7 @@ export default function PublicStore() {
                 >
                   <span className="text-xl">{icon}</span>
                   <div className="flex-1">
-                    <p className="text-sm font-bold" style={{ color: sortBy === key ? "#2874F0" : "rgba(255,255,255,0.8)" }}>{label}</p>
+                    <p className="text-sm font-bold" style={{ color: sortBy === key ? "#2874F0" : "#374151" }}>{label}</p>
                     <p className="text-[11px] text-gray-400">{desc}</p>
                   </div>
                   {sortBy === key && <div className="w-4 h-4 rounded-full flex items-center justify-center" style={{ background: "#2874F0" }}><div className="w-2 h-2 rounded-full bg-black" /></div>}
