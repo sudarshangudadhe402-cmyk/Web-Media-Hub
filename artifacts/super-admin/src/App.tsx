@@ -54,8 +54,8 @@ function LoginRoute() {
     window.history.replaceState({}, "", window.location.pathname);
   }
 
-  // If gate is not open, show nothing (looks like a dead/404 page)
-  if (!isGateOpen()) return <NotFound />;
+  // If gate code is configured but gate is not open, show nothing
+  if (GATE_CODE && !isGateOpen()) return <NotFound />;
 
   return <Login />;
 }
