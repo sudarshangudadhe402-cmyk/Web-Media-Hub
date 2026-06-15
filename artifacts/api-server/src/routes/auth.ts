@@ -129,7 +129,7 @@ router.post("/auth/login", requireDb, async (req, res) => {
     }
 
     if (user.role === "admin" && !user.multiDeviceAllowed && user.sessionId && user.sessionId !== "") {
-      res.status(403).json({ error: "Multy-device not allowed from super-admin, please allow first" });
+      res.status(403).json({ error: "Multi-device not allowed from super-admin, please allow first" });
       return;
     }
 

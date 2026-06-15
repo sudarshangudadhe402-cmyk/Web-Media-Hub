@@ -278,7 +278,7 @@ export default function Dashboard() {
                 className={`bg-white rounded-xl border shadow-sm p-3 flex gap-3 transition-colors ${adminBookingTab !== "completed" ? "cursor-pointer hover:border-primary/40 active:bg-gray-50" : "border-green-100"}`}
               >
                 {(bk.tryOnImage || bk.product?.images?.[0]) ? (
-                  <img src={bk.tryOnImage || bk.product!.images[0]} className="w-16 h-20 object-cover rounded-lg flex-shrink-0" />
+                  <img src={bk.tryOnImage || bk.product?.images?.[0]} className="w-16 h-20 object-cover rounded-lg flex-shrink-0" />
                 ) : (
                   <div className="w-16 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                     <ShoppingBag className="w-6 h-6 text-gray-300" />
@@ -349,7 +349,7 @@ export default function Dashboard() {
           {(selectedBooking.tryOnImage || p?.images?.[0]) && (
             <div className="h-52 bg-gray-100">
               <img
-                src={selectedBooking.tryOnImage || p!.images[0]}
+                src={selectedBooking.tryOnImage || p?.images?.[0]}
                 alt={p?.name}
                 className="w-full h-full object-cover"
               />

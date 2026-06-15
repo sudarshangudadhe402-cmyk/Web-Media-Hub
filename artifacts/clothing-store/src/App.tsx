@@ -36,7 +36,7 @@ function useLegalStatus(userId: string | undefined, role: string | undefined) {
     fetch("/api/legal/status", {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then((data) => setLegalDone(data.completed))
       .catch(() => setLegalDone(true));
   }, [userId, role]);
