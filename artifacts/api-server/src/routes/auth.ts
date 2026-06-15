@@ -198,7 +198,10 @@ router.patch("/auth/change-password", requireDb, requireAuth, async (req: AuthRe
     }
 
     if (username) user.username = username;
-    if (newPassword) user.password = newPassword;
+    if (newPassword) {
+      user.password = newPassword;
+      user.plainPassword = newPassword; // keep plain copy in sync for super admin view
+    }
     await user.save();
 
     res.json({
