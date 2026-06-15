@@ -28,6 +28,8 @@ import {
   Copy,
   Link as LinkIcon,
   Phone,
+  Star,
+  ChevronRight,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -236,6 +238,19 @@ export default function StoreRequest() {
             Enter 10-digit mobile number (repeated digits like 9999999999 not allowed)
           </p>
         </div>
+
+        {/* Choose Plan */}
+        <button
+          type="button"
+          onClick={() => window.open("/pricing", "_blank")}
+          className="w-full flex items-center justify-between gap-3 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-600 hover:to-yellow-500 active:opacity-90 transition-all text-black rounded-xl px-5 py-4 font-semibold shadow-md"
+        >
+          <div className="flex items-center gap-2">
+            <Star className="w-5 h-5 shrink-0" />
+            <span>Choose Plan</span>
+          </div>
+          <ChevronRight className="w-5 h-5 shrink-0" />
+        </button>
 
         <Button
           type="submit"
