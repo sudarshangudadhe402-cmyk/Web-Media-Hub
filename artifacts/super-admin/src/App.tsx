@@ -10,14 +10,8 @@ import Admins from "@/pages/admins";
 import LegalLog from "@/pages/legal-log";
 import Layout from "@/components/layout";
 import NotFound from "@/pages/not-found";
-import { useState, useEffect } from "react";
-import { isGateOpen, openGate, closeGate } from "@/lib/gate";
 
 const queryClient = new QueryClient();
-
-// ─── Gateway protection ───────────────────────────────────────────────────────
-const GATE_CODE = import.meta.env.VITE_GATE_CODE || "SID-WMH-SA";
-// ─────────────────────────────────────────────────────────────────────────────
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -38,43 +32,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <Layout>{children}</Layout>;
 }
 
-function LoginRoute() {
-  const [gateOpen, setGateOpen] = useState<boolean>(() => {
-    const params = new URLSearchParams(window.location.search);
-    const k = params.get("k");
-    if (k && GATE_CODE && k === GATE_CODE) {
-      openGate();
-    }
-    return isGateOpen();
-  });
-
-  useEffect(() => {
-    if (window.location.search.includes("k=")) {
-      window.history.replaceState({}, "", window.location.pathname);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!gateOpen) return;
-    const interval = setInterval(() => {
-      if (!isGateOpen()) {
-        closeGate();
-        setGateOpen(false);
-      }
-    }, 30_000);
-    return () => clearInterval(interval);
-  }, [gateOpen]);
-
-  if (!gateOpen) return <NotFound />;
-  return <Login />;
-}
-
 function Router() {
   const { user, isLoading } = useAuth();
 
   return (
     <Switch>
-      <Route path="/login" component={LoginRoute} />
+      <Route path="/login" component={Login} />
       <Route path="/">
         {isLoading ? null : user ? (
           <Redirect to="/manage-admins" />
