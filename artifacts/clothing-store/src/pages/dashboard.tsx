@@ -718,57 +718,77 @@ export default function Dashboard() {
     <div className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* Row 1: Products (small, left) + Visitors (right) */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* Total Products — compact left card */}
         <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => setLocation("/products")}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Products</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3">
+            <CardTitle className="text-xs font-medium text-muted-foreground">Total Products</CardTitle>
+            <Package className="h-3.5 w-3.5 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{summary.totalProducts}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Categories</CardTitle>
-            <Tags className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div>Top: {summary.categoryCounts.Top}</div>
-              <div>Bottom: {summary.categoryCounts.Bottom}</div>
-              <div>Full Outfit: {summary.categoryCounts["Full Outfit"]}</div>
-              <div>Functional: {summary.categoryCounts.Functional}</div>
+          <CardContent className="px-3 pb-3">
+            <div className="text-3xl font-extrabold text-gray-900">{summary.totalProducts}</div>
+            <div className="grid grid-cols-2 gap-x-2 mt-2">
+              {[
+                { label: "Top", val: summary.categoryCounts.Top },
+                { label: "Bottom", val: summary.categoryCounts.Bottom },
+                { label: "Outfit", val: summary.categoryCounts["Full Outfit"] },
+                { label: "Func", val: summary.categoryCounts.Functional },
+              ].map(({ label, val }) => (
+                <div key={label} className="flex items-center gap-1">
+                  <span className="text-[10px] text-muted-foreground">{label}:</span>
+                  <span className="text-[10px] font-bold text-gray-700">{val}</span>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
 
-        {/* Active Bookings — with pulsing dot for new unseen */}
-        <Card
-          className="cursor-pointer hover:border-primary transition-colors relative overflow-hidden"
-          onClick={() => setView("bookings")}
-        >
-          {unseenCount > 0 && (
-            <span className="absolute top-2.5 right-2.5 flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500" />
-            </span>
-          )}
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Active Bookings</CardTitle>
-            <CalendarCheck className="h-4 w-4 text-muted-foreground" />
+        {/* Visitors card — right */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3">
+            <CardTitle className="text-xs font-medium text-muted-foreground">Store Visitors</CardTitle>
+            <span className="text-sm">👥</span>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{summary.activeBookings}</div>
-            {unseenCount > 0 ? (
-              <p className="text-xs text-rose-500 font-semibold mt-1">{unseenCount} new booking{unseenCount > 1 ? "s" : ""}</p>
-            ) : (
-              <p className="text-xs text-muted-foreground mt-1">Click to view all</p>
-            )}
+          <CardContent className="px-3 pb-3 space-y-2">
+            {[
+              { label: "Today", val: (summary as any).visitors?.today ?? 0, color: "#2874F0", bg: "rgba(40,116,240,0.08)" },
+              { label: "This Month", val: (summary as any).visitors?.month ?? 0, color: "#7c3aed", bg: "rgba(124,58,237,0.08)" },
+              { label: "All Time", val: (summary as any).visitors?.all ?? 0, color: "#16a34a", bg: "rgba(22,163,74,0.08)" },
+            ].map(({ label, val, color, bg }) => (
+              <div key={label} className="flex items-center justify-between rounded-lg px-2 py-1" style={{ background: bg }}>
+                <span className="text-[11px] font-semibold" style={{ color }}>{label}</span>
+                <span className="text-sm font-extrabold" style={{ color }}>{val.toLocaleString("en-IN")}</span>
+              </div>
+            ))}
           </CardContent>
         </Card>
       </div>
+
+      {/* Row 2: Active Bookings */}
+      <Card
+        className="cursor-pointer hover:border-primary transition-colors relative overflow-hidden"
+        onClick={() => setView("bookings")}
+      >
+        {unseenCount > 0 && (
+          <span className="absolute top-2.5 right-2.5 flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500" />
+          </span>
+        )}
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-sm font-medium">Active Bookings</CardTitle>
+          <CalendarCheck className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{summary.activeBookings}</div>
+          {unseenCount > 0 ? (
+            <p className="text-xs text-rose-500 font-semibold mt-1">{unseenCount} new booking{unseenCount > 1 ? "s" : ""}</p>
+          ) : (
+            <p className="text-xs text-muted-foreground mt-1">Click to view all</p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Digital Loyalty Card section */}
       <Card

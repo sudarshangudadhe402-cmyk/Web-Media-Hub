@@ -4,6 +4,7 @@ import { Product } from "../models/Product";
 import { Notification } from "../models/Notification";
 import { Booking } from "../models/Booking";
 import { LikeEvent } from "../models/LikeEvent";
+import { StoreVisitor } from "../models/StoreVisitor";
 
 const router = Router();
 
@@ -105,6 +106,28 @@ router.get("/public/store/:slug", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// Visit tracking — max 1 count per IP per store per hour
+router.post(
+  "/public/store/:slug/visit",
+  ipRateLimit(1, 60 * 60_000),
+  async (req, res) => {
+    try {
+      const store = await Store.findOne({ publicSlug: req.params.slug }).select("_id").lean();
+      if (!store) { res.status(404).json({ error: "Store not found" }); return; }
+
+      const ip =
+        (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+        req.socket?.remoteAddress ||
+        "unknown";
+
+      await StoreVisitor.create({ storeId: String(store._id), visitorIp: ip, visitedAt: new Date() });
+      res.json({ ok: true });
+    } catch {
+      res.json({ ok: true });
+    }
+  }
+);
 
 router.get("/public/booking-status/:id", async (req, res) => {
   try {

@@ -179,6 +179,11 @@ export default function PublicStore() {
     }
   }, [data]);
 
+  useEffect(() => {
+    if (!slug || !data) return;
+    fetch(`/api/public/store/${slug}/visit`, { method: "POST" }).catch(() => {});
+  }, [slug, !!data]);
+
   function canActOnProduct(storeKey: string, productId: string): boolean {
     try {
       const raw = JSON.parse(localStorage.getItem(storeKey) || "{}") as Record<string, number>;

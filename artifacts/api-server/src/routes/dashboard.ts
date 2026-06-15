@@ -3,6 +3,7 @@ import { Product } from "../models/Product";
 import { Booking } from "../models/Booking";
 import { Notification } from "../models/Notification";
 import { Store } from "../models/Store";
+import { StoreVisitor } from "../models/StoreVisitor";
 import { AuthRequest, requireAuth } from "../middlewares/auth";
 import { requireDb } from "../middlewares/dbCheck";
 
@@ -16,6 +17,11 @@ router.get("/dashboard/summary", requireAuth, async (req: AuthRequest, res) => {
 
     const storeFilter = storeId ? { storeId } : { storeId: "__none__" };
 
+    // Visitor time windows
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+
     const [
       totalProducts,
       topCount,
@@ -24,6 +30,9 @@ router.get("/dashboard/summary", requireAuth, async (req: AuthRequest, res) => {
       functionalCount,
       unreadNotifications,
       funcCatCount,
+      dayVisitorsAgg,
+      monthVisitorsAgg,
+      allVisitorsAgg,
     ] = await Promise.all([
       Product.countDocuments(storeFilter),
       Product.countDocuments({ ...storeFilter, productType: "Top" }),
@@ -32,6 +41,27 @@ router.get("/dashboard/summary", requireAuth, async (req: AuthRequest, res) => {
       Product.countDocuments({ ...storeFilter, productType: "Functional" }),
       storeId ? Notification.countDocuments({ read: false, storeId }) : Promise.resolve(0),
       Product.countDocuments({ ...storeFilter, functionCategory: { $exists: true, $nin: [null, ""] } }),
+      storeId
+        ? StoreVisitor.aggregate([
+            { $match: { storeId, visitedAt: { $gte: todayStart } } },
+            { $group: { _id: "$visitorIp" } },
+            { $count: "total" },
+          ])
+        : Promise.resolve([]),
+      storeId
+        ? StoreVisitor.aggregate([
+            { $match: { storeId, visitedAt: { $gte: monthStart } } },
+            { $group: { _id: "$visitorIp" } },
+            { $count: "total" },
+          ])
+        : Promise.resolve([]),
+      storeId
+        ? StoreVisitor.aggregate([
+            { $match: { storeId } },
+            { $group: { _id: "$visitorIp" } },
+            { $count: "total" },
+          ])
+        : Promise.resolve([]),
     ]);
 
     const myProductIds = storeId
@@ -99,6 +129,11 @@ router.get("/dashboard/summary", requireAuth, async (req: AuthRequest, res) => {
       unreadNotifications,
       recentBookings,
       storeName: store?.name ?? "",
+      visitors: {
+        today: (dayVisitorsAgg as { total: number }[])[0]?.total ?? 0,
+        month: (monthVisitorsAgg as { total: number }[])[0]?.total ?? 0,
+        all: (allVisitorsAgg as { total: number }[])[0]?.total ?? 0,
+      },
     });
   } catch (err) {
     req.log.error({ err }, "Dashboard summary error");
