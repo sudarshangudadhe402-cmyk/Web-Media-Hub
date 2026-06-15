@@ -30,6 +30,7 @@ import {
   Phone,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import PlanSelector, { type PlanId } from "@/components/plan-selector";
 
 export default function StoreRequest() {
   const { toast } = useToast();
@@ -47,6 +48,7 @@ export default function StoreRequest() {
     whatsapp: "",
   });
   const [showPass, setShowPass] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<PlanId | null>(null);
 
   function validateWhatsApp(digits: string): string | null {
     if (digits.length !== 10) return "WhatsApp number must be exactly 10 digits";
@@ -79,6 +81,7 @@ export default function StoreRequest() {
           toast({ title: "Request submitted ✅", description: "Your store request has been sent to the super-admin for approval." });
           queryClient.invalidateQueries({ queryKey: getMyStoreRequestsQueryKey() });
           setForm({ storeName: "", username: "", password: "", adminNumber: "", whatsapp: "" });
+          setSelectedPlan(null);
         },
         onError: (err: any) => {
           // Try every possible path the ApiError might put the message
@@ -237,13 +240,18 @@ export default function StoreRequest() {
           </p>
         </div>
 
+        {/* Plan Selector */}
+        <div className="rounded-2xl bg-[#03020A] border border-white/10 p-4">
+          <PlanSelector selected={selectedPlan} onChange={setSelectedPlan} />
+        </div>
+
         <Button
           type="submit"
-          className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-5"
-          disabled={submitRequest.isPending}
+          className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-5 disabled:opacity-40 disabled:cursor-not-allowed"
+          disabled={submitRequest.isPending || !selectedPlan}
         >
           <SendHorizonal className="w-4 h-4 mr-2" />
-          {submitRequest.isPending ? "Submitting..." : "Submit Request"}
+          {submitRequest.isPending ? "Submitting..." : !selectedPlan ? "Select a Plan to Continue" : "Submit Request"}
         </Button>
       </form>
 
