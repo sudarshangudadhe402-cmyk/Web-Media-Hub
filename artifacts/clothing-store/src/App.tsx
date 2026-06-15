@@ -19,6 +19,7 @@ import AdminsPage from "@/pages/admins";
 import PublicStore from "@/pages/public-store";
 import LegalAgreement from "@/pages/legal-agreement";
 import StoreRequest from "@/pages/store-request";
+import Pricing from "@/pages/pricing";
 import { Layout } from "@/components/layout";
 
 const queryClient = new QueryClient();
@@ -116,6 +117,7 @@ function Router() {
       <Route path="/store-request">
         {() => <ProtectedRoute component={StoreRequest} />}
       </Route>
+      <Route path="/pricing" component={Pricing} />
       <Route path="/store/:slug" component={PublicStore} />
       <Route component={NotFound} />
     </Switch>
