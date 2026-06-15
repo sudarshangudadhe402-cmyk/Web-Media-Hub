@@ -8,8 +8,9 @@ export interface AuthRequest extends Request {
   user?: IUser;
 }
 
-export function signToken(userId: string, sessionId: string): string {
-  return jwt.sign({ id: userId, sessionId }, JWT_SECRET, { expiresIn: "7d" });
+export function signToken(userId: string, sessionId: string, role?: string): string {
+  const expiresIn = role === "super_admin" ? "4h" : "7d";
+  return jwt.sign({ id: userId, sessionId }, JWT_SECRET, { expiresIn });
 }
 
 export async function requireAuth(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {

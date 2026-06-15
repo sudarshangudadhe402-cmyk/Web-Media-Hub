@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
+import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
 import Login from "@/pages/login";
 import ManageAdmins from "@/pages/manage-admins";
 import Admins from "@/pages/admins";
@@ -12,8 +13,21 @@ import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
 
+// ─── Gateway protection ───────────────────────────────────────────────────────
+const GATE_CODE = import.meta.env.VITE_GATE_CODE || "";
+
+function isGateOpen(): boolean {
+  try { return sessionStorage.getItem("wmh_gate") === "1"; } catch { return false; }
+}
+
+function openGate(): void {
+  try { sessionStorage.setItem("wmh_gate", "1"); } catch {}
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
+  useInactivityLogout();
 
   if (isLoading) {
     return (
@@ -30,12 +44,28 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <Layout>{children}</Layout>;
 }
 
+function LoginRoute() {
+  // Check for gateway key in URL
+  const params = new URLSearchParams(window.location.search);
+  const k = params.get("k");
+  if (k && GATE_CODE && k === GATE_CODE) {
+    openGate();
+    // Remove key from URL bar so it's not visible/copyable
+    window.history.replaceState({}, "", window.location.pathname);
+  }
+
+  // If gate is not open, show nothing (looks like a dead/404 page)
+  if (!isGateOpen()) return <NotFound />;
+
+  return <Login />;
+}
+
 function Router() {
   const { user, isLoading } = useAuth();
 
   return (
     <Switch>
-      <Route path="/login" component={Login} />
+      <Route path="/login" component={LoginRoute} />
       <Route path="/">
         {isLoading ? null : user ? (
           <Redirect to="/manage-admins" />

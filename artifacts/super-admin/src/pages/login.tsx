@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { ShieldCheck, Eye, EyeOff, Lock } from "lucide-react";
+import { ShieldCheck, Eye, EyeOff, Lock, AlertTriangle } from "lucide-react";
 
 export default function Login() {
   const { login } = useAuth();
@@ -19,9 +19,27 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [showCode, setShowCode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
+
+  function getRemainingLockout(): string {
+    if (!lockoutUntil) return "";
+    const ms = lockoutUntil - Date.now();
+    if (ms <= 0) return "";
+    const min = Math.ceil(ms / 60000);
+    return `${min} minute${min !== 1 ? "s" : ""}`;
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (lockoutUntil && Date.now() < lockoutUntil) {
+      toast({
+        variant: "destructive",
+        title: "Account Locked",
+        description: `Please wait ${getRemainingLockout()} before trying again.`,
+      });
+      return;
+    }
 
     if (!username.trim() || !password.trim() || !accessCode.trim()) {
       toast({
@@ -44,13 +62,25 @@ export default function Login() {
 
       if (!res.ok) {
         const msg: string = data?.error || "Login failed";
+        const isLocked = res.status === 429 || msg.toLowerCase().includes("locked");
         const isAnotherDevice = msg.toLowerCase().includes("another device");
         const isAccessCode = msg.toLowerCase().includes("access code");
+
+        if (isLocked && data?.lockedUntil) {
+          setLockoutUntil(data.lockedUntil);
+        }
+
         toast({
           variant: "destructive",
-          title: isAnotherDevice ? "Session Replaced" : isAccessCode ? "Invalid Access Code" : "Login Failed",
+          title: isLocked
+            ? "Account Locked"
+            : isAnotherDevice
+            ? "Session Replaced"
+            : isAccessCode
+            ? "Invalid Access Code"
+            : "Login Failed",
           description: msg,
-          duration: 6000,
+          duration: isLocked ? 10000 : 6000,
         });
         return;
       }
@@ -64,6 +94,7 @@ export default function Login() {
         return;
       }
 
+      setLockoutUntil(null);
       login(data.token);
       toast({ title: "Welcome, Super Admin!" });
       setLocation("/manage-admins");
@@ -77,6 +108,9 @@ export default function Login() {
       setIsLoading(false);
     }
   }
+
+  const remainingLockout = getRemainingLockout();
+  const isCurrentlyLocked = !!remainingLockout;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted p-4">
@@ -95,6 +129,16 @@ export default function Login() {
             <CardDescription>Enter your super admin credentials and access code</CardDescription>
           </CardHeader>
           <CardContent>
+            {isCurrentlyLocked && (
+              <div className="mb-4 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  Account temporarily locked. Try again in{" "}
+                  <strong>{remainingLockout}</strong>.
+                </span>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="username">Username</Label>
@@ -104,7 +148,7 @@ export default function Login() {
                   autoComplete="username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  disabled={isLoading}
+                  disabled={isLoading || isCurrentlyLocked}
                 />
               </div>
 
@@ -118,7 +162,7 @@ export default function Login() {
                     autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    disabled={isLoading}
+                    disabled={isLoading || isCurrentlyLocked}
                     className="pr-10"
                   />
                   <button
@@ -144,7 +188,7 @@ export default function Login() {
                     placeholder="••••••••••••"
                     value={accessCode}
                     onChange={(e) => setAccessCode(e.target.value)}
-                    disabled={isLoading}
+                    disabled={isLoading || isCurrentlyLocked}
                     className="pr-10"
                   />
                   <button
@@ -159,8 +203,12 @@ export default function Login() {
                 <p className="text-[11px] text-muted-foreground">Required for all super admin logins</p>
               </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Signing in..." : "Sign in"}
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isLoading || isCurrentlyLocked}
+              >
+                {isLoading ? "Signing in..." : isCurrentlyLocked ? `Locked — wait ${remainingLockout}` : "Sign in"}
               </Button>
             </form>
           </CardContent>
