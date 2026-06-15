@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,7 +38,6 @@ import {
 type Tab = "friend" | "approved" | "rejected";
 
 export default function AiVideo() {
-  const [, setLocation] = useLocation();
   const [addStoreOpen, setAddStoreOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("friend");
@@ -479,9 +478,9 @@ export default function AiVideo() {
               </p>
             </div>
             {/* Choose Plan */}
-            <button
-              type="button"
-              onClick={() => { setAddStoreOpen(false); setLocation("/pricing"); }}
+            <Link
+              href="/pricing"
+              onClick={() => setAddStoreOpen(false)}
               className="w-full flex items-center justify-between gap-3 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-600 hover:to-yellow-500 active:opacity-90 transition-all text-black rounded-xl px-5 py-4 font-semibold shadow-md"
             >
               <div className="flex items-center gap-2">
@@ -489,7 +488,7 @@ export default function AiVideo() {
                 <span>Choose Plan</span>
               </div>
               <ChevronRight className="w-5 h-5 shrink-0" />
-            </button>
+            </Link>
 
             <div className="flex gap-3">
               <Button type="button" variant="outline" className="flex-1" onClick={() => setAddStoreOpen(false)}>Cancel</Button>
