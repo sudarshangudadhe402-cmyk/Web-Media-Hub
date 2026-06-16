@@ -33,12 +33,14 @@ import {
   Link as LinkIcon,
   ExternalLink,
   ChevronRight,
+  ChevronLeft,
 } from "lucide-react";
 
 type Tab = "friend" | "approved" | "rejected";
+type PageView = "main" | "addFriend";
 
 export default function AiVideo() {
-  const [addStoreOpen, setAddStoreOpen] = useState(false);
+  const [pageView, setPageView] = useState<PageView>("main");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("friend");
   const [selectedApproved, setSelectedApproved] = useState<any>(null);
@@ -99,7 +101,7 @@ export default function AiVideo() {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getMyStoreRequestsQueryKey() });
-          setAddStoreOpen(false);
+          setPageView("main");
           setConfirmOpen(true);
           setForm({ username: "", password: "", storeName: "", whatsapp: "" });
         },
@@ -134,6 +136,144 @@ export default function AiVideo() {
 
   const tabData = { friend: pending, approved, rejected };
 
+  /* ── Full-page Add Friend Store ── */
+  if (pageView === "addFriend") {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        {/* Header */}
+        <div className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 border-b bg-background">
+          <button
+            onClick={() => { setPageView("main"); setForm({ username: "", password: "", storeName: "", whatsapp: "" }); }}
+            className="p-1.5 rounded-full hover:bg-muted transition-colors"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <div className="flex items-center gap-2">
+            <Store className="w-5 h-5 text-green-600" />
+            <span className="font-bold text-base">Add My Friend's Store</span>
+          </div>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleDone} className="flex-1 flex flex-col p-5 gap-5 max-w-lg mx-auto w-full">
+          <div className="space-y-1.5">
+            <Label htmlFor="username">Username</Label>
+            <Input id="username" name="username" placeholder="Friend's username" value={form.username} onChange={handleFormChange} required data-testid="friend-username" />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="password">Password</Label>
+            <Input id="password" name="password" type="password" placeholder="Friend's password" value={form.password} onChange={handleFormChange} required data-testid="friend-password" />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="storeName">Store Name</Label>
+            <Input id="storeName" name="storeName" placeholder="Friend's store name" value={form.storeName} onChange={handleFormChange} required data-testid="friend-store-name" />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="whatsapp" className="flex items-center gap-1.5">
+              Store Owner WhatsApp Number
+              <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+            </Label>
+            <div className="flex items-center border border-input rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-ring">
+              <span className="px-3 py-2 bg-muted text-sm font-medium text-muted-foreground border-r border-input shrink-0">
+                +91
+              </span>
+              <input
+                id="whatsapp"
+                name="whatsapp"
+                type="tel"
+                inputMode="numeric"
+                maxLength={10}
+                placeholder="0000000000"
+                value={form.whatsapp}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                  setForm((p) => ({ ...p, whatsapp: val }));
+                }}
+                className="flex-1 px-3 py-2 text-sm bg-background outline-none"
+                required
+                data-testid="friend-whatsapp"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Enter 10-digit mobile number (repeated digits like 9999999999 not allowed)
+            </p>
+          </div>
+
+          {/* Choose Plan button */}
+          <button
+            type="button"
+            onClick={() => toast({ title: "Plans", description: "Please contact admin to choose a plan for this store." })}
+            className="w-full flex items-center justify-between gap-3 rounded-xl px-5 py-4 font-semibold text-base transition-colors active:opacity-80"
+            style={{ background: "linear-gradient(135deg,#f59e0b,#fbbf24)", color: "#fff", boxShadow: "0 2px 12px rgba(251,191,36,0.4)" }}
+          >
+            <div className="flex items-center gap-3">
+              <Star className="w-5 h-5 fill-white text-white shrink-0" />
+              <span>Choose Plan</span>
+            </div>
+            <ChevronRight className="w-5 h-5 shrink-0" />
+          </button>
+
+          {/* Actions */}
+          <div className="flex gap-3 mt-auto pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={() => { setPageView("main"); setForm({ username: "", password: "", storeName: "", whatsapp: "" }); }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+              disabled={submitRequest.isPending}
+            >
+              {submitRequest.isPending ? "Submitting..." : "Done"}
+            </Button>
+          </div>
+        </form>
+
+        {/* Confirmation Popup */}
+        <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-center justify-center">
+                <Video className="w-5 h-5 text-primary" />
+                Store Submitted
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3">
+                <MapPin className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-amber-800 text-sm">Payment Required for Approval</p>
+                  <p className="text-amber-700 text-sm mt-1">
+                    The store owner will need to complete a payment to get their store approved on Web Media Hub.
+                  </p>
+                </div>
+              </div>
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex gap-3">
+                <Gift className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-green-800 text-sm">Your Reward</p>
+                  <p className="text-green-700 text-sm mt-1">
+                    Once the store is approved, you will receive{" "}
+                    <span className="font-bold text-green-800">2000 free NGS Coins</span> added to your account.
+                  </p>
+                </div>
+              </div>
+              <Button className="w-full" onClick={() => setConfirmOpen(false)} data-testid="confirm-close-btn">Got it</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
+  /* ── Main Page ── */
   return (
     <div className="space-y-8 pb-12 max-w-4xl mx-auto">
 
@@ -146,7 +286,7 @@ export default function AiVideo() {
       {/* Add My Friend's Store — Green CTA */}
       <button
         data-testid="add-friend-store-btn"
-        onClick={() => setAddStoreOpen(true)}
+        onClick={() => setPageView("addFriend")}
         className="w-full flex items-center justify-between gap-4 bg-green-600 hover:bg-green-700 active:bg-green-800 transition-colors text-white rounded-xl px-6 py-5 shadow-lg"
       >
         <div className="flex items-center gap-3">
@@ -164,7 +304,6 @@ export default function AiVideo() {
         <CardContent className="p-5">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Rewards</p>
           <div className="flex items-start gap-4">
-            {/* Left */}
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -175,7 +314,6 @@ export default function AiVideo() {
               <p className="text-4xl font-bold tracking-tight text-primary leading-none mt-2">{rewardCoins}</p>
               <p className="text-xs text-muted-foreground mt-1.5">Ai promotional video's coin earned</p>
             </div>
-            {/* Right */}
             <div className="text-right shrink-0">
               <p className="text-xs text-muted-foreground font-medium">Per approved store</p>
               <p className="text-3xl font-bold text-green-600 leading-none mt-1">+2000</p>
@@ -188,11 +326,9 @@ export default function AiVideo() {
       {/* Global Link Row */}
       {globalLink && (
         <div className="rounded-xl border border-primary/20 overflow-hidden">
-          {/* Header row */}
           <div className="flex items-center px-4 py-2.5 bg-primary/5 border-b border-primary/20">
             <span className="text-sm font-bold text-primary tracking-wide">NexGenStudio</span>
           </div>
-          {/* Link row */}
           <div className="flex items-center gap-3 px-4 py-3">
             <LinkIcon className="w-4 h-4 text-primary shrink-0" />
             <a
@@ -216,7 +352,7 @@ export default function AiVideo() {
         </div>
       )}
 
-      {/* How to Claim Rewards — green button */}
+      {/* How to Claim Rewards */}
       <button
         onClick={() => setClaimHelpOpen(true)}
         className="w-full flex items-center justify-between gap-3 bg-green-600 hover:bg-green-700 active:bg-green-800 transition-colors text-white rounded-xl px-5 py-4"
@@ -232,7 +368,6 @@ export default function AiVideo() {
       <div>
         <h2 className="text-lg font-semibold mb-4">Friends Store</h2>
 
-        {/* Tabs */}
         <div className="flex gap-2 mb-4">
           {tabItems.map(({ key, label, icon: Icon, count, activeClass }) => (
             <button
@@ -252,7 +387,6 @@ export default function AiVideo() {
           ))}
         </div>
 
-        {/* Tab Content */}
         {tabData[activeTab].length === 0 ? (
           <Card className="border-dashed border-2">
             <CardContent className="p-12 text-center space-y-3">
@@ -332,7 +466,6 @@ export default function AiVideo() {
           </DialogHeader>
           {selectedApproved && (
             <div className="space-y-4 pt-1">
-              {/* Submitted info */}
               <div className="rounded-xl border overflow-hidden bg-muted/40">
                 <div className="px-4 py-2.5 bg-muted border-b">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Submitted Information</p>
@@ -363,7 +496,6 @@ export default function AiVideo() {
                 </div>
               </div>
 
-              {/* Reward Code + Link */}
               <div className="rounded-xl border border-green-200 overflow-hidden">
                 <div className="px-4 py-2.5 bg-green-50 border-b border-green-200">
                   <p className="text-xs font-bold text-green-700 uppercase tracking-widest">Store Rewards</p>
@@ -422,68 +554,6 @@ export default function AiVideo() {
               </div>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Friend Store Dialog */}
-      <Dialog open={addStoreOpen} onOpenChange={setAddStoreOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Store className="w-5 h-5 text-green-600" />
-              Add My Friend's Store
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleDone} className="space-y-4 pt-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="username">Username</Label>
-              <Input id="username" name="username" placeholder="Friend's username" value={form.username} onChange={handleFormChange} required data-testid="friend-username" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" name="password" type="password" placeholder="Friend's password" value={form.password} onChange={handleFormChange} required data-testid="friend-password" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="storeName">Store Name</Label>
-              <Input id="storeName" name="storeName" placeholder="Friend's store name" value={form.storeName} onChange={handleFormChange} required data-testid="friend-store-name" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="whatsapp" className="flex items-center gap-1.5">
-                Store Owner WhatsApp Number
-                <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-              </Label>
-              <div className="flex items-center border border-input rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-ring">
-                <span className="px-3 py-2 bg-muted text-sm font-medium text-muted-foreground border-r border-input shrink-0">
-                  +91
-                </span>
-                <input
-                  id="whatsapp"
-                  name="whatsapp"
-                  type="tel"
-                  inputMode="numeric"
-                  maxLength={10}
-                  placeholder="0000000000"
-                  value={form.whatsapp}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, "").slice(0, 10);
-                    setForm((p) => ({ ...p, whatsapp: val }));
-                  }}
-                  className="flex-1 px-3 py-2 text-sm bg-background outline-none"
-                  required
-                  data-testid="friend-whatsapp"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Enter 10-digit mobile number (repeated digits like 9999999999 not allowed)
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <Button type="button" variant="outline" className="flex-1" onClick={() => setAddStoreOpen(false)}>Cancel</Button>
-              <Button type="submit" className="flex-1 bg-green-600 hover:bg-green-700 text-white" disabled={submitRequest.isPending}>
-                {submitRequest.isPending ? "Submitting..." : "Done"}
-              </Button>
-            </div>
-          </form>
         </DialogContent>
       </Dialog>
 
