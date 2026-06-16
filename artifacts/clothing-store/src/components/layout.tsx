@@ -75,12 +75,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
         { name: "Admins", href: "/admins", icon: Shield },
       ]
     : [
-        { name: "Dashboard", href: "/", icon: LayoutDashboard },
-        { name: "Products", href: "/products", icon: Package },
-        { name: "My Store", href: "/my-store", icon: Store },
         { name: "Sales Ledger", href: "/sales-ledger", icon: BookOpen },
+        { name: "Products", href: "/products", icon: Package },
+        { name: "Dashboard", href: "/", icon: LayoutDashboard },
         { name: "AI Promotional Video", href: "/ai-video", icon: Video },
-        { name: "Store Request", href: "/store-request", icon: SendHorizonal },
+        { name: "My Store", href: "/my-store", icon: Store },
       ];
 
   const handleMarkRead = () => {
