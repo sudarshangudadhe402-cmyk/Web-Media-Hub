@@ -43,7 +43,7 @@ import {
   X,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import PricingOverlay from "@/components/pricing-overlay";
+import PricingOverlay, { type SelectedPlan } from "@/components/pricing-overlay";
 
 const TOKEN_KEY = "wmh_super_token";
 type StoreTab = "pending" | "approved" | "rejected";

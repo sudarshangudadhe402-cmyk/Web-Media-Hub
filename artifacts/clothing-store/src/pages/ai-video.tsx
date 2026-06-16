@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import PricingOverlay from "@/components/pricing-overlay";
+import PricingOverlay, { type SelectedPlan } from "@/components/pricing-overlay";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

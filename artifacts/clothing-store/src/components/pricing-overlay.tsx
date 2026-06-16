@@ -3,6 +3,15 @@ import { motion } from "framer-motion";
 import { Check, ArrowRight, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+export interface SelectedPlan {
+  badge: string;
+  name: string;
+  price: string;
+  period: string;
+  tagline: string;
+  color: string;
+}
+
 const Particles = () => {
   const [particles, setParticles] = useState<Array<{ id: number; size: number; left: number; delay: number; duration: number }>>([]);
   useEffect(() => {
@@ -31,21 +40,24 @@ const Particles = () => {
 
 interface Props {
   onBack: () => void;
+  onSelectPlan: (plan: SelectedPlan) => void;
 }
 
-export default function PricingOverlay({ onBack }: Props) {
+export default function PricingOverlay({ onBack, onSelectPlan }: Props) {
   const scrollToPricing = () => {
     document.getElementById("pricing-overlay-section")?.scrollIntoView({ behavior: "smooth" });
   };
+
+  function selectAndBack(plan: SelectedPlan) {
+    onSelectPlan(plan);
+    onBack();
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[#03020A] text-white overflow-hidden">
       {/* Header */}
       <div className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 border-b border-white/10 bg-[#03020A]/90 backdrop-blur shrink-0">
-        <button
-          onClick={onBack}
-          className="p-1.5 rounded-full hover:bg-white/10 transition-colors"
-        >
+        <button onClick={onBack} className="p-1.5 rounded-full hover:bg-white/10 transition-colors">
           <ChevronLeft className="w-5 h-5 text-white" />
         </button>
         <span className="font-bold text-base text-white">Choose Plan</span>
@@ -77,9 +89,7 @@ export default function PricingOverlay({ onBack }: Props) {
               className="text-4xl md:text-6xl font-extrabold tracking-tight mb-6 max-w-4xl leading-[1.1]"
             >
               🚀 Grow Your Clothing Store{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FFD700] via-[#FFB800] to-[#FFA000]">
-                With AI
-              </span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FFD700] via-[#FFB800] to-[#FFA000]">With AI</span>
             </motion.h1>
 
             <motion.p
@@ -134,7 +144,13 @@ export default function PricingOverlay({ onBack }: Props) {
                     </div>
                   ))}
                 </div>
-                <Button variant="outline" className="w-full bg-transparent border-white/20 text-white hover:bg-white/10 h-12">Try Demo</Button>
+                <Button
+                  variant="outline"
+                  className="w-full bg-transparent border-white/20 text-white hover:bg-white/10 h-12"
+                  onClick={() => selectAndBack({ badge: "🧪 Try First", name: "Demo Plan", price: "₹999", period: "/ Month", tagline: "Perfect for testing the platform before upgrading.", color: "#ffffff" })}
+                >
+                  Try Demo
+                </Button>
               </motion.div>
 
               {/* PREMIUM */}
@@ -174,7 +190,10 @@ export default function PricingOverlay({ onBack }: Props) {
                       ))}
                     </div>
                   </div>
-                  <Button className="w-full bg-gradient-to-r from-[#FFD700] to-[#FFA000] text-black hover:opacity-90 h-14 text-lg font-bold shadow-[0_0_30px_rgba(255,215,0,0.3)] transition-all group-hover:shadow-[0_0_50px_rgba(255,215,0,0.5)]">
+                  <Button
+                    className="w-full bg-gradient-to-r from-[#FFD700] to-[#FFA000] text-black hover:opacity-90 h-14 text-lg font-bold shadow-[0_0_30px_rgba(255,215,0,0.3)] transition-all group-hover:shadow-[0_0_50px_rgba(255,215,0,0.5)]"
+                    onClick={() => selectAndBack({ badge: "⭐ MOST POPULAR CHOICE", name: "Premium Annual Plan", price: "₹5,999", period: "/ Year", tagline: "Only around ₹16 per day", color: "#FFD700" })}
+                  >
                     Start Growing Your Store
                   </Button>
                 </div>
@@ -220,7 +239,10 @@ export default function PricingOverlay({ onBack }: Props) {
                       ))}
                     </div>
                   </div>
-                  <Button className="w-full bg-gradient-to-r from-[#00FF88] to-[#00CC66] text-black hover:opacity-90 h-14 text-lg font-bold shadow-[0_0_30px_rgba(0,255,136,0.3)] transition-all group-hover:shadow-[0_0_50px_rgba(0,255,136,0.5)]">
+                  <Button
+                    className="w-full bg-gradient-to-r from-[#00FF88] to-[#00CC66] text-black hover:opacity-90 h-14 text-lg font-bold shadow-[0_0_30px_rgba(0,255,136,0.3)] transition-all group-hover:shadow-[0_0_50px_rgba(0,255,136,0.5)]"
+                    onClick={() => selectAndBack({ badge: "🏆 HIGHEST VALUE", name: "Lifetime Business Plan", price: "₹9,999", period: "One-Time", tagline: "Pay Once. Use Forever.", color: "#00FF88" })}
+                  >
                     Get Lifetime Access
                   </Button>
                 </div>
@@ -255,7 +277,10 @@ export default function PricingOverlay({ onBack }: Props) {
                       </div>
                     ))}
                   </div>
-                  <Button className="w-full bg-gradient-to-r from-[#FF2D2D] to-[#CC0000] text-white hover:opacity-90 h-12 text-base font-bold shadow-[0_0_30px_rgba(255,45,45,0.3)] transition-all group-hover:shadow-[0_0_50px_rgba(255,45,45,0.5)]">
+                  <Button
+                    className="w-full bg-gradient-to-r from-[#FF2D2D] to-[#CC0000] text-white hover:opacity-90 h-12 text-base font-bold shadow-[0_0_30px_rgba(255,45,45,0.3)] transition-all group-hover:shadow-[0_0_50px_rgba(255,45,45,0.5)]"
+                    onClick={() => selectAndBack({ badge: "👑 PREMIUM BRAND", name: "Enterprise Plan", price: "₹17,999", period: "One-Time", tagline: "Designed for large stores and premium brands.", color: "#FF2D2D" })}
+                  >
                     Upgrade To Enterprise
                   </Button>
                 </div>
