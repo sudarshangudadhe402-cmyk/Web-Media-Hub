@@ -43,6 +43,7 @@ import {
   X,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import PricingOverlay from "@/components/pricing-overlay";
 
 const TOKEN_KEY = "wmh_super_token";
 type StoreTab = "pending" | "approved" | "rejected";
@@ -59,7 +60,7 @@ export default function ManageAdmins() {
   const approveRequest = useApproveStoreRequest();
   const rejectRequest = useRejectStoreRequest();
 
-  const [pageView, setPageView] = useState<"main" | "addAdmin">("main");
+  const [pageView, setPageView] = useState<"main" | "addAdmin" | "choosePlan">("main");
   const [form, setForm] = useState({ username: "", password: "", adminNumber: "" });
   const [activeTab, setActiveTab] = useState<StoreTab>("pending");
   const [selectedRequest, setSelectedRequest] = useState<NonNullable<typeof allRequests>[number] | null>(null);
@@ -500,7 +501,7 @@ export default function ManageAdmins() {
               type="button"
               className="w-full flex items-center justify-between gap-3 rounded-xl px-5 py-4 font-semibold text-base transition-colors active:opacity-80"
               style={{ background: "linear-gradient(135deg,#f59e0b,#fbbf24)", color: "#fff", boxShadow: "0 2px 12px rgba(251,191,36,0.4)" }}
-              onClick={() => {}}
+              onClick={() => setPageView("choosePlan")}
             >
               <div className="flex items-center gap-3">
                 <Star className="w-5 h-5 fill-white text-white shrink-0" />
@@ -528,6 +529,11 @@ export default function ManageAdmins() {
             </div>
           </form>
         </div>
+      )}
+
+      {/* Pricing Overlay */}
+      {pageView === "choosePlan" && (
+        <PricingOverlay onBack={() => setPageView("addAdmin")} />
       )}
 
       {/* Store Request Detail Dialog */}

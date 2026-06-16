@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
+import PricingOverlay from "@/components/pricing-overlay";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +38,7 @@ import {
 } from "lucide-react";
 
 type Tab = "friend" | "approved" | "rejected";
-type PageView = "main" | "addFriend";
+type PageView = "main" | "addFriend" | "choosePlan";
 
 export default function AiVideo() {
   const [pageView, setPageView] = useState<PageView>("main");
@@ -136,6 +137,11 @@ export default function AiVideo() {
 
   const tabData = { friend: pending, approved, rejected };
 
+  /* ── Pricing Overlay ── */
+  if (pageView === "choosePlan") {
+    return <PricingOverlay onBack={() => setPageView("addFriend")} />;
+  }
+
   /* ── Full-page Add Friend Store ── */
   if (pageView === "addFriend") {
     return (
@@ -205,7 +211,7 @@ export default function AiVideo() {
           {/* Choose Plan button */}
           <button
             type="button"
-            onClick={() => toast({ title: "Plans", description: "Please contact admin to choose a plan for this store." })}
+            onClick={() => setPageView("choosePlan")}
             className="w-full flex items-center justify-between gap-3 rounded-xl px-5 py-4 font-semibold text-base transition-colors active:opacity-80"
             style={{ background: "linear-gradient(135deg,#f59e0b,#fbbf24)", color: "#fff", boxShadow: "0 2px 12px rgba(251,191,36,0.4)" }}
           >
