@@ -37,6 +37,7 @@ import {
   Pencil,
   Star,
   ChevronRight,
+  ChevronLeft,
   Phone,
   Search,
   X,
@@ -58,7 +59,7 @@ export default function ManageAdmins() {
   const approveRequest = useApproveStoreRequest();
   const rejectRequest = useRejectStoreRequest();
 
-  const [addOpen, setAddOpen] = useState(false);
+  const [pageView, setPageView] = useState<"main" | "addAdmin">("main");
   const [form, setForm] = useState({ username: "", password: "", adminNumber: "" });
   const [activeTab, setActiveTab] = useState<StoreTab>("pending");
   const [selectedRequest, setSelectedRequest] = useState<NonNullable<typeof allRequests>[number] | null>(null);
@@ -76,7 +77,7 @@ export default function ManageAdmins() {
           toast({ title: "Admin created successfully" });
           queryClient.invalidateQueries({ queryKey: getListAdminsQueryKey() });
           setForm({ username: "", password: "", adminNumber: "" });
-          setAddOpen(false);
+          setPageView("main");
         },
         onError: (err: any) => {
           const msg = err?.data?.error || err?.message || "Failed to create admin";
@@ -238,7 +239,7 @@ export default function ManageAdmins() {
 
       {/* ── Add Admin CTA ── */}
       <button
-        onClick={() => setAddOpen(true)}
+        onClick={() => setPageView("addAdmin")}
         className="w-full flex items-center justify-between gap-4 bg-green-600 hover:bg-green-700 active:bg-green-800 transition-colors text-white rounded-xl px-6 py-5 shadow-lg"
       >
         <div className="flex items-center gap-3">
@@ -441,16 +442,25 @@ export default function ManageAdmins() {
         </div>
       </div>
 
-      {/* Add Admin Dialog */}
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-primary" />
-              Add New Admin
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleCreate} className="space-y-4 pt-2">
+      {/* Add Admin — Full Page (rendered above main when active) */}
+      {pageView === "addAdmin" && (
+        <div className="fixed inset-0 z-50 bg-background flex flex-col">
+          {/* Header */}
+          <div className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 border-b bg-background">
+            <button
+              onClick={() => { setPageView("main"); setForm({ username: "", password: "", adminNumber: "" }); }}
+              className="p-1.5 rounded-full hover:bg-muted transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-green-600" />
+              <span className="font-bold text-base">Add New Admin</span>
+            </div>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleCreate} className="flex-1 flex flex-col p-5 gap-5 max-w-lg mx-auto w-full overflow-y-auto">
             <div className="space-y-2">
               <label className="text-sm font-medium">Username</label>
               <Input
@@ -484,6 +494,7 @@ export default function ManageAdmins() {
                 />
               </div>
             </div>
+
             {/* Choose Plan */}
             <button
               type="button"
@@ -498,12 +509,12 @@ export default function ManageAdmins() {
               <ChevronRight className="w-5 h-5 shrink-0" />
             </button>
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3 mt-auto pt-2">
               <Button
                 type="button"
                 variant="outline"
                 className="flex-1"
-                onClick={() => setAddOpen(false)}
+                onClick={() => { setPageView("main"); setForm({ username: "", password: "", adminNumber: "" }); }}
               >
                 Cancel
               </Button>
@@ -516,8 +527,8 @@ export default function ManageAdmins() {
               </Button>
             </div>
           </form>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
 
       {/* Store Request Detail Dialog */}
       <Dialog open={requestDetailOpen} onOpenChange={setRequestDetailOpen}>
