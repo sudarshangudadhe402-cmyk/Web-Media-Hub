@@ -484,6 +484,20 @@ export default function ManageAdmins() {
                 />
               </div>
             </div>
+            {/* Choose Plan */}
+            <button
+              type="button"
+              className="w-full flex items-center justify-between gap-3 rounded-xl px-5 py-4 font-semibold text-base transition-colors active:opacity-80"
+              style={{ background: "linear-gradient(135deg,#f59e0b,#fbbf24)", color: "#fff", boxShadow: "0 2px 12px rgba(251,191,36,0.4)" }}
+              onClick={() => {}}
+            >
+              <div className="flex items-center gap-3">
+                <Star className="w-5 h-5 fill-white text-white shrink-0" />
+                <span>Choose Plan</span>
+              </div>
+              <ChevronRight className="w-5 h-5 shrink-0" />
+            </button>
+
             <div className="flex gap-3 pt-2">
               <Button
                 type="button"
