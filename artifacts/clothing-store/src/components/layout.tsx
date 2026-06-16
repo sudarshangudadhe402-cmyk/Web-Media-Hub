@@ -78,7 +78,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
         { name: "Products", href: "/products", icon: Package },
         { name: "My Store", href: "/my-store", icon: Store },
         { name: "AI Promotional Video", href: "/ai-video", icon: Video },
-        { name: "Store Request", href: "/store-request", icon: SendHorizonal },
       ];
 
   const handleMarkRead = () => {
