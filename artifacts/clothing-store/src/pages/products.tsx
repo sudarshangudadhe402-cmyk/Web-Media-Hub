@@ -44,6 +44,7 @@ import {
   TrendingDown,
   CheckCircle2,
   Circle,
+  Search,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -99,6 +100,7 @@ export default function Products() {
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [limitPopupOpen, setLimitPopupOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -110,7 +112,9 @@ export default function Products() {
   const products = (allProducts ?? []).filter((p) => {
     const typeMatch = filterType === "All" || p.productType === filterType;
     const catMatch = !filterCategory || p.functionCategory === filterCategory;
-    return typeMatch && catMatch;
+    const q = searchQuery.trim().toLowerCase();
+    const nameMatch = !q || p.name.toLowerCase().includes(q);
+    return typeMatch && catMatch && nameMatch;
   });
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
@@ -400,6 +404,26 @@ export default function Products() {
         )}
       </div>
 
+      {/* Search bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+        <Input
+          placeholder="Search products by name..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9 pr-9"
+        />
+        {searchQuery && (
+          <button
+            type="button"
+            onClick={() => setSearchQuery("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
       {/* Filter tabs */}
       <Tabs value={filterType} onValueChange={(v) => { setFilterType(v); setFilterCategory(null); }}>
         <TabsList>
@@ -444,7 +468,20 @@ export default function Products() {
       ) : products.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
           <ImageIcon className="w-12 h-12 opacity-20 mb-3" />
-          <p className="text-sm">No products yet. Add your first one!</p>
+          {searchQuery.trim() ? (
+            <>
+              <p className="text-sm font-medium">No products found</p>
+              <p className="text-xs mt-1">No match for "{searchQuery.trim()}"</p>
+              <button
+                onClick={() => setSearchQuery("")}
+                className="mt-3 text-xs text-primary underline underline-offset-2"
+              >
+                Clear search
+              </button>
+            </>
+          ) : (
+            <p className="text-sm">No products yet. Add your first one!</p>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-[2px] bg-gray-200">
