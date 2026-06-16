@@ -13,6 +13,7 @@ function fmt(e: InstanceType<typeof LedgerEntry>) {
     customerName: e.customerName,
     productCost: e.productCost ?? null,
     paymentStatus: e.paymentStatus,
+    confirmed: e.confirmed ?? false,
     createdAt: (e as any).createdAt?.toISOString?.() ?? "",
     updatedAt: (e as any).updatedAt?.toISOString?.() ?? "",
   };
@@ -81,6 +82,7 @@ router.patch("/ledger/:id", requireAuth, requireDb, async (req: AuthRequest, res
     if ("productCost" in req.body)
       entry.productCost = productCost != null && productCost !== "" ? Number(productCost) : null;
     if ("paymentStatus" in req.body) entry.paymentStatus = paymentStatus;
+    if ("confirmed" in req.body) entry.confirmed = Boolean(req.body.confirmed);
     await entry.save();
     res.json(fmt(entry));
   } catch (err) {

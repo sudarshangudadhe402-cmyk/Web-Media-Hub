@@ -22,6 +22,8 @@ import {
   Clock,
   CheckCircle2,
   BookOpen,
+  Check,
+  Pencil,
 } from "lucide-react";
 
 const LEDGER_KEY = ["ledger"];
@@ -35,6 +37,7 @@ interface LedgerRow {
   customerName: string;
   productCost: number | null;
   paymentStatus: PaymentStatus;
+  confirmed: boolean;
   createdAt: string;
 }
 
@@ -70,6 +73,8 @@ export default function SalesLedger() {
   const [dateTo, setDateTo] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [localValues, setLocalValues] = useState<Record<string, Partial<LedgerRow>>>({});
+  // IDs of confirmed rows that are currently in edit mode
+  const [editingIds, setEditingIds] = useState<Set<string>>(new Set());
 
   const hasInitialized = useRef(false);
 
@@ -105,7 +110,7 @@ export default function SalesLedger() {
     mutationFn: async () => {
       const res = await authFetch("/api/ledger", {
         method: "POST",
-        body: JSON.stringify({ date: null, customerName: "", productCost: null, paymentStatus: "Pending" }),
+        body: JSON.stringify({ date: null, customerName: "", productCost: null, paymentStatus: "Pending", confirmed: false }),
       });
       if (!res.ok) throw new Error("Failed");
       return res.json() as Promise<LedgerRow>;
@@ -159,53 +164,64 @@ export default function SalesLedger() {
     }));
   }
 
-  function handleBlurSave(rowId: string) {
-    const local = localValues[rowId];
-    if (!local || Object.keys(local).length === 0) return;
-    updateRow.mutate({ id: rowId, data: local });
+  // Save all local changes + mark confirmed
+  function handleConfirm(rowId: string) {
+    const local = localValues[rowId] ?? {};
+    updateRow.mutate(
+      { id: rowId, data: { ...local, confirmed: true } },
+      {
+        onSuccess: () => {
+          setEditingIds((prev) => {
+            const next = new Set(prev);
+            next.delete(rowId);
+            return next;
+          });
+        },
+      }
+    );
   }
 
-  const displayRows = serverRows
-    .map(getRow)
-    .filter((row) => {
-      if (searchQuery && !row.customerName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-      if (dateFrom && row.date && row.date < dateFrom) return false;
-      if (dateTo && row.date && row.date > dateTo) return false;
-      return true;
-    });
+  // Enter edit mode for a confirmed row
+  function handleEdit(rowId: string) {
+    setEditingIds((prev) => new Set(prev).add(rowId));
+  }
 
-  const allMerged = serverRows.map(getRow);
-  const totalSales = allMerged.reduce((s, r) => s + (r.productCost ?? 0), 0);
-  const paidAmount = allMerged
+  const allRows = serverRows.map(getRow);
+
+  // For table: show all rows (both confirmed and draft), filtered by search/date
+  const displayRows = allRows.filter((row) => {
+    if (searchQuery && !row.customerName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (dateFrom && row.date && row.date < dateFrom) return false;
+    if (dateTo && row.date && row.date > dateTo) return false;
+    return true;
+  });
+
+  // Stats: ONLY confirmed rows
+  const confirmedRows = allRows.filter((r) => r.confirmed);
+  const totalSales = confirmedRows.reduce((s, r) => s + (r.productCost ?? 0), 0);
+  const paidAmount = confirmedRows
     .filter((r) => r.paymentStatus === "Paid")
     .reduce((s, r) => s + (r.productCost ?? 0), 0);
-  const pendingAmount = allMerged
+  const pendingAmount = confirmedRows
     .filter((r) => r.paymentStatus === "Pending")
     .reduce((s, r) => s + (r.productCost ?? 0), 0);
-  const totalCustomers = allMerged.filter((r) => r.customerName.trim()).length;
+  const totalCustomers = confirmedRows.filter((r) => r.customerName.trim()).length;
 
-  const displayTotalCost = displayRows.reduce((s, r) => s + (r.productCost ?? 0), 0);
-  const displayCustomerCount = displayRows.filter((r) => r.customerName.trim()).length;
+  // Total row: confirmed rows matching current filter
+  const confirmedDisplayRows = displayRows.filter((r) => r.confirmed);
+  const displayTotalCost = confirmedDisplayRows.reduce((s, r) => s + (r.productCost ?? 0), 0);
+  const displayCustomerCount = confirmedDisplayRows.filter((r) => r.customerName.trim()).length;
 
   function exportCSV() {
     const header = ["Sr No", "Date", "Customer Name", "Product Cost", "Payment Status"];
-    const dataRows = serverRows.map((r, i) => {
-      const row = getRow(r);
-      return [
-        String(i + 1),
-        isoToDisplay(row.date),
-        row.customerName,
-        row.productCost != null ? String(row.productCost) : "",
-        row.paymentStatus,
-      ];
-    });
-    const totalRow = [
-      "Total",
-      `${totalCustomers} Customers`,
-      "",
-      String(totalSales),
-      "",
-    ];
+    const dataRows = confirmedRows.map((r, i) => [
+      String(i + 1),
+      isoToDisplay(r.date),
+      r.customerName,
+      r.productCost != null ? String(r.productCost) : "",
+      r.paymentStatus,
+    ]);
+    const totalRow = ["Total", `${totalCustomers} Customers`, "", String(totalSales), ""];
     const all = [header, ...dataRows, totalRow];
     const csv = all.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
@@ -217,11 +233,19 @@ export default function SalesLedger() {
     URL.revokeObjectURL(url);
   }
 
-  const cellCls = "border border-[hsl(var(--border))] text-sm bg-background";
   const thCls =
     "border border-[hsl(var(--border))] bg-[hsl(var(--muted))] text-[11px] font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wider px-3 py-2 whitespace-nowrap";
+  const cellCls = "border border-[hsl(var(--border))] text-sm";
   const inputCls =
-    "w-full h-full border-0 bg-transparent text-sm outline-none focus:outline-none focus:ring-0 px-3 py-[7px] rounded-none placeholder:text-[hsl(var(--muted-foreground))]/40 disabled:opacity-50";
+    "w-full h-full border-0 bg-transparent text-sm outline-none focus:outline-none focus:ring-0 px-3 py-[7px] rounded-none placeholder:text-[hsl(var(--muted-foreground))]/40";
+  const readCls: React.CSSProperties = {
+    padding: "8px 12px",
+    fontSize: 13,
+    color: "hsl(var(--foreground))",
+    display: "flex",
+    alignItems: "center",
+    minHeight: 36,
+  };
 
   return (
     <>
@@ -237,6 +261,9 @@ export default function SalesLedger() {
         input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type="number"] { -moz-appearance: textfield; }
         input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
+        .confirm-btn { transition: background 0.15s, transform 0.1s; }
+        .confirm-btn:hover { transform: scale(1.05); }
+        .confirm-btn:active { transform: scale(0.97); }
       `}</style>
 
       <div className="space-y-5 pb-16">
@@ -249,7 +276,7 @@ export default function SalesLedger() {
               <BookOpen className="w-6 h-6 text-primary" /> Sales Ledger
             </h1>
             <p className="text-muted-foreground text-sm mt-0.5">
-              Track customer sales and payment status
+              Fill row → click ✅ to save · Click ✏️ to edit a saved entry
             </p>
           </div>
           <div className="flex gap-2">
@@ -262,7 +289,7 @@ export default function SalesLedger() {
           </div>
         </div>
 
-        {/* Summary Cards */}
+        {/* Summary Cards — only confirmed rows */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 no-print">
           <Card>
             <CardContent className="p-4">
@@ -323,19 +350,9 @@ export default function SalesLedger() {
             )}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <Input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="w-36 text-sm"
-            />
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-36 text-sm" />
             <span className="text-muted-foreground text-sm">to</span>
-            <Input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="w-36 text-sm"
-            />
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-36 text-sm" />
             {(dateFrom || dateTo) && (
               <button
                 type="button"
@@ -349,176 +366,242 @@ export default function SalesLedger() {
         </div>
 
         {/* Table */}
-        <div
-          className="rounded-lg border border-border overflow-hidden shadow-sm"
-          style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}
-        >
+        <div className="rounded-lg border border-border overflow-hidden shadow-sm" style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
           <div className="overflow-x-auto">
-            <div
-              className="ledger-table-wrapper"
-              style={{ maxHeight: "62vh", overflowY: "auto", overscrollBehavior: "contain" }}
-            >
-              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 680 }}>
+            <div className="ledger-table-wrapper" style={{ maxHeight: "62vh", overflowY: "auto", overscrollBehavior: "contain" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
                 <thead>
                   <tr>
-                    <th className={thCls} style={{ position: "sticky", top: 0, zIndex: 10, width: 56, textAlign: "center" }}>
-                      Sr No
-                    </th>
-                    <th className={thCls} style={{ position: "sticky", top: 0, zIndex: 10, width: 148, textAlign: "center" }}>
-                      Date
-                    </th>
-                    <th className={thCls} style={{ position: "sticky", top: 0, zIndex: 10, minWidth: 180, textAlign: "left" }}>
-                      Customer Name
-                    </th>
-                    <th className={thCls} style={{ position: "sticky", top: 0, zIndex: 10, width: 148, textAlign: "left" }}>
-                      Product Cost
-                    </th>
-                    <th className={thCls} style={{ position: "sticky", top: 0, zIndex: 10, width: 130, textAlign: "center" }}>
-                      Payment Status
-                    </th>
-                    <th
-                      className={`${thCls} no-print`}
-                      style={{ position: "sticky", top: 0, zIndex: 10, width: 44, textAlign: "center" }}
-                    ></th>
+                    <th className={thCls} style={{ position: "sticky", top: 0, zIndex: 10, width: 52, textAlign: "center" }}>Sr No</th>
+                    <th className={thCls} style={{ position: "sticky", top: 0, zIndex: 10, width: 140, textAlign: "center" }}>Date</th>
+                    <th className={thCls} style={{ position: "sticky", top: 0, zIndex: 10, minWidth: 180, textAlign: "left" }}>Customer Name</th>
+                    <th className={thCls} style={{ position: "sticky", top: 0, zIndex: 10, width: 140, textAlign: "left" }}>Product Cost</th>
+                    <th className={thCls} style={{ position: "sticky", top: 0, zIndex: 10, width: 130, textAlign: "center" }}>Payment Status</th>
+                    <th className={`${thCls} no-print`} style={{ position: "sticky", top: 0, zIndex: 10, width: 72, textAlign: "center" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {isLoading ? (
                     <tr>
-                      <td
-                        colSpan={6}
-                        style={{ textAlign: "center", padding: "60px 0", color: "hsl(var(--muted-foreground))", fontSize: 14, borderBottom: "1px solid hsl(var(--border))" }}
-                      >
+                      <td colSpan={6} style={{ textAlign: "center", padding: "60px 0", color: "hsl(var(--muted-foreground))", fontSize: 14 }}>
                         Loading...
                       </td>
                     </tr>
                   ) : displayRows.length === 0 ? (
                     <tr>
-                      <td
-                        colSpan={6}
-                        style={{ textAlign: "center", padding: "60px 0", color: "hsl(var(--muted-foreground))", fontSize: 14, borderBottom: "1px solid hsl(var(--border))" }}
-                      >
+                      <td colSpan={6} style={{ textAlign: "center", padding: "60px 0", color: "hsl(var(--muted-foreground))", fontSize: 14 }}>
                         {searchQuery || dateFrom || dateTo ? "No matching records found" : "No records yet"}
                       </td>
                     </tr>
                   ) : (
                     displayRows.map((row, idx) => {
                       const localRow = localValues[row.id] ?? {};
+                      const isConfirmed = row.confirmed;
+                      const isEditing = editingIds.has(row.id);
+                      // Row is editable if: not confirmed, OR confirmed but in edit mode
+                      const isEditable = !isConfirmed || isEditing;
                       const isPaid = row.paymentStatus === "Paid";
+                      const rowBg = isConfirmed
+                        ? idx % 2 === 0 ? "hsl(142 71% 98%)" : "hsl(142 71% 96%)"
+                        : idx % 2 === 0 ? "transparent" : "hsl(var(--muted)/0.25)";
+
                       return (
-                        <tr
-                          key={row.id}
-                          style={{ background: idx % 2 === 0 ? "transparent" : "hsl(var(--muted)/0.3)" }}
-                        >
+                        <tr key={row.id} style={{ background: rowBg }}>
                           {/* Sr No */}
-                          <td
-                            className={cellCls}
-                            style={{ textAlign: "center", padding: "0", userSelect: "none", color: "hsl(var(--muted-foreground))", fontSize: 12, fontFamily: "monospace" }}
-                          >
-                            <div style={{ padding: "8px 10px" }}>{idx + 1}</div>
+                          <td className={cellCls} style={{ textAlign: "center", padding: 0, userSelect: "none", color: "hsl(var(--muted-foreground))", fontSize: 12, fontFamily: "monospace" }}>
+                            <div style={{ padding: "8px 6px" }}>{idx + 1}</div>
                           </td>
 
                           {/* Date */}
                           <td className={cellCls} style={{ padding: 0 }}>
-                            <input
-                              type="date"
-                              value={
-                                localRow.date !== undefined
-                                  ? (localRow.date ?? "")
-                                  : (row.date ?? "")
-                              }
-                              onChange={(e) => setLocal(row.id, "date", e.target.value || null)}
-                              onBlur={() => handleBlurSave(row.id)}
-                              className={inputCls}
-                              style={{ textAlign: "center" }}
-                            />
+                            {isEditable ? (
+                              <input
+                                type="date"
+                                value={localRow.date !== undefined ? (localRow.date ?? "") : (row.date ?? "")}
+                                onChange={(e) => setLocal(row.id, "date", e.target.value || null)}
+                                className={inputCls}
+                                style={{ textAlign: "center" }}
+                              />
+                            ) : (
+                              <div style={{ ...readCls, justifyContent: "center", color: row.date ? "hsl(var(--foreground))" : "hsl(var(--muted-foreground))" }}>
+                                {isoToDisplay(row.date)}
+                              </div>
+                            )}
                           </td>
 
                           {/* Customer Name */}
                           <td className={cellCls} style={{ padding: 0 }}>
-                            <input
-                              type="text"
-                              value={localRow.customerName !== undefined ? localRow.customerName : row.customerName}
-                              onChange={(e) => setLocal(row.id, "customerName", e.target.value)}
-                              onBlur={() => handleBlurSave(row.id)}
-                              className={inputCls}
-                              placeholder="Customer name"
-                            />
+                            {isEditable ? (
+                              <input
+                                type="text"
+                                value={localRow.customerName !== undefined ? localRow.customerName : row.customerName}
+                                onChange={(e) => setLocal(row.id, "customerName", e.target.value)}
+                                className={inputCls}
+                                placeholder="Customer name"
+                              />
+                            ) : (
+                              <div style={{ ...readCls, fontWeight: row.customerName ? 500 : 400, color: row.customerName ? "hsl(var(--foreground))" : "hsl(var(--muted-foreground))" }}>
+                                {row.customerName || "—"}
+                              </div>
+                            )}
                           </td>
 
                           {/* Product Cost */}
                           <td className={cellCls} style={{ padding: 0 }}>
-                            <div style={{ display: "flex", alignItems: "center" }}>
-                              <span style={{ paddingLeft: 10, color: "hsl(var(--muted-foreground))", fontSize: 13, flexShrink: 0 }}>
-                                ₹
-                              </span>
-                              <input
-                                type="number"
-                                inputMode="numeric"
-                                value={
-                                  localRow.productCost !== undefined
-                                    ? (localRow.productCost ?? "")
-                                    : (row.productCost ?? "")
-                                }
-                                onChange={(e) =>
-                                  setLocal(
-                                    row.id,
-                                    "productCost",
-                                    e.target.value === "" ? null : Number(e.target.value)
-                                  )
-                                }
-                                onBlur={() => handleBlurSave(row.id)}
-                                className={inputCls}
-                                style={{ paddingLeft: 4, flex: 1 }}
-                                placeholder="0"
-                                min="0"
-                              />
-                            </div>
+                            {isEditable ? (
+                              <div style={{ display: "flex", alignItems: "center" }}>
+                                <span style={{ paddingLeft: 10, color: "hsl(var(--muted-foreground))", fontSize: 13, flexShrink: 0 }}>₹</span>
+                                <input
+                                  type="number"
+                                  inputMode="numeric"
+                                  value={localRow.productCost !== undefined ? (localRow.productCost ?? "") : (row.productCost ?? "")}
+                                  onChange={(e) => setLocal(row.id, "productCost", e.target.value === "" ? null : Number(e.target.value))}
+                                  className={inputCls}
+                                  style={{ paddingLeft: 4, flex: 1 }}
+                                  placeholder="0"
+                                  min="0"
+                                />
+                              </div>
+                            ) : (
+                              <div style={readCls}>
+                                <span style={{ color: "hsl(var(--muted-foreground))", marginRight: 2, fontSize: 12 }}>₹</span>
+                                <span style={{ fontWeight: 600 }}>
+                                  {row.productCost != null ? formatIndian(row.productCost) : "—"}
+                                </span>
+                              </div>
+                            )}
                           </td>
 
                           {/* Payment Status */}
                           <td className={cellCls} style={{ padding: 0 }}>
-                            <select
-                              value={row.paymentStatus}
-                              onChange={(e) => {
-                                const val = e.target.value as PaymentStatus;
-                                updateRow.mutate({ id: row.id, data: { paymentStatus: val } });
-                              }}
-                              className={inputCls}
-                              style={{
-                                cursor: "pointer",
-                                textAlign: "center",
-                                fontWeight: 600,
-                                fontSize: 12,
-                                color: isPaid
-                                  ? "hsl(142 71% 34%)"
-                                  : "hsl(38 93% 42%)",
-                              }}
-                            >
-                              <option value="Paid">✅ Paid</option>
-                              <option value="Pending">⏳ Pending</option>
-                            </select>
+                            {isEditable ? (
+                              <select
+                                value={localRow.paymentStatus !== undefined ? localRow.paymentStatus : row.paymentStatus}
+                                onChange={(e) => setLocal(row.id, "paymentStatus", e.target.value as PaymentStatus)}
+                                className={inputCls}
+                                style={{ cursor: "pointer", textAlign: "center", fontWeight: 600, fontSize: 12 }}
+                              >
+                                <option value="Paid">✅ Paid</option>
+                                <option value="Pending">⏳ Pending</option>
+                              </select>
+                            ) : (
+                              <div style={{ ...readCls, justifyContent: "center" }}>
+                                <span
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 4,
+                                    padding: "2px 10px",
+                                    borderRadius: 20,
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    background: isPaid ? "hsl(142 71% 92%)" : "hsl(38 93% 92%)",
+                                    color: isPaid ? "hsl(142 71% 30%)" : "hsl(38 93% 35%)",
+                                  }}
+                                >
+                                  {isPaid ? "✅ Paid" : "⏳ Pending"}
+                                </span>
+                              </div>
+                            )}
                           </td>
 
-                          {/* Delete */}
+                          {/* Action Column */}
                           <td className={`${cellCls} no-print`} style={{ padding: 0 }}>
-                            <button
-                              onClick={() => setDeleteId(row.id)}
-                              style={{
-                                width: "100%",
-                                height: "100%",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                padding: "8px 0",
-                                color: "hsl(var(--muted-foreground)/0.4)",
-                                transition: "color 0.15s",
-                              }}
-                              onMouseEnter={(e) => (e.currentTarget.style.color = "hsl(var(--destructive))")}
-                              onMouseLeave={(e) => (e.currentTarget.style.color = "hsl(var(--muted-foreground)/0.4)")}
-                            >
-                              <Trash2 style={{ width: 13, height: 13 }} />
-                            </button>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "4px 6px" }}>
+                              {/* Case 1: Confirmed, not editing → show ✏️ */}
+                              {isConfirmed && !isEditing && (
+                                <button
+                                  onClick={() => handleEdit(row.id)}
+                                  title="Edit this row"
+                                  className="confirm-btn"
+                                  style={{
+                                    width: 28,
+                                    height: 28,
+                                    borderRadius: 6,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    background: "hsl(221 83% 95%)",
+                                    color: "hsl(221 83% 45%)",
+                                    border: "1.5px solid hsl(221 83% 80%)",
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  <Pencil style={{ width: 13, height: 13 }} />
+                                </button>
+                              )}
+
+                              {/* Case 2: Draft (unconfirmed) → show ✅ */}
+                              {!isConfirmed && (
+                                <button
+                                  onClick={() => handleConfirm(row.id)}
+                                  title="Save this row"
+                                  disabled={updateRow.isPending}
+                                  className="confirm-btn"
+                                  style={{
+                                    width: 28,
+                                    height: 28,
+                                    borderRadius: 6,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    background: "hsl(142 71% 45%)",
+                                    color: "white",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    opacity: updateRow.isPending ? 0.6 : 1,
+                                  }}
+                                >
+                                  <Check style={{ width: 14, height: 14, strokeWidth: 3 }} />
+                                </button>
+                              )}
+
+                              {/* Case 3: Confirmed + editing → show ✅ (save) + 🗑️ (delete) */}
+                              {isConfirmed && isEditing && (
+                                <>
+                                  <button
+                                    onClick={() => handleConfirm(row.id)}
+                                    title="Save changes"
+                                    disabled={updateRow.isPending}
+                                    className="confirm-btn"
+                                    style={{
+                                      width: 28,
+                                      height: 28,
+                                      borderRadius: 6,
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      background: "hsl(142 71% 45%)",
+                                      color: "white",
+                                      border: "none",
+                                      cursor: "pointer",
+                                      opacity: updateRow.isPending ? 0.6 : 1,
+                                    }}
+                                  >
+                                    <Check style={{ width: 14, height: 14, strokeWidth: 3 }} />
+                                  </button>
+                                  <button
+                                    onClick={() => setDeleteId(row.id)}
+                                    title="Delete this row"
+                                    className="confirm-btn"
+                                    style={{
+                                      width: 28,
+                                      height: 28,
+                                      borderRadius: 6,
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      background: "hsl(0 84% 95%)",
+                                      color: "hsl(0 84% 50%)",
+                                      border: "1.5px solid hsl(0 84% 80%)",
+                                      cursor: "pointer",
+                                    }}
+                                  >
+                                    <Trash2 style={{ width: 13, height: 13 }} />
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -526,83 +609,27 @@ export default function SalesLedger() {
                   )}
                 </tbody>
                 <tfoot>
-                  <tr>
+                  {(["Total", `${displayCustomerCount} Customer${displayCustomerCount !== 1 ? "s" : ""}`, "", `₹${formatIndian(displayTotalCost)}`, "", ""] as string[]).map((val, i) => (
                     <td
+                      key={i}
+                      className={i === 5 ? "no-print" : ""}
                       style={{
                         position: "sticky",
                         bottom: 0,
                         zIndex: 9,
                         background: "hsl(var(--muted))",
                         border: "1px solid hsl(var(--border))",
-                        padding: "9px 12px",
-                        fontWeight: 700,
-                        fontSize: 13,
-                        textAlign: "center",
-                        color: "hsl(var(--foreground))",
-                      }}
-                    >
-                      Total
-                    </td>
-                    <td
-                      style={{
-                        position: "sticky",
-                        bottom: 0,
-                        zIndex: 9,
-                        background: "hsl(var(--muted))",
-                        border: "1px solid hsl(var(--border))",
-                        padding: "9px 12px",
-                        fontWeight: 600,
+                        padding: val ? "9px 12px" : "9px 6px",
+                        fontWeight: i === 0 || i === 3 ? 700 : 600,
                         fontSize: 12,
-                        textAlign: "center",
-                        color: "hsl(var(--muted-foreground))",
+                        textAlign: i === 0 || i === 1 ? "center" : "left",
+                        color: i === 3 ? "hsl(var(--foreground))" : "hsl(var(--muted-foreground))",
+                        whiteSpace: "nowrap",
                       }}
                     >
-                      {displayCustomerCount} Customer{displayCustomerCount !== 1 ? "s" : ""}
+                      {val}
                     </td>
-                    <td
-                      style={{
-                        position: "sticky",
-                        bottom: 0,
-                        zIndex: 9,
-                        background: "hsl(var(--muted))",
-                        border: "1px solid hsl(var(--border))",
-                      }}
-                    ></td>
-                    <td
-                      style={{
-                        position: "sticky",
-                        bottom: 0,
-                        zIndex: 9,
-                        background: "hsl(var(--muted))",
-                        border: "1px solid hsl(var(--border))",
-                        padding: "9px 12px",
-                        fontWeight: 700,
-                        fontSize: 13,
-                        color: "hsl(var(--foreground))",
-                      }}
-                    >
-                      ₹{formatIndian(displayTotalCost)}
-                    </td>
-                    <td
-                      style={{
-                        position: "sticky",
-                        bottom: 0,
-                        zIndex: 9,
-                        background: "hsl(var(--muted))",
-                        border: "1px solid hsl(var(--border))",
-                      }}
-                    ></td>
-                    <td
-                      className="no-print"
-                      style={{
-                        position: "sticky",
-                        bottom: 0,
-                        zIndex: 9,
-                        background: "hsl(var(--muted))",
-                        border: "1px solid hsl(var(--border))",
-                      }}
-                    ></td>
-                  </tr>
+                  ))}
                 </tfoot>
               </table>
             </div>
@@ -634,11 +661,7 @@ export default function SalesLedger() {
               Are you sure you want to delete this row? This action cannot be undone.
             </p>
             <div className="flex gap-3 pt-2">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => setDeleteId(null)}
-              >
+              <Button variant="outline" className="flex-1" onClick={() => setDeleteId(null)}>
                 Cancel
               </Button>
               <Button

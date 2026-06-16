@@ -6,6 +6,7 @@ export interface ILedgerEntry extends Document {
   customerName: string;
   productCost: number | null;
   paymentStatus: "Paid" | "Pending";
+  confirmed: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -17,6 +18,7 @@ const LedgerEntrySchema = new Schema<ILedgerEntry>(
     customerName: { type: String, default: "" },
     productCost: { type: Number, default: null },
     paymentStatus: { type: String, enum: ["Paid", "Pending"], default: "Pending" },
+    confirmed: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
