@@ -98,6 +98,7 @@ export default function Products() {
   const carouselRef = useRef<HTMLDivElement>(null);
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [limitPopupOpen, setLimitPopupOpen] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -123,6 +124,10 @@ export default function Products() {
   }
 
   function openAdd() {
+    if ((allProducts ?? []).length >= 1000) {
+      setLimitPopupOpen(true);
+      return;
+    }
     resetForm();
     setFormOpen(true);
   }
@@ -145,25 +150,46 @@ export default function Products() {
     setFormOpen(true);
   }
 
+  async function compressImage(file: File): Promise<string> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        const MAX_DIM = 1200;
+        let { width, height } = img;
+        if (width > MAX_DIM || height > MAX_DIM) {
+          const ratio = Math.min(MAX_DIM / width, MAX_DIM / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(img, 0, 0, width, height);
+        // Try quality steps until ≤ 280 KB
+        let quality = 0.82;
+        let dataUrl = canvas.toDataURL("image/jpeg", quality);
+        while (dataUrl.length * 0.75 > 280_000 && quality > 0.3) {
+          quality -= 0.08;
+          dataUrl = canvas.toDataURL("image/jpeg", quality);
+        }
+        resolve(dataUrl.split(",")[1]);
+      };
+      img.src = objectUrl;
+    });
+  }
+
   async function handleFileChange(files: FileList | null) {
     if (!files) return;
-    const remaining = 4 - imageUrls.length;
-    if (remaining <= 0) {
-      toast({ title: "Maximum 4 images allowed", variant: "destructive" });
-      return;
-    }
+    const remaining = 2 - imageUrls.length;
+    if (remaining <= 0) return;
     const toUpload = Array.from(files).slice(0, remaining);
-    if (Array.from(files).length > remaining) {
-      toast({ title: `Only ${remaining} more image${remaining > 1 ? "s" : ""} can be added (max 4)`, variant: "destructive" });
-    }
     for (const file of toUpload) {
-      const base64 = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve((reader.result as string).split(",")[1]);
-        reader.readAsDataURL(file);
-      });
+      const base64 = await compressImage(file);
       uploadImage.mutate(
-        { data: { imageData: base64, fileName: file.name } },
+        { data: { imageData: base64, fileName: file.name.replace(/\.[^.]+$/, ".jpg") } },
         {
           onSuccess: (res) => setImageUrls((p) => [...p, res.url]),
           onError: () =>
@@ -277,6 +303,24 @@ export default function Products() {
   /* ── render ── */
   return (
     <div className="space-y-5">
+      {/* Product limit popup */}
+      <Dialog open={limitPopupOpen} onOpenChange={setLimitPopupOpen}>
+        <DialogContent className="max-w-xs text-center">
+          <DialogHeader>
+            <DialogTitle className="text-red-600 text-lg">Store Limit Reached</DialogTitle>
+          </DialogHeader>
+          <div className="py-3 space-y-3">
+            <div className="text-4xl">🚫</div>
+            <p className="text-sm text-gray-700 font-medium leading-relaxed">
+              Your store product add limit crossed,<br />you can't add product more.
+            </p>
+          </div>
+          <Button onClick={() => setLimitPopupOpen(false)} className="w-full mt-1">
+            OK
+          </Button>
+        </DialogContent>
+      </Dialog>
+
       {/* Header */}
       <div className="space-y-2">
         {/* Row 1: Title + Select / bulk actions */}
@@ -571,14 +615,14 @@ export default function Products() {
             {/* 2. Product Image */}
             <div className="space-y-1.5">
               <Label>Product Image</Label>
-              <label className={`flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-xl transition-colors bg-muted/40 ${imageUrls.length >= 4 ? "opacity-50 cursor-not-allowed border-muted" : "cursor-pointer hover:border-primary/50"}`}>
+              <label className={`flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-xl transition-colors bg-muted/40 ${imageUrls.length >= 2 ? "opacity-50 cursor-not-allowed border-muted" : "cursor-pointer hover:border-primary/50"}`}>
                 <Upload className="w-6 h-6 text-muted-foreground mb-1" />
                 <span className="text-xs text-muted-foreground">
                   {uploadImage.isPending
                     ? "Uploading..."
-                    : imageUrls.length >= 4
-                    ? "Maximum 4 images reached"
-                    : `Click to upload images (${imageUrls.length}/4)`}
+                    : imageUrls.length >= 2
+                    ? "Images added"
+                    : `Click to upload (${imageUrls.length}/2)`}
                 </span>
                 <input
                   type="file"
@@ -586,7 +630,7 @@ export default function Products() {
                   multiple
                   className="hidden"
                   onChange={(e) => handleFileChange(e.target.files)}
-                  disabled={uploadImage.isPending || imageUrls.length >= 4}
+                  disabled={uploadImage.isPending || imageUrls.length >= 2}
                 />
               </label>
               {imageUrls.length > 0 && (

@@ -64,6 +64,12 @@ router.post("/products", requireAuth, async (req: AuthRequest, res) => {
       return;
     }
 
+    const existingCount = await Product.countDocuments({ storeId: String(store._id) });
+    if (existingCount >= 1000) {
+      res.status(400).json({ error: "Your store product add limit crossed, you can't add product more." });
+      return;
+    }
+
     const product = await Product.create({
       name,
       description,
