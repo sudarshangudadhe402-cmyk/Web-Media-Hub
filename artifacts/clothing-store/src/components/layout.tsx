@@ -17,6 +17,7 @@ import {
   Heart,
   BellOff,
   SendHorizonal,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -77,6 +78,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         { name: "Dashboard", href: "/", icon: LayoutDashboard },
         { name: "Products", href: "/products", icon: Package },
         { name: "My Store", href: "/my-store", icon: Store },
+        { name: "Sales Ledger", href: "/sales-ledger", icon: BookOpen },
         { name: "AI Promotional Video", href: "/ai-video", icon: Video },
         { name: "Store Request", href: "/store-request", icon: SendHorizonal },
       ];

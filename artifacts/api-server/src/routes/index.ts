@@ -13,6 +13,7 @@ import publicRouter from "./public";
 import settingsRouter from "./settings";
 import loyaltyCardsRouter from "./loyaltyCards";
 import legalRouter from "./legal";
+import ledgerRouter from "./ledger";
 import { requireDb } from "../middlewares/dbCheck";
 
 const router: IRouter = Router();
@@ -34,5 +35,6 @@ router.use(storeRequestsRouter);
 router.use(publicRouter);
 router.use(settingsRouter);
 router.use(loyaltyCardsRouter);
+router.use(ledgerRouter);
 
 export default router;
