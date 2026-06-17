@@ -17,6 +17,7 @@ import {
   Heart,
   BellOff,
   SendHorizonal,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -74,10 +75,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
         { name: "Admins", href: "/admins", icon: Shield },
       ]
     : [
-        { name: "Dashboard", href: "/", icon: LayoutDashboard },
+        { name: "Sales Ledger", href: "/sales-ledger", icon: BookOpen },
         { name: "Products", href: "/products", icon: Package },
-        { name: "My Store", href: "/my-store", icon: Store },
+        { name: "Dashboard", href: "/", icon: LayoutDashboard },
         { name: "AI Promotional Video", href: "/ai-video", icon: Video },
+        { name: "My Store", href: "/my-store", icon: Store },
+
       ];
 
   const handleMarkRead = () => {

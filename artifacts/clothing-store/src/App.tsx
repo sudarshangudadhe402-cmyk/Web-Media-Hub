@@ -19,6 +19,7 @@ import AdminsPage from "@/pages/admins";
 import PublicStore from "@/pages/public-store";
 import LegalAgreement from "@/pages/legal-agreement";
 import StoreRequest from "@/pages/store-request";
+import SalesLedger from "@/pages/sales-ledger";
 import { Layout } from "@/components/layout";
 
 const queryClient = new QueryClient();
@@ -115,6 +116,9 @@ function Router() {
       </Route>
       <Route path="/store-request">
         {() => <ProtectedRoute component={StoreRequest} />}
+      </Route>
+      <Route path="/sales-ledger">
+        {() => <ProtectedRoute component={SalesLedger} />}
       </Route>
       <Route path="/store/:slug" component={PublicStore} />
       <Route component={NotFound} />
