@@ -33,6 +33,7 @@ async function seedSuperAdmin() {
   if (!dbAvailable) return;
   try {
     const existing = await User.findOne({ role: "super_admin" });
+    const email = process.env.SEED_SUPER_ADMIN_EMAIL || "";
     if (!existing) {
       // Read credentials from env — never hardcode in source
       const username = process.env.SEED_SUPER_ADMIN_USERNAME;
@@ -41,8 +42,13 @@ async function seedSuperAdmin() {
         logger.warn("No super admin found and SEED_SUPER_ADMIN_USERNAME / SEED_SUPER_ADMIN_PASSWORD env vars not set — skipping seed");
         return;
       }
-      await User.create({ username, password, plainPassword: password, role: "super_admin" });
-      logger.info({ username }, "Default super admin created from env vars");
+      await User.create({ username, password, plainPassword: password, role: "super_admin", email });
+      logger.info({ username, email }, "Default super admin created from env vars");
+    } else if (email && existing.email !== email) {
+      // Update email if env var is set and differs from stored value
+      existing.email = email;
+      await existing.save();
+      logger.info({ email }, "Super admin email updated from env var");
     }
   } catch (err) {
     logger.error({ err }, "Failed to seed super admin");
