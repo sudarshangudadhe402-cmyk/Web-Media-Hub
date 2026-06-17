@@ -163,4 +163,14 @@ router.get("/legal/acceptances/export", requireSuperAdmin, async (req: AuthReque
   }
 });
 
+router.delete("/legal/acceptances/all", requireSuperAdmin, async (req: AuthRequest, res) => {
+  try {
+    const result = await AdminLegalAcceptance.deleteMany({});
+    res.json({ success: true, deleted: result.deletedCount });
+  } catch (err) {
+    req.log.error({ err }, "Legal delete all error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

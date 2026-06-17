@@ -102,19 +102,19 @@ export default function PlanSelector({ selected, onChange }: PlanSelectorProps) 
                   <Check className={`w-3 h-3 ${plan.checkColor}`} />
                 </div>
               )}
-              <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider block mb-1">
+              <span className="text-[10px] font-bold text-white uppercase tracking-wider block mb-1">
                 {plan.badge}
               </span>
               <p className="text-sm font-semibold text-white leading-tight">{plan.label}</p>
               <p className={`text-base font-extrabold mt-1 ${plan.color}`}>
                 {plan.price}{" "}
-                <span className="text-xs font-normal text-white/40">{plan.period}</span>
+                <span className="text-xs font-normal text-white/80">{plan.period}</span>
               </p>
               <ul className="mt-2 space-y-1">
                 {plan.features.slice(0, 3).map((f) => (
                   <li key={f} className="flex items-center gap-1.5">
-                    <Check className={`w-2.5 h-2.5 shrink-0 ${plan.checkColor} opacity-70`} />
-                    <span className="text-[11px] text-white/60 leading-tight">{f}</span>
+                    <Check className={`w-2.5 h-2.5 shrink-0 ${plan.checkColor}`} />
+                    <span className="text-[11px] text-white/90 leading-tight">{f}</span>
                   </li>
                 ))}
               </ul>

@@ -109,6 +109,10 @@ const STEPS = [
           <h3 className="font-semibold text-foreground mb-2">5. Platform Owner Rights</h3>
           <p>Web Media Hub and its platform owner reserve the unconditional right to approve or reject any refund request at their sole and absolute discretion. No appeal process is guaranteed beyond the initial review.</p>
         </div>
+        <div>
+          <h3 className="font-semibold text-foreground mb-2">6. No Refund on Auto-Renewed Subscriptions</h3>
+          <p>If you have enrolled in a subscription plan with autopay enabled, and your subscription is automatically renewed and charged on the renewal date, <strong>no refund will be issued for that auto-renewed payment under any circumstances</strong>. By enabling autopay at the time of your first plan purchase, you expressly acknowledge and agree that all future automatic renewal charges are final, non-disputable, and non-refundable. It is your responsibility to cancel the autopay before the renewal date if you do not wish to continue the subscription.</p>
+        </div>
       </div>
     ),
   },
