@@ -29,7 +29,7 @@ interface LegalRecord {
 }
 
 function getToken() {
-  return localStorage.getItem("wmh_super_token");
+  return sessionStorage.getItem("wmh_super_token");
 }
 
 async function fetchAcceptances(search: string, from: string, to: string): Promise<LegalRecord[]> {
