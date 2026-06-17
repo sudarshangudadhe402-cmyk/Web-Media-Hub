@@ -61,6 +61,7 @@ export default function ManageAdmins() {
   const rejectRequest = useRejectStoreRequest();
 
   const [pageView, setPageView] = useState<"main" | "addAdmin" | "choosePlan">("main");
+  const [selectedPlan, setSelectedPlan] = useState<SelectedPlan | null>(null);
   const [form, setForm] = useState({ username: "", password: "", adminNumber: "" });
   const [activeTab, setActiveTab] = useState<StoreTab>("pending");
   const [selectedRequest, setSelectedRequest] = useState<NonNullable<typeof allRequests>[number] | null>(null);
@@ -505,10 +506,23 @@ export default function ManageAdmins() {
             >
               <div className="flex items-center gap-3">
                 <Star className="w-5 h-5 fill-white text-white shrink-0" />
-                <span>Choose Plan</span>
+                <span>{selectedPlan ? "Change Plan" : "Choose Plan"}</span>
               </div>
               <ChevronRight className="w-5 h-5 shrink-0" />
             </button>
+
+            {/* Selected Plan Card */}
+            {selectedPlan && (
+              <div className="rounded-xl border p-4 space-y-1" style={{ borderColor: selectedPlan.color + "55", background: selectedPlan.color + "11" }}>
+                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: selectedPlan.color }}>{selectedPlan.badge}</p>
+                <p className="font-bold text-sm">{selectedPlan.name}</p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xl font-extrabold" style={{ color: selectedPlan.color }}>{selectedPlan.price}</span>
+                  <span className="text-xs text-muted-foreground">{selectedPlan.period}</span>
+                </div>
+                <p className="text-xs text-muted-foreground">{selectedPlan.tagline}</p>
+              </div>
+            )}
 
             <div className="flex gap-3 mt-auto pt-2">
               <Button
@@ -533,7 +547,7 @@ export default function ManageAdmins() {
 
       {/* Pricing Overlay */}
       {pageView === "choosePlan" && (
-        <PricingOverlay onBack={() => setPageView("addAdmin")} />
+        <PricingOverlay onBack={() => setPageView("addAdmin")} onSelectPlan={(plan) => { setSelectedPlan(plan); setPageView("addAdmin"); }} />
       )}
 
       {/* Store Request Detail Dialog */}
