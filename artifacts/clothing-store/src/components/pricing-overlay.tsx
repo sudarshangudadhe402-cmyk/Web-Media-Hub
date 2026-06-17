@@ -147,7 +147,7 @@ export default function PricingOverlay({ onBack, onSelectPlan }: Props) {
                 <Button
                   variant="outline"
                   className="w-full bg-transparent border-white/20 text-white hover:bg-white/10 h-12"
-                  onClick={() => selectAndBack({ badge: "🧪 Try First", name: "Demo Plan", price: "₹999", period: "/ Month", tagline: "Perfect for testing the platform before upgrading.", color: "#ffffff" })}
+                  onClick={() => selectAndBack({ badge: "🧪 Try First", name: "Demo Plan", price: "₹999", period: "/ Month", tagline: "Perfect for testing the platform before upgrading.", color: "#94a3b8" })}
                 >
                   Try Demo
                 </Button>
