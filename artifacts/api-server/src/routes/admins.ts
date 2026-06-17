@@ -56,6 +56,14 @@ router.post("/admins", requireSuperAdmin, async (req, res) => {
       return;
     }
 
+    if (adminNumber && adminNumber.trim()) {
+      const existingMobile = await User.findOne({ adminNumber: adminNumber.trim(), role: "admin" });
+      if (existingMobile) {
+        res.status(400).json({ error: "Admin number already exists — this mobile number is already registered" });
+        return;
+      }
+    }
+
     const admin = await User.create({
       username,
       password,

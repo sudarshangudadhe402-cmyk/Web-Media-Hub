@@ -92,11 +92,17 @@ export default function ManageAdmins() {
         },
         onError: (err: any) => {
           const msg = err?.data?.error || err?.message || "Failed to create admin";
-          const isUsernameConflict = msg.toLowerCase().includes("already exists") || msg.toLowerCase().includes("username");
+          const lc = msg.toLowerCase();
+          const isUsernameConflict = lc.includes("username already exists");
+          const isMobileConflict = lc.includes("mobile") || lc.includes("number already exists") || lc.includes("admin number");
           toast({
             variant: "destructive",
-            title: isUsernameConflict ? "Username already exists" : "Failed",
-            description: isUsernameConflict ? "Please try a different username" : msg,
+            title: isUsernameConflict ? "Username already exists" : isMobileConflict ? "Mobile number already exists" : "Failed",
+            description: isUsernameConflict
+              ? "Please try a different username"
+              : isMobileConflict
+              ? "This mobile number is already registered with another admin"
+              : msg,
           });
         },
       }
@@ -475,12 +481,12 @@ export default function ManageAdmins() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Username</label>
               <Input
-                placeholder="Only letters (e.g. adminstore)"
+                placeholder="Letters and spaces (e.g. admin store)"
                 value={form.username}
-                onChange={(e) => setForm((f) => ({ ...f, username: e.target.value.replace(/[^a-zA-Z]/g, "") }))}
+                onChange={(e) => setForm((f) => ({ ...f, username: e.target.value.replace(/[^a-zA-Z ]/g, "") }))}
                 required
               />
-              <p className="text-xs text-muted-foreground">Only letters allowed (no numbers, emoji or special characters)</p>
+              <p className="text-xs text-muted-foreground">Letters and spaces only (no numbers, emoji or special characters)</p>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Password</label>
