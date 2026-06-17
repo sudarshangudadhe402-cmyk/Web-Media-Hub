@@ -60,7 +60,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="p-4 border-b border-sidebar-border h-16 flex items-center gap-2">
           <ShieldCheck className="w-5 h-5 text-sidebar-foreground/60 shrink-0" />
           <h1 className="font-bold text-base text-sidebar-foreground truncate">
-            Web Media Hub
+            Mr_Sid_55
           </h1>
         </div>
         <div className="px-4 py-3 border-b border-sidebar-border">
@@ -95,7 +95,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <SheetContent side="left" className="w-52 p-0 bg-background border-r border-border shadow-xl">
                 <div className="px-4 py-4 border-b border-border flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-primary shrink-0" />
-                  <h1 className="font-semibold text-sm text-foreground truncate">Web Media Hub</h1>
+                  <h1 className="font-semibold text-sm text-foreground truncate">Mr_Sid_55</h1>
                 </div>
                 <nav className="px-2 py-3 space-y-0.5">
                   <NavLinks light />
@@ -112,13 +112,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </div>
               </SheetContent>
             </Sheet>
-            <h1 className="md:hidden font-bold text-lg truncate">Web Media Hub</h1>
+            <h1 className="md:hidden font-bold text-lg truncate">Mr_Sid_55</h1>
           </div>
 
           <div className="hidden sm:flex items-center gap-2 border-l border-border pl-4">
             <div className="flex flex-col items-end">
               <span className="text-sm font-medium">{user?.username}</span>
-              <span className="text-xs text-muted-foreground">Super Admin</span>
+              <span className="text-xs text-muted-foreground">Mr_Sid_55</span>
             </div>
           </div>
         </header>

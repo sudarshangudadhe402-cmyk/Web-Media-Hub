@@ -96,7 +96,7 @@ export default function Login() {
 
       setLockoutUntil(null);
       login(data.token);
-      toast({ title: "Welcome, Super Admin!" });
+      toast({ title: "Welcome, Mr_Sid_55!" });
       setLocation("/manage-admins");
     } catch {
       toast({
@@ -119,7 +119,7 @@ export default function Login() {
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 mb-2">
             <ShieldCheck className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">Web Media Hub</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Mr_Sid_55</h1>
           <p className="text-muted-foreground text-sm">Super Admin Portal</p>
         </div>
 
