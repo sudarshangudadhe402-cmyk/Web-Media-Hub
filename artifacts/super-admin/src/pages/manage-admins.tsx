@@ -466,21 +466,24 @@ export default function ManageAdmins() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Username</label>
               <Input
-                placeholder="admin_username"
+                placeholder="Only letters (e.g. adminstore)"
                 value={form.username}
-                onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
+                onChange={(e) => setForm((f) => ({ ...f, username: e.target.value.replace(/[^a-zA-Z]/g, "") }))}
                 required
               />
+              <p className="text-xs text-muted-foreground">Only letters allowed (no numbers, emoji or special characters)</p>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Password</label>
               <Input
-                type="password"
-                placeholder="••••••••"
+                type="text"
+                inputMode="numeric"
+                placeholder="Only numbers (e.g. 123456)"
                 value={form.password}
-                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value.replace(/[^0-9]/g, "") }))}
                 required
               />
+              <p className="text-xs text-muted-foreground">Only numbers allowed (no letters or emoji)</p>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center gap-1.5">
@@ -529,14 +532,14 @@ export default function ManageAdmins() {
                 type="button"
                 variant="outline"
                 className="flex-1"
-                onClick={() => { setPageView("main"); setForm({ username: "", password: "", adminNumber: "" }); }}
+                onClick={() => { setPageView("main"); setForm({ username: "", password: "", adminNumber: "" }); setSelectedPlan(null); }}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                disabled={createAdmin.isPending}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:opacity-40"
+                disabled={createAdmin.isPending || !form.username || !form.password || form.adminNumber.length !== 10 || !selectedPlan}
               >
                 {createAdmin.isPending ? "Creating..." : "Create Admin"}
               </Button>

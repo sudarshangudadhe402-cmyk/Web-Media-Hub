@@ -79,7 +79,10 @@ export default function AiVideo() {
   const globalLink = globalLinkData?.globalLink ?? null;
 
   function handleFormChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    let val = e.target.value;
+    if (e.target.name === "username") val = val.replace(/[^a-zA-Z]/g, "");
+    if (e.target.name === "password") val = val.replace(/[^0-9]/g, "");
+    setForm((prev) => ({ ...prev, [e.target.name]: val }));
   }
 
   function validateWhatsApp(digits: string): string | null {
@@ -146,7 +149,7 @@ export default function AiVideo() {
   /* ── Full-page Add Friend Store ── */
   if (pageView === "addFriend") {
     return (
-      <div className="min-h-screen flex flex-col bg-background">
+      <div className="h-screen flex flex-col bg-background">
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 border-b bg-background">
           <button
@@ -162,15 +165,18 @@ export default function AiVideo() {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleDone} className="flex-1 flex flex-col p-5 gap-5 max-w-lg mx-auto w-full">
+        <form onSubmit={handleDone} className="flex-1 min-h-0 flex flex-col">
+          <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5 max-w-lg mx-auto w-full">
           <div className="space-y-1.5">
             <Label htmlFor="username">Username</Label>
             <Input id="username" name="username" placeholder="Friend's username" value={form.username} onChange={handleFormChange} required data-testid="friend-username" />
+            <p className="text-xs text-muted-foreground">Only letters allowed (no numbers, emoji or special characters)</p>
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" name="password" type="password" placeholder="Friend's password" value={form.password} onChange={handleFormChange} required data-testid="friend-password" />
+            <Input id="password" name="password" type="text" inputMode="numeric" placeholder="Only numbers" value={form.password} onChange={handleFormChange} required data-testid="friend-password" />
+            <p className="text-xs text-muted-foreground">Only numbers allowed (no letters or emoji)</p>
           </div>
 
           <div className="space-y-1.5">
@@ -236,20 +242,20 @@ export default function AiVideo() {
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex gap-3 mt-auto pt-2">
+          </div>{/* end scrollable content */}
+          <div className="shrink-0 border-t bg-background px-5 py-4 flex gap-3 max-w-lg mx-auto w-full">
             <Button
               type="button"
               variant="outline"
               className="flex-1"
-              onClick={() => { setPageView("main"); setForm({ username: "", password: "", storeName: "", whatsapp: "" }); }}
+              onClick={() => { setPageView("main"); setForm({ username: "", password: "", storeName: "", whatsapp: "" }); setSelectedPlan(null); }}
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-              disabled={submitRequest.isPending}
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:opacity-40"
+              disabled={submitRequest.isPending || !form.username || !form.password || !form.storeName || form.whatsapp.length !== 10 || !selectedPlan}
             >
               {submitRequest.isPending ? "Submitting..." : "Done"}
             </Button>
