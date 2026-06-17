@@ -13,7 +13,7 @@ export default function Login() {
   const { toast } = useToast();
   const [_, setLocation] = useLocation();
 
-  const [username, setUsername] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [accessCode, setAccessCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -41,7 +41,7 @@ export default function Login() {
       return;
     }
 
-    if (!username.trim() || !password.trim() || !accessCode.trim()) {
+    if (!identifier.trim() || !password.trim() || !accessCode.trim()) {
       toast({
         variant: "destructive",
         title: "All fields required",
@@ -55,7 +55,7 @@ export default function Login() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: username.trim(), password, accessCode: accessCode.trim() }),
+        body: JSON.stringify({ username: identifier.trim(), email: identifier.trim(), password, accessCode: accessCode.trim() }),
       });
 
       const data = await res.json();
@@ -126,7 +126,7 @@ export default function Login() {
         <Card className="shadow-lg border-primary/10">
           <CardHeader className="space-y-1 pb-4">
             <CardTitle className="text-lg font-semibold">Sign in</CardTitle>
-            <CardDescription>Enter your super admin credentials and access code</CardDescription>
+            <CardDescription>Enter your username or email along with password and access code</CardDescription>
           </CardHeader>
           <CardContent>
             {isCurrentlyLocked && (
@@ -141,13 +141,13 @@ export default function Login() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="identifier">Username or Email</Label>
                 <Input
-                  id="username"
-                  placeholder="super_admin"
+                  id="identifier"
+                  placeholder="super_admin or email@example.com"
                   autoComplete="username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
                   disabled={isLoading || isCurrentlyLocked}
                 />
               </div>
