@@ -28,6 +28,11 @@ router.get("/admins", requireSuperAdmin, async (req, res) => {
         multiDeviceAllowed: a.multiDeviceAllowed === true,
         storeSlug: storeMap[String(a._id)]?.publicSlug ?? null,
         storeName: storeMap[String(a._id)]?.name ?? null,
+        planName: a.planName ?? "",
+        planPrice: a.planPrice ?? "",
+        planPeriod: a.planPeriod ?? "",
+        planBadge: a.planBadge ?? "",
+        planColor: a.planColor ?? "",
         createdAt: a.createdAt.toISOString(),
       }))
     );
@@ -39,7 +44,7 @@ router.get("/admins", requireSuperAdmin, async (req, res) => {
 
 router.post("/admins", requireSuperAdmin, async (req, res) => {
   try {
-    const { username, password, adminNumber } = req.body;
+    const { username, password, adminNumber, planName, planPrice, planPeriod, planBadge, planColor } = req.body;
     if (!username || !password) {
       res.status(400).json({ error: "Username and password are required" });
       return;
@@ -51,7 +56,19 @@ router.post("/admins", requireSuperAdmin, async (req, res) => {
       return;
     }
 
-    const admin = await User.create({ username, password, plainPassword: password, adminNumber: adminNumber ?? "", role: "admin", isActive: true });
+    const admin = await User.create({
+      username,
+      password,
+      plainPassword: password,
+      adminNumber: adminNumber ?? "",
+      role: "admin",
+      isActive: true,
+      planName: planName ?? "",
+      planPrice: planPrice ?? "",
+      planPeriod: planPeriod ?? "",
+      planBadge: planBadge ?? "",
+      planColor: planColor ?? "",
+    });
     res.status(201).json({
       id: String(admin._id),
       username: admin.username,
@@ -62,6 +79,11 @@ router.post("/admins", requireSuperAdmin, async (req, res) => {
       multiDeviceAllowed: false,
       storeSlug: null,
       storeName: null,
+      planName: admin.planName ?? "",
+      planPrice: admin.planPrice ?? "",
+      planPeriod: admin.planPeriod ?? "",
+      planBadge: admin.planBadge ?? "",
+      planColor: admin.planColor ?? "",
       createdAt: admin.createdAt.toISOString(),
     });
   } catch (err) {

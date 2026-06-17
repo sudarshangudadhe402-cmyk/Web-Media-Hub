@@ -277,6 +277,31 @@ export default function Admins() {
                   </div>
                 </div>
 
+                {/* Plan Card */}
+                {(() => {
+                  const planName = (selectedAdmin as any).planName as string;
+                  const planPrice = (selectedAdmin as any).planPrice as string;
+                  const planPeriod = (selectedAdmin as any).planPeriod as string;
+                  const planBadge = (selectedAdmin as any).planBadge as string;
+                  const planColor = (selectedAdmin as any).planColor as string;
+                  if (!planName) return null;
+                  return (
+                    <div
+                      className="rounded-xl border px-4 py-3 space-y-1"
+                      style={{ borderColor: planColor ? planColor + "55" : undefined, background: planColor ? planColor + "11" : undefined }}
+                    >
+                      <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: planColor || "#888" }}>{planBadge}</p>
+                      <p className="font-bold text-sm">{planName}</p>
+                      {planPrice && (
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-lg font-extrabold" style={{ color: planColor || undefined }}>{planPrice}</span>
+                          {planPeriod && <span className="text-xs text-muted-foreground">{planPeriod}</span>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 <div className="bg-muted rounded-xl divide-y divide-border">
                   <div className="flex items-center justify-between px-4 py-3">
                     <span className="text-sm text-muted-foreground">Username</span>

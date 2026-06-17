@@ -181,6 +181,11 @@ router.get("/auth/me", requireDb, requireAuth, async (req: AuthRequest, res) => 
     role: user.role,
     createdAt: user.createdAt,
     storeName,
+    planName: user.planName ?? "",
+    planPrice: user.planPrice ?? "",
+    planPeriod: user.planPeriod ?? "",
+    planBadge: user.planBadge ?? "",
+    planColor: user.planColor ?? "",
   });
 });
 

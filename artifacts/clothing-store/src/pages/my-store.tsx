@@ -431,6 +431,32 @@ export default function MyStore() {
             </div>
 
             <CardContent className="p-5 space-y-4">
+              {/* Plan Card */}
+              {user?.planName && (
+                <div
+                  className="rounded-xl border px-4 py-3 space-y-1"
+                  style={{
+                    borderColor: user.planColor ? user.planColor + "55" : undefined,
+                    background: user.planColor ? user.planColor + "11" : undefined,
+                  }}
+                >
+                  <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: user.planColor || "#888" }}>
+                    {user.planBadge}
+                  </p>
+                  <p className="font-bold text-sm">{user.planName}</p>
+                  {user.planPrice && (
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-lg font-extrabold" style={{ color: user.planColor || undefined }}>
+                        {user.planPrice}
+                      </span>
+                      {user.planPeriod && (
+                        <span className="text-xs text-muted-foreground">{user.planPeriod}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Info rows */}
               <div className="divide-y divide-border rounded-xl border overflow-hidden">
                 {store.address && (

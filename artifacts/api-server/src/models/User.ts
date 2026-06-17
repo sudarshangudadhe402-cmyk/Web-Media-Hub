@@ -10,6 +10,11 @@ export interface IUser extends Document {
   isActive: boolean;
   sessionId: string;
   multiDeviceAllowed: boolean;
+  planName: string;
+  planPrice: string;
+  planPeriod: string;
+  planBadge: string;
+  planColor: string;
   createdAt: Date;
   comparePassword(candidate: string): Promise<boolean>;
 }
@@ -24,6 +29,11 @@ const UserSchema = new Schema<IUser>(
     isActive: { type: Boolean, default: true },
     sessionId: { type: String, default: "" },
     multiDeviceAllowed: { type: Boolean, default: false },
+    planName: { type: String, default: "" },
+    planPrice: { type: String, default: "" },
+    planPeriod: { type: String, default: "" },
+    planBadge: { type: String, default: "" },
+    planColor: { type: String, default: "" },
   },
   { timestamps: true }
 );

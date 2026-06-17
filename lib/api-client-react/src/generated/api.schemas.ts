@@ -44,6 +44,11 @@ export interface User {
   adminNumber?: string;
   role: UserRole;
   createdAt?: string;
+  planName?: string;
+  planPrice?: string;
+  planPeriod?: string;
+  planBadge?: string;
+  planColor?: string;
 }
 
 export interface AuthResponse {
@@ -55,6 +60,11 @@ export interface AdminInput {
   username: string;
   password: string;
   adminNumber?: string;
+  planName?: string;
+  planPrice?: string;
+  planPeriod?: string;
+  planBadge?: string;
+  planColor?: string;
 }
 
 export type ProductProductType = typeof ProductProductType[keyof typeof ProductProductType];

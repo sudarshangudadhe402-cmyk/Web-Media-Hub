@@ -73,7 +73,16 @@ export default function ManageAdmins() {
   function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     createAdmin.mutate(
-      { data: { username: form.username, password: form.password, adminNumber: form.adminNumber } },
+      { data: {
+        username: form.username,
+        password: form.password,
+        adminNumber: form.adminNumber,
+        planName: selectedPlan?.name ?? "",
+        planPrice: selectedPlan?.price ?? "",
+        planPeriod: selectedPlan?.period ?? "",
+        planBadge: selectedPlan?.badge ?? "",
+        planColor: selectedPlan?.color ?? "",
+      } },
       {
         onSuccess: () => {
           toast({ title: "Admin created successfully" });
