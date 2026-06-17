@@ -113,10 +113,10 @@ export default function Pricing() {
               <div className="inline-block px-3 py-1 bg-white/10 text-white/80 rounded-md text-xs font-bold uppercase tracking-wider mb-6 w-max">
                 🧪 Try First
               </div>
-              <h3 className="text-xl font-medium text-white/90 mb-2">Demo Plan</h3>
+              <h3 className="text-xl font-medium text-white/90 mb-2">Starting Plan</h3>
               <div className="flex items-baseline gap-1 mb-4">
                 <span className="text-4xl font-bold text-white">₹999</span>
-                <span className="text-white/50 text-sm">/ Month</span>
+                <span className="text-white/50 text-sm">/ Month ( 30 days )</span>
               </div>
               <p className="text-white/60 text-sm mb-8">Perfect for testing the platform before upgrading.</p>
 
@@ -130,7 +130,7 @@ export default function Pricing() {
               </div>
 
               <Button variant="outline" className="w-full bg-transparent border-white/20 text-white hover:bg-white/10 h-12">
-                Try Demo
+                Get Monthly Access
               </Button>
             </motion.div>
 
@@ -209,7 +209,7 @@ export default function Pricing() {
                 <h3 className="text-2xl font-bold text-white mb-2">Lifetime Business Plan</h3>
 
                 <div className="flex items-baseline gap-1 mb-1">
-                  <span className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#00FF88] to-white">₹9,999</span>
+                  <span className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#00FF88] to-white">₹15,999</span>
                   <span className="text-[#00FF88]/70 font-medium text-sm">One-Time</span>
                 </div>
                 <p className="text-[#00FF88]/80 text-sm font-medium mb-6">Pay Once. Use Forever.</p>
@@ -219,7 +219,7 @@ export default function Pricing() {
                 </div>
 
                 <div className="space-y-4 mb-8 flex-1">
-                  {['Everything in Premium Annual', 'Lifetime Access, No Renewal Ever', '1,000 Web Media Hub Coins Included', 'Future Feature Updates', 'Priority Support'].map((feature, i) => (
+                  {['Everything in Premium Annual', 'Lifetime Access, No Renewal Ever', '2000₹ Web Media Hub Coin', 'Future Feature Updates', 'Priority Support'].map((feature, i) => (
                     <div key={i} className="flex items-start gap-3">
                       <div className="w-5 h-5 rounded-full bg-[#00FF88]/20 flex items-center justify-center shrink-0 mt-0.5">
                         <Check className="w-3 h-3 text-[#00FF88]" />
@@ -266,13 +266,13 @@ export default function Pricing() {
                 <h3 className="text-2xl font-bold text-white mb-2">Enterprise Plan</h3>
 
                 <div className="flex items-baseline gap-1 mb-1">
-                  <span className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#FF2D2D] to-white">₹17,999</span>
+                  <span className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#FF2D2D] to-white">₹19,999</span>
                   <span className="text-[#FF2D2D]/70 font-medium text-sm">One-Time</span>
                 </div>
                 <p className="text-[#FF2D2D]/80 text-sm font-medium mb-6">Designed for large stores and premium brands.</p>
 
                 <div className="space-y-4 mb-8 flex-1">
-                  {['Everything in Lifetime Plan', '7,000 Web Media Hub Coins', 'Premium AI Resources', 'Early Access Features', 'VIP Support'].map((feature, i) => (
+                  {['Everything in Lifetime Plan', '6000₹ Web Media Hub Coin', 'Premium AI Resources', 'Early Access Features', 'VIP Support'].map((feature, i) => (
                     <div key={i} className="flex items-start gap-3">
                       <div className="w-5 h-5 rounded-full bg-[#FF2D2D]/20 flex items-center justify-center shrink-0 mt-0.5">
                         <Check className="w-3 h-3 text-[#FF2D2D]" />
