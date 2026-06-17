@@ -198,7 +198,7 @@ export default function Admins() {
             {filteredAdmins?.map((admin) => {
               const isActive = (admin as any).isActive !== false;
               const storeName = (admin as any).storeName as string | null;
-              const displayName = storeName || admin.username;
+              const displayName = storeName || (admin as any).email || admin.username;
               return (
                 <button
                   key={admin.id}
@@ -224,7 +224,7 @@ export default function Admins() {
                           <span className={`text-xs font-medium ${isActive ? "text-green-600" : "text-red-500"}`}>
                             {isActive ? "Active" : "Inactive"}
                           </span>
-                          <span className="text-xs text-muted-foreground">@{admin.username}</span>
+                          <span className="text-xs text-muted-foreground">{(admin as any).email || admin.username}</span>
                           {admin.createdAt && (
                             <span className="text-xs text-muted-foreground">
                               Added {new Date(admin.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
@@ -267,10 +267,10 @@ export default function Admins() {
               <div className="space-y-5 pt-2">
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xl uppercase">
-                    {selectedAdmin.username.substring(0, 2)}
+                    {((selectedAdmin as any).email || selectedAdmin.username || "?").substring(0, 2)}
                   </div>
                   <div>
-                    <p className="font-bold text-lg">{selectedAdmin.username}</p>
+                    <p className="font-bold text-lg">{(selectedAdmin as any).email || selectedAdmin.username}</p>
                     <Badge variant={selectedAdmin.role === "super_admin" ? "default" : "outline"} className="capitalize text-xs mt-1">
                       {selectedAdmin.role.replace("_", " ")}
                     </Badge>
@@ -304,8 +304,8 @@ export default function Admins() {
 
                 <div className="bg-muted rounded-xl divide-y divide-border">
                   <div className="flex items-center justify-between px-4 py-3">
-                    <span className="text-sm text-muted-foreground">Username</span>
-                    <span className="text-sm font-medium">{selectedAdmin.username}</span>
+                    <span className="text-sm text-muted-foreground">Email</span>
+                    <span className="text-sm font-medium">{(selectedAdmin as any).email || "—"}</span>
                   </div>
                   <div className="flex items-center justify-between px-4 py-3">
                     <span className="text-sm text-muted-foreground">Password</span>

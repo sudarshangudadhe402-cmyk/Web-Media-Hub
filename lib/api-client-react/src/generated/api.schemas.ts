@@ -40,6 +40,7 @@ export const UserRole = {
 export interface User {
   id: string;
   username: string;
+  email?: string;
   plainPassword?: string;
   adminNumber?: string;
   role: UserRole;
@@ -57,7 +58,7 @@ export interface AuthResponse {
 }
 
 export interface AdminInput {
-  username: string;
+  email: string;
   password: string;
   adminNumber?: string;
   planName?: string;

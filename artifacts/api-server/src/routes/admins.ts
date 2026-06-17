@@ -21,6 +21,7 @@ router.get("/admins", requireSuperAdmin, async (req, res) => {
       admins.map((a) => ({
         id: String(a._id),
         username: a.username,
+        email: a.email ?? "",
         plainPassword: a.plainPassword ?? "",
         adminNumber: a.adminNumber ?? "",
         role: a.role,
@@ -44,15 +45,22 @@ router.get("/admins", requireSuperAdmin, async (req, res) => {
 
 router.post("/admins", requireSuperAdmin, async (req, res) => {
   try {
-    const { username, password, adminNumber, planName, planPrice, planPeriod, planBadge, planColor } = req.body;
-    if (!username || !password) {
-      res.status(400).json({ error: "Username and password are required" });
+    const { email, password, adminNumber, planName, planPrice, planPeriod, planBadge, planColor } = req.body;
+    if (!email || !password) {
+      res.status(400).json({ error: "Email and password are required" });
       return;
     }
 
-    const existing = await User.findOne({ username });
-    if (existing) {
-      res.status(400).json({ error: "Username already exists" });
+    // Basic email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      res.status(400).json({ error: "Please enter a valid email address" });
+      return;
+    }
+
+    const existingEmail = await User.findOne({ email: email.trim(), role: "admin" });
+    if (existingEmail) {
+      res.status(400).json({ error: "Email already exists — this email is already registered" });
       return;
     }
 
@@ -64,8 +72,12 @@ router.post("/admins", requireSuperAdmin, async (req, res) => {
       }
     }
 
+    // Auto-generate a unique internal username
+    const autoUsername = `admin_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+
     const admin = await User.create({
-      username,
+      username: autoUsername,
+      email: email.trim(),
       password,
       plainPassword: password,
       adminNumber: adminNumber ?? "",
@@ -80,6 +92,7 @@ router.post("/admins", requireSuperAdmin, async (req, res) => {
     res.status(201).json({
       id: String(admin._id),
       username: admin.username,
+      email: admin.email ?? "",
       plainPassword: password,
       adminNumber: admin.adminNumber ?? "",
       role: admin.role,

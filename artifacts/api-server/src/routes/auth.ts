@@ -19,12 +19,12 @@ interface AttemptRecord {
 
 const loginAttempts = new Map<string, AttemptRecord>();
 
-function getAttemptKey(req: Request, username: string): string {
+function getAttemptKey(req: Request, identifier: string): string {
   const ip =
     (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
     req.socket?.remoteAddress ||
     "unknown";
-  return `${ip}::${username.toLowerCase()}`;
+  return `${ip}::${identifier.toLowerCase()}`;
 }
 
 function getRecord(key: string): AttemptRecord {
@@ -71,13 +71,16 @@ const router = Router();
 
 router.post("/auth/login", requireDb, async (req, res) => {
   try {
-    const { username, password } = req.body;
-    if (!username || !password) {
-      res.status(400).json({ error: "Username and password are required" });
+    const { username, email: emailId, password } = req.body;
+    // Accept either "email" (from admin login) or "username" (from super admin login)
+    const identifier = (emailId || username || "").trim();
+
+    if (!identifier || !password) {
+      res.status(400).json({ error: "Email/username and password are required" });
       return;
     }
 
-    const attemptKey = getAttemptKey(req, username);
+    const attemptKey = getAttemptKey(req, identifier);
     const record = getRecord(attemptKey);
 
     // Check lockout
@@ -91,7 +94,11 @@ router.post("/auth/login", requireDb, async (req, res) => {
       return;
     }
 
-    const user = await User.findOne({ username });
+    // Find user: try by username (super_admin path) OR by email (admin path)
+    const user = await User.findOne({
+      $or: [{ username: identifier }, { email: identifier }],
+    });
+
     if (!user) {
       recordFailure(attemptKey);
       res.status(401).json({ error: "Invalid credentials" });
@@ -146,6 +153,7 @@ router.post("/auth/login", requireDb, async (req, res) => {
       user: {
         id: String(user._id),
         username: user.username,
+        email: user.email ?? "",
         role: user.role,
         createdAt: user.createdAt,
       },
@@ -178,6 +186,7 @@ router.get("/auth/me", requireDb, requireAuth, async (req: AuthRequest, res) => 
   res.json({
     id: String(user._id),
     username: user.username,
+    email: user.email ?? "",
     role: user.role,
     createdAt: user.createdAt,
     storeName,

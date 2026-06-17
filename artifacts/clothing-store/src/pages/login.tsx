@@ -19,7 +19,7 @@ import { useLocation } from "wouter";
 import { AlertTriangle, Eye, EyeOff } from "lucide-react";
 
 const loginSchema = z.object({
-  username: z.string().min(1, "Username is required"),
+  email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
   password: z.string().min(1, "Password is required"),
 });
 
@@ -34,7 +34,7 @@ export default function Login() {
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { username: "", password: "" },
+    defaultValues: { email: "", password: "" },
   });
 
   function getRemainingLockout(): string {
@@ -63,7 +63,7 @@ export default function Login() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: values.username.trim(), password: values.password }),
+        body: JSON.stringify({ email: values.email.trim(), password: values.password }),
       });
 
       const data = await res.json();
@@ -144,14 +144,15 @@ export default function Login() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
-                name="username"
+                name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Username</FormLabel>
+                    <FormLabel>Email</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="admin"
-                        autoComplete="username"
+                        type="email"
+                        placeholder="admin@example.com"
+                        autoComplete="email"
                         disabled={isLoading || isCurrentlyLocked}
                         {...field}
                       />

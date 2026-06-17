@@ -62,7 +62,7 @@ export default function ManageAdmins() {
 
   const [pageView, setPageView] = useState<"main" | "addAdmin" | "choosePlan">("main");
   const [selectedPlan, setSelectedPlan] = useState<SelectedPlan | null>(null);
-  const [form, setForm] = useState({ username: "", password: "", adminNumber: "" });
+  const [form, setForm] = useState({ email: "", password: "", adminNumber: "" });
   const [activeTab, setActiveTab] = useState<StoreTab>("pending");
   const [selectedRequest, setSelectedRequest] = useState<NonNullable<typeof allRequests>[number] | null>(null);
   const [requestDetailOpen, setRequestDetailOpen] = useState(false);
@@ -74,7 +74,7 @@ export default function ManageAdmins() {
     e.preventDefault();
     createAdmin.mutate(
       { data: {
-        username: form.username,
+        email: form.email,
         password: form.password,
         adminNumber: form.adminNumber,
         planName: selectedPlan?.name ?? "",
@@ -87,21 +87,24 @@ export default function ManageAdmins() {
         onSuccess: () => {
           toast({ title: "Admin created successfully" });
           queryClient.invalidateQueries({ queryKey: getListAdminsQueryKey() });
-          setForm({ username: "", password: "", adminNumber: "" });
+          setForm({ email: "", password: "", adminNumber: "" });
           setPageView("main");
         },
         onError: (err: any) => {
           const msg = err?.data?.error || err?.message || "Failed to create admin";
           const lc = msg.toLowerCase();
-          const isUsernameConflict = lc.includes("username already exists");
+          const isEmailConflict = lc.includes("email already exists") || lc.includes("email is already");
           const isMobileConflict = lc.includes("mobile") || lc.includes("number already exists") || lc.includes("admin number");
+          const isInvalidEmail = lc.includes("valid email");
           toast({
             variant: "destructive",
-            title: isUsernameConflict ? "Username already exists" : isMobileConflict ? "Mobile number already exists" : "Failed",
-            description: isUsernameConflict
-              ? "Please try a different username"
+            title: isEmailConflict ? "Email already exists" : isMobileConflict ? "Mobile number already exists" : isInvalidEmail ? "Invalid Email" : "Failed",
+            description: isEmailConflict
+              ? "This email is already registered with another admin"
               : isMobileConflict
               ? "This mobile number is already registered with another admin"
+              : isInvalidEmail
+              ? "Please enter a valid email address"
               : msg,
           });
         },
@@ -465,7 +468,7 @@ export default function ManageAdmins() {
           {/* Header */}
           <div className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 border-b bg-background">
             <button
-              onClick={() => { setPageView("main"); setForm({ username: "", password: "", adminNumber: "" }); }}
+              onClick={() => { setPageView("main"); setForm({ email: "", password: "", adminNumber: "" }); }}
               className="p-1.5 rounded-full hover:bg-muted transition-colors"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -479,14 +482,15 @@ export default function ManageAdmins() {
           {/* Form */}
           <form onSubmit={handleCreate} className="flex-1 flex flex-col p-5 gap-5 max-w-lg mx-auto w-full overflow-y-auto">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Username</label>
+              <label className="text-sm font-medium">Email</label>
               <Input
-                placeholder="Letters and spaces (e.g. admin store)"
-                value={form.username}
-                onChange={(e) => setForm((f) => ({ ...f, username: e.target.value.replace(/[^a-zA-Z ]/g, "") }))}
+                type="email"
+                placeholder="admin@example.com"
+                value={form.email}
+                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                 required
               />
-              <p className="text-xs text-muted-foreground">Letters and spaces only (no numbers, emoji or special characters)</p>
+              <p className="text-xs text-muted-foreground">Enter a valid email address (this will be used to login)</p>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Password</label>
@@ -547,14 +551,14 @@ export default function ManageAdmins() {
                 type="button"
                 variant="outline"
                 className="flex-1"
-                onClick={() => { setPageView("main"); setForm({ username: "", password: "", adminNumber: "" }); setSelectedPlan(null); }}
+                onClick={() => { setPageView("main"); setForm({ email: "", password: "", adminNumber: "" }); setSelectedPlan(null); }}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:opacity-40"
-                disabled={createAdmin.isPending || !form.username || !form.password || form.adminNumber.length !== 10 || !selectedPlan}
+                disabled={createAdmin.isPending || !form.email || !form.password || form.adminNumber.length !== 10 || !selectedPlan}
               >
                 {createAdmin.isPending ? "Creating..." : "Create Admin"}
               </Button>
