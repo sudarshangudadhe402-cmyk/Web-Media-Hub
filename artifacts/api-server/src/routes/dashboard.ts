@@ -129,6 +129,8 @@ router.get("/dashboard/summary", requireAuth, async (req: AuthRequest, res) => {
       unreadNotifications,
       recentBookings,
       storeName: store?.name ?? "",
+      storeAddress: store?.address ?? "",
+      storePhone: store?.whatsappNumber ?? "",
       visitors: {
         today: (dayVisitorsAgg as { total: number }[])[0]?.total ?? 0,
         month: (monthVisitorsAgg as { total: number }[])[0]?.total ?? 0,

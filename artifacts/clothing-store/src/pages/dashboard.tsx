@@ -2,6 +2,7 @@ import { useGetDashboardSummary, getGetDashboardSummaryQueryKey } from "@workspa
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Package, Tags, CalendarCheck, MessageCircle, ChevronLeft, ShoppingBag, CreditCard, CheckCircle, X, Clock, BookMarked, CheckCheck, Search } from "lucide-react";
+import { LoyaltyCardVisual } from "@/components/loyalty-card-visual";
 import { useLocation } from "wouter";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useState, useEffect, type ReactNode } from "react";
@@ -547,12 +548,11 @@ export default function Dashboard() {
           <h1 className="text-xl font-bold tracking-tight">Digital Loyalty Cards</h1>
         </div>
 
-        {/* Top loyalty card image — no background wrapper, just the image */}
-        <img
-          src="/loyalty-card-original.png"
-          alt="Web Media Hub Loyalty Card"
-          className="w-full object-contain rounded-2xl"
-          style={{ display: "block" }}
+        {/* Top loyalty card — dynamic with store details */}
+        <LoyaltyCardVisual
+          storeName={(summary as any).storeName ?? ""}
+          address={(summary as any).storeAddress ?? ""}
+          phone={(summary as any).storePhone ?? ""}
         />
 
         {/* 3 tabs */}
@@ -637,12 +637,12 @@ export default function Dashboard() {
               <div key={card.id} className="rounded-xl border border-gray-100 overflow-hidden" style={{ background: "transparent" }}>
                 {/* Compact row: mini card image + info side by side */}
                 <div className="flex gap-2.5 p-2">
-                  {/* Mini loyalty card image — no background */}
-                  <img
-                    src="/loyalty-card-original.png"
-                    alt="LC"
-                    className="w-28 h-16 object-cover rounded-lg flex-shrink-0"
-                    style={{ objectPosition: "center" }}
+                  {/* Mini loyalty card — dynamic store details */}
+                  <LoyaltyCardVisual
+                    storeName={(summary as any).storeName ?? ""}
+                    address={(summary as any).storeAddress ?? ""}
+                    phone={(summary as any).storePhone ?? ""}
+                    mini
                   />
                   {/* Info */}
                   <div className="flex-1 min-w-0 py-0.5">

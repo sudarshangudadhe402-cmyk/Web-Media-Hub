@@ -6,6 +6,7 @@ import {
   CheckCircle2, TrendingDown, ShoppingCart, Download, Share2, SlidersHorizontal,
   CreditCard, CheckCircle, AlertCircle,
 } from "lucide-react";
+import { LoyaltyCardVisual } from "@/components/loyalty-card-visual";
 import { useState, useRef, useEffect, useMemo } from "react";
 
 interface PublicProduct {
@@ -670,18 +671,18 @@ export default function PublicStore() {
           {/* ── Already has a card: show status ── */}
           {loyaltyCardInfo ? (
             <div className="flex flex-col items-center">
-              {/* Loyalty card actual image */}
-              <div className="w-full rounded-2xl overflow-hidden mb-6"
+              {/* Loyalty card — dynamic with store details */}
+              <div className="w-full mb-6"
                 style={{
+                  borderRadius: 20,
                   border: loyaltyCardInfo.status === "approved"
                     ? "2px solid rgba(34,197,94,0.45)"
                     : "1px solid rgba(255,255,255,0.07)",
                 }}>
-                <img
-                  src="/loyalty-card-original.png"
-                  alt="Web Media Hub Loyalty Card"
-                  className="w-full object-contain"
-                  style={{ display: "block" }}
+                <LoyaltyCardVisual
+                  storeName={data.name}
+                  address={data.address}
+                  phone={data.whatsappNumber}
                 />
               </div>
 
@@ -807,12 +808,11 @@ export default function PublicStore() {
                   <CreditCard className="w-5 h-5" style={{ color: "#2874F0" }} />
                   <p className="font-bold text-gray-900 text-base" style={{ fontFamily: "'Montserrat', sans-serif" }}>Digital Loyalty Card</p>
                 </div>
-                <div className="w-full rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(40,116,240,0.2)" }}>
-                  <img
-                    src="/loyalty-card-original.png"
-                    alt="Web Media Hub Loyalty Card"
-                    className="w-full object-contain"
-                    style={{ display: "block" }}
+                <div style={{ borderRadius: 20, border: "1px solid rgba(40,116,240,0.2)", overflow: "hidden" }}>
+                  <LoyaltyCardVisual
+                    storeName={data.name}
+                    address={data.address}
+                    phone={data.whatsappNumber}
                   />
                 </div>
               </div>
