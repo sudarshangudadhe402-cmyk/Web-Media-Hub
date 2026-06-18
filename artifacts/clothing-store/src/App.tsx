@@ -116,6 +116,9 @@ function Router() {
       <Route path="/create-store" component={CreateStore} />
       <Route path="/legal-agreement" component={LegalAgreement} />
       <Route path="/">
+        {() => <ProtectedRoute component={SalesLedger} />}
+      </Route>
+      <Route path="/dashboard">
         {() => <ProtectedRoute component={Dashboard} />}
       </Route>
       <Route path="/products">
