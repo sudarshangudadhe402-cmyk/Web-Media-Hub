@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Mail, Lock, Store, ShieldCheck, Zap, Headphones,
   BarChart3, AlertTriangle, Eye, EyeOff, TrendingUp,
-  Tag, ArrowRight, Layers,
+  Tag, ArrowRight, Layers, Sparkles,
 } from "lucide-react";
 
 /* ── Hanger SVG (exact outline style from image) ── */
@@ -623,6 +623,35 @@ export default function Login() {
                 </p>
               </div>
             </motion.div>
+
+            {/* Explore Demo Store button */}
+            <motion.button
+              type="button"
+              onClick={() => setLocation("/demo")}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, delay: 0.55 }}
+              whileHover={{ scale: 1.015, background: "linear-gradient(135deg,#f5edff,#ede0ff)" }}
+              whileTap={{ scale: 0.985 }}
+              className="mt-4 w-full flex items-center justify-between transition-all duration-200"
+              style={{
+                height: "52px",
+                borderRadius: "10px",
+                background: "linear-gradient(135deg,#FAF5FF,#F3EBFF)",
+                border: "1.5px dashed #C4A0E0",
+                paddingLeft: "18px",
+                paddingRight: "18px",
+                color: "#7B4FA6",
+                fontSize: "14px",
+                fontWeight: 600,
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                <span>Explore Demo Store</span>
+              </div>
+              <span className="text-xs font-normal" style={{ color: "#B07FD0" }}>See how it looks →</span>
+            </motion.button>
 
           </div>
         </div>
