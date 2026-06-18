@@ -88,12 +88,38 @@ export default function Login() {
       if (!res.ok) {
         const msg: string = data?.error || "Login failed";
         const isLocked = res.status === 429 || msg.toLowerCase().includes("locked");
+        const isInactive = msg.toLowerCase().includes("not-active");
+
         if (isLocked && data?.lockedUntil) setLockoutUntil(data.lockedUntil);
+
+        // Custom messages for invalid credentials
+        const isInvalidCreds = msg.toLowerCase().includes("invalid credentials");
+        const hasAttemptsInfo = msg.toLowerCase().includes("attempt");
+
+        let displayTitle = "Login Failed";
+        let displayDesc = msg;
+
+        if (isLocked) {
+          displayTitle = "Account Locked";
+          displayDesc = msg;
+        } else if (isInactive) {
+          displayTitle = "Account Inactive";
+          displayDesc = msg;
+        } else if (isInvalidCreds && !hasAttemptsInfo) {
+          // Email not found in DB — store doesn't exist
+          displayTitle = "Store Not Found";
+          displayDesc = "Store not exist, please create first 🙏";
+        } else if (isInvalidCreds && hasAttemptsInfo) {
+          // Email exists but password is wrong
+          displayTitle = "Login Failed";
+          displayDesc = "Wrong email or password";
+        }
+
         toast({
           variant: "destructive",
-          title: isLocked ? "Account Locked" : msg.toLowerCase().includes("not-active") ? "Account Inactive" : "Login Failed",
-          description: msg,
-          duration: isLocked ? 8000 : 4000,
+          title: displayTitle,
+          description: displayDesc,
+          duration: isLocked || isInactive ? 8000 : 4000,
         });
         return;
       }
