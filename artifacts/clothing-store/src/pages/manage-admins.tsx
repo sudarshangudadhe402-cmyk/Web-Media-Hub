@@ -56,7 +56,7 @@ export default function ManageAdmins() {
   const rejectRequest = useRejectStoreRequest();
 
   const [addOpen, setAddOpen] = useState(false);
-  const [form, setForm] = useState({ username: "", password: "", adminNumber: "" });
+  const [form, setForm] = useState({ email: "", password: "", adminNumber: "" });
   const [activeTab, setActiveTab] = useState<StoreTab>("pending");
   const [selectedRequest, setSelectedRequest] = useState<NonNullable<typeof allRequests>[number] | null>(null);
   const [requestDetailOpen, setRequestDetailOpen] = useState(false);
@@ -66,21 +66,21 @@ export default function ManageAdmins() {
   function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     createAdmin.mutate(
-      { data: { username: form.username, password: form.password, adminNumber: form.adminNumber } },
+      { data: { email: form.email, password: form.password, adminNumber: form.adminNumber } },
       {
         onSuccess: () => {
           toast({ title: "Admin created successfully" });
           queryClient.invalidateQueries({ queryKey: getListAdminsQueryKey() });
-          setForm({ username: "", password: "", adminNumber: "" });
+          setForm({ email: "", password: "", adminNumber: "" });
           setAddOpen(false);
         },
         onError: (err: any) => {
           const msg = err?.response?.data?.error || err?.message || "Failed to create admin";
-          const isUsernameConflict = msg.toLowerCase().includes("already exists") || msg.toLowerCase().includes("username");
+          const isEmailConflict = msg.toLowerCase().includes("already exists") || msg.toLowerCase().includes("email");
           toast({
             variant: "destructive",
-            title: isUsernameConflict ? "Username already exists" : "Failed",
-            description: isUsernameConflict ? "Please try a different username" : msg,
+            title: isEmailConflict ? "Email already exists" : "Failed",
+            description: isEmailConflict ? "Please try a different email" : msg,
           });
         },
       }
@@ -565,12 +565,13 @@ export default function ManageAdmins() {
           </DialogHeader>
           <form onSubmit={handleCreate} className="space-y-4 pt-2">
             <div className="space-y-1.5">
-              <label htmlFor="ma-username" className="text-sm font-medium">Username</label>
+              <label htmlFor="ma-email" className="text-sm font-medium">Email</label>
               <Input
-                id="ma-username"
-                placeholder="admin_username"
-                value={form.username}
-                onChange={(e) => setForm((p) => ({ ...p, username: e.target.value }))}
+                id="ma-email"
+                type="email"
+                placeholder="admin@example.com"
+                value={form.email}
+                onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
                 required
               />
             </div>

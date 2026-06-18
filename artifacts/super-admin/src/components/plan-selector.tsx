@@ -19,7 +19,7 @@ export interface Plan {
 export const PLANS: Plan[] = [
   {
     id: "demo",
-    label: "Demo Plan",
+    label: "Starting Plan",
     badge: "🧪 Try First",
     price: "₹999",
     period: "/ Month",
@@ -45,25 +45,25 @@ export const PLANS: Plan[] = [
     id: "lifetime",
     label: "Lifetime Business",
     badge: "💎 Best Value",
-    price: "₹9,999",
+    price: "₹15,999",
     period: "One-Time",
     color: "text-[#00FF88]",
     glow: "rgba(0,255,136,0.3)",
     borderActive: "border-[#00FF88]",
     checkColor: "text-[#00FF88]",
-    features: ["Everything in Premium", "Lifetime Access", "1,000 Coins Included", "Future Updates", "Priority Support"],
+    features: ["Everything in Premium", "Lifetime Access", "2000₹ WMH Coin", "Future Updates", "Priority Support"],
   },
   {
     id: "enterprise",
     label: "Enterprise",
     badge: "🔴 Enterprise",
-    price: "₹17,999",
+    price: "₹19,999",
     period: "One-Time",
     color: "text-[#FF2D2D]",
     glow: "rgba(255,45,45,0.3)",
     borderActive: "border-[#FF2D2D]",
     checkColor: "text-[#FF2D2D]",
-    features: ["Everything in Lifetime", "7,000 Coins", "Premium AI Resources", "Early Access", "VIP Support"],
+    features: ["Everything in Lifetime", "6000₹ WMH Coin", "Premium AI Resources", "Early Access", "VIP Support"],
   },
 ];
 

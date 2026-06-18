@@ -51,7 +51,7 @@ export default function AiVideo() {
   const queryClient = useQueryClient();
 
   const [form, setForm] = useState({
-    username: "",
+    email: "",
     password: "",
     storeName: "",
     whatsapp: "",
@@ -80,7 +80,6 @@ export default function AiVideo() {
 
   function handleFormChange(e: React.ChangeEvent<HTMLInputElement>) {
     let val = e.target.value;
-    if (e.target.name === "username") val = val.replace(/[^a-zA-Z]/g, "");
     if (e.target.name === "password") val = val.replace(/[^0-9]/g, "");
     setForm((prev) => ({ ...prev, [e.target.name]: val }));
   }
@@ -102,13 +101,13 @@ export default function AiVideo() {
     }
 
     submitRequest.mutate(
-      { data: { username: form.username, password: form.password, storeName: form.storeName, whatsapp: `+91${form.whatsapp}` } },
+      { data: { email: form.email, password: form.password, storeName: form.storeName, whatsapp: `+91${form.whatsapp}` } },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getMyStoreRequestsQueryKey() });
           setPageView("main");
           setConfirmOpen(true);
-          setForm({ username: "", password: "", storeName: "", whatsapp: "" });
+          setForm({ email: "", password: "", storeName: "", whatsapp: "" });
         },
         onError: (err: any) => {
           const reason: string =
@@ -118,11 +117,11 @@ export default function AiVideo() {
             err?.message?.replace(/^HTTP \d+[^:]*:\s*/i, "") ??
             "";
 
-          const isUsernameTaken = reason.toLowerCase().includes("already exists") || reason.toLowerCase().includes("username");
+          const isEmailTaken = reason.toLowerCase().includes("already exists") || reason.toLowerCase().includes("email");
           const isSpamWhatsApp = reason.toLowerCase().includes("whatsapp") || reason.toLowerCase().includes("phone") || reason.toLowerCase().includes("spam");
 
-          const title = isUsernameTaken
-            ? "Username already exists, please try different 🙏"
+          const title = isEmailTaken
+            ? "Email already exists, please try different 🙏"
             : isSpamWhatsApp
             ? "Spam number not allowed, please fill real 🙏"
             : reason || "Something went wrong, please try again 🙏";
@@ -168,9 +167,9 @@ export default function AiVideo() {
         <form onSubmit={handleDone} className="flex-1 min-h-0 flex flex-col">
           <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5 max-w-lg mx-auto w-full">
           <div className="space-y-1.5">
-            <Label htmlFor="username">Username</Label>
-            <Input id="username" name="username" placeholder="Friend's username" value={form.username} onChange={handleFormChange} required data-testid="friend-username" />
-            <p className="text-xs text-muted-foreground">Only letters allowed (no numbers, emoji or special characters)</p>
+            <Label htmlFor="email">Email</Label>
+            <Input id="email" name="email" type="email" placeholder="friend@example.com" value={form.email} onChange={handleFormChange} required data-testid="friend-email" />
+            <p className="text-xs text-muted-foreground">Friend's email address for store login</p>
           </div>
 
           <div className="space-y-1.5">
@@ -248,14 +247,14 @@ export default function AiVideo() {
               type="button"
               variant="outline"
               className="flex-1"
-              onClick={() => { setPageView("main"); setForm({ username: "", password: "", storeName: "", whatsapp: "" }); setSelectedPlan(null); }}
+              onClick={() => { setPageView("main"); setForm({ email: "", password: "", storeName: "", whatsapp: "" }); setSelectedPlan(null); }}
             >
               Cancel
             </Button>
             <Button
               type="submit"
               className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:opacity-40"
-              disabled={submitRequest.isPending || !form.username || !form.password || !form.storeName || form.whatsapp.length !== 10 || !selectedPlan}
+              disabled={submitRequest.isPending || !form.email || !form.password || !form.storeName || form.whatsapp.length !== 10 || !selectedPlan}
             >
               {submitRequest.isPending ? "Submitting..." : "Done"}
             </Button>

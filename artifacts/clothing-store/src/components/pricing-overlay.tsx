@@ -130,10 +130,10 @@ export default function PricingOverlay({ onBack, onSelectPlan }: Props) {
                 className="flex-1 w-full max-w-sm lg:w-[22%] scale-95 opacity-90 hover:opacity-100 transition-opacity bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-xl flex flex-col mt-8 lg:mt-12"
               >
                 <div className="inline-block px-3 py-1 bg-white/10 text-white/80 rounded-md text-xs font-bold uppercase tracking-wider mb-6 w-max">🧪 Try First</div>
-                <h3 className="text-xl font-medium text-white/90 mb-2">Demo Plan</h3>
+                <h3 className="text-xl font-medium text-white/90 mb-2">Starting Plan</h3>
                 <div className="flex items-baseline gap-1 mb-4">
                   <span className="text-4xl font-bold text-white">₹999</span>
-                  <span className="text-white/50 text-sm">/ Month</span>
+                  <span className="text-white/50 text-sm">/ Month ( 30 days )</span>
                 </div>
                 <p className="text-white/60 text-sm mb-8">Perfect for testing the platform before upgrading.</p>
                 <div className="space-y-4 mb-8 flex-1">
@@ -147,9 +147,9 @@ export default function PricingOverlay({ onBack, onSelectPlan }: Props) {
                 <Button
                   variant="outline"
                   className="w-full bg-transparent border-white/20 text-white hover:bg-white/10 h-12"
-                  onClick={() => selectAndBack({ badge: "🧪 Try First", name: "Demo Plan", price: "₹999", period: "/ Month", tagline: "Perfect for testing the platform before upgrading.", color: "#94a3b8" })}
+                  onClick={() => selectAndBack({ badge: "🧪 Try First", name: "Starting Plan", price: "₹999", period: "/ Month ( 30 days )", tagline: "Perfect for testing the platform before upgrading.", color: "#94a3b8" })}
                 >
-                  Try Demo
+                  Get Monthly Access
                 </Button>
               </motion.div>
 
@@ -214,7 +214,7 @@ export default function PricingOverlay({ onBack, onSelectPlan }: Props) {
                   <div className="mt-4 mb-2 inline-block text-[#00FF88] text-xs font-bold uppercase tracking-wider">🏆 HIGHEST VALUE</div>
                   <h3 className="text-2xl font-bold text-white mb-2">Lifetime Business Plan</h3>
                   <div className="flex items-baseline gap-1 mb-1">
-                    <span className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#00FF88] to-white">₹9,999</span>
+                    <span className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#00FF88] to-white">₹15,999</span>
                     <span className="text-[#00FF88]/70 font-medium text-sm">One-Time</span>
                   </div>
                   <p className="text-[#00FF88]/80 text-sm font-medium mb-6">Pay Once. Use Forever.</p>
@@ -222,7 +222,7 @@ export default function PricingOverlay({ onBack, onSelectPlan }: Props) {
                     <span className="text-[#00FF88] font-semibold text-sm">🔥 Save ₹8,000+ Compared To Renewing Every Year</span>
                   </div>
                   <div className="space-y-4 mb-8 flex-1">
-                    {['Everything in Premium Annual', 'Lifetime Access, No Renewal Ever', '1,000 Web Media Hub Coins Included', 'Future Feature Updates', 'Priority Support'].map((f, i) => (
+                    {['Everything in Premium Annual', 'Lifetime Access, No Renewal Ever', '2000₹ Web Media Hub Coin', 'Future Feature Updates', 'Priority Support'].map((f, i) => (
                       <div key={i} className="flex items-start gap-3">
                         <div className="w-5 h-5 rounded-full bg-[#00FF88]/20 flex items-center justify-center shrink-0 mt-0.5">
                           <Check className="w-3 h-3 text-[#00FF88]" />
@@ -241,7 +241,7 @@ export default function PricingOverlay({ onBack, onSelectPlan }: Props) {
                   </div>
                   <Button
                     className="w-full bg-gradient-to-r from-[#00FF88] to-[#00CC66] text-black hover:opacity-90 h-14 text-lg font-bold shadow-[0_0_30px_rgba(0,255,136,0.3)] transition-all group-hover:shadow-[0_0_50px_rgba(0,255,136,0.5)]"
-                    onClick={() => selectAndBack({ badge: "🏆 HIGHEST VALUE", name: "Lifetime Business Plan", price: "₹9,999", period: "One-Time", tagline: "Pay Once. Use Forever.", color: "#00FF88" })}
+                    onClick={() => selectAndBack({ badge: "🏆 HIGHEST VALUE", name: "Lifetime Business Plan", price: "₹15,999", period: "One-Time", tagline: "Pay Once. Use Forever.", color: "#00FF88" })}
                   >
                     Get Lifetime Access
                   </Button>
@@ -263,12 +263,12 @@ export default function PricingOverlay({ onBack, onSelectPlan }: Props) {
                   <div className="mt-4 mb-2 inline-block text-[#FF2D2D] text-xs font-bold uppercase tracking-wider">👑 PREMIUM BRAND</div>
                   <h3 className="text-2xl font-bold text-white mb-2">Enterprise Plan</h3>
                   <div className="flex items-baseline gap-1 mb-1">
-                    <span className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#FF2D2D] to-white">₹17,999</span>
+                    <span className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#FF2D2D] to-white">₹19,999</span>
                     <span className="text-[#FF2D2D]/70 font-medium text-sm">One-Time</span>
                   </div>
                   <p className="text-[#FF2D2D]/80 text-sm font-medium mb-6">Designed for large stores and premium brands.</p>
                   <div className="space-y-4 mb-8 flex-1">
-                    {['Everything in Lifetime Plan', '7,000 Web Media Hub Coins', 'Premium AI Resources', 'Early Access Features', 'VIP Support'].map((f, i) => (
+                    {['Everything in Lifetime Plan', '6000₹ Web Media Hub Coin', 'Premium AI Resources', 'Early Access Features', 'VIP Support'].map((f, i) => (
                       <div key={i} className="flex items-start gap-3">
                         <div className="w-5 h-5 rounded-full bg-[#FF2D2D]/20 flex items-center justify-center shrink-0 mt-0.5">
                           <Check className="w-3 h-3 text-[#FF2D2D]" />
@@ -279,7 +279,7 @@ export default function PricingOverlay({ onBack, onSelectPlan }: Props) {
                   </div>
                   <Button
                     className="w-full bg-gradient-to-r from-[#FF2D2D] to-[#CC0000] text-white hover:opacity-90 h-12 text-base font-bold shadow-[0_0_30px_rgba(255,45,45,0.3)] transition-all group-hover:shadow-[0_0_50px_rgba(255,45,45,0.5)]"
-                    onClick={() => selectAndBack({ badge: "👑 PREMIUM BRAND", name: "Enterprise Plan", price: "₹17,999", period: "One-Time", tagline: "Designed for large stores and premium brands.", color: "#FF2D2D" })}
+                    onClick={() => selectAndBack({ badge: "👑 PREMIUM BRAND", name: "Enterprise Plan", price: "₹19,999", period: "One-Time", tagline: "Designed for large stores and premium brands.", color: "#FF2D2D" })}
                   >
                     Upgrade To Enterprise
                   </Button>
