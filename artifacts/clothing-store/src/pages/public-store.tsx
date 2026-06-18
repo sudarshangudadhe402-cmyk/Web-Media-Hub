@@ -493,35 +493,33 @@ export default function PublicStore() {
             ctx.drawImage(clothImg.complete && clothImg.naturalWidth ? clothImg : cImg, 70, 70, 260, 310);
             ctx.globalAlpha = 1;
 
-            // Bottom bar
-            ctx.fillStyle = "rgba(0,0,0,0.5)";
-            ctx.fillRect(0, 462, 400, 38);
-            ctx.fillStyle = "#2874F0";
-            ctx.font = "bold 12px sans-serif";
-            ctx.textAlign = "center";
-            ctx.fillText("AI Virtual Try-On", 200, 484);
-
-            // Store name watermark — bottom-left corner
-            const storeName = data?.name ?? "";
-            if (storeName) {
-              const padding = 6;
-              ctx.font = "bold 11px sans-serif";
-              const textW = ctx.measureText(storeName).width;
-              const badgeW = textW + padding * 2;
-              const badgeH = 20;
-              const bx = 8;
-              const by = 436;
-              ctx.fillStyle = "rgba(0,0,0,0.55)";
-              ctx.beginPath();
-              ctx.roundRect(bx, by, badgeW, badgeH, 4);
-              ctx.fill();
-              ctx.fillStyle = "#ffffff";
-              ctx.textAlign = "left";
-              ctx.fillText(storeName, bx + padding, by + 14);
+            // Store banner as small advertisement overlay — bottom-right corner
+            const bannerSrc = data?.bannerImage ?? "";
+            const doFinish = () => {
+              setTryOnResult(canvas.toDataURL("image/jpeg", 0.88));
+              resolve();
+            };
+            if (bannerSrc) {
+              const bImg = new Image();
+              bImg.crossOrigin = "anonymous";
+              bImg.onload = () => {
+                const bW = 96, bH = 48;
+                const bX = 400 - bW - 8;
+                const bY = 500 - bH - 8;
+                // Dark rounded backdrop
+                ctx.fillStyle = "rgba(0,0,0,0.45)";
+                ctx.beginPath();
+                if (ctx.roundRect) ctx.roundRect(bX - 3, bY - 3, bW + 6, bH + 6, 7);
+                else ctx.rect(bX - 3, bY - 3, bW + 6, bH + 6);
+                ctx.fill();
+                ctx.drawImage(bImg, bX, bY, bW, bH);
+                doFinish();
+              };
+              bImg.onerror = doFinish;
+              bImg.src = bannerSrc;
+            } else {
+              doFinish();
             }
-
-            setTryOnResult(canvas.toDataURL("image/jpeg", 0.88));
-            resolve();
           };
           clothImg.onload = finish; clothImg.onerror = finish;
           clothImg.src = selectedProduct.images[0] ?? "";
@@ -1480,8 +1478,8 @@ export default function PublicStore() {
           <button onClick={goBack} className="p-1.5 rounded-full hover:bg-gray-100">
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <span className="font-bold" style={{ fontFamily: "'Montserrat', sans-serif" }}>Virtual Try-On</span>
-          <span className="ml-auto text-[10px] text-gray-400 px-2 py-0.5 rounded-full border" style={{ borderColor: "rgba(40,116,240,0.3)", color: "#2874F0" }}>
+          <span className="font-bold text-sm truncate" style={{ fontFamily: "'Montserrat', sans-serif" }}>{selectedProduct.name}</span>
+          <span className="ml-auto shrink-0 text-[10px] text-gray-400 px-2 py-0.5 rounded-full border" style={{ borderColor: "rgba(40,116,240,0.3)", color: "#2874F0" }}>
             AI Powered
           </span>
         </div>
