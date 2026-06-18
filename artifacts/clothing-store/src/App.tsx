@@ -8,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import { useEffect, useState } from "react";
 
 import Login from "@/pages/login";
+import CreateStore from "@/pages/create-store";
 import Dashboard from "@/pages/dashboard";
 import Products from "@/pages/products";
 import Categories from "@/pages/categories";
@@ -89,6 +90,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
+      <Route path="/create-store" component={CreateStore} />
       <Route path="/legal-agreement" component={LegalAgreement} />
       <Route path="/">
         {() => <ProtectedRoute component={Dashboard} />}

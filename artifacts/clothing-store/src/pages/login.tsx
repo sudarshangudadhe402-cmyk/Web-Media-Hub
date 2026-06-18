@@ -510,6 +510,7 @@ export default function Login() {
               {/* Secondary Button */}
               <motion.button
                 type="button"
+                onClick={() => setLocation("/create-store")}
                 whileHover={{ scale: 1.02, background: "rgba(91,44,111,0.04)" }}
                 whileTap={{ scale: 0.98 }}
                 className="w-full flex items-center justify-center gap-2 font-semibold transition-all duration-300"
