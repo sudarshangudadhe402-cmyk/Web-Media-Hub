@@ -1971,23 +1971,23 @@ export function useGetDashboardSummary<TData = Awaited<ReturnType<typeof getDash
 
 export interface StoreRequestItem {
   id: string;
-  username: string;
-  password: string;
+  email: string;
   storeName: string;
   whatsapp: string;
-  adminNumber: string;
+  plan?: string | null;
   status: "pending" | "approved" | "rejected";
   submittedBy: string;
+  rewardCode?: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface StoreRequestInput {
-  username: string;
+  email: string;
   password: string;
   storeName: string;
   whatsapp: string;
-  adminNumber?: string;
+  plan?: string | null;
 }
 
 // ── submitStoreRequest ────────────────────────────────────────────────────────

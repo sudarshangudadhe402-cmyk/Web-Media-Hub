@@ -8,14 +8,13 @@ const router = Router();
 
 const REWARD_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789";
 
-function generateRewardCode(username: string): string {
-  // First 3 letters of username (uppercase alpha only) as reference prefix
-  const prefix = username
+function generateRewardCode(email: string): string {
+  const prefix = email
+    .split("@")[0]
     .toUpperCase()
     .replace(/[^A-Z]/g, "")
     .slice(0, 3)
     .padEnd(3, "X");
-  // 7 random chars from A-Z + 1-9
   const random = Array.from(
     { length: 7 },
     () => REWARD_CHARS[Math.floor(Math.random() * REWARD_CHARS.length)]
@@ -26,11 +25,10 @@ function generateRewardCode(username: string): string {
 function fmt(s: InstanceType<typeof StoreRequest>) {
   return {
     id: String(s._id),
-    username: s.username,
-    password: s.password,
+    email: s.email,
     storeName: s.storeName,
     whatsapp: s.whatsapp,
-    adminNumber: s.adminNumber ?? "",
+    plan: (s as any).plan ?? null,
     status: s.status,
     submittedBy: s.submittedBy,
     rewardCode: s.rewardCode ?? null,
@@ -51,22 +49,26 @@ router.get("/store-requests/my", requireAuth, async (req: any, res) => {
 
 router.post("/store-requests", requireAuth, async (req: any, res) => {
   try {
-    const { username, password, storeName, whatsapp, adminNumber } = req.body;
-    if (!username || !password || !storeName || !whatsapp) {
+    const { email, password, storeName, whatsapp, plan } = req.body;
+    if (!email || !password || !storeName || !whatsapp) {
       res.status(400).json({ error: "All fields are required" });
       return;
     }
-    const existingUser = await User.findOne({ username });
+
+    const emailLower = email.toLowerCase().trim();
+
+    const existingUser = await User.findOne({ email: emailLower });
     if (existingUser) {
-      res.status(400).json({ error: "Username already exists, please try a different username" });
+      res.status(400).json({ error: "Email already exists, please use a different email" });
       return;
     }
+
     const request = await StoreRequest.create({
-      username,
+      email: emailLower,
       password,
       storeName,
       whatsapp,
-      adminNumber: adminNumber ?? "",
+      plan: plan ?? null,
       status: "pending",
       submittedBy: req.user?.id ?? "unknown",
     });
@@ -102,24 +104,26 @@ router.patch("/store-requests/:id/approve", requireSuperAdmin, async (req, res) 
     const request = await StoreRequest.findById(req.params.id);
     if (!request) { res.status(404).json({ error: "Not found" }); return; }
 
-    const existingUser = await User.findOne({ username: request.username });
+    const existingUser = await User.findOne({ email: request.email });
     if (existingUser) {
-      res.status(400).json({ error: "Username already exists, please try a different username" });
+      res.status(400).json({ error: "Email already exists — account may have already been created" });
       return;
     }
 
-    // Generate unique reward code (use existing one if already generated)
-    const rewardCode = request.rewardCode || generateRewardCode(request.username);
+    const rewardCode = request.rewardCode || generateRewardCode(request.email);
 
     request.status = "approved";
     request.rewardCode = rewardCode;
     await request.save();
 
+    const autoUsername = `admin_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
     await User.create({
-      username: request.username,
+      username: autoUsername,
+      email: request.email,
       password: request.password,
       plainPassword: request.password,
-      adminNumber: request.adminNumber ?? "",
+      adminNumber: "",
       role: "admin",
     });
 

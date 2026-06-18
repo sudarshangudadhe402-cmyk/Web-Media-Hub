@@ -86,6 +86,28 @@ function ProtectedRoute({ component: Component, adminOnly = false }: { component
   );
 }
 
+function ProtectedRouteFullPage({ component: Component }: { component: any }) {
+  const { user, isLoading } = useAuth();
+  const [_, setLocation] = useLocation();
+  const { legalDone } = useLegalStatus(user?.id, user?.role);
+  useInactivityLogout();
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!user) { setLocation("/login"); return; }
+    if (user.role === "super_admin") { setLocation("/manage-admins"); return; }
+    if (legalDone === false) { setLocation("/legal-agreement"); }
+  }, [user, isLoading, setLocation, legalDone]);
+
+  if (isLoading || legalDone === null) {
+    return <div className="h-screen w-full flex items-center justify-center">Loading...</div>;
+  }
+  if (!user || user.role === "super_admin") return null;
+  if (legalDone === false) return null;
+
+  return <Component />;
+}
+
 function Router() {
   return (
     <Switch>
@@ -117,7 +139,7 @@ function Router() {
         {() => <ProtectedRoute component={AdminsPage} adminOnly={true} />}
       </Route>
       <Route path="/store-request">
-        {() => <ProtectedRoute component={StoreRequest} />}
+        {() => <ProtectedRouteFullPage component={StoreRequest} />}
       </Route>
       <Route path="/sales-ledger">
         {() => <ProtectedRoute component={SalesLedger} />}

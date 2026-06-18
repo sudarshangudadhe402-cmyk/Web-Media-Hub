@@ -169,7 +169,7 @@ export default function ManageAdmins() {
 
   const requestUsernameExists = !!(
     selectedRequest &&
-    admins?.some((a) => a.username === selectedRequest.username)
+    admins?.some((a) => (a as any).email === (selectedRequest as any).email)
   );
 
   const pending = (allRequests ?? []).filter((r) => r.status === "pending");
@@ -177,9 +177,9 @@ export default function ManageAdmins() {
   const rejected = (allRequests ?? []).filter((r) => r.status === "rejected");
   const q = storeSearchQuery.trim().toLowerCase();
   const filteredTabData: Record<StoreTab, typeof pending> = {
-    pending: q ? pending.filter((r) => r.storeName.toLowerCase().includes(q) || r.username.toLowerCase().includes(q)) : pending,
-    approved: q ? approved.filter((r) => r.storeName.toLowerCase().includes(q) || r.username.toLowerCase().includes(q)) : approved,
-    rejected: q ? rejected.filter((r) => r.storeName.toLowerCase().includes(q) || r.username.toLowerCase().includes(q)) : rejected,
+    pending: q ? pending.filter((r) => r.storeName.toLowerCase().includes(q) || (r as any).email?.toLowerCase().includes(q)) : pending,
+    approved: q ? approved.filter((r) => r.storeName.toLowerCase().includes(q) || (r as any).email?.toLowerCase().includes(q)) : approved,
+    rejected: q ? rejected.filter((r) => r.storeName.toLowerCase().includes(q) || (r as any).email?.toLowerCase().includes(q)) : rejected,
   };
 
   useEffect(() => {
@@ -197,7 +197,7 @@ export default function ManageAdmins() {
   function sendApprovalWhatsApp(req: NonNullable<typeof allRequests>[number]) {
     const loginLink = window.location.origin;
     const msg = encodeURIComponent(
-      `Congratulations 🎉 Your store is approved\n\nNow build your store strong & increases your sells\n\nStore login page : ${loginLink}\nUsername: ${req.username}\nPassword: ${req.password}`
+      `Congratulations 🎉 Your store is approved\n\nNow build your store strong & increases your sells\n\nStore login page : ${loginLink}\nEmail: ${(req as any).email}\nPassword: (use the password you set)`
     );
     const phone = req.whatsapp.replace(/\D/g, "");
     window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
@@ -382,7 +382,7 @@ export default function ManageAdmins() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <Input
-              placeholder="Search store by name or username..."
+              placeholder="Search store by name or email..."
               value={storeSearchQuery}
               onChange={(e) => setStoreSearchQuery(e.target.value)}
               className="pl-9 pr-9"
@@ -447,7 +447,7 @@ export default function ManageAdmins() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold truncate">{req.storeName}</p>
-                        <p className="text-sm text-muted-foreground">@{req.username}</p>
+                        <p className="text-sm text-muted-foreground">{(req as any).email}</p>
                         <p className="text-xs text-muted-foreground/60 mt-0.5">
                           {new Date(req.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                         </p>
@@ -589,22 +589,16 @@ export default function ManageAdmins() {
                   <span className="text-sm font-semibold">{selectedRequest.storeName}</span>
                 </div>
                 <div className="flex items-center justify-between px-4 py-3">
-                  <span className="text-sm text-muted-foreground">Username</span>
-                  <span className="text-sm font-medium">{selectedRequest.username}</span>
+                  <span className="text-sm text-muted-foreground">Email</span>
+                  <span className="text-sm font-medium">{(selectedRequest as any).email}</span>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-sm text-muted-foreground">Plan</span>
+                  <span className="text-sm font-medium">{(selectedRequest as any).plan ?? "—"}</span>
                 </div>
                 <div className="flex items-center justify-between px-4 py-3">
                   <span className="text-sm text-muted-foreground">Password</span>
                   <span className="text-sm font-medium font-mono">••••••••</span>
-                </div>
-                <div className="flex items-center justify-between px-4 py-3">
-                  <span className="text-sm text-muted-foreground flex items-center gap-1">
-                    <Phone className="w-3.5 h-3.5" /> Admin Number
-                  </span>
-                  <span className="text-sm font-medium">
-                    {selectedRequest.adminNumber
-                      ? `+91 ${selectedRequest.adminNumber.replace(/^\+?91/, "").trim()}`
-                      : "—"}
-                  </span>
                 </div>
                 <div className="flex items-center justify-between px-4 py-3">
                   <span className="text-sm text-muted-foreground flex items-center gap-1">
