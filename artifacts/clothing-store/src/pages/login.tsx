@@ -7,47 +7,57 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Eye, EyeOff, Store, Tag, TrendingUp, ShieldCheck,
-  Zap, Headphones, BarChart3, AlertTriangle,
-  Package, Users, ShoppingBag, Layers,
-  Shirt, Star, CheckCircle,
+  Mail, Lock, Store, ShieldCheck, Zap, Headphones,
+  BarChart3, AlertTriangle, Eye, EyeOff, TrendingUp,
+  Tag, ArrowRight, Layers,
 } from "lucide-react";
 
+/* ── Hanger SVG (exact outline style from image) ── */
+const HangerSVG = ({ size = 36, color = "currentColor", strokeWidth = 1.6 }: { size?: number; color?: string; strokeWidth?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 3a1.5 1.5 0 0 1 1.5 1.5c0 .6-.35 1.12-.88 1.38L20.5 17H3.5L11.38 5.88A1.5 1.5 0 0 1 10.5 4.5 1.5 1.5 0 0 1 12 3z" />
+    <line x1="2.5" y1="17.5" x2="21.5" y2="17.5" />
+  </svg>
+);
+
+/* ── Schemas / validation ── */
 const loginSchema = z.object({
-  email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
+  email: z.string().min(1, "Email is required").email("Please enter a valid email"),
   password: z.string().min(1, "Password is required"),
   rememberMe: z.boolean().optional(),
 });
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 24 },
-  show: (i: number) => ({
-    opacity: 1, y: 0,
-    transition: { delay: i * 0.1, duration: 0.5, ease: "easeOut" },
-  }),
-};
-
-const features = [
-  { icon: Store, title: "Build Your Store", desc: "Set up your professional clothing store within minutes." },
-  { icon: Tag, title: "List & Manage Products", desc: "Add products, manage stock, and grow your online business." },
-  { icon: TrendingUp, title: "Grow Your Business", desc: "Reach more customers and increase sales faster." },
+/* ── Feature bullets ── */
+const FEATURES = [
+  { Icon: Store, title: "Build Your Store", desc: "Set up your own professional clothing store in minutes." },
+  { Icon: Tag, title: "List & Manage Products", desc: "Add your products, manage stock, and grow your business online." },
+  { Icon: TrendingUp, title: "Grow Your Business", desc: "Reach more customers and increase your sales." },
 ];
 
-const trustBadges = [
-  { icon: ShieldCheck, label: "Secure & Reliable" },
-  { icon: Zap, label: "Easy to Use" },
-  { icon: Headphones, label: "24/7 Support" },
-  { icon: BarChart3, label: "Scalable for Growth" },
+/* ── Trust bar ── */
+const TRUST = [
+  { Icon: ShieldCheck, a: "Secure", b: "& Reliable" },
+  { Icon: Zap, a: "Easy", b: "to Use" },
+  { Icon: Headphones, a: "24/7", b: "Support" },
+  { Icon: BarChart3, a: "Scalable", b: "for Growth" },
 ];
 
-const dashStats = [
-  { icon: ShoppingBag, label: "Orders", value: "1,284", color: "#5B2C6F" },
-  { icon: Users, label: "Customers", value: "3,920", color: "#2E86C1" },
-  { icon: BarChart3, label: "Sales", value: "₹2.4L", color: "#1E8449" },
-  { icon: Package, label: "Products", value: "847", color: "#D35400" },
+/* ── Dashboard mock orders ── */
+const ORDERS = [
+  { id: "#1042", name: "Ananya Sharma", status: "Shipped", color: "#22C55E" },
+  { id: "#1041", name: "Rohan Mehta", status: "Pending", color: "#F59E0B" },
+  { id: "#1040", name: "Priya Singh", status: "Delivered", color: "#3B82F6" },
+  { id: "#1039", name: "Arjun Patel", status: "Processing", color: "#8B5CF6" },
 ];
 
-const phoneItems = ["Silk Kurta", "Lehenga", "Anarkali", "Saree", "Blazer", "Palazzo"];
+const PHONE_ITEMS = [
+  { label: "Silk Kurta", clr: "#E8D5C4" },
+  { label: "Lehenga", clr: "#D4B8C7" },
+  { label: "Blazer", clr: "#C4C8D4" },
+  { label: "Saree", clr: "#D4C4B8" },
+  { label: "Anarkali", clr: "#C8D4C4" },
+  { label: "Palazzo", clr: "#D4CAB8" },
+];
 
 export default function Login() {
   const { login } = useAuth();
@@ -89,38 +99,16 @@ export default function Login() {
         const msg: string = data?.error || "Login failed";
         const isLocked = res.status === 429 || msg.toLowerCase().includes("locked");
         const isInactive = msg.toLowerCase().includes("not-active");
-
-        if (isLocked && data?.lockedUntil) setLockoutUntil(data.lockedUntil);
-
-        // Custom messages for invalid credentials
         const isInvalidCreds = msg.toLowerCase().includes("invalid credentials");
         const hasAttemptsInfo = msg.toLowerCase().includes("attempt");
-
+        if (isLocked && data?.lockedUntil) setLockoutUntil(data.lockedUntil);
         let displayTitle = "Login Failed";
         let displayDesc = msg;
-
-        if (isLocked) {
-          displayTitle = "Account Locked";
-          displayDesc = msg;
-        } else if (isInactive) {
-          displayTitle = "Account Inactive";
-          displayDesc = msg;
-        } else if (isInvalidCreds && !hasAttemptsInfo) {
-          // Email not found in DB — store doesn't exist
-          displayTitle = "Store Not Found";
-          displayDesc = "Store not exist, please create first 🙏";
-        } else if (isInvalidCreds && hasAttemptsInfo) {
-          // Email exists but password is wrong
-          displayTitle = "Login Failed";
-          displayDesc = "Wrong email or password";
-        }
-
-        toast({
-          variant: "destructive",
-          title: displayTitle,
-          description: displayDesc,
-          duration: isLocked || isInactive ? 8000 : 4000,
-        });
+        if (isLocked) { displayTitle = "Account Locked"; displayDesc = msg; }
+        else if (isInactive) { displayTitle = "Account Inactive"; displayDesc = msg; }
+        else if (isInvalidCreds && !hasAttemptsInfo) { displayTitle = "Store Not Found"; displayDesc = "Store not exist, please create first 🙏"; }
+        else if (isInvalidCreds && hasAttemptsInfo) { displayTitle = "Login Failed"; displayDesc = "Wrong email or password"; }
+        toast({ variant: "destructive", title: displayTitle, description: displayDesc, duration: isLocked || isInactive ? 8000 : 4000 });
         return;
       }
       if (data.user?.role === "super_admin") {
@@ -129,7 +117,7 @@ export default function Login() {
       }
       setLockoutUntil(null);
       login(data.token);
-      toast({ title: "Welcome back! 🎉" });
+      toast({ title: "Logged in successfully" });
       setLocation("/");
     } catch {
       toast({ variant: "destructive", title: "Connection Error", description: "Could not reach the server." });
@@ -139,243 +127,285 @@ export default function Login() {
   }
 
   return (
-    <div
-      className="min-h-screen flex"
-      style={{ background: "linear-gradient(135deg, #FAF7F5 0%, #FFFFFF 100%)" }}
-    >
-      {/* ── LEFT SECTION (55%) ── */}
-      <div className="hidden lg:flex flex-col w-[55%] relative overflow-hidden">
+    <div className="flex flex-col" style={{ minHeight: "100vh", background: "#FAF7F4" }}>
 
-        {/* Background luxury image layer */}
-        <div
-          className="absolute inset-0 z-0"
-          style={{
-            backgroundImage: `url('https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&q=80')`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            filter: "blur(2px) brightness(0.35)",
-          }}
-        />
-        <div className="absolute inset-0 z-0" style={{ background: "linear-gradient(135deg, rgba(250,247,245,0.92) 0%, rgba(91,44,111,0.15) 100%)" }} />
+      {/* ══════════════════════════════════════════
+          MAIN SPLIT: Left 55% + Right 45%
+      ══════════════════════════════════════════ */}
+      <div className="flex flex-1">
 
-        {/* Content */}
-        <div className="relative z-10 flex flex-col h-full px-12 py-10">
+        {/* ── LEFT SECTION ── */}
+        <div className="relative hidden lg:flex flex-col" style={{ width: "55%" }}>
 
-          {/* Logo */}
-          <motion.div custom={0} variants={fadeUp} initial="hidden" animate="show" className="flex items-center gap-3 mb-auto">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "#5B2C6F" }}>
-              <Shirt className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <p className="font-bold text-sm tracking-widest" style={{ color: "#111111" }}>WEB MEDIA HUB</p>
-              <p className="text-[10px] tracking-[0.25em] font-medium" style={{ color: "#5B2C6F" }}>STORE • STYLE • SUCCESS</p>
-            </div>
-          </motion.div>
+          {/* Boutique background photo */}
+          <div
+            className="absolute inset-0 z-0"
+            style={{
+              backgroundImage: `url('https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&q=85')`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          />
+          {/* Cream overlay — exact tint from photo */}
+          <div
+            className="absolute inset-0 z-0"
+            style={{ background: "rgba(250,245,238,0.78)" }}
+          />
 
-          {/* Headline */}
-          <div className="mt-10 mb-8">
-            <motion.h1
-              custom={1} variants={fadeUp} initial="hidden" animate="show"
-              className="text-5xl xl:text-6xl leading-[1.1] font-bold mb-5"
-              style={{ fontFamily: "'Playfair Display', Georgia, serif", color: "#111111" }}
-            >
-              Your Store.<br />
-              Your Style.<br />
-              <span style={{ color: "#5B2C6F" }}>Limitless</span><br />
-              Possibilities.
-            </motion.h1>
-            <motion.p custom={2} variants={fadeUp} initial="hidden" animate="show"
-              className="text-base leading-relaxed max-w-sm" style={{ color: "#555555" }}>
-              Create your own online clothing store,<br />
-              list your products, and reach customers everywhere.
-            </motion.p>
-          </div>
+          {/* Content */}
+          <div className="relative z-10 flex flex-col h-full px-10 xl:px-14 py-10">
 
-          {/* Feature Cards */}
-          <div className="grid grid-cols-3 gap-3 mb-8">
-            {features.map((f, i) => (
-              <motion.div
-                key={f.title}
-                custom={3 + i} variants={fadeUp} initial="hidden" animate="show"
-                whileHover={{ y: -4, boxShadow: "0 12px 32px rgba(91,44,111,0.12)" }}
-                className="rounded-2xl p-4 cursor-default transition-all duration-300"
-                style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(12px)", border: "1px solid rgba(91,44,111,0.1)" }}
-              >
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ background: "rgba(91,44,111,0.1)" }}>
-                  <f.icon className="w-4 h-4" style={{ color: "#5B2C6F" }} />
-                </div>
-                <p className="font-semibold text-xs mb-1" style={{ color: "#111111" }}>{f.title}</p>
-                <p className="text-[11px] leading-relaxed" style={{ color: "#777777" }}>{f.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Dashboard Mockup */}
-          <motion.div
-            custom={6} variants={fadeUp} initial="hidden" animate="show"
-            className="mb-6 relative"
-          >
+            {/* Logo */}
             <motion.div
-              whileHover={{ y: -2 }}
-              className="rounded-3xl p-5 relative"
-              style={{
-                background: "rgba(255,255,255,0.9)",
-                backdropFilter: "blur(16px)",
-                boxShadow: "0 20px 60px rgba(0,0,0,0.08)",
-                borderRadius: "24px",
-                border: "1px solid rgba(255,255,255,0.9)",
-              }}
+              initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
+              className="flex items-center gap-2.5 mb-10"
             >
-              <div className="flex items-center gap-2 mb-4">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-red-400" />
-                  <div className="w-3 h-3 rounded-full bg-yellow-400" />
-                  <div className="w-3 h-3 rounded-full bg-green-400" />
-                </div>
-                <p className="text-xs font-semibold" style={{ color: "#5B2C6F" }}>Admin Dashboard</p>
+              <HangerSVG size={22} color="#111111" strokeWidth={2} />
+              <div>
+                <p className="font-bold text-sm leading-none" style={{ color: "#111111", letterSpacing: "0.02em" }}>WEB MEDIA HUB</p>
+                <p className="text-[9px] mt-0.5" style={{ color: "#888888", letterSpacing: "0.18em" }}>STORE · STYLE · SUCCESS</p>
               </div>
-              <div className="grid grid-cols-4 gap-3">
-                {dashStats.map((s) => (
-                  <div key={s.label} className="rounded-xl p-3 text-center" style={{ background: `${s.color}10` }}>
-                    <s.icon className="w-4 h-4 mx-auto mb-1" style={{ color: s.color }} />
-                    <p className="text-base font-bold" style={{ color: s.color }}>{s.value}</p>
-                    <p className="text-[10px] font-medium" style={{ color: "#888" }}>{s.label}</p>
-                  </div>
-                ))}
-              </div>
+            </motion.div>
 
-              {/* Mini chart bars */}
-              <div className="mt-4 flex items-end gap-1 h-10">
-                {[40, 65, 45, 80, 60, 90, 55, 75, 85, 70, 95, 60].map((h, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ height: 0 }}
-                    animate={{ height: `${h}%` }}
-                    transition={{ delay: 0.8 + i * 0.05, duration: 0.4 }}
-                    className="flex-1 rounded-sm"
-                    style={{ background: i % 2 === 0 ? "#5B2C6F" : "#D7BDE2", opacity: 0.7 }}
-                  />
-                ))}
-              </div>
-
-              {/* Floating phone mockup */}
-              <motion.div
-                animate={{ y: [0, -6, 0] }}
-                transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-                className="absolute -right-6 -bottom-8 w-28 rounded-2xl overflow-hidden"
+            {/* Headline */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.1 }}
+              className="mb-5"
+            >
+              <h1
                 style={{
-                  background: "#111",
-                  padding: "8px",
-                  boxShadow: "0 16px 40px rgba(0,0,0,0.25)",
-                  border: "2px solid #333",
+                  fontFamily: "'Playfair Display', Georgia, serif",
+                  fontSize: "clamp(36px, 4vw, 56px)",
+                  lineHeight: 1.08,
+                  fontWeight: 700,
+                  color: "#111111",
+                  marginBottom: 0,
                 }}
               >
-                <div className="w-8 h-1.5 rounded-full mx-auto mb-2" style={{ background: "#333" }} />
-                <div className="space-y-1.5">
-                  {phoneItems.slice(0, 4).map((item, i) => (
-                    <div key={i} className="rounded-lg p-1.5 flex items-center gap-1.5" style={{ background: i % 2 === 0 ? "#5B2C6F22" : "#ffffff12" }}>
-                      <div className="w-5 h-5 rounded flex items-center justify-center shrink-0" style={{ background: "#5B2C6F" }}>
-                        <Shirt className="w-2.5 h-2.5 text-white" />
+                Your Store.<br />
+                Your Style.<br />
+                <span style={{ color: "#7B4FA6" }}>Limitless</span><br />
+                <span style={{ color: "#7B4FA6" }}>Possibilities.</span>
+              </h1>
+            </motion.div>
+
+            {/* Subtext */}
+            <motion.p
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.2 }}
+              className="mb-8 text-sm leading-relaxed"
+              style={{ color: "#333333", maxWidth: "340px" }}
+            >
+              Create your own online clothing store,<br />
+              list your products, and reach<br />
+              customers everywhere.
+            </motion.p>
+
+            {/* Feature bullets */}
+            <div className="space-y-4 mb-8">
+              {FEATURES.map(({ Icon, title, desc }, i) => (
+                <motion.div
+                  key={title}
+                  initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.45, delay: 0.25 + i * 0.08 }}
+                  className="flex items-start gap-4"
+                >
+                  <div
+                    className="flex items-center justify-center shrink-0 rounded-full"
+                    style={{
+                      width: "42px", height: "42px",
+                      border: "1.5px solid rgba(0,0,0,0.14)",
+                      background: "rgba(255,255,255,0.55)",
+                      backdropFilter: "blur(4px)",
+                    }}
+                  >
+                    <Icon className="w-4 h-4" style={{ color: "#333333" }} />
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm" style={{ color: "#111111" }}>{title}</p>
+                    <p className="text-xs leading-relaxed mt-0.5" style={{ color: "#555555" }}>{desc}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Dashboard Mockup — Laptop + Phone */}
+            <motion.div
+              initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55, delay: 0.4 }}
+              className="relative mb-6"
+              style={{ height: "200px" }}
+            >
+              {/* Laptop */}
+              <div
+                className="absolute left-0 bottom-0"
+                style={{
+                  width: "72%",
+                  background: "#FFFFFF",
+                  borderRadius: "10px 10px 4px 4px",
+                  boxShadow: "0 12px 40px rgba(0,0,0,0.14)",
+                  overflow: "hidden",
+                  border: "1px solid #E5E7EB",
+                }}
+              >
+                {/* Laptop top bar */}
+                <div className="flex items-center gap-1.5 px-3 py-2" style={{ background: "#F3F4F6", borderBottom: "1px solid #E5E7EB" }}>
+                  <div className="w-2 h-2 rounded-full bg-red-400" />
+                  <div className="w-2 h-2 rounded-full bg-yellow-400" />
+                  <div className="w-2 h-2 rounded-full bg-green-400" />
+                  <span className="text-[9px] ml-2 font-semibold" style={{ color: "#7B4FA6" }}>Web Media Hub</span>
+                </div>
+                <div className="flex" style={{ height: "150px" }}>
+                  {/* Sidebar */}
+                  <div className="flex flex-col gap-1.5 px-2 py-3 shrink-0" style={{ width: "70px", background: "#1C1C2E" }}>
+                    <div className="text-[7px] font-bold mb-1" style={{ color: "#7B4FA6" }}>MENU</div>
+                    {["Dashboard","Products","Orders","Customers","Settings"].map((item) => (
+                      <div key={item} className="text-[7px] py-1 px-1.5 rounded" style={{ color: item === "Dashboard" ? "#FFFFFF" : "#9CA3AF", background: item === "Dashboard" ? "#7B4FA6" : "transparent" }}>
+                        {item}
                       </div>
-                      <p className="text-[8px] text-white truncate">{item}</p>
+                    ))}
+                  </div>
+                  {/* Main content */}
+                  <div className="flex-1 p-3">
+                    <p className="text-[10px] font-bold mb-2" style={{ color: "#111" }}>Dashboard</p>
+                    <div className="grid grid-cols-3 gap-1.5 mb-3">
+                      {[["₹2.4L","Sales","#7B4FA6"],["1,284","Orders","#2563EB"],["3,920","Users","#16A34A"]].map(([v, l, c]) => (
+                        <div key={l} className="rounded p-1.5" style={{ background: `${c}12` }}>
+                          <p className="text-[9px] font-bold" style={{ color: c as string }}>{v}</p>
+                          <p className="text-[7px]" style={{ color: "#888" }}>{l}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[8px] font-bold mb-1.5" style={{ color: "#333" }}>Recent Orders</p>
+                    <div className="space-y-1">
+                      {ORDERS.slice(0, 3).map((o) => (
+                        <div key={o.id} className="flex items-center justify-between">
+                          <span className="text-[7px]" style={{ color: "#555" }}>{o.id} · {o.name}</span>
+                          <span className="text-[6px] px-1 py-0.5 rounded-full font-medium" style={{ background: `${o.color}20`, color: o.color }}>{o.status}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Phone (overlapping right side of laptop) */}
+              <motion.div
+                animate={{ y: [0, -5, 0] }}
+                transition={{ repeat: Infinity, duration: 3.5, ease: "easeInOut" }}
+                className="absolute right-0 bottom-0"
+                style={{
+                  width: "90px",
+                  height: "180px",
+                  background: "#111111",
+                  borderRadius: "14px",
+                  border: "2px solid #333",
+                  boxShadow: "0 16px 40px rgba(0,0,0,0.30)",
+                  overflow: "hidden",
+                  padding: "8px 6px 10px",
+                }}
+              >
+                <div className="w-10 h-1 rounded-full mx-auto mb-2" style={{ background: "#333" }} />
+                <p className="text-[8px] font-bold text-center mb-2" style={{ color: "#FFF" }}>New Arrivals</p>
+                <div className="grid grid-cols-2 gap-1">
+                  {PHONE_ITEMS.map((item) => (
+                    <div
+                      key={item.label}
+                      className="rounded-lg flex items-end justify-center"
+                      style={{ height: "46px", background: item.clr }}
+                    >
+                      <p className="text-[6px] font-medium pb-1" style={{ color: "#333" }}>{item.label}</p>
                     </div>
                   ))}
                 </div>
-                <div className="w-8 h-1 rounded-full mx-auto mt-2" style={{ background: "#555" }} />
               </motion.div>
             </motion.div>
-          </motion.div>
 
-          {/* Virtual Try-On Card */}
-          <motion.div
-            custom={7} variants={fadeUp} initial="hidden" animate="show"
-            whileHover={{ y: -3 }}
-            className="mb-8 rounded-3xl p-4 flex items-center gap-4 transition-all duration-300"
-            style={{
-              background: "rgba(255,255,255,0.88)",
-              backdropFilter: "blur(12px)",
-              border: "1px solid rgba(91,44,111,0.12)",
-              borderRadius: "24px",
-              boxShadow: "0 8px 24px rgba(91,44,111,0.06)",
-            }}
-          >
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg,#5B2C6F,#8E44AD)" }}>
-              <Layers className="w-7 h-7 text-white" />
-            </div>
-            <div className="flex-1">
-              <p className="font-bold text-sm mb-0.5" style={{ color: "#111111", fontFamily: "'Playfair Display', serif" }}>Virtual Try-On</p>
-              <p className="text-xs leading-relaxed" style={{ color: "#666" }}>Let your customers try products before buying using AI Virtual Try-On.</p>
-            </div>
-            <div className="flex gap-1 shrink-0">
-              {["#5B2C6F", "#8E44AD", "#D7BDE2"].map((c, i) => (
-                <div key={i} className="w-7 h-7 rounded-full border-2 border-white" style={{ background: c }} />
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Trust Bar */}
-          <motion.div custom={8} variants={fadeUp} initial="hidden" animate="show" className="grid grid-cols-4 gap-2 mt-auto">
-            {trustBadges.map((t) => (
-              <div key={t.label} className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl"
-                style={{ background: "rgba(255,255,255,0.7)", backdropFilter: "blur(8px)", border: "1px solid rgba(91,44,111,0.08)" }}>
-                <t.icon className="w-4 h-4" style={{ color: "#5B2C6F" }} />
-                <p className="text-[10px] font-medium text-center leading-tight" style={{ color: "#333" }}>{t.label}</p>
+            {/* Virtual Try-On Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.5 }}
+              className="flex items-center gap-4 rounded-2xl px-4 py-4 mt-auto"
+              style={{
+                background: "rgba(255,255,255,0.88)",
+                backdropFilter: "blur(12px)",
+                border: "1px solid rgba(0,0,0,0.08)",
+                boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+              }}
+            >
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: "rgba(123,79,166,0.10)", border: "1.5px solid rgba(123,79,166,0.2)" }}
+              >
+                <Layers className="w-5 h-5" style={{ color: "#7B4FA6" }} />
               </div>
-            ))}
-          </motion.div>
+              <div className="flex-1">
+                <p className="font-bold text-sm" style={{ color: "#111111" }}>Virtual Try-On</p>
+                <p className="text-xs leading-relaxed" style={{ color: "#666666" }}>
+                  Let your customers try before<br />
+                  they buy with our advanced<br />
+                  Virtual Try-On technology.
+                </p>
+              </div>
+              {/* Fashion model thumbnail */}
+              <div
+                className="rounded-xl overflow-hidden shrink-0"
+                style={{ width: "72px", height: "90px", border: "1px solid #E5E7EB" }}
+              >
+                <img
+                  src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&q=80"
+                  alt="Fashion model"
+                  className="w-full h-full object-cover object-top"
+                />
+              </div>
+            </motion.div>
 
-        </div>
-      </div>
-
-      {/* ── RIGHT SECTION (45%) ── */}
-      <div className="flex-1 lg:w-[45%] flex items-center justify-center p-6 lg:p-10 relative overflow-y-auto">
-
-        {/* Mobile logo */}
-        <div className="absolute top-6 left-6 flex items-center gap-2 lg:hidden">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#5B2C6F" }}>
-            <Shirt className="w-4 h-4 text-white" />
           </div>
-          <p className="font-bold text-sm tracking-widest" style={{ color: "#111111" }}>WEB MEDIA HUB</p>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, scale: 0.97 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className="w-full max-w-[520px]"
+        {/* ── RIGHT SECTION — Full height white panel ── */}
+        <div
+          className="flex-1 flex flex-col overflow-y-auto"
           style={{
-            background: "rgba(255,255,255,0.95)",
-            backdropFilter: "blur(20px)",
-            borderRadius: "32px",
-            boxShadow: "0 25px 70px rgba(0,0,0,0.12)",
-            border: "1px solid rgba(91,44,111,0.08)",
-            overflow: "hidden",
+            background: "#FFFFFF",
+            borderLeft: "1px solid #F0EBE5",
           }}
         >
-          {/* Card Header */}
-          <div className="px-8 pt-10 pb-6 text-center">
-            <motion.div
-              initial={{ scale: 0 }} animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-              className="w-16 h-16 rounded-2xl mx-auto mb-5 flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg,#5B2C6F,#8E44AD)", boxShadow: "0 8px 24px rgba(91,44,111,0.3)" }}
-            >
-              <ShoppingBag className="w-8 h-8 text-white" />
-            </motion.div>
-            <h2
-              className="text-3xl font-bold mb-2"
-              style={{ fontFamily: "'Playfair Display', Georgia, serif", color: "#111111" }}
-            >
-              Welcome to<br />
-              <span style={{ color: "#5B2C6F" }}>Web Media Hub</span>
-            </h2>
-            <p className="text-sm" style={{ color: "#777" }}>
-              Create your store and start selling<br />your fashion products online.
-            </p>
-          </div>
+          <div className="flex flex-col flex-1 px-8 xl:px-12 pt-12 pb-8" style={{ maxWidth: "520px", margin: "0 auto", width: "100%" }}>
 
-          <div className="px-8 pb-8">
-            {/* Lockout warning */}
+            {/* Hanger Icon */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4 }}
+              className="flex justify-center mb-5"
+            >
+              <HangerSVG size={38} color="#7B4FA6" strokeWidth={1.5} />
+            </motion.div>
+
+            {/* Welcome heading */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, delay: 0.1 }}
+              className="text-center mb-8"
+            >
+              <h2
+                style={{
+                  fontFamily: "'Playfair Display', Georgia, serif",
+                  fontSize: "clamp(26px, 3vw, 34px)",
+                  fontWeight: 700,
+                  color: "#111111",
+                  lineHeight: 1.2,
+                  marginBottom: "10px",
+                }}
+              >
+                Welcome to<br />Web Media Hub
+              </h2>
+              <p className="text-sm" style={{ color: "#888888", lineHeight: 1.6 }}>
+                Create your store and start selling<br />
+                your fashion, your way.
+              </p>
+            </motion.div>
+
+            {/* Lockout banner */}
             <AnimatePresence>
               {isCurrentlyLocked && (
                 <motion.div
@@ -383,37 +413,46 @@ export default function Login() {
                   className="mb-4 flex items-start gap-2 rounded-xl p-3 text-sm"
                   style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#DC2626" }}
                 >
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                   <span>Account locked for <strong>{remainingLockout}</strong>. Too many failed attempts.</span>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Form */}
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* FORM */}
+            <motion.form
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.15 }}
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="flex flex-col gap-5"
+            >
 
-              {/* Email */}
-              <div className="space-y-1.5">
-                <label className="text-sm font-semibold" style={{ color: "#333" }}>Email Address</label>
+              {/* Email Address */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-semibold" style={{ color: "#111111" }}>Email Address</label>
                 <div className="relative">
+                  <Mail
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
+                    style={{ color: "#AAAAAA" }}
+                  />
                   <input
                     type="email"
-                    placeholder="admin@example.com"
+                    placeholder="Enter your email"
                     autoComplete="email"
                     disabled={isLoading || isCurrentlyLocked}
                     {...form.register("email")}
-                    className="w-full outline-none transition-all duration-300 text-sm"
+                    className="w-full outline-none transition-all duration-200"
                     style={{
-                      height: "60px",
-                      borderRadius: "16px",
-                      border: "1.5px solid #E5E7EB",
-                      padding: "0 20px",
-                      fontSize: "15px",
-                      background: "#FAFAFA",
-                      color: "#111",
+                      height: "52px",
+                      borderRadius: "10px",
+                      border: "1.5px solid #E5E0DA",
+                      paddingLeft: "44px",
+                      paddingRight: "16px",
+                      fontSize: "14px",
+                      color: "#111111",
+                      background: "#FAFAF9",
                     }}
-                    onFocus={(e) => { e.target.style.borderColor = "#5B2C6F"; e.target.style.boxShadow = "0 0 0 4px rgba(91,44,111,0.08)"; }}
-                    onBlur={(e) => { e.target.style.borderColor = "#E5E7EB"; e.target.style.boxShadow = "none"; }}
+                    onFocus={(e) => { e.target.style.borderColor = "#7B4FA6"; e.target.style.background = "#FFF"; }}
+                    onBlur={(e) => { e.target.style.borderColor = "#E5E0DA"; e.target.style.background = "#FAFAF9"; }}
                   />
                 </div>
                 {form.formState.errors.email && (
@@ -422,149 +461,191 @@ export default function Login() {
               </div>
 
               {/* Password */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-semibold" style={{ color: "#333" }}>Password</label>
-                  <button type="button" className="text-xs font-medium hover:underline transition-all" style={{ color: "#5B2C6F" }}>
-                    Forgot Password?
-                  </button>
-                </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-semibold" style={{ color: "#111111" }}>Password</label>
                 <div className="relative">
+                  <Lock
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
+                    style={{ color: "#AAAAAA" }}
+                  />
                   <input
                     type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
+                    placeholder="Enter your password"
                     autoComplete="current-password"
                     disabled={isLoading || isCurrentlyLocked}
                     {...form.register("password")}
-                    className="w-full outline-none transition-all duration-300 text-sm"
+                    className="w-full outline-none transition-all duration-200"
                     style={{
-                      height: "60px",
-                      borderRadius: "16px",
-                      border: "1.5px solid #E5E7EB",
-                      padding: "0 52px 0 20px",
-                      fontSize: "15px",
-                      background: "#FAFAFA",
-                      color: "#111",
+                      height: "52px",
+                      borderRadius: "10px",
+                      border: "1.5px solid #E5E0DA",
+                      paddingLeft: "44px",
+                      paddingRight: "48px",
+                      fontSize: "14px",
+                      color: "#111111",
+                      background: "#FAFAF9",
                     }}
-                    onFocus={(e) => { e.target.style.borderColor = "#5B2C6F"; e.target.style.boxShadow = "0 0 0 4px rgba(91,44,111,0.08)"; }}
-                    onBlur={(e) => { e.target.style.borderColor = "#E5E7EB"; e.target.style.boxShadow = "none"; }}
+                    onFocus={(e) => { e.target.style.borderColor = "#7B4FA6"; e.target.style.background = "#FFF"; }}
+                    onBlur={(e) => { e.target.style.borderColor = "#E5E0DA"; e.target.style.background = "#FAFAF9"; }}
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword((p) => !p)}
                     tabIndex={-1}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors"
-                    style={{ color: "#999" }}
+                    onClick={() => setShowPassword((p) => !p)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-60"
+                    style={{ color: "#AAAAAA" }}
                   >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
                 {form.formState.errors.password && (
                   <p className="text-xs" style={{ color: "#DC2626" }}>{form.formState.errors.password.message}</p>
                 )}
+                {/* Forgot Password — right aligned, below input */}
+                <div className="flex justify-end">
+                  <button type="button" className="text-xs font-medium hover:underline" style={{ color: "#B05EB0" }}>
+                    Forgot Password?
+                  </button>
+                </div>
               </div>
 
-              {/* Remember Me */}
-              <div className="flex items-center gap-2">
+              {/* Remember me */}
+              <div className="flex items-center gap-2 -mt-1">
                 <input
                   type="checkbox"
                   id="rememberMe"
                   {...form.register("rememberMe")}
                   className="w-4 h-4 rounded"
-                  style={{ accentColor: "#5B2C6F" }}
+                  style={{ accentColor: "#7B4FA6", cursor: "pointer" }}
                 />
-                <label htmlFor="rememberMe" className="text-sm" style={{ color: "#555" }}>Remember me</label>
+                <label htmlFor="rememberMe" className="text-sm cursor-pointer" style={{ color: "#444444" }}>
+                  Remember me
+                </label>
               </div>
 
-              {/* Primary Button */}
+              {/* Store Login button — dark plum */}
               <motion.button
                 type="submit"
                 disabled={isLoading || isCurrentlyLocked}
-                whileHover={!isLoading && !isCurrentlyLocked ? { scale: 1.02, boxShadow: "0 12px 32px rgba(91,44,111,0.35)" } : {}}
-                whileTap={!isLoading && !isCurrentlyLocked ? { scale: 0.98 } : {}}
-                className="w-full flex items-center justify-center gap-2 font-semibold text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                whileHover={!isLoading && !isCurrentlyLocked ? { opacity: 0.92 } : {}}
+                whileTap={!isLoading && !isCurrentlyLocked ? { scale: 0.985 } : {}}
+                className="w-full flex items-center justify-between font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                 style={{
-                  height: "60px",
-                  borderRadius: "16px",
-                  background: isCurrentlyLocked ? "#999" : "linear-gradient(135deg, #5B2C6F, #8E44AD)",
-                  fontSize: "16px",
-                  boxShadow: "0 8px 24px rgba(91,44,111,0.25)",
-                }}
-              >
-                {isLoading ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : isCurrentlyLocked ? (
-                  <>🔒 Locked — wait {remainingLockout}</>
-                ) : (
-                  <><Store className="w-5 h-5" /> Store Login</>
-                )}
-              </motion.button>
-
-              {/* Divider */}
-              <div className="flex items-center gap-3 my-2">
-                <div className="flex-1 h-px" style={{ background: "#E5E7EB" }} />
-                <span className="text-xs font-medium" style={{ color: "#AAA" }}>OR</span>
-                <div className="flex-1 h-px" style={{ background: "#E5E7EB" }} />
-              </div>
-
-              {/* Secondary Button */}
-              <motion.button
-                type="button"
-                onClick={() => setLocation("/create-store")}
-                whileHover={{ scale: 1.02, background: "rgba(91,44,111,0.04)" }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full flex items-center justify-center gap-2 font-semibold transition-all duration-300"
-                style={{
-                  height: "60px",
-                  borderRadius: "16px",
-                  background: "white",
-                  border: "2px solid #5B2C6F",
-                  color: "#5B2C6F",
+                  height: "54px",
+                  borderRadius: "10px",
+                  background: isCurrentlyLocked ? "#999" : "#3D1547",
+                  paddingLeft: "20px",
+                  paddingRight: "20px",
                   fontSize: "15px",
                 }}
               >
-                <Star className="w-4 h-4" />
-                Create Your Store
-              </motion.button>
-            </form>
-
-            {/* Store Showcase */}
-            <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}
-              className="mt-6 relative overflow-hidden group cursor-pointer"
-              style={{ borderRadius: "24px" }}
-            >
-              <motion.div
-                whileHover={{ scale: 1.03 }}
-                transition={{ duration: 0.4 }}
-                className="relative overflow-hidden"
-                style={{ borderRadius: "24px", height: "140px" }}
-              >
-                <img
-                  src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=600&q=80"
-                  alt="Clothing Store"
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(91,44,111,0.75) 0%, rgba(0,0,0,0.1) 60%)" }} />
-                <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
-                  <div>
-                    <p className="text-white font-bold text-sm" style={{ fontFamily: "'Playfair Display', serif" }}>WEB MEDIA HUB</p>
-                    <p className="text-white/70 text-xs">Premium Fashion Store</p>
-                  </div>
-                  <div className="flex items-center gap-1 bg-white/20 backdrop-blur-sm rounded-full px-2 py-1">
-                    <CheckCircle className="w-3 h-3 text-green-400" />
-                    <span className="text-white text-[10px] font-medium">Live Store</span>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <Store className="w-4 h-4" />
+                  <span>
+                    {isLoading ? "Logging in..." : isCurrentlyLocked ? `Locked — wait ${remainingLockout}` : "Store Login"}
+                  </span>
                 </div>
-              </motion.div>
+                {!isLoading && !isCurrentlyLocked && <ArrowRight className="w-4 h-4" />}
+                {isLoading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+              </motion.button>
+
+              {/* OR divider */}
+              <div className="text-center">
+                <span className="text-sm" style={{ color: "#AAAAAA" }}>OR</span>
+              </div>
+
+              {/* Create Your Store — outlined */}
+              <motion.button
+                type="button"
+                onClick={() => setLocation("/create-store")}
+                whileHover={{ background: "#FAF7FF" }}
+                whileTap={{ scale: 0.985 }}
+                className="w-full flex items-center justify-between font-semibold transition-all duration-200"
+                style={{
+                  height: "54px",
+                  borderRadius: "10px",
+                  background: "#FFFFFF",
+                  border: "1.5px solid #D5C8E0",
+                  paddingLeft: "20px",
+                  paddingRight: "20px",
+                  color: "#3D1547",
+                  fontSize: "15px",
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <Store className="w-4 h-4" />
+                  <span>Create Your Store</span>
+                </div>
+                <ArrowRight className="w-4 h-4" />
+              </motion.button>
+
+              {/* Rocket tagline */}
+              <div className="flex items-start gap-3 py-1">
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                  style={{ background: "#F3EDF8" }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7B4FA6" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+                    <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+                    <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
+                    <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
+                  </svg>
+                </div>
+                <p className="text-sm pt-1" style={{ color: "#444444", lineHeight: 1.5 }}>
+                  Make your store stand out<br />
+                  and grow like never before.
+                </p>
+              </div>
+
+            </motion.form>
+
+            {/* Store exterior image */}
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.4 }}
+              className="mt-6 relative overflow-hidden rounded-2xl"
+              style={{ height: "160px", border: "1px solid #E5E0DA" }}
+            >
+              <img
+                src="https://images.unsplash.com/photo-1567401893414-76b7b1e5a7a5?w=700&q=85"
+                alt="WEB MEDIA HUB Store"
+                className="w-full h-full object-cover"
+              />
+              {/* Dark overlay */}
+              <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(15,10,30,0.80) 0%, rgba(0,0,0,0.15) 55%)" }} />
+              {/* Store name overlay — gold text on dark awning */}
+              <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center py-4">
+                <p
+                  className="font-bold tracking-widest text-sm"
+                  style={{ color: "#D4AF37", letterSpacing: "0.2em" }}
+                >
+                  WEB MEDIA HUB
+                </p>
+              </div>
             </motion.div>
 
-            <p className="text-center text-xs mt-5" style={{ color: "#AAA" }}>
-              By logging in, you agree to our Terms of Service & Privacy Policy.
-            </p>
           </div>
-        </motion.div>
+        </div>
       </div>
+
+      {/* ══════════════════════════════════════════
+          BOTTOM TRUST BAR — Full width dark strip
+      ══════════════════════════════════════════ */}
+      <div
+        className="w-full flex items-center justify-around py-4 px-6"
+        style={{ background: "#0F0E1A" }}
+      >
+        {TRUST.map(({ Icon, a, b }) => (
+          <div key={a} className="flex flex-col items-center gap-1.5">
+            <Icon className="w-5 h-5" style={{ color: "#9CA3AF" }} />
+            <div className="text-center">
+              <p className="text-[10px] font-medium" style={{ color: "#E5E7EB" }}>{a}</p>
+              <p className="text-[10px]" style={{ color: "#9CA3AF" }}>{b}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
     </div>
   );
 }
