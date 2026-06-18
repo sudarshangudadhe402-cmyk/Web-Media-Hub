@@ -579,6 +579,32 @@ export default function Login() {
                 <ArrowRight className="w-4 h-4" />
               </motion.button>
 
+              {/* Explore Demo Store */}
+              <motion.button
+                type="button"
+                onClick={() => setLocation("/demo")}
+                whileHover={{ scale: 1.01, background: "linear-gradient(135deg,#f5edff,#ede0ff)" }}
+                whileTap={{ scale: 0.985 }}
+                className="w-full flex items-center justify-between transition-all duration-200"
+                style={{
+                  height: "50px",
+                  borderRadius: "10px",
+                  background: "linear-gradient(135deg,#FAF5FF,#F3EBFF)",
+                  border: "1.5px dashed #C4A0E0",
+                  paddingLeft: "18px",
+                  paddingRight: "18px",
+                  color: "#7B4FA6",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4" />
+                  <span>Explore Demo Store</span>
+                </div>
+                <span className="text-xs font-normal" style={{ color: "#B07FD0" }}>See how it looks →</span>
+              </motion.button>
+
               {/* Rocket tagline */}
               <div className="flex items-start gap-3 py-1">
                 <div
@@ -623,35 +649,6 @@ export default function Login() {
                 </p>
               </div>
             </motion.div>
-
-            {/* Explore Demo Store button */}
-            <motion.button
-              type="button"
-              onClick={() => setLocation("/demo")}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, delay: 0.55 }}
-              whileHover={{ scale: 1.015, background: "linear-gradient(135deg,#f5edff,#ede0ff)" }}
-              whileTap={{ scale: 0.985 }}
-              className="mt-4 w-full flex items-center justify-between transition-all duration-200"
-              style={{
-                height: "52px",
-                borderRadius: "10px",
-                background: "linear-gradient(135deg,#FAF5FF,#F3EBFF)",
-                border: "1.5px dashed #C4A0E0",
-                paddingLeft: "18px",
-                paddingRight: "18px",
-                color: "#7B4FA6",
-                fontSize: "14px",
-                fontWeight: 600,
-              }}
-            >
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4" />
-                <span>Explore Demo Store</span>
-              </div>
-              <span className="text-xs font-normal" style={{ color: "#B07FD0" }}>See how it looks →</span>
-            </motion.button>
 
           </div>
         </div>
