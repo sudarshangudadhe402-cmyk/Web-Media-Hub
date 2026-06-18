@@ -393,6 +393,23 @@ export default function MyStore() {
 
   const isPending = createStore.isPending || updateStore.isPending;
 
+  const isFormValid =
+    form.name.trim().length >= 2 &&
+    form.address.trim().length >= 2 &&
+    form.whatsappNumber.trim().length >= 5 &&
+    form.openFrom.hour !== "" &&
+    form.openTo.hour !== "" &&
+    form.openDays.length >= 1 &&
+    form.description.trim().length >= 5;
+
+  const missingFields: string[] = [];
+  if (form.name.trim().length < 2) missingFields.push("Store Name");
+  if (form.address.trim().length < 2) missingFields.push("Store Address");
+  if (form.whatsappNumber.trim().length < 5) missingFields.push("WhatsApp Number");
+  if (!form.openFrom.hour || !form.openTo.hour) missingFields.push("Opening Time");
+  if (form.openDays.length < 1) missingFields.push("Open Days");
+  if (form.description.trim().length < 5) missingFields.push("Description");
+
   if (isLoading) {
     return (
       <div className="space-y-4 max-w-2xl mx-auto">
@@ -740,7 +757,7 @@ export default function MyStore() {
 
           {/* 2. Store Address */}
           <div className="space-y-1.5">
-            <Label htmlFor="address">Store Address</Label>
+            <Label htmlFor="address">Store Address <span className="text-destructive">*</span></Label>
             <Input
               id="address"
               placeholder="e.g. 123 Market Street, Mumbai"
@@ -752,7 +769,7 @@ export default function MyStore() {
 
           {/* 3. Owner WhatsApp Number */}
           <div className="space-y-1.5">
-            <Label htmlFor="whatsapp">Owner WhatsApp Number</Label>
+            <Label htmlFor="whatsapp">Owner WhatsApp Number <span className="text-destructive">*</span></Label>
             <Input
               id="whatsapp"
               type="tel"
@@ -765,7 +782,7 @@ export default function MyStore() {
 
           {/* 4. Opening Time */}
           <div className="space-y-1.5">
-            <Label>Opening Time</Label>
+            <Label>Opening Time <span className="text-destructive">*</span></Label>
             <div className="flex items-center gap-2 flex-wrap">
               {(["openFrom", "openTo"] as const).map((key, idx) => (
                 <div key={key} className="flex items-center gap-1 flex-1 min-w-0">
@@ -808,7 +825,7 @@ export default function MyStore() {
 
           {/* 5. Open Days */}
           <div className="space-y-2">
-            <Label>Open Days</Label>
+            <Label>Open Days <span className="text-destructive">*</span></Label>
             <div className="flex flex-wrap gap-2">
               {ALL_DAYS.map((day) => {
                 const selected = form.openDays.includes(day);
@@ -833,7 +850,7 @@ export default function MyStore() {
 
           {/* 7. Description */}
           <div className="space-y-1.5">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">Description <span className="text-destructive">*</span></Label>
             <Textarea
               id="description"
               rows={3}
@@ -845,6 +862,20 @@ export default function MyStore() {
           </div>
 
           {/* Action buttons */}
+          {/* Missing fields hint */}
+          {!isFormValid && missingFields.length > 0 && (
+            <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3">
+              <p className="text-xs font-semibold text-orange-700 mb-1">Please fill in all required fields:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {missingFields.map((f) => (
+                  <span key={f} className="text-xs bg-orange-100 text-orange-700 border border-orange-200 px-2 py-0.5 rounded-full font-medium">
+                    {f}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-3 pt-2">
             {editing && (
               <Button
@@ -858,8 +889,15 @@ export default function MyStore() {
             )}
             <Button
               type="submit"
-              disabled={isPending || uploadImage.isPending}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold text-base py-5"
+              disabled={isPending || uploadImage.isPending || !isFormValid}
+              className="flex-1 text-white font-semibold text-base py-5 transition-all"
+              style={{
+                background: isFormValid
+                  ? "linear-gradient(135deg, #16a34a, #22c55e)"
+                  : "#d1d5db",
+                color: isFormValid ? "white" : "#9ca3af",
+                cursor: isFormValid ? "pointer" : "not-allowed",
+              }}
               data-testid="store-done-btn"
             >
               {isPending ? "Saving..." : editing ? "Update" : "Done"}
