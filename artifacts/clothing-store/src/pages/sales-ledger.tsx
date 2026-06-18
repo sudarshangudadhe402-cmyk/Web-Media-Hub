@@ -368,7 +368,7 @@ export default function SalesLedger() {
         {/* Table */}
         <div className="rounded-lg border border-border overflow-hidden shadow-sm" style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
           <div className="overflow-x-auto">
-            <div className="ledger-table-wrapper" style={{ maxHeight: "62vh", overflowY: "auto", overscrollBehavior: "contain" }}>
+            <div className="ledger-table-wrapper" style={{ maxHeight: "62vh", overflowY: "auto", overscrollBehavior: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
                 <thead>
                   <tr>
