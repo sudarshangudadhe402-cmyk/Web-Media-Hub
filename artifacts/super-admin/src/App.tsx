@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
 import Login from "@/pages/login";
+import SalesLedger from "@/pages/sales-ledger";
 import ManageAdmins from "@/pages/manage-admins";
 import Admins from "@/pages/admins";
 import LegalLog from "@/pages/legal-log";
@@ -40,10 +41,15 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/">
         {isLoading ? null : user ? (
-          <Redirect to="/manage-admins" />
+          <Redirect to="/sales-ledger" />
         ) : (
           <Redirect to="/login" />
         )}
+      </Route>
+      <Route path="/sales-ledger">
+        <ProtectedRoute>
+          <SalesLedger />
+        </ProtectedRoute>
       </Route>
       <Route path="/manage-admins">
         <ProtectedRoute>

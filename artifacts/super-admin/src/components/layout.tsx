@@ -10,9 +10,11 @@ import {
   Users,
   ShieldCheck,
   FileText,
+  BookOpen,
 } from "lucide-react";
 
 const navItems = [
+  { path: "/sales-ledger", name: "Sales & Ledger", icon: BookOpen },
   { path: "/manage-admins", name: "Manage Admins", icon: Shield },
   { path: "/admins", name: "Admin History", icon: Users },
   { path: "/legal-log", name: "Legal Agreements Log", icon: FileText },
