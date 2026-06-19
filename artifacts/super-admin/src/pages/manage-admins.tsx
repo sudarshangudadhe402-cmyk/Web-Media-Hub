@@ -69,6 +69,9 @@ export default function ManageAdmins() {
   const [linkInput, setLinkInput] = useState("");
   const [isEditingLink, setIsEditingLink] = useState(false);
   const [storeSearchQuery, setStoreSearchQuery] = useState("");
+  const [pendingTabSeenAt, setPendingTabSeenAt] = useState<string | null>(() =>
+    localStorage.getItem("wmh_sa_pending_tab_seen_at")
+  );
 
   function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -175,6 +178,12 @@ export default function ManageAdmins() {
   const pending = (allRequests ?? []).filter((r) => r.status === "pending");
   const approved = (allRequests ?? []).filter((r) => r.status === "approved");
   const rejected = (allRequests ?? []).filter((r) => r.status === "rejected");
+
+  const pendingTabHasDot =
+    pending.length > 0 &&
+    (!pendingTabSeenAt ||
+      pending.some((r) => new Date(r.createdAt) > new Date(pendingTabSeenAt!)));
+
   const q = storeSearchQuery.trim().toLowerCase();
   const filteredTabData: Record<StoreTab, typeof pending> = {
     pending: q ? pending.filter((r) => r.storeName.toLowerCase().includes(q) || (r as any).email?.toLowerCase().includes(q)) : pending,
@@ -189,6 +198,14 @@ export default function ManageAdmins() {
     const match = order.find((t) => filteredTabData[t].length > 0);
     if (match) setActiveTab(match);
   }, [q]);
+
+  useEffect(() => {
+    if (activeTab === "pending" && pending.length > 0) {
+      const now = new Date().toISOString();
+      localStorage.setItem("wmh_sa_pending_tab_seen_at", now);
+      setPendingTabSeenAt(now);
+    }
+  }, [activeTab, pending.length]);
 
   function openWhatsApp(number: string) {
     window.open(`https://wa.me/${number.replace(/\D/g, "")}`, "_blank");
@@ -359,21 +376,27 @@ export default function ManageAdmins() {
           <div className="flex gap-2">
             {(
               [
-                { key: "pending" as StoreTab, label: "Pending", icon: Clock, count: q ? filteredTabData.pending.length : pending.length, activeClass: "bg-amber-500 text-white border-amber-500" },
-                { key: "approved" as StoreTab, label: "Approved", icon: CheckCircle, count: q ? filteredTabData.approved.length : approved.length, activeClass: "bg-green-600 text-white border-green-600" },
-                { key: "rejected" as StoreTab, label: "Rejected", icon: XCircle, count: q ? filteredTabData.rejected.length : rejected.length, activeClass: "bg-red-600 text-white border-red-600" },
+                { key: "pending" as StoreTab, label: "Pending", icon: Clock, count: q ? filteredTabData.pending.length : pending.length, activeClass: "bg-amber-500 text-white border-amber-500", showDot: pendingTabHasDot },
+                { key: "approved" as StoreTab, label: "Approved", icon: CheckCircle, count: q ? filteredTabData.approved.length : approved.length, activeClass: "bg-green-600 text-white border-green-600", showDot: false },
+                { key: "rejected" as StoreTab, label: "Rejected", icon: XCircle, count: q ? filteredTabData.rejected.length : rejected.length, activeClass: "bg-red-600 text-white border-red-600", showDot: false },
               ]
-            ).map(({ key, label, icon: Icon, count, activeClass }) => (
+            ).map(({ key, label, icon: Icon, count, activeClass, showDot }) => (
               <button
                 key={key}
                 onClick={() => setActiveTab(key)}
-                className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 px-2 rounded-xl text-xs font-medium border transition-colors ${
+                className={`relative flex-1 flex flex-col items-center justify-center gap-1 py-3 px-2 rounded-xl text-xs font-medium border transition-colors ${
                   activeTab === key ? activeClass : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
                 }`}
               >
                 <Icon className="w-4 h-4" />
                 <span className="text-center leading-tight">{label}</span>
                 <Badge variant="secondary" className="text-[10px] mt-0.5">{count}</Badge>
+                {showDot && (
+                  <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 border-2 border-white" />
+                  </span>
+                )}
               </button>
             ))}
           </div>

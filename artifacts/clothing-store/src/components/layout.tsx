@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -36,8 +36,12 @@ import {
   useListNotifications,
   useMarkNotificationsRead,
   useGetStore,
+  useGetDashboardSummary,
+  useMyStoreRequests,
   getListNotificationsQueryKey,
 } from "@workspace/api-client-react";
+
+const AI_VIDEO_SEEN_KEY = "wmh_ai_video_seen_at";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
@@ -47,9 +51,42 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const [notifOpen, setNotifOpen] = useState(false);
 
+  const isAdmin = !!user && user.role !== "super_admin";
+
   const { data: store } = useGetStore({ query: { retry: false } });
   const { data: notifications = [] } = useListNotifications();
   const markRead = useMarkNotificationsRead();
+
+  const { data: dashSummary } = useGetDashboardSummary({
+    query: { enabled: isAdmin, refetchInterval: 30_000 },
+  });
+
+  const { data: myRequests = [] } = useMyStoreRequests({
+    query: { enabled: isAdmin, refetchInterval: 60_000 },
+  });
+
+  const [aiVideoSeenAt, setAiVideoSeenAt] = useState<string | null>(() =>
+    localStorage.getItem(AI_VIDEO_SEEN_KEY)
+  );
+
+  const dashboardHasDot = isAdmin && ((dashSummary as any)?.unseenBookings ?? 0) > 0;
+
+  const approvedRequests = (myRequests as any[]).filter((r) => r.status === "approved");
+  const aiVideoHasDot =
+    isAdmin &&
+    approvedRequests.length > 0 &&
+    (!aiVideoSeenAt ||
+      approvedRequests.some(
+        (r) => new Date(r.updatedAt ?? r.createdAt) > new Date(aiVideoSeenAt!)
+      ));
+
+  useEffect(() => {
+    if (location === "/ai-video") {
+      const now = new Date().toISOString();
+      localStorage.setItem(AI_VIDEO_SEEN_KEY, now);
+      setAiVideoSeenAt(now);
+    }
+  }, [location]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -80,8 +117,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
         { name: "Products", href: "/products", icon: Package },
         { name: "AI Promotional Video", href: "/ai-video", icon: Video },
         { name: "My Store", href: "/my-store", icon: Store },
-
       ];
+
+  const navDots: Record<string, boolean> = {
+    "/dashboard": dashboardHasDot,
+    "/ai-video": aiVideoHasDot,
+  };
 
   const handleMarkRead = () => {
     if (unreadCount > 0) {
@@ -94,6 +135,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {navigation.map((item) => {
         const Icon = item.icon;
         const isActive = location === item.href;
+        const hasDot = navDots[item.href] ?? false;
         return (
           <Link
             key={item.name}
@@ -110,7 +152,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
             }`}
           >
             <Icon className="h-4 w-4 shrink-0" />
-            {item.name}
+            <span className="flex-1">{item.name}</span>
+            {hasDot && (
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500" />
+              </span>
+            )}
           </Link>
         );
       })}

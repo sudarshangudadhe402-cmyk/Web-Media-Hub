@@ -46,6 +46,9 @@ export default function AiVideo() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("friend");
   const [selectedApproved, setSelectedApproved] = useState<any>(null);
+  const [approvedTabSeenAt, setApprovedTabSeenAt] = useState<string | null>(() =>
+    localStorage.getItem("wmh_ai_video_approved_tab_seen_at")
+  );
   const [claimHelpOpen, setClaimHelpOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -64,6 +67,21 @@ export default function AiVideo() {
   const approved = (myRequests ?? []).filter((r) => r.status === "approved");
   const rejected = (myRequests ?? []).filter((r) => r.status === "rejected");
   const rewardCoins = approved.length * 2000;
+
+  const approvedTabHasDot =
+    approved.length > 0 &&
+    (!approvedTabSeenAt ||
+      approved.some(
+        (r) => new Date((r as any).updatedAt ?? r.createdAt) > new Date(approvedTabSeenAt!)
+      ));
+
+  useEffect(() => {
+    if (activeTab === "approved" && approved.length > 0) {
+      const now = new Date().toISOString();
+      localStorage.setItem("wmh_ai_video_approved_tab_seen_at", now);
+      setApprovedTabSeenAt(now);
+    }
+  }, [activeTab, approved.length]);
 
   const { data: globalLinkData } = useQuery({
     queryKey: ["settings", "global-link"],
@@ -132,9 +150,9 @@ export default function AiVideo() {
     );
   }
 
-  const tabItems: { key: Tab; label: string; icon: React.ElementType; count: number; activeClass?: string }[] = [
+  const tabItems: { key: Tab; label: string; icon: React.ElementType; count: number; activeClass?: string; showDot?: boolean }[] = [
     { key: "friend", label: "Friend Store", icon: Store, count: pending.length },
-    { key: "approved", label: "Approved Store", icon: CheckCircle, count: approved.length, activeClass: "bg-green-600 text-white border-green-600" },
+    { key: "approved", label: "Approved Store", icon: CheckCircle, count: approved.length, activeClass: "bg-green-600 text-white border-green-600", showDot: approvedTabHasDot },
     { key: "rejected", label: "Rejected Store", icon: XCircle, count: rejected.length, activeClass: "bg-red-600 text-white border-red-600" },
   ];
 
@@ -394,12 +412,12 @@ export default function AiVideo() {
         <h2 className="text-lg font-semibold mb-4">Friends Store</h2>
 
         <div className="flex gap-2 mb-4">
-          {tabItems.map(({ key, label, icon: Icon, count, activeClass }) => (
+          {tabItems.map(({ key, label, icon: Icon, count, activeClass, showDot }) => (
             <button
               key={key}
               data-testid={`tab-${key}`}
               onClick={() => setActiveTab(key)}
-              className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 px-2 rounded-xl text-xs font-medium border transition-colors ${
+              className={`relative flex-1 flex flex-col items-center justify-center gap-1 py-3 px-2 rounded-xl text-xs font-medium border transition-colors ${
                 activeTab === key
                   ? (activeClass ?? "bg-primary text-primary-foreground border-primary")
                   : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
@@ -408,6 +426,12 @@ export default function AiVideo() {
               <Icon className="w-4 h-4" />
               <span className="text-center leading-tight hidden sm:block">{label}</span>
               <Badge variant="secondary" className="text-[10px] mt-0.5">{count}</Badge>
+              {showDot && (
+                <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 border-2 border-white" />
+                </span>
+              )}
             </button>
           ))}
         </div>
