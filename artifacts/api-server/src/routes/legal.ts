@@ -59,6 +59,7 @@ router.post("/legal/accept", requireAuth, async (req: AuthRequest, res) => {
       {
         admin_id: String(user._id),
         admin_name: user.username,
+        admin_email: user.email ?? "",
         store_name,
         terms_accepted: true,
         privacy_accepted: true,
@@ -92,6 +93,7 @@ router.get("/legal/acceptances", requireSuperAdmin, async (req: AuthRequest, res
       filter.$or = [
         { store_name: { $regex: search, $options: "i" } },
         { admin_name: { $regex: search, $options: "i" } },
+        { admin_email: { $regex: search, $options: "i" } },
       ];
     }
 

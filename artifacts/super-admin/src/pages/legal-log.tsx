@@ -7,13 +7,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import {
   FileText, Search, Download, Shield, Monitor, Globe,
-  Calendar, Clock, ChevronDown, ChevronUp, Printer,
+  Calendar, Clock, ChevronDown, ChevronUp, Printer, Store,
 } from "lucide-react";
 
 interface LegalRecord {
   _id: string;
   admin_id: string;
   admin_name: string;
+  admin_email: string;
   store_name: string;
   accepted_date: string;
   accepted_time: string;
@@ -363,7 +364,7 @@ export default function LegalLog() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search by store name..."
+                placeholder="Search by email or store name..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleFilter()}
@@ -437,15 +438,12 @@ export default function LegalLog() {
                   <CardContent className="p-4">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold uppercase shrink-0">
-                        {(record.store_name || record.admin_name).substring(0, 2)}
+                        {(record.admin_email || record.store_name || record.admin_name).substring(0, 2)}
                       </div>
 
-                      <div className="flex-1 min-w-0 space-y-2">
+                      <div className="flex-1 min-w-0 space-y-1.5">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold">{record.store_name || record.admin_name}</span>
-                          {record.store_name && (
-                            <span className="text-xs text-muted-foreground">@{record.admin_name}</span>
-                          )}
+                          <span className="font-semibold text-sm">{record.admin_email || record.admin_name}</span>
                           <Badge
                             variant={record.final_acceptance ? "default" : "destructive"}
                             className="text-[10px]"
@@ -453,7 +451,12 @@ export default function LegalLog() {
                             {record.final_acceptance ? "Completed" : "Incomplete"}
                           </Badge>
                         </div>
-
+                        {record.store_name && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Store className="w-3 h-3 shrink-0" />
+                            {record.store_name}
+                          </p>
+                        )}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-1">
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <Calendar className="w-3 h-3 shrink-0" />
