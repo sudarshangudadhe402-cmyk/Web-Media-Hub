@@ -189,12 +189,15 @@ export default function SalesLedger() {
   const allRows = serverRows.map(getRow);
 
   // For table: show all rows (both confirmed and draft), filtered by search/date
-  const displayRows = allRows.filter((row) => {
-    if (searchQuery && !row.customerName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    if (dateFrom && row.date && row.date < dateFrom) return false;
-    if (dateTo && row.date && row.date > dateTo) return false;
-    return true;
-  });
+  // Order: newest at top (descending createdAt)
+  const displayRows = allRows
+    .filter((row) => {
+      if (searchQuery && !row.customerName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+      if (dateFrom && row.date && row.date < dateFrom) return false;
+      if (dateTo && row.date && row.date > dateTo) return false;
+      return true;
+    })
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   // Stats: ONLY confirmed rows
   const confirmedRows = allRows.filter((r) => r.confirmed);
@@ -362,6 +365,15 @@ export default function SalesLedger() {
                 <X className="w-4 h-4" />
               </button>
             )}
+            <Button
+              size="sm"
+              onClick={() => createRow.mutate()}
+              disabled={createRow.isPending}
+              className="gap-1.5 bg-green-600 hover:bg-green-700 text-white border-0"
+            >
+              <Plus className="w-4 h-4" />
+              {createRow.isPending ? "Adding..." : "Add Row"}
+            </Button>
           </div>
         </div>
 
@@ -407,9 +419,9 @@ export default function SalesLedger() {
 
                       return (
                         <tr key={row.id} style={{ background: rowBg }}>
-                          {/* Sr No */}
+                          {/* Sr No — bottom row = 1, increases upward */}
                           <td className={cellCls} style={{ textAlign: "center", padding: 0, userSelect: "none", color: "hsl(var(--muted-foreground))", fontSize: 12, fontFamily: "monospace" }}>
-                            <div style={{ padding: "8px 6px" }}>{idx + 1}</div>
+                            <div style={{ padding: "8px 6px" }}>{displayRows.length - idx}</div>
                           </td>
 
                           {/* Date */}
@@ -634,19 +646,6 @@ export default function SalesLedger() {
               </table>
             </div>
           </div>
-        </div>
-
-        {/* Add Row Button */}
-        <div className="flex justify-center no-print">
-          <Button
-            variant="outline"
-            onClick={() => createRow.mutate()}
-            disabled={createRow.isPending}
-            className="gap-2 border-dashed border-2 hover:border-primary hover:text-primary transition-colors px-8"
-          >
-            <Plus className="w-4 h-4" />
-            {createRow.isPending ? "Adding..." : "+ Add New Row"}
-          </Button>
         </div>
 
         {/* Delete Confirmation */}
