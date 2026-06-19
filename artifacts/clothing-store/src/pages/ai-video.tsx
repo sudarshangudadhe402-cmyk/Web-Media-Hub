@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import PricingOverlay, { type SelectedPlan } from "@/components/pricing-overlay";
 import { Card, CardContent } from "@/components/ui/card";
