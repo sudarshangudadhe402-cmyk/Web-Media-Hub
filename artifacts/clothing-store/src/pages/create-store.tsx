@@ -416,9 +416,9 @@ export default function CreateStore() {
                       <p className="font-bold text-sm leading-tight">
                         {selectedPlan ? `${selectedPlan.name} Selected` : "Choose Your Plan"}
                       </p>
-                      <p className="text-xs text-white/80 leading-tight">
-                        {selectedPlan ? selectedPlan.tagline : "Basic  •  Pro  •  Elite"}
-                      </p>
+                      {selectedPlan && (
+                        <p className="text-xs text-white/80 leading-tight">{selectedPlan.tagline}</p>
+                      )}
                     </div>
                   </div>
                   <ChevronRight className="w-5 h-5 text-white/80" />
