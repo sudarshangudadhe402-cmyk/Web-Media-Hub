@@ -1,4 +1,4 @@
-import { Search, X, ShoppingBag, Heart, Zap, Camera, CreditCard, BookOpen, ChevronRight } from "lucide-react";
+import { Search, X, ShoppingBag, Heart, Zap, Camera, CreditCard, BookOpen, ChevronRight, CalendarDays, MapPin, Info } from "lucide-react";
 import { useState } from "react";
 
 interface PublicProduct {
@@ -182,17 +182,13 @@ export default function HomeTab({
                 <p className="text-[11px] text-gray-500 leading-snug mb-3">
                   Upload your photo and see yourself wearing any outfit instantly.
                 </p>
-                <div className="flex items-center gap-1 mb-4">
+                <div className="flex items-center gap-1 mb-3">
                   <Zap className="w-3 h-3 text-gray-700 fill-gray-700" />
                   <span className="text-[10px] font-bold text-gray-600">Powered by Virtual Try-On</span>
                 </div>
-                <button
-                  onClick={onTryOnClick}
-                  className="self-start px-4 py-2.5 rounded-2xl text-xs font-black text-white transition-all active:scale-95"
-                  style={{ background: "#000000", fontFamily: "'Montserrat', sans-serif" }}
-                >
-                  Try Virtual Try-On
-                </button>
+                <p className="text-[11px] font-semibold text-gray-500 italic leading-snug">
+                  Go to product and try Virtual Try-On 🌍
+                </p>
               </div>
               <div className="relative flex-shrink-0 overflow-hidden" style={{ width: "44%" }}>
                 <img
@@ -322,24 +318,31 @@ export default function HomeTab({
           {/* ── Premium Banner ── */}
           <div className="px-4 pb-5">
             <div
-              className="relative overflow-hidden flex flex-col items-center justify-center text-center py-8 px-5"
+              className="relative overflow-hidden py-6 px-5"
               style={{ borderRadius: 24, background: "linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)" }}
             >
               <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 30% 50%, white 1px, transparent 1px)", backgroundSize: "20px 20px" }} />
-              <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest mb-2">Powered by AI</p>
-              <h3 className="text-white text-xl font-black mb-2 leading-tight" style={{ fontFamily: "'Montserrat', sans-serif" }}>
+              <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest mb-1">Powered by AI</p>
+              <h3 className="text-white text-xl font-black mb-4 leading-tight" style={{ fontFamily: "'Montserrat', sans-serif" }}>
                 Discover Your Perfect Style
               </h3>
-              <p className="text-white/60 text-xs mb-5 leading-relaxed max-w-[220px]">
-                Explore thousands of outfits with AI-powered virtual try-on.
-              </p>
-              <button
-                onClick={onViewAll}
-                className="px-6 py-3 rounded-2xl text-sm font-black text-black active:scale-95 transition-transform"
-                style={{ background: "#ffffff" }}
-              >
-                Explore Collection
-              </button>
+              <div className="space-y-2.5">
+                {[
+                  { label: "Virtual Try-On", Icon: Camera },
+                  { label: "Online Booking", Icon: CalendarDays },
+                  { label: "Loyalty Card", Icon: CreditCard },
+                  { label: "All details about separate product", Icon: Info },
+                  { label: "Store information", Icon: MapPin },
+                ].map(({ label, Icon }) => (
+                  <div key={label} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "#ef4444" }} />
+                      <span className="text-white text-[13px] font-medium">{label}</span>
+                    </div>
+                    <Icon className="w-4 h-4 shrink-0" style={{ color: "rgba(255,255,255,0.5)" }} />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 

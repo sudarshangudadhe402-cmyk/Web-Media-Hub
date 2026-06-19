@@ -554,9 +554,40 @@ export default function PublicStore() {
   /* ── Loading ── */
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: "#ffffff", fontFamily: "'Inter', sans-serif" }}>
-        <div className="w-12 h-12 rounded-full border-4 border-gray-100 border-t-black animate-spin mb-4" />
-        <p className="text-sm text-gray-400">Loading store...</p>
+      <div className="min-h-screen" style={{ background: "#ffffff" }}>
+        {/* Header skeleton */}
+        <div className="px-4 pt-6 pb-4 text-center">
+          <div className="h-7 w-40 rounded-xl mx-auto mb-2" style={{ background: "#f0f0f0", animation: "skeletonPulse 1.4s ease-in-out infinite" }} />
+        </div>
+        {/* Search skeleton */}
+        <div className="px-4 pb-4">
+          <div className="h-14 rounded-2xl w-full" style={{ background: "#f0f0f0", animation: "skeletonPulse 1.4s ease-in-out infinite" }} />
+        </div>
+        {/* Banner skeleton */}
+        <div className="px-4 pb-5">
+          <div className="h-56 rounded-3xl w-full" style={{ background: "#f0f0f0", animation: "skeletonPulse 1.4s ease-in-out infinite" }} />
+        </div>
+        {/* Product grid skeleton */}
+        <div className="px-4">
+          <div className="h-5 w-32 rounded-lg mb-3" style={{ background: "#f0f0f0", animation: "skeletonPulse 1.4s ease-in-out infinite" }} />
+          <div className="grid grid-cols-2 gap-3">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="rounded-2xl overflow-hidden">
+                <div className="w-full" style={{ aspectRatio: "3/4", background: "#f0f0f0", animation: "skeletonPulse 1.4s ease-in-out infinite", animationDelay: `${i * 0.1}s` }} />
+                <div className="pt-2 space-y-1.5">
+                  <div className="h-3 rounded-lg w-3/4" style={{ background: "#f0f0f0", animation: "skeletonPulse 1.4s ease-in-out infinite" }} />
+                  <div className="h-4 rounded-lg w-1/2" style={{ background: "#f0f0f0", animation: "skeletonPulse 1.4s ease-in-out infinite" }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <style>{`
+          @keyframes skeletonPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.45; }
+          }
+        `}</style>
       </div>
     );
   }
