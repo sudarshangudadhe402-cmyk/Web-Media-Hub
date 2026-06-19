@@ -122,11 +122,11 @@ export default function Admins() {
       if (selectedAdmin) {
         setSelectedAdmin((prev) => prev ? { ...prev, isActive } as any : prev);
       }
-      if (!isActive && selectedAdmin) {
+      if (isActive && selectedAdmin) {
         const phone = (selectedAdmin as any).adminNumber as string | undefined;
         if (phone && phone.trim()) {
           const cleanPhone = `91${phone.replace(/\D/g, "")}`;
-          const msg = `🔴 *Account Deactivated*\n\nHello *${selectedAdmin.username}*,\n\nYour admin account on *Web Media Hub* has been *deactivated* by the super admin.\n\nYou have been logged out automatically. Please contact the super admin for more information.`;
+          const msg = `Hello! 👋\n\nThis is *Web Media Hub*.\n\nWe're glad to inform you that your store has been *reactivated* and is now live again. We truly hope you won't let it go inactive again.\n\nWe are always here, standing by your side to help grow your business — and we hope you'll continue to stand with us too. Your trust and support mean everything to us. 🙏\n\n— *Team Web Media Hub*`;
           const waLink = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
           window.open(waLink, "_blank");
         }
