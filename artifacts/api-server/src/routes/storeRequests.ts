@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { StoreRequest } from "../models/StoreRequest";
 import { User } from "../models/User";
+import { Store } from "../models/Store";
 import { requireAuth, requireSuperAdmin } from "../middlewares/auth";
 import { Notification } from "../models/Notification";
 
@@ -92,7 +93,29 @@ router.get("/store-requests", requireSuperAdmin, async (req, res) => {
     const filter: Record<string, unknown> = {};
     if (status) filter.status = status;
     const requests = await StoreRequest.find(filter).sort({ createdAt: -1 });
-    res.json(requests.map(fmt));
+
+    // Enrich each request with referrer admin info
+    const referrerIds = [...new Set(requests.map((r) => r.submittedBy).filter(Boolean))];
+    const [referrerUsers, referrerStores] = await Promise.all([
+      User.find({ _id: { $in: referrerIds } }).select("_id email adminNumber").lean(),
+      Store.find({ ownerId: { $in: referrerIds } }).select("ownerId name").lean(),
+    ]);
+    const userMap = new Map(referrerUsers.map((u: any) => [String(u._id), u]));
+    const storeMap = new Map(referrerStores.map((s: any) => [String(s.ownerId), s]));
+
+    const enriched = requests.map((r) => {
+      const base = fmt(r);
+      const refUser = userMap.get(r.submittedBy);
+      const refStore = storeMap.get(r.submittedBy);
+      return {
+        ...base,
+        referrerEmail: refUser ? refUser.email : null,
+        referrerPhone: refUser ? refUser.adminNumber || null : null,
+        referrerStoreName: refStore ? refStore.name : null,
+      };
+    });
+
+    res.json(enriched);
   } catch (err) {
     req.log.error({ err }, "List store requests error");
     res.status(500).json({ error: "Internal server error" });
