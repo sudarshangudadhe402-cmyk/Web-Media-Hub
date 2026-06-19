@@ -16,6 +16,8 @@ export interface IUser extends Document {
   planPeriod: string;
   planBadge: string;
   planColor: string;
+  subscriptionStartDate: Date | null;
+  subscriptionEndDate: Date | null;
   createdAt: Date;
   comparePassword(candidate: string): Promise<boolean>;
 }
@@ -36,6 +38,8 @@ const UserSchema = new Schema<IUser>(
     planPeriod: { type: String, default: "" },
     planBadge: { type: String, default: "" },
     planColor: { type: String, default: "" },
+    subscriptionStartDate: { type: Date, default: null },
+    subscriptionEndDate: { type: Date, default: null },
   },
   { timestamps: true }
 );

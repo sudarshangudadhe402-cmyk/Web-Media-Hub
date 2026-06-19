@@ -5,16 +5,32 @@ import { requireSuperAdmin } from "../middlewares/auth";
 
 const router = Router();
 
+function calcSubscriptionDates(planPeriod: string): { start: Date | null; end: Date | null } {
+  const p = (planPeriod ?? "").toLowerCase();
+  const now = new Date();
+  if (p.includes("month")) {
+    const end = new Date(now);
+    end.setDate(end.getDate() + 31); // 30 days + 1 extra
+    return { start: now, end };
+  }
+  if (p.includes("year")) {
+    const end = new Date(now);
+    end.setDate(end.getDate() + 366); // 365 days + 1 extra
+    return { start: now, end };
+  }
+  return { start: null, end: null }; // Lifetime / one-time plans
+}
+
 router.get("/admins", requireSuperAdmin, async (req, res) => {
   try {
     const admins = await User.find({ role: "admin" }).sort({ createdAt: -1 });
 
     const adminIds = admins.map((a) => String(a._id));
-    const stores = await Store.find({ ownerId: { $in: adminIds } }).select("ownerId publicSlug name");
+    const stores = await Store.find({ ownerId: { $in: adminIds } }).select("ownerId publicSlug name createdAt");
 
-    const storeMap: Record<string, { publicSlug: string; name: string }> = {};
+    const storeMap: Record<string, { publicSlug: string; name: string; createdAt: Date | null }> = {};
     for (const s of stores) {
-      if (s.ownerId) storeMap[s.ownerId] = { publicSlug: s.publicSlug, name: s.name };
+      if (s.ownerId) storeMap[s.ownerId] = { publicSlug: s.publicSlug, name: s.name, createdAt: (s as any).createdAt ?? null };
     }
 
     res.json(
@@ -29,11 +45,14 @@ router.get("/admins", requireSuperAdmin, async (req, res) => {
         multiDeviceAllowed: a.multiDeviceAllowed === true,
         storeSlug: storeMap[String(a._id)]?.publicSlug ?? null,
         storeName: storeMap[String(a._id)]?.name ?? null,
+        storeCreatedAt: storeMap[String(a._id)]?.createdAt?.toISOString() ?? null,
         planName: a.planName ?? "",
         planPrice: a.planPrice ?? "",
         planPeriod: a.planPeriod ?? "",
         planBadge: a.planBadge ?? "",
         planColor: a.planColor ?? "",
+        subscriptionStartDate: a.subscriptionStartDate ? a.subscriptionStartDate.toISOString() : null,
+        subscriptionEndDate: a.subscriptionEndDate ? a.subscriptionEndDate.toISOString() : null,
         createdAt: a.createdAt.toISOString(),
       }))
     );
@@ -51,7 +70,6 @@ router.post("/admins", requireSuperAdmin, async (req, res) => {
       return;
     }
 
-    // Basic email format validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
       res.status(400).json({ error: "Please enter a valid email address" });
@@ -72,8 +90,8 @@ router.post("/admins", requireSuperAdmin, async (req, res) => {
       }
     }
 
-    // Auto-generate a unique internal username
     const autoUsername = `admin_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+    const { start, end } = calcSubscriptionDates(planPeriod ?? "");
 
     const admin = await User.create({
       username: autoUsername,
@@ -88,7 +106,10 @@ router.post("/admins", requireSuperAdmin, async (req, res) => {
       planPeriod: planPeriod ?? "",
       planBadge: planBadge ?? "",
       planColor: planColor ?? "",
+      subscriptionStartDate: start,
+      subscriptionEndDate: end,
     });
+
     res.status(201).json({
       id: String(admin._id),
       username: admin.username,
@@ -100,15 +121,47 @@ router.post("/admins", requireSuperAdmin, async (req, res) => {
       multiDeviceAllowed: false,
       storeSlug: null,
       storeName: null,
+      storeCreatedAt: null,
       planName: admin.planName ?? "",
       planPrice: admin.planPrice ?? "",
       planPeriod: admin.planPeriod ?? "",
       planBadge: admin.planBadge ?? "",
       planColor: admin.planColor ?? "",
+      subscriptionStartDate: admin.subscriptionStartDate ? admin.subscriptionStartDate.toISOString() : null,
+      subscriptionEndDate: admin.subscriptionEndDate ? admin.subscriptionEndDate.toISOString() : null,
       createdAt: admin.createdAt.toISOString(),
     });
   } catch (err) {
     req.log.error({ err }, "Create admin error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Renew subscription — resets start/end date from today
+router.patch("/admins/:id/renew-subscription", requireSuperAdmin, async (req, res) => {
+  try {
+    const admin = await User.findById(req.params.id);
+    if (!admin) {
+      res.status(404).json({ error: "Admin not found" });
+      return;
+    }
+    const { start, end } = calcSubscriptionDates(admin.planPeriod ?? "");
+    if (!end) {
+      res.status(400).json({ error: "This plan does not have a subscription period" });
+      return;
+    }
+    admin.subscriptionStartDate = start;
+    admin.subscriptionEndDate = end;
+    admin.isActive = true;
+    await admin.save();
+    res.json({
+      id: String(admin._id),
+      subscriptionStartDate: admin.subscriptionStartDate?.toISOString() ?? null,
+      subscriptionEndDate: admin.subscriptionEndDate?.toISOString() ?? null,
+      isActive: admin.isActive,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Renew subscription error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -124,11 +177,7 @@ router.patch("/admins/:id/toggle-active", requireSuperAdmin, async (req, res) =>
     if (!isActive) {
       updateFields.sessionId = null;
     }
-    const admin = await User.findByIdAndUpdate(
-      req.params.id,
-      updateFields,
-      { new: true }
-    );
+    const admin = await User.findByIdAndUpdate(req.params.id, updateFields, { new: true });
     if (!admin) {
       res.status(404).json({ error: "Admin not found" });
       return;
@@ -147,11 +196,7 @@ router.patch("/admins/:id/multi-device", requireSuperAdmin, async (req, res) => 
       res.status(400).json({ error: "multiDeviceAllowed must be a boolean" });
       return;
     }
-    const admin = await User.findByIdAndUpdate(
-      req.params.id,
-      { multiDeviceAllowed },
-      { new: true }
-    );
+    const admin = await User.findByIdAndUpdate(req.params.id, { multiDeviceAllowed }, { new: true });
     if (!admin) {
       res.status(404).json({ error: "Admin not found" });
       return;

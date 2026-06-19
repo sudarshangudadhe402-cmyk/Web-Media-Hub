@@ -75,10 +75,32 @@ async function cleanupSuperAdminProducts() {
   }
 }
 
+async function startSubscriptionExpiryJob() {
+  if (!dbAvailable) return;
+  const run = async () => {
+    try {
+      const now = new Date();
+      const result = await User.updateMany(
+        { role: "admin", isActive: true, subscriptionEndDate: { $lt: now, $ne: null } },
+        { $set: { isActive: false, sessionId: null } }
+      );
+      if (result.modifiedCount > 0) {
+        logger.info({ count: result.modifiedCount }, "Auto-deactivated expired subscriptions");
+      }
+    } catch (err) {
+      logger.error({ err }, "Subscription expiry check error");
+    }
+  };
+  // Run once on startup, then every hour
+  await run();
+  setInterval(run, 60 * 60 * 1000);
+}
+
 async function start() {
   await connectDB();
   await seedSuperAdmin();
   await cleanupSuperAdminProducts();
+  startSubscriptionExpiryJob();
 
   app.listen(port, (err) => {
     if (err) {
