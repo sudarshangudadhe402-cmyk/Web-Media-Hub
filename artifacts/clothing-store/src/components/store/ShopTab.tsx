@@ -1,0 +1,282 @@
+import { Search, X, SlidersHorizontal, ShoppingBag, Heart } from "lucide-react";
+import { useState } from "react";
+
+interface PublicProduct {
+  id: string;
+  name: string;
+  description: string | null;
+  images: string[];
+  discountPrice: number;
+  actualPrice: number;
+  productType: string;
+  functionCategory: string | null;
+  sizes: string[];
+  age: string | null;
+  gender: string | null;
+  likeCount: number;
+  tryOnLikeCount: number;
+  recentLikeCount: number;
+  recentTryOnCount: number;
+}
+
+interface ShopTabProps {
+  products: PublicProduct[];
+  categories: string[];
+  likedProducts: Set<string>;
+  likeCounts: Record<string, number>;
+  initialSearch?: string;
+  initialCategory?: string;
+  onProductClick: (product: PublicProduct) => void;
+  onLike: (productId: string, e: React.MouseEvent) => void;
+}
+
+function discountPct(p: PublicProduct) {
+  return p.actualPrice > p.discountPrice
+    ? Math.round(((p.actualPrice - p.discountPrice) / p.actualPrice) * 100)
+    : 0;
+}
+
+export default function ShopTab({
+  products,
+  categories,
+  likedProducts,
+  likeCounts,
+  initialSearch = "",
+  initialCategory = "all",
+  onProductClick,
+  onLike,
+}: ShopTabProps) {
+  const [search, setSearch] = useState(initialSearch);
+  const [activeCategory, setActiveCategory] = useState(initialCategory);
+  const [sortBy, setSortBy] = useState<"newest" | "most-liked" | "most-tried" | "trending">("newest");
+  const [showFilterSheet, setShowFilterSheet] = useState(false);
+
+  const filteredProducts = (() => {
+    let list = [...products];
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.description?.toLowerCase().includes(q) ||
+          p.productType.toLowerCase().includes(q)
+      );
+    }
+    if (activeCategory !== "all") {
+      if (["Top", "Bottom", "Full Outfit"].includes(activeCategory)) {
+        list = list.filter((p) => p.productType === activeCategory);
+      } else {
+        list = list.filter((p) => p.functionCategory === activeCategory);
+      }
+    }
+    if (sortBy === "most-liked") {
+      list = list.filter((p) => (likeCounts[p.id] ?? p.likeCount) > 0);
+      list.sort((a, b) => (likeCounts[b.id] ?? b.likeCount) - (likeCounts[a.id] ?? a.likeCount));
+    } else if (sortBy === "most-tried") {
+      list = list.filter((p) => p.tryOnLikeCount > 0);
+      list.sort((a, b) => b.tryOnLikeCount - a.tryOnLikeCount);
+    } else if (sortBy === "trending") {
+      list = list.filter((p) => p.recentLikeCount > 0 && p.recentTryOnCount > 0);
+      list.sort((a, b) => b.recentLikeCount + b.recentTryOnCount - (a.recentLikeCount + a.recentTryOnCount));
+    }
+    return list;
+  })();
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden" style={{ background: "#ffffff" }}>
+      {/* Search + Category */}
+      <div className="px-4 pt-3 pb-0 flex-shrink-0" style={{ background: "#ffffff" }}>
+        <div className="relative mb-3">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search for products, brands..."
+            className="w-full pl-11 pr-10 py-3.5 text-sm rounded-2xl focus:outline-none transition-colors"
+            style={{ background: "#f5f5f5", color: "#212121", fontFamily: "'Inter', sans-serif" }}
+          />
+          {search && (
+            <button onClick={() => setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2">
+              <X className="w-4 h-4 text-gray-400" />
+            </button>
+          )}
+        </div>
+
+        {/* Category pills */}
+        <div className="overflow-x-auto pb-3" style={{ scrollbarWidth: "none" }}>
+          <div className="flex gap-2 min-w-max">
+            {["all", ...categories].map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className="px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all active:scale-95"
+                style={
+                  activeCategory === cat
+                    ? { background: "#000000", color: "white" }
+                    : { background: "#f5f5f5", color: "#666666" }
+                }
+              >
+                {cat === "all" ? "All" : cat}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Filter row */}
+      <div
+        className="px-4 py-2 flex items-center justify-between flex-shrink-0 border-b"
+        style={{ borderColor: "#f0f0f0" }}
+      >
+        <span className="text-[11px] text-gray-400 font-medium">
+          {filteredProducts.length} product{filteredProducts.length !== 1 ? "s" : ""}
+        </span>
+        <button
+          onClick={() => setShowFilterSheet(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all border"
+          style={
+            sortBy !== "newest"
+              ? { background: "#000000", color: "white", borderColor: "#000000" }
+              : { background: "transparent", color: "#878787", borderColor: "#e0e0e0" }
+          }
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5" />
+          {sortBy === "newest"
+            ? "Filter"
+            : sortBy === "most-liked"
+            ? "❤️ Most Liked"
+            : sortBy === "most-tried"
+            ? "🪞 Most Tried"
+            : "🔥 Trending"}
+        </button>
+      </div>
+
+      {/* Products Grid */}
+      <div className="flex-1 overflow-y-auto pb-24">
+        {filteredProducts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <ShoppingBag className="w-12 h-12 mb-3 text-gray-200" />
+            <p className="text-gray-400 text-sm">
+              {search ? `No results for "${search}"` : "No products in this category"}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-[1px]" style={{ background: "#f0f0f0" }}>
+            {filteredProducts.map((p) => {
+              const disc = discountPct(p);
+              const liked = likedProducts.has(p.id);
+              const isTrending = p.recentLikeCount > 0 && p.recentTryOnCount > 0;
+              return (
+                <div
+                  key={p.id}
+                  onClick={() => onProductClick(p)}
+                  className="cursor-pointer active:opacity-80 transition-opacity"
+                  style={{ background: "#ffffff" }}
+                >
+                  <div className="relative overflow-hidden" style={{ aspectRatio: "3/4", background: "#f8f8f8" }}>
+                    {p.images[0] ? (
+                      <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <ShoppingBag className="w-8 h-8 text-gray-200" />
+                      </div>
+                    )}
+                    {isTrending && (
+                      <div
+                        className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                        style={{ background: "rgba(0,0,0,0.75)", color: "white" }}
+                      >
+                        🔥
+                      </div>
+                    )}
+                    {disc > 0 && (
+                      <div
+                        className="absolute top-2 right-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                        style={{ background: "#000000", color: "white" }}
+                      >
+                        {disc}%
+                      </div>
+                    )}
+                    <button
+                      className="absolute bottom-2 right-2 w-7 h-7 rounded-full flex items-center justify-center shadow active:scale-90 transition-transform"
+                      style={{ background: liked ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.9)" }}
+                      onClick={(e) => { e.stopPropagation(); onLike(p.id, e); }}
+                    >
+                      <Heart className={`w-3.5 h-3.5 ${liked ? "fill-red-500 text-red-500" : "text-gray-400"}`} />
+                    </button>
+                  </div>
+                  <div className="px-2.5 pt-2.5 pb-3">
+                    <p className="text-[12px] font-semibold text-gray-900 line-clamp-2 leading-tight mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                      {p.name}
+                    </p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[13px] font-bold text-gray-900">₹{p.discountPrice.toLocaleString()}</span>
+                      {disc > 0 && (
+                        <>
+                          <span className="text-[10px] text-gray-400 line-through">₹{p.actualPrice.toLocaleString()}</span>
+                          <span className="text-[10px] font-bold text-green-500">↓{disc}%</span>
+                        </>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 mt-1">
+                      <span className="text-yellow-400 text-[10px]">★</span>
+                      <span className="text-[10px] text-gray-400">{(4 + Math.random()).toFixed(1)}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Filter Sheet */}
+      {showFilterSheet && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={() => setShowFilterSheet(false)}>
+          <div className="absolute inset-0 bg-black/50" />
+          <div
+            className="relative rounded-t-3xl px-4 pt-4 pb-10"
+            style={{ background: "#ffffff" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-5" />
+            <p className="text-base font-black text-gray-900 mb-4" style={{ fontFamily: "'Montserrat', sans-serif" }}>
+              Sort & Filter
+            </p>
+            <div className="space-y-2">
+              {([
+                { key: "newest", label: "Newest First", desc: "Latest products first", icon: "🆕" },
+                { key: "most-liked", label: "Most Liked", desc: "Most popular products", icon: "❤️" },
+                { key: "most-tried", label: "Most Virtual Try-On", desc: "Most virtually tried", icon: "🪞" },
+                { key: "trending", label: "Trending", desc: "Hot right now", icon: "🔥" },
+              ] as const).map(({ key, label, desc, icon }) => (
+                <button
+                  key={key}
+                  onClick={() => { setSortBy(key); setShowFilterSheet(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 transition-all text-left"
+                  style={
+                    sortBy === key
+                      ? { borderColor: "#000000", background: "#f8f8f8" }
+                      : { borderColor: "#f0f0f0", background: "transparent" }
+                  }
+                >
+                  <span className="text-xl">{icon}</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-gray-800">{label}</p>
+                    <p className="text-[11px] text-gray-400">{desc}</p>
+                  </div>
+                  {sortBy === key && (
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: "#000000" }}>
+                      <div className="w-2 h-2 rounded-full bg-white" />
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
