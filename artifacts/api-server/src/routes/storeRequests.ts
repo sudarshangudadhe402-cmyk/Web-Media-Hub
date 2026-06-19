@@ -29,7 +29,12 @@ function fmt(s: InstanceType<typeof StoreRequest>) {
     email: s.email,
     storeName: s.storeName,
     whatsapp: s.whatsapp,
-    plan: (s as any).plan ?? null,
+    plan: s.plan ?? null,
+    planName: s.planName ?? s.plan ?? null,
+    planPrice: s.planPrice ?? null,
+    planPeriod: s.planPeriod ?? null,
+    planBadge: s.planBadge ?? null,
+    planColor: s.planColor ?? null,
     status: s.status,
     submittedBy: s.submittedBy,
     rewardCode: s.rewardCode ?? null,
@@ -50,7 +55,7 @@ router.get("/store-requests/my", requireAuth, async (req: any, res) => {
 
 router.post("/store-requests", requireAuth, async (req: any, res) => {
   try {
-    const { email, password, storeName, whatsapp, plan } = req.body;
+    const { email, password, storeName, whatsapp, plan, planName, planPrice, planPeriod, planBadge, planColor } = req.body;
     if (!email || !password || !storeName || !whatsapp) {
       res.status(400).json({ error: "All fields are required" });
       return;
@@ -58,10 +63,26 @@ router.post("/store-requests", requireAuth, async (req: any, res) => {
 
     const emailLower = email.toLowerCase().trim();
 
-    const existingUser = await User.findOne({ email: emailLower });
-    if (existingUser) {
+    const existingEmail = await User.findOne({ email: emailLower });
+    if (existingEmail) {
       res.status(400).json({ error: "Email already exists, please use a different email" });
       return;
+    }
+
+    // Duplicate mobile check — strip non-digits for comparison
+    const cleanPhone = whatsapp.replace(/\D/g, "");
+    if (cleanPhone) {
+      const existingMobile = await User.findOne({
+        $or: [
+          { adminNumber: cleanPhone },
+          { adminNumber: `+91${cleanPhone}` },
+          { adminNumber: cleanPhone.replace(/^91/, "") },
+        ],
+      });
+      if (existingMobile) {
+        res.status(400).json({ error: "Mobile number already exists, please use a different WhatsApp number" });
+        return;
+      }
     }
 
     const request = await StoreRequest.create({
@@ -69,7 +90,12 @@ router.post("/store-requests", requireAuth, async (req: any, res) => {
       password,
       storeName,
       whatsapp,
-      plan: plan ?? null,
+      plan: plan ?? planName ?? null,
+      planName: planName ?? plan ?? "",
+      planPrice: planPrice ?? "",
+      planPeriod: planPeriod ?? "",
+      planBadge: planBadge ?? "",
+      planColor: planColor ?? "",
       status: "pending",
       submittedBy: req.user?.id ?? "unknown",
     });
@@ -122,6 +148,22 @@ router.get("/store-requests", requireSuperAdmin, async (req, res) => {
   }
 });
 
+function calcSubscriptionDates(planPeriod: string): { start: Date | null; end: Date | null } {
+  const p = (planPeriod ?? "").toLowerCase();
+  const now = new Date();
+  if (p.includes("month")) {
+    const end = new Date(now);
+    end.setDate(end.getDate() + 31);
+    return { start: now, end };
+  }
+  if (p.includes("year")) {
+    const end = new Date(now);
+    end.setDate(end.getDate() + 366);
+    return { start: now, end };
+  }
+  return { start: null, end: null };
+}
+
 router.patch("/store-requests/:id/approve", requireSuperAdmin, async (req, res) => {
   try {
     const request = await StoreRequest.findById(req.params.id);
@@ -140,14 +182,23 @@ router.patch("/store-requests/:id/approve", requireSuperAdmin, async (req, res) 
     await request.save();
 
     const autoUsername = `admin_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const cleanPhone = request.whatsapp.replace(/\D/g, "").replace(/^91/, "");
+    const { start, end } = calcSubscriptionDates(request.planPeriod ?? "");
 
     await User.create({
       username: autoUsername,
       email: request.email,
       password: request.password,
       plainPassword: request.password,
-      adminNumber: "",
+      adminNumber: cleanPhone,
       role: "admin",
+      planName: request.planName ?? request.plan ?? "",
+      planPrice: request.planPrice ?? "",
+      planPeriod: request.planPeriod ?? "",
+      planBadge: request.planBadge ?? "",
+      planColor: request.planColor ?? "",
+      subscriptionStartDate: start,
+      subscriptionEndDate: end,
     });
 
     await Notification.create({

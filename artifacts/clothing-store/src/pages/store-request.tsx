@@ -117,6 +117,11 @@ export default function StoreRequest() {
           storeName: values.storeName,
           whatsapp: `+91${values.whatsapp}`,
           plan: selectedPlan?.name ?? null,
+          planName: selectedPlan?.name ?? null,
+          planPrice: selectedPlan?.price ?? null,
+          planPeriod: selectedPlan?.period ?? null,
+          planBadge: selectedPlan?.badge ?? null,
+          planColor: selectedPlan?.color ?? null,
         },
       },
       {
@@ -134,9 +139,12 @@ export default function StoreRequest() {
             err?.message?.replace(/^HTTP \d+[^:]*:\s*/i, "") ??
             "";
           const isEmailTaken = reason.toLowerCase().includes("email already exists");
+          const isMobileTaken = reason.toLowerCase().includes("mobile number already exists");
           const isSpamWa = reason.toLowerCase().includes("whatsapp") || reason.toLowerCase().includes("phone");
           const title = isEmailTaken
             ? "Email already exists, please use a different email 🙏"
+            : isMobileTaken
+            ? "This WhatsApp number is already registered, please use a different number 🙏"
             : isSpamWa
             ? "Spam WhatsApp number not allowed, please fill real 🙏"
             : reason || "Something went wrong, please try again 🙏";

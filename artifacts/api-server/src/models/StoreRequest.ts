@@ -6,6 +6,11 @@ export interface IStoreRequest extends Document {
   storeName: string;
   whatsapp: string;
   plan?: string;
+  planName?: string;
+  planPrice?: string;
+  planPeriod?: string;
+  planBadge?: string;
+  planColor?: string;
   status: "pending" | "approved" | "rejected";
   submittedBy: string;
   rewardCode?: string;
@@ -19,6 +24,11 @@ const StoreRequestSchema = new Schema<IStoreRequest>(
     storeName: { type: String, required: true, trim: true },
     whatsapp: { type: String, required: true },
     plan: { type: String },
+    planName: { type: String, default: "" },
+    planPrice: { type: String, default: "" },
+    planPeriod: { type: String, default: "" },
+    planBadge: { type: String, default: "" },
+    planColor: { type: String, default: "" },
     status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
     submittedBy: { type: String, required: true },
     rewardCode: { type: String },
