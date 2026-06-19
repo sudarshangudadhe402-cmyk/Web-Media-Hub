@@ -169,7 +169,7 @@ function generateAgreementHTML(record: LegalRecord): string {
   <div class="admin-info">
     <table>
       ${record.store_name ? `<tr><td>Store Name</td><td>${record.store_name}</td></tr>` : ""}
-      <tr><td>Admin Username</td><td>${record.admin_name}</td></tr>
+      <tr><td>Admin Email</td><td>${record.admin_email || record.admin_name}</td></tr>
       <tr><td>Admin ID</td><td>${record.admin_id}</td></tr>
       <tr><td>Agreement Status</td><td>${record.final_acceptance ? "✅ Completed" : "❌ Incomplete"}</td></tr>
     </table>
@@ -195,7 +195,8 @@ function generateAgreementHTML(record: LegalRecord): string {
         </tr>
       </thead>
       <tbody>
-        <tr><td>Admin Name</td><td>${record.admin_name}</td></tr>
+        <tr><td>Store Name</td><td>${record.store_name || "—"}</td></tr>
+        <tr><td>Admin Email</td><td>${record.admin_email || record.admin_name}</td></tr>
         <tr><td>Admin ID</td><td>${record.admin_id}</td></tr>
         <tr><td>Date of Acceptance</td><td>${record.accepted_date || "—"}</td></tr>
         <tr><td>Time of Acceptance</td><td>${record.accepted_time || "—"}</td></tr>
@@ -234,7 +235,7 @@ function AgreementCopy({ record }: { record: LegalRecord }) {
       <div className="bg-primary/5 border-b border-border px-5 py-3 flex items-center gap-2">
         <FileText className="w-4 h-4 text-primary" />
         <span className="font-semibold text-sm text-foreground">Legal Agreement of Web Media Hub</span>
-        <span className="text-xs text-muted-foreground ml-1">— {record.admin_name}</span>
+        <span className="text-xs text-muted-foreground ml-1">— {record.store_name || record.admin_email || record.admin_name}</span>
       </div>
 
       <div className="p-5 space-y-6 max-h-[70vh] overflow-y-auto text-sm">
@@ -273,7 +274,8 @@ function AgreementCopy({ record }: { record: LegalRecord }) {
           <h4 className="font-bold text-sm text-foreground uppercase tracking-wide">Acceptance Record Data</h4>
           <div className="bg-muted rounded-xl divide-y divide-border overflow-hidden text-xs">
             {[
-              { label: "Admin Name", value: record.admin_name },
+              { label: "Store Name", value: record.store_name || "—" },
+              { label: "Admin Email", value: record.admin_email || record.admin_name },
               { label: "Admin ID", value: record.admin_id },
               { label: "Date of Acceptance", value: record.accepted_date || "—" },
               { label: "Time of Acceptance", value: record.accepted_time || "—" },

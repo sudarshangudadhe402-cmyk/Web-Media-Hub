@@ -271,7 +271,7 @@ export default function Admins() {
             {filteredAdmins?.map((admin) => {
               const isActive = (admin as any).isActive !== false;
               const storeName = (admin as any).storeName as string | null;
-              const displayName = storeName || (admin as any).email || admin.username;
+              const displayName = storeName || (admin as any).email || "";
               const planName = (admin as any).planName as string;
               const planColor = (admin as any).planColor as string;
               const planPeriod = (admin as any).planPeriod as string;
@@ -359,10 +359,10 @@ export default function Admins() {
               <div className="space-y-5 pt-2">
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xl uppercase">
-                    {((selectedAdmin as any).email || selectedAdmin.username || "?").substring(0, 2)}
+                    {((selectedAdmin as any).email || "?").substring(0, 2)}
                   </div>
                   <div>
-                    <p className="font-bold text-lg">{(selectedAdmin as any).email || selectedAdmin.username}</p>
+                    <p className="font-bold text-lg">{(selectedAdmin as any).email}</p>
                     <Badge variant={selectedAdmin.role === "super_admin" ? "default" : "outline"} className="capitalize text-xs mt-1">
                       {selectedAdmin.role.replace("_", " ")}
                     </Badge>
