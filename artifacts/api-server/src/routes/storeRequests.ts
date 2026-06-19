@@ -53,6 +53,41 @@ router.get("/store-requests/my", requireAuth, async (req: any, res) => {
   }
 });
 
+// ── Public duplicate check (no auth needed — user hasn't registered yet) ──
+router.post("/store-requests/check-duplicate", async (req: any, res) => {
+  try {
+    const { email, whatsapp } = req.body as { email?: string; whatsapp?: string };
+    let emailTaken = false;
+    let whatsappTaken = false;
+
+    if (email) {
+      const emailLower = email.toLowerCase().trim();
+      const [byRequest, byUser] = await Promise.all([
+        StoreRequest.findOne({ email: emailLower }),
+        User.findOne({ email: emailLower }),
+      ]);
+      emailTaken = !!(byRequest || byUser);
+    }
+
+    if (whatsapp) {
+      const clean = whatsapp.replace(/\D/g, "");
+      const byRequest = await StoreRequest.findOne({
+        $or: [
+          { whatsapp: clean },
+          { whatsapp: `+91${clean}` },
+          { whatsapp: clean.replace(/^91/, "") },
+        ],
+      });
+      whatsappTaken = !!byRequest;
+    }
+
+    res.json({ emailTaken, whatsappTaken });
+  } catch (err) {
+    req.log?.error?.({ err }, "Duplicate check error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.post("/store-requests", requireAuth, async (req: any, res) => {
   try {
     const { email, password, storeName, whatsapp, plan, planName, planPrice, planPeriod, planBadge, planColor } = req.body;

@@ -10,6 +10,7 @@ export interface SelectedPlan {
   period: string;
   tagline: string;
   color: string;
+  features: string[];
 }
 
 const Particles = () => {
@@ -147,7 +148,12 @@ export default function PricingOverlay({ onBack, onSelectPlan }: Props) {
                 <Button
                   variant="outline"
                   className="w-full bg-transparent border-white/20 text-white hover:bg-white/10 h-12"
-                  onClick={() => selectAndBack({ badge: "🧪 Try First", name: "Starting Plan", price: "₹999", period: "/ Month ( 30 days )", tagline: "Perfect for testing the platform before upgrading.", color: "#94a3b8" })}
+                  onClick={() => selectAndBack({
+                    badge: "🧪 Try First", name: "Starting Plan", price: "₹999",
+                    period: "/ Month ( 30 days )", tagline: "Perfect for testing the platform before upgrading.",
+                    color: "#94a3b8",
+                    features: ['Full Feature Access', '1 Store Login', 'Virtual Try-On', 'Loyalty Card', 'AI Promotional Videos', 'Online Booking', 'Live Notifications'],
+                  })}
                 >
                   Get Monthly Access
                 </Button>
@@ -192,7 +198,11 @@ export default function PricingOverlay({ onBack, onSelectPlan }: Props) {
                   </div>
                   <Button
                     className="w-full bg-gradient-to-r from-[#FFD700] to-[#FFA000] text-black hover:opacity-90 h-14 text-lg font-bold shadow-[0_0_30px_rgba(255,215,0,0.3)] transition-all group-hover:shadow-[0_0_50px_rgba(255,215,0,0.5)]"
-                    onClick={() => selectAndBack({ badge: "⭐ MOST POPULAR CHOICE", name: "Premium Annual Plan", price: "₹5,999", period: "/ Year", tagline: "Only around ₹16 per day", color: "#FFD700" })}
+                    onClick={() => selectAndBack({
+                      badge: "⭐ MOST POPULAR CHOICE", name: "Premium Annual Plan", price: "₹5,999",
+                      period: "/ Year", tagline: "Only around ₹16 per day", color: "#FFD700",
+                      features: ['1 Store Login', 'Virtual Try-On Experience', 'Loyalty Card System', 'AI Promotional Videos', 'Online Booking System', 'Smart Product Categories', 'Live Customer Notifications', 'Free Feature Updates', 'Priority Support'],
+                    })}
                   >
                     Start Growing Your Store
                   </Button>
@@ -222,7 +232,7 @@ export default function PricingOverlay({ onBack, onSelectPlan }: Props) {
                     <span className="text-[#00FF88] font-semibold text-sm">🔥 Save ₹8,000+ Compared To Renewing Every Year</span>
                   </div>
                   <div className="space-y-4 mb-8 flex-1">
-                    {['Everything in Premium Annual', 'Lifetime Access, No Renewal Ever', '2000₹ Web Media Hub Coin', 'Future Feature Updates', 'Priority Support'].map((f, i) => (
+                    {['Everything in Premium Annual', 'Lifetime Access, No Renewal Ever', '₹2000 Web Media Hub Coin', 'Future Feature Updates', 'Priority Support'].map((f, i) => (
                       <div key={i} className="flex items-start gap-3">
                         <div className="w-5 h-5 rounded-full bg-[#00FF88]/20 flex items-center justify-center shrink-0 mt-0.5">
                           <Check className="w-3 h-3 text-[#00FF88]" />
@@ -241,7 +251,11 @@ export default function PricingOverlay({ onBack, onSelectPlan }: Props) {
                   </div>
                   <Button
                     className="w-full bg-gradient-to-r from-[#00FF88] to-[#00CC66] text-black hover:opacity-90 h-14 text-lg font-bold shadow-[0_0_30px_rgba(0,255,136,0.3)] transition-all group-hover:shadow-[0_0_50px_rgba(0,255,136,0.5)]"
-                    onClick={() => selectAndBack({ badge: "🏆 HIGHEST VALUE", name: "Lifetime Business Plan", price: "₹15,999", period: "One-Time", tagline: "Pay Once. Use Forever.", color: "#00FF88" })}
+                    onClick={() => selectAndBack({
+                      badge: "🏆 HIGHEST VALUE", name: "Lifetime Business Plan", price: "₹15,999",
+                      period: "One-Time", tagline: "Pay Once. Use Forever.", color: "#00FF88",
+                      features: ['Everything in Premium Annual', 'Lifetime Access, No Renewal Ever', '₹2000 Web Media Hub Coin', 'Future Feature Updates', 'Priority Support'],
+                    })}
                   >
                     Get Lifetime Access
                   </Button>
@@ -268,7 +282,7 @@ export default function PricingOverlay({ onBack, onSelectPlan }: Props) {
                   </div>
                   <p className="text-[#FF2D2D]/80 text-sm font-medium mb-6">Designed for large stores and premium brands.</p>
                   <div className="space-y-4 mb-8 flex-1">
-                    {['Everything in Lifetime Plan', '6000₹ Web Media Hub Coin', 'Premium AI Resources', 'Early Access Features', 'VIP Support'].map((f, i) => (
+                    {['Everything in Lifetime Plan', '₹6000 Web Media Hub Coin', 'Premium AI Resources', 'Early Access Features', 'VIP Support'].map((f, i) => (
                       <div key={i} className="flex items-start gap-3">
                         <div className="w-5 h-5 rounded-full bg-[#FF2D2D]/20 flex items-center justify-center shrink-0 mt-0.5">
                           <Check className="w-3 h-3 text-[#FF2D2D]" />
@@ -279,7 +293,11 @@ export default function PricingOverlay({ onBack, onSelectPlan }: Props) {
                   </div>
                   <Button
                     className="w-full bg-gradient-to-r from-[#FF2D2D] to-[#CC0000] text-white hover:opacity-90 h-12 text-base font-bold shadow-[0_0_30px_rgba(255,45,45,0.3)] transition-all group-hover:shadow-[0_0_50px_rgba(255,45,45,0.5)]"
-                    onClick={() => selectAndBack({ badge: "👑 PREMIUM BRAND", name: "Enterprise Plan", price: "₹19,999", period: "One-Time", tagline: "Designed for large stores and premium brands.", color: "#FF2D2D" })}
+                    onClick={() => selectAndBack({
+                      badge: "👑 PREMIUM BRAND", name: "Enterprise Plan", price: "₹19,999",
+                      period: "One-Time", tagline: "Designed for large stores and premium brands.", color: "#FF2D2D",
+                      features: ['Everything in Lifetime Plan', '₹6000 Web Media Hub Coin', 'Premium AI Resources', 'Early Access Features', 'VIP Support'],
+                    })}
                   >
                     Upgrade To Enterprise
                   </Button>
