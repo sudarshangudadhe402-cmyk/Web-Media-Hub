@@ -429,8 +429,8 @@ export default function Admins() {
                       </div>
                     </div>
 
-                    {/* Renew button */}
-                    {subEnd && (
+                    {/* Renew button — only after subscription expires */}
+                    {subEnd && isExpired && (
                       <div className="px-4 py-3 border-t bg-muted/30">
                         <Button
                           size="sm"
@@ -440,7 +440,7 @@ export default function Admins() {
                           onClick={() => renewSubscription.mutate(selectedAdmin.id)}
                         >
                           <RefreshCw className={`w-3.5 h-3.5 ${renewSubscription.isPending ? "animate-spin" : ""}`} />
-                          {renewSubscription.isPending ? "Renewing..." : isExpired ? "Reactivate & Renew Subscription" : "Renew Subscription (Start Fresh from Today)"}
+                          {renewSubscription.isPending ? "Renewing..." : "Reactivate & Renew Subscription"}
                         </Button>
                         <p className="text-[10px] text-muted-foreground text-center mt-1.5">
                           Renewal resets the subscription period from today. New analysis period begins.
