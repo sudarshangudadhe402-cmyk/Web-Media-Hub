@@ -69,7 +69,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
     localStorage.getItem(AI_VIDEO_SEEN_KEY)
   );
 
-  const dashboardHasDot = isAdmin && ((dashSummary as any)?.unseenBookings ?? 0) > 0;
+  const dashboardHasDot =
+    isAdmin &&
+    (((dashSummary as any)?.unseenBookings ?? 0) > 0 ||
+      ((dashSummary as any)?.unseenLoyaltyCards ?? 0) > 0);
 
   const approvedRequests = (myRequests as any[]).filter((r) => r.status === "approved");
   const aiVideoHasDot =

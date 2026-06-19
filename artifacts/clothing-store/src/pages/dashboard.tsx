@@ -97,6 +97,14 @@ export default function Dashboard() {
       .then(d => { if (d) setLoyaltyCards(d); })
       .catch(() => {})
       .finally(() => setLoyaltyCardsLoading(false));
+    fetch("/api/loyalty-cards/mark-seen", {
+      method: "PATCH",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+      })
+      .catch(() => {});
   }, [view]);
 
   useEffect(() => {
@@ -198,6 +206,7 @@ export default function Dashboard() {
   if (!summary) return null;
 
   const unseenCount = (summary as any).unseenBookings ?? 0;
+  const unseenLoyaltyCount = (summary as any).unseenLoyaltyCards ?? 0;
 
   /* ── BOOKING LIST ── */
   if (view === "bookings") {
@@ -792,16 +801,26 @@ export default function Dashboard() {
 
       {/* Digital Loyalty Card section */}
       <Card
-        className="cursor-pointer hover:border-green-400 transition-colors border-green-200"
+        className="relative cursor-pointer hover:border-green-400 transition-colors border-green-200"
         onClick={() => { setLoyaltyTab("requested"); setView("loyaltycards"); }}
       >
+        {unseenLoyaltyCount > 0 && (
+          <span className="absolute -top-1.5 -right-1.5 flex h-3 w-3 z-10">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75" />
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500 border-2 border-white" />
+          </span>
+        )}
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium text-green-700">Digital Loyalty Card</CardTitle>
           <CreditCard className="h-4 w-4 text-green-500" />
         </CardHeader>
         <CardContent>
           <p className="text-xs text-muted-foreground">Manage loyalty card requests from customers</p>
-          <p className="text-xs text-green-600 font-semibold mt-1">Click to manage →</p>
+          {unseenLoyaltyCount > 0 ? (
+            <p className="text-xs text-rose-500 font-semibold mt-1">{unseenLoyaltyCount} new request{unseenLoyaltyCount > 1 ? "s" : ""}</p>
+          ) : (
+            <p className="text-xs text-green-600 font-semibold mt-1">Click to manage →</p>
+          )}
         </CardContent>
       </Card>
     </div>

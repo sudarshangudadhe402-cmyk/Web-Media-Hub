@@ -11,6 +11,7 @@ export interface ILoyaltyCard extends Document {
   rejectedAt?: Date;
   cardGeneration: number;
   refreshedAt?: Date;
+  seenByAdmin?: boolean;
 }
 
 const LoyaltyCardSchema = new Schema<ILoyaltyCard>(
@@ -29,6 +30,7 @@ const LoyaltyCardSchema = new Schema<ILoyaltyCard>(
     rejectedAt: { type: Date },
     cardGeneration: { type: Number, default: 1 },
     refreshedAt: { type: Date },
+    seenByAdmin: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

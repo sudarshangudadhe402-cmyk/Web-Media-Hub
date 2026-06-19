@@ -323,6 +323,24 @@ router.post("/public/loyalty-card/recover", async (req, res) => {
   }
 });
 
+router.patch("/loyalty-cards/mark-seen", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const userId = String(req.user!._id);
+    const store = await Store.findOne({ ownerId: userId });
+    if (!store) {
+      res.json({ updated: 0 });
+      return;
+    }
+    const result = await LoyaltyCard.updateMany(
+      { storeId: String(store._id), status: "requested", seenByAdmin: { $ne: true } },
+      { seenByAdmin: true }
+    );
+    res.json({ updated: result.modifiedCount });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/loyalty-cards", requireAuth, async (req: AuthRequest, res) => {
   try {
     const userId = String(req.user!._id);
