@@ -155,11 +155,15 @@ export interface ImageUploadResponse {
 export interface Category {
   id: string;
   name: string;
+  coverImage?: string | null;
+  description?: string | null;
   createdAt: string;
 }
 
 export interface CategoryInput {
   name: string;
+  coverImage?: string | null;
+  description?: string | null;
 }
 
 export interface Booking {

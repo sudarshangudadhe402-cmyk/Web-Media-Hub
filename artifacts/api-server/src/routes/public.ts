@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { Store } from "../models/Store";
 import { Product } from "../models/Product";
+import { Category } from "../models/Category";
 import { Notification } from "../models/Notification";
 import { Booking } from "../models/Booking";
 import { LikeEvent } from "../models/LikeEvent";
@@ -52,7 +53,10 @@ router.get("/public/store/:slug", async (req, res) => {
       res.status(404).json({ error: "Store not found" });
       return;
     }
-    const products = await Product.find({ storeId: String(store._id) }).sort({ createdAt: -1 });
+    const [products, storeCategories] = await Promise.all([
+      Product.find({ storeId: String(store._id) }).sort({ createdAt: -1 }),
+      Category.find({ storeId: String(store._id) }).sort({ createdAt: 1 }),
+    ]);
     const productIds = products.map((p) => String(p._id));
 
     const since = new Date(Date.now() - THIRTY_DAYS_MS);
@@ -80,6 +84,12 @@ router.get("/public/store/:slug", async (req, res) => {
       bannerImage: store.bannerImage ?? null,
       description: store.description ?? null,
       publicSlug: store.publicSlug,
+      categories: storeCategories.map((c) => ({
+        id: String(c._id),
+        name: c.name,
+        coverImage: c.coverImage ?? null,
+        description: c.description ?? null,
+      })),
       products: products.map((p) => {
         const pid = String(p._id);
         return {

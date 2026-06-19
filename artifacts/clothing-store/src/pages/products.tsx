@@ -390,7 +390,7 @@ export default function Products() {
                 className="w-full gap-1.5 border-primary/40 text-primary hover:bg-primary/5"
               >
                 <Tags className="w-4 h-4" />
-                Add Category
+                Category
               </Button>
             </Link>
             <Button

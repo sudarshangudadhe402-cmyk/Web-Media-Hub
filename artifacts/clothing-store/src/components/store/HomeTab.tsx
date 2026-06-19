@@ -19,17 +19,32 @@ interface PublicProduct {
   recentTryOnCount: number;
 }
 
+export interface AdminCategory {
+  id: string;
+  name: string;
+  coverImage?: string | null;
+  description?: string | null;
+}
+
 interface HomeTabProps {
   storeName: string;
   products: PublicProduct[];
+  categories: AdminCategory[];
   likedProducts: Set<string>;
   likeCounts: Record<string, number>;
   onProductClick: (product: PublicProduct) => void;
   onLike: (productId: string, e: React.MouseEvent) => void;
   onViewAll: () => void;
-  onCategorySelect: (cat: string) => void;
+  onCategoryOpen: (category: AdminCategory) => void;
   onTryOnClick: () => void;
 }
+
+const FEATURES = [
+  { icon: Camera, label: "Virtual Try-On", desc: "See before you buy" },
+  { icon: BookOpen, label: "Easy Booking", desc: "Book in seconds" },
+  { icon: CreditCard, label: "Loyalty Card", desc: "Earn rewards" },
+  { icon: ShoppingBag, label: "Digital Catalog", desc: "Browse anytime" },
+];
 
 function discountPct(p: PublicProduct) {
   return p.actualPrice > p.discountPrice
@@ -37,34 +52,16 @@ function discountPct(p: PublicProduct) {
     : 0;
 }
 
-const CATEGORY_IMAGES: Record<string, string> = {
-  Men: "https://images.unsplash.com/photo-1617137968427-85924c800a22?w=200&q=80",
-  Women: "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=200&q=80",
-  Kids: "https://images.unsplash.com/photo-1622290291468-a28f7a7dc6a8?w=200&q=80",
-  Ethnic: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=200&q=80",
-  Top: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=200&q=80",
-  Bottom: "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=200&q=80",
-  "Full Outfit": "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=200&q=80",
-};
-
-const DISPLAY_CATEGORIES = ["Men", "Women", "Kids", "Ethnic"];
-
-const FEATURES = [
-  { icon: Camera, label: "Virtual Try-On", desc: "See before you buy", color: "#000" },
-  { icon: BookOpen, label: "Easy Booking", desc: "Book in seconds", color: "#000" },
-  { icon: CreditCard, label: "Loyalty Card", desc: "Earn rewards", color: "#000" },
-  { icon: ShoppingBag, label: "Digital Catalog", desc: "Browse anytime", color: "#000" },
-];
-
 export default function HomeTab({
   storeName,
   products,
+  categories,
   likedProducts,
   likeCounts,
   onProductClick,
   onLike,
   onViewAll,
-  onCategorySelect,
+  onCategoryOpen,
   onTryOnClick,
 }: HomeTabProps) {
   const [search, setSearch] = useState("");
@@ -168,29 +165,12 @@ export default function HomeTab({
 
       {!filteredBySearch && (
         <>
-          {/* ── Category Pills ── */}
-          <div className="overflow-x-auto px-4 pb-4" style={{ scrollbarWidth: "none" }}>
-            <div className="flex gap-2 min-w-max">
-              {["Men", "Women", "Kids", "Ethnic", "Footwear", "Accessories"].map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => onCategorySelect(cat)}
-                  className="px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all active:scale-95"
-                  style={{ background: "#F7F7F7", color: "#555", fontFamily: "'Inter', sans-serif" }}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* ── Hero Banner ── */}
           <div className="px-4 pb-5">
             <div
               className="relative overflow-hidden flex items-stretch"
               style={{ height: 230, borderRadius: 24, background: "#F7F2EE" }}
             >
-              {/* Left Content */}
               <div className="flex-1 flex flex-col justify-center px-5 py-5 z-10">
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">New Feature</p>
                 <h2
@@ -214,45 +194,35 @@ export default function HomeTab({
                   Try Virtual Try-On
                 </button>
               </div>
-
-              {/* Right: Fashion Model */}
-              <div
-                className="relative flex-shrink-0 overflow-hidden"
-                style={{ width: "44%" }}
-              >
+              <div className="relative flex-shrink-0 overflow-hidden" style={{ width: "44%" }}>
                 <img
                   src="https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=300&q=80"
                   alt="Fashion Model"
                   className="w-full h-full object-cover object-top"
-                  style={{
-                    animation: "floatModel 3s ease-in-out infinite",
-                  }}
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = "none";
-                  }}
+                  style={{ animation: "floatModel 3s ease-in-out infinite" }}
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                 />
               </div>
             </div>
           </div>
 
-          {/* ── Shop by Category ── */}
-          <div className="pb-5">
-            <div className="flex items-center justify-between px-4 mb-3">
-              <h3 className="font-black text-gray-900 text-base" style={{ fontFamily: "'Montserrat', sans-serif" }}>
-                Shop by Category
-              </h3>
-              <button onClick={onViewAll} className="flex items-center gap-0.5 text-xs font-semibold text-gray-500">
-                View All <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <div className="overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-              <div className="flex gap-3 min-w-max">
-                {DISPLAY_CATEGORIES.map((cat) => {
-                  const imgUrl = CATEGORY_IMAGES[cat];
-                  return (
+          {/* ── Shop by Category (from admin) ── */}
+          {categories.length > 0 && (
+            <div className="pb-5">
+              <div className="flex items-center justify-between px-4 mb-3">
+                <h3 className="font-black text-gray-900 text-base" style={{ fontFamily: "'Montserrat', sans-serif" }}>
+                  Shop by Category
+                </h3>
+                <button onClick={onViewAll} className="flex items-center gap-0.5 text-xs font-semibold text-gray-500">
+                  View All <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
+                <div className="flex gap-3 min-w-max">
+                  {categories.map((cat) => (
                     <button
-                      key={cat}
-                      onClick={() => onCategorySelect(cat)}
+                      key={cat.id}
+                      onClick={() => onCategoryOpen(cat)}
                       className="flex flex-col items-center gap-2 active:scale-95 transition-transform"
                       style={{ width: 90 }}
                     >
@@ -260,14 +230,12 @@ export default function HomeTab({
                         className="w-full overflow-hidden"
                         style={{ height: 110, borderRadius: 18, background: "#f5f5f5", boxShadow: "0 4px 16px rgba(0,0,0,0.08)" }}
                       >
-                        {imgUrl ? (
+                        {cat.coverImage ? (
                           <img
-                            src={imgUrl}
-                            alt={cat}
+                            src={cat.coverImage}
+                            alt={cat.name}
                             className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = "none";
-                            }}
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
@@ -275,13 +243,13 @@ export default function HomeTab({
                           </div>
                         )}
                       </div>
-                      <p className="text-[11px] font-bold text-gray-700 uppercase tracking-wide">{cat}</p>
+                      <p className="text-[11px] font-bold text-gray-700 uppercase tracking-wide text-center leading-tight">{cat.name}</p>
                     </button>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* ── New Arrivals ── */}
           {newArrivals.length > 0 && (
@@ -334,10 +302,6 @@ export default function HomeTab({
                           {p.name}
                         </p>
                         <p className="text-[10px] text-gray-400 mb-1">{p.productType}</p>
-                        <div className="flex items-center gap-1 mb-1">
-                          <span className="text-yellow-400 text-[10px]">★★★★</span>
-                          <span className="text-[10px] text-gray-400">{(4 + Math.random()).toFixed(1)}</span>
-                        </div>
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-[14px] font-black text-gray-900">₹{p.discountPrice.toLocaleString()}</span>
                           {disc > 0 && (

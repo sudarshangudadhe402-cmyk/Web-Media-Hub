@@ -10,7 +10,7 @@ import { LoyaltyCardVisual } from "@/components/loyalty-card-visual";
 import { useState, useRef, useEffect, useMemo } from "react";
 
 import BottomNavbar, { TabType } from "@/components/store/BottomNavbar";
-import HomeTab from "@/components/store/HomeTab";
+import HomeTab, { AdminCategory } from "@/components/store/HomeTab";
 import ShopTab from "@/components/store/ShopTab";
 import MyBookingTab from "@/components/store/MyBookingTab";
 import WishlistTab from "@/components/store/WishlistTab";
@@ -44,6 +44,7 @@ interface PublicStoreData {
   bannerImage: string | null;
   description: string | null;
   publicSlug: string;
+  categories: AdminCategory[];
   products: PublicProduct[];
 }
 
@@ -81,6 +82,7 @@ export default function PublicStore() {
 
   const [tab, setTab] = useState<TabType>("home");
   const [view, setView] = useState<ViewType>("browse");
+  const [selectedAdminCategory, setSelectedAdminCategory] = useState<AdminCategory | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<PublicProduct | null>(null);
   const [previousProductId, setPreviousProductId] = useState<string | null>(null);
   const [imgIndex, setImgIndex] = useState(0);
@@ -1186,16 +1188,17 @@ export default function PublicStore() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#ffffff", fontFamily: "'Inter', sans-serif" }}>
       <div className="flex-1 flex flex-col overflow-hidden" style={{ paddingBottom: 64 }}>
-        {tab === "home" && (
+        {tab === "home" && !selectedAdminCategory && (
           <HomeTab
             storeName={data.name}
             products={data.products}
+            categories={data.categories ?? []}
             likedProducts={likedProducts}
             likeCounts={likeCounts}
             onProductClick={openProduct}
             onLike={handleLike}
             onViewAll={() => setTab("shop")}
-            onCategorySelect={(cat) => { setShopInitCategory(cat); setTab("shop"); }}
+            onCategoryOpen={(cat) => setSelectedAdminCategory(cat)}
             onTryOnClick={() => {
               if (data.products.length > 0) {
                 openProduct(data.products[0]);
@@ -1203,6 +1206,98 @@ export default function PublicStore() {
             }}
           />
         )}
+        {tab === "home" && selectedAdminCategory && (() => {
+          const catProducts = data.products.filter(p => p.functionCategory === selectedAdminCategory.name);
+          return (
+            <div className="flex-1 flex flex-col overflow-hidden" style={{ background: "#fff" }}>
+              {/* Top bar */}
+              <div className="flex items-center gap-3 px-4 pt-5 pb-3 border-b border-gray-100">
+                <button
+                  onClick={() => setSelectedAdminCategory(null)}
+                  className="w-9 h-9 rounded-full flex items-center justify-center transition-colors"
+                  style={{ background: "#f5f5f5" }}
+                >
+                  <ChevronLeft className="w-5 h-5 text-gray-700" />
+                </button>
+                <div className="flex-1 min-w-0">
+                  <h2 className="font-black text-gray-900 text-lg leading-tight truncate" style={{ fontFamily: "'Montserrat', sans-serif" }}>
+                    {selectedAdminCategory.name}
+                  </h2>
+                  <p className="text-xs text-gray-400 mt-0.5">{catProducts.length} product{catProducts.length !== 1 ? "s" : ""}</p>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto">
+                {/* Description — top 1/8 of view */}
+                {selectedAdminCategory.description && (
+                  <div className="px-4 py-4" style={{ minHeight: "12.5vh", background: "#fafafa", borderBottom: "1px solid #f0f0f0" }}>
+                    <p className="text-sm text-gray-600 leading-relaxed">{selectedAdminCategory.description}</p>
+                  </div>
+                )}
+
+                {/* Products — new on top (API already returns sorted by createdAt -1) */}
+                {catProducts.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-24 text-gray-300">
+                    <ShoppingBag className="w-14 h-14 mb-3" />
+                    <p className="text-sm font-medium text-gray-400">No products in this category yet</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3 p-4">
+                    {catProducts.map((p) => {
+                      const disc = discount(p);
+                      const liked = likedProducts.has(p.id);
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => openProduct(p)}
+                          className="rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+                          style={{ background: "#f8f8f8" }}
+                        >
+                          <div className="relative" style={{ aspectRatio: "3/4", background: "#f0f0f0" }}>
+                            {p.images[0] ? (
+                              <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <ShoppingBag className="w-8 h-8 text-gray-200" />
+                              </div>
+                            )}
+                            {disc > 0 && (
+                              <span className="absolute top-2 left-2 text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: "#000", color: "#fff" }}>
+                                {disc}% OFF
+                              </span>
+                            )}
+                            <button
+                              className="absolute bottom-2 right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-md active:scale-90 transition-transform"
+                              style={{ background: liked ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.95)" }}
+                              onClick={(e) => { e.stopPropagation(); handleLike(p.id, e); }}
+                            >
+                              <Heart className={`w-4 h-4 ${liked ? "fill-red-500 text-red-500" : "text-gray-400"}`} />
+                            </button>
+                          </div>
+                          <div className="px-3 pt-2.5 pb-3">
+                            <p className="text-[12px] font-semibold text-gray-900 line-clamp-2 leading-tight mb-1">
+                              {p.name}
+                            </p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[14px] font-black text-gray-900">₹{p.discountPrice.toLocaleString()}</span>
+                              {disc > 0 && (
+                                <>
+                                  <span className="text-[11px] text-gray-400 line-through">₹{p.actualPrice.toLocaleString()}</span>
+                                  <span className="text-[10px] font-bold text-green-500">{disc}% OFF</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="pb-24" />
+              </div>
+            </div>
+          );
+        })()}
         {tab === "shop" && (
           <ShopTab
             products={data.products}

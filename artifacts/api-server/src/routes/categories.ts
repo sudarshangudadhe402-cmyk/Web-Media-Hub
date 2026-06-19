@@ -1,9 +1,7 @@
 import { Router } from "express";
 import { Category } from "../models/Category";
-import { Product } from "../models/Product";
 import { Store } from "../models/Store";
 import { AuthRequest, requireAuth } from "../middlewares/auth";
-import { requireDb } from "../middlewares/dbCheck";
 
 const router = Router();
 
@@ -24,6 +22,8 @@ router.get("/categories", requireAuth, async (req: AuthRequest, res) => {
       categories.map((c) => ({
         id: String(c._id),
         name: c.name,
+        coverImage: c.coverImage ?? null,
+        description: c.description ?? null,
         createdAt: c.createdAt.toISOString(),
       }))
     );
@@ -35,7 +35,7 @@ router.get("/categories", requireAuth, async (req: AuthRequest, res) => {
 
 router.post("/categories", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { name } = req.body;
+    const { name, coverImage, description } = req.body;
     if (!name) {
       res.status(400).json({ error: "Name is required" });
       return;
@@ -46,10 +46,17 @@ router.post("/categories", requireAuth, async (req: AuthRequest, res) => {
       res.status(400).json({ error: "Store not found" });
       return;
     }
-    const category = await Category.create({ name, storeId: String(store._id) });
+    const category = await Category.create({
+      name,
+      storeId: String(store._id),
+      coverImage: coverImage ?? null,
+      description: description ?? null,
+    });
     res.status(201).json({
       id: String(category._id),
       name: category.name,
+      coverImage: category.coverImage ?? null,
+      description: category.description ?? null,
       createdAt: category.createdAt.toISOString(),
     });
   } catch (err: unknown) {
@@ -58,6 +65,41 @@ router.post("/categories", requireAuth, async (req: AuthRequest, res) => {
       return;
     }
     req.log.error({ err }, "Create category error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.put("/categories/:id", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const userId = String(req.user!._id);
+    const store = await getMyStore(userId);
+    if (!store) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    const { name, coverImage, description } = req.body;
+    const category = await Category.findOneAndUpdate(
+      { _id: req.params.id, storeId: String(store._id) },
+      {
+        ...(name ? { name } : {}),
+        ...(coverImage !== undefined ? { coverImage } : {}),
+        ...(description !== undefined ? { description } : {}),
+      },
+      { new: true }
+    );
+    if (!category) {
+      res.status(404).json({ error: "Category not found" });
+      return;
+    }
+    res.json({
+      id: String(category._id),
+      name: category.name,
+      coverImage: category.coverImage ?? null,
+      description: category.description ?? null,
+      createdAt: category.createdAt.toISOString(),
+    });
+  } catch (err) {
+    req.log.error({ err }, "Update category error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -71,11 +113,8 @@ router.delete("/categories/:id", requireAuth, async (req: AuthRequest, res) => {
       return;
     }
     const storeId = String(store._id);
-    const category = await Category.findOneAndDelete({ _id: req.params.id, storeId });
-    if (category) {
-      await Product.deleteMany({ storeId, functionCategory: category.name });
-    }
-    res.json({ success: true, message: "Category and its products deleted" });
+    await Category.findOneAndDelete({ _id: req.params.id, storeId });
+    res.json({ success: true });
   } catch (err) {
     req.log.error({ err }, "Delete category error");
     res.status(500).json({ error: "Internal server error" });
