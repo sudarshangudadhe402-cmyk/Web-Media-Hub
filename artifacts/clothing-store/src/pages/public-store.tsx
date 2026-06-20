@@ -1136,12 +1136,10 @@ export default function PublicStore() {
                 <Heart className="w-3.5 h-3.5 text-red-400 fill-current" />
                 <span>{(likeCounts[selectedProduct.id] ?? selectedProduct.likeCount).toLocaleString("en-IN")} liked</span>
               </div>
-              {(tryOnLikeCounts[selectedProduct.id] ?? selectedProduct.tryOnLikeCount) > 0 && (
-                <div className="flex items-center gap-1.5 text-sm text-gray-400">
-                  <span>🪞</span>
-                  <span>{(tryOnLikeCounts[selectedProduct.id] ?? selectedProduct.tryOnLikeCount).toLocaleString("en-IN")} tried</span>
-                </div>
-              )}
+              <div className="flex items-center gap-1.5 text-sm text-gray-400">
+                <Camera className="w-3.5 h-3.5 text-blue-400" />
+                <span>{(tryOnLikeCounts[selectedProduct.id] ?? selectedProduct.tryOnLikeCount).toLocaleString("en-IN")} Virtual Try-On</span>
+              </div>
             </div>
           </div>
 
