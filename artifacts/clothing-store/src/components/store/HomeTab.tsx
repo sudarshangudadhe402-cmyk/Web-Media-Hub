@@ -213,8 +213,16 @@ export default function HomeTab({
                   View All <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <div className="overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-                <div className="flex gap-3 min-w-max">
+              <div className="overflow-x-auto px-4" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateRows: "repeat(2, auto)",
+                    gridAutoFlow: "column",
+                    gap: "10px",
+                    width: "max-content",
+                  }}
+                >
                   {categories.map((cat) => (
                     <button
                       key={cat.id}
