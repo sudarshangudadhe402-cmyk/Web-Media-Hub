@@ -150,6 +150,14 @@ export default function HomeTab({
                   <div className="px-2.5 pt-2 pb-2.5">
                     <p className="text-[12px] font-semibold text-gray-900 line-clamp-1">{p.name}</p>
                     <p className="text-[13px] font-bold text-gray-900">₹{p.discountPrice.toLocaleString()}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
+                        <Heart className="w-3 h-3 text-red-400 fill-current" />{likeCounts[p.id] ?? p.likeCount}
+                      </span>
+                      <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
+                        <Camera className="w-3 h-3 text-blue-400" />{p.tryOnLikeCount}
+                      </span>
+                    </div>
                   </div>
                 </div>
               );
@@ -314,6 +322,14 @@ export default function HomeTab({
                               <span className="text-[10px] font-bold text-green-500">{disc}% OFF</span>
                             </>
                           )}
+                        </div>
+                        <div className="flex items-center gap-2.5 mt-1.5">
+                          <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
+                            <Heart className="w-3 h-3 text-red-400 fill-current" />{likeCounts[p.id] ?? p.likeCount}
+                          </span>
+                          <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
+                            <Camera className="w-3 h-3 text-blue-400" />{p.tryOnLikeCount}
+                          </span>
                         </div>
                       </div>
                     </div>

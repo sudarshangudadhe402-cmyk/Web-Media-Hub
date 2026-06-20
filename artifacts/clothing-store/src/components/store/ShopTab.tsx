@@ -1,4 +1,4 @@
-import { Search, X, SlidersHorizontal, ShoppingBag, Heart } from "lucide-react";
+import { Search, X, SlidersHorizontal, ShoppingBag, Heart, Camera } from "lucide-react";
 import { useState } from "react";
 
 interface PublicProduct {
@@ -219,9 +219,13 @@ export default function ShopTab({
                         </>
                       )}
                     </div>
-                    <div className="flex items-center gap-1 mt-1">
-                      <span className="text-yellow-400 text-[10px]">★</span>
-                      <span className="text-[10px] text-gray-400">{(4 + Math.random()).toFixed(1)}</span>
+                    <div className="flex items-center gap-2.5 mt-1">
+                      <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
+                        <Heart className="w-3 h-3 text-red-400 fill-current" />{likeCounts[p.id] ?? p.likeCount}
+                      </span>
+                      <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
+                        <Camera className="w-3 h-3 text-blue-400" />{p.tryOnLikeCount}
+                      </span>
                     </div>
                   </div>
                 </div>
