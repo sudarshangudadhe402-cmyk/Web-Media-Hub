@@ -2,6 +2,8 @@ import { Router } from "express";
 import { User } from "../models/User";
 import { Store } from "../models/Store";
 import { requireSuperAdmin } from "../middlewares/auth";
+import { OtpCode } from "../models/OtpCode";
+import { sendOtpEmail } from "../services/emailOtp";
 
 const router = Router();
 
@@ -20,6 +22,72 @@ function calcSubscriptionDates(planPeriod: string): { start: Date | null; end: D
   }
   return { start: null, end: null }; // Lifetime / one-time plans
 }
+
+// ── Send OTP to verify admin email before creation ──────────────────────────
+router.post("/admins/send-creation-otp", requireSuperAdmin, async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) { res.status(400).json({ error: "Email is required" }); return; }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      res.status(400).json({ error: "Please enter a valid email address" }); return;
+    }
+
+    const existing = await User.findOne({ email: email.trim().toLowerCase(), role: "admin" });
+    if (existing) {
+      res.status(400).json({ error: "Email already exists — this email is already registered" }); return;
+    }
+
+    // Rate limit: max 3 OTPs per email in 10 min
+    const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000);
+    const recentCount = await OtpCode.countDocuments({
+      email: email.trim().toLowerCase(),
+      purpose: "admin-creation",
+      createdAt: { $gte: tenMinAgo },
+    });
+    if (recentCount >= 3) {
+      res.status(429).json({ error: "Too many OTP requests. Please wait 10 minutes." }); return;
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await OtpCode.create({ email: email.trim().toLowerCase(), storeId: "admin", code, purpose: "admin-creation", expiresAt });
+    await sendOtpEmail(email.trim(), code, "Web Media Hub", "admin-creation");
+
+    res.json({ message: "OTP sent successfully" });
+  } catch (err) {
+    req.log.error({ err }, "Send admin creation OTP error");
+    res.status(500).json({ error: "Failed to send OTP" });
+  }
+});
+
+// ── Verify OTP for admin email (called before create) ────────────────────────
+router.post("/admins/verify-creation-otp", requireSuperAdmin, async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) { res.status(400).json({ error: "Email and OTP are required" }); return; }
+
+    const record = await OtpCode.findOne({
+      email: email.trim().toLowerCase(),
+      purpose: "admin-creation",
+      used: false,
+      expiresAt: { $gt: new Date() },
+    }).sort({ createdAt: -1 });
+
+    if (!record) { res.status(400).json({ error: "OTP expired or not found. Please request a new one." }); return; }
+    if (record.code !== otp.trim()) { res.status(400).json({ error: "Incorrect OTP. Please try again." }); return; }
+
+    record.used = true;
+    await record.save();
+
+    res.json({ verified: true });
+  } catch (err) {
+    req.log.error({ err }, "Verify admin creation OTP error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 router.get("/admins", requireSuperAdmin, async (req, res) => {
   try {

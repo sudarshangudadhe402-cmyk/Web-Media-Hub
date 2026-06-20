@@ -4,7 +4,7 @@ export interface IOtpCode extends Document {
   email: string;
   storeId: string;
   code: string;
-  purpose: "signup" | "signin";
+  purpose: "signup" | "signin" | "admin-creation" | "admin-forgot-password";
   expiresAt: Date;
   used: boolean;
   createdAt: Date;
@@ -13,9 +13,9 @@ export interface IOtpCode extends Document {
 const OtpCodeSchema = new Schema<IOtpCode>(
   {
     email: { type: String, required: true, lowercase: true, trim: true },
-    storeId: { type: String, required: true },
+    storeId: { type: String, default: "" },
     code: { type: String, required: true },
-    purpose: { type: String, enum: ["signup", "signin"], required: true },
+    purpose: { type: String, enum: ["signup", "signin", "admin-creation", "admin-forgot-password"], required: true },
     expiresAt: { type: Date, required: true },
     used: { type: Boolean, default: false },
   },

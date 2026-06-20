@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   useListAdmins,
@@ -41,6 +41,8 @@ import {
   Phone,
   Search,
   X,
+  Mail,
+  RefreshCw,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import PricingOverlay, { type SelectedPlan } from "@/components/pricing-overlay";
@@ -63,6 +65,11 @@ export default function ManageAdmins() {
   const [pageView, setPageView] = useState<"main" | "addAdmin" | "choosePlan">("main");
   const [selectedPlan, setSelectedPlan] = useState<SelectedPlan | null>(null);
   const [form, setForm] = useState({ email: "", password: "", adminNumber: "" });
+  const [otpStep, setOtpStep] = useState<"form" | "otp">("form");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState("");
+  const [resendCountdown, setResendCountdown] = useState(0);
   const [activeTab, setActiveTab] = useState<StoreTab>("pending");
   const [selectedRequest, setSelectedRequest] = useState<NonNullable<typeof allRequests>[number] | null>(null);
   const [requestDetailOpen, setRequestDetailOpen] = useState(false);
@@ -72,6 +79,128 @@ export default function ManageAdmins() {
   const [pendingTabSeenAt, setPendingTabSeenAt] = useState<string | null>(() =>
     localStorage.getItem("wmh_sa_pending_tab_seen_at")
   );
+
+  // OTP resend countdown
+  useEffect(() => {
+    if (resendCountdown <= 0) return;
+    const t = setTimeout(() => setResendCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendCountdown]);
+
+  function authFetchAdmin(url: string, options?: RequestInit) {
+    const token = sessionStorage.getItem(TOKEN_KEY);
+    return fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(options?.headers ?? {}),
+      },
+    });
+  }
+
+  async function handleSendCreationOtp(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.email || !form.password) {
+      toast({ variant: "destructive", title: "Required", description: "Email and password are required" });
+      return;
+    }
+    setOtpLoading(true);
+    setOtpError("");
+    try {
+      const res = await authFetchAdmin("/api/admins/send-creation-otp", {
+        method: "POST",
+        body: JSON.stringify({ email: form.email }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setOtpError(data.error || "Failed to send OTP");
+        return;
+      }
+      setOtpStep("otp");
+      setOtpCode("");
+      setResendCountdown(30);
+      toast({ title: "OTP Sent!", description: `A 6-digit code was sent to ${form.email}` });
+    } catch {
+      setOtpError("Connection error. Please try again.");
+    } finally {
+      setOtpLoading(false);
+    }
+  }
+
+  async function handleResendCreationOtp() {
+    if (resendCountdown > 0) return;
+    setOtpLoading(true);
+    setOtpError("");
+    try {
+      const res = await authFetchAdmin("/api/admins/send-creation-otp", {
+        method: "POST",
+        body: JSON.stringify({ email: form.email }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setOtpError(data.error || "Failed to resend OTP"); return; }
+      setResendCountdown(30);
+      setOtpCode("");
+      toast({ title: "OTP Resent!" });
+    } catch {
+      setOtpError("Connection error.");
+    } finally {
+      setOtpLoading(false);
+    }
+  }
+
+  async function handleVerifyAndCreate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!otpCode || otpCode.length !== 6) {
+      setOtpError("Please enter the 6-digit OTP");
+      return;
+    }
+    setOtpLoading(true);
+    setOtpError("");
+    try {
+      const verifyRes = await authFetchAdmin("/api/admins/verify-creation-otp", {
+        method: "POST",
+        body: JSON.stringify({ email: form.email, otp: otpCode }),
+      });
+      const verifyData = await verifyRes.json();
+      if (!verifyRes.ok) {
+        setOtpError(verifyData.error || "OTP verification failed");
+        setOtpLoading(false);
+        return;
+      }
+      // OTP verified — now create admin
+      createAdmin.mutate(
+        { data: {
+          email: form.email,
+          password: form.password,
+          adminNumber: form.adminNumber,
+          planName: selectedPlan?.name ?? "",
+          planPrice: selectedPlan?.price ?? "",
+          planPeriod: selectedPlan?.period ?? "",
+          planBadge: selectedPlan?.badge ?? "",
+          planColor: selectedPlan?.color ?? "",
+        } },
+        {
+          onSuccess: () => {
+            toast({ title: "Admin created successfully" });
+            queryClient.invalidateQueries({ queryKey: getListAdminsQueryKey() });
+            setForm({ email: "", password: "", adminNumber: "" });
+            setOtpStep("form");
+            setOtpCode("");
+            setPageView("main");
+          },
+          onError: (err: any) => {
+            const msg = err?.data?.error || err?.message || "Failed to create admin";
+            toast({ variant: "destructive", title: "Failed", description: msg });
+          },
+        }
+      );
+    } catch {
+      setOtpError("Connection error. Please try again.");
+    } finally {
+      setOtpLoading(false);
+    }
+  }
 
   function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -491,102 +620,189 @@ export default function ManageAdmins() {
           {/* Header */}
           <div className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 border-b bg-background">
             <button
-              onClick={() => { setPageView("main"); setForm({ email: "", password: "", adminNumber: "" }); }}
+              onClick={() => {
+                if (otpStep === "otp") { setOtpStep("form"); setOtpCode(""); setOtpError(""); }
+                else { setPageView("main"); setForm({ email: "", password: "", adminNumber: "" }); setSelectedPlan(null); setOtpStep("form"); setOtpCode(""); setOtpError(""); }
+              }}
               className="p-1.5 rounded-full hover:bg-muted transition-colors"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-2">
               <UserPlus className="w-5 h-5 text-green-600" />
-              <span className="font-bold text-base">Add New Admin</span>
+              <span className="font-bold text-base">{otpStep === "otp" ? "Verify Email OTP" : "Add New Admin"}</span>
             </div>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleCreate} className="flex-1 flex flex-col p-5 gap-5 max-w-lg mx-auto w-full overflow-y-auto">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Email</label>
-              <Input
-                type="email"
-                placeholder="admin@example.com"
-                value={form.email}
-                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                required
-              />
-              <p className="text-xs text-muted-foreground">Enter a valid email address (this will be used to login)</p>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Password</label>
-              <Input
-                type="text"
-                inputMode="numeric"
-                placeholder="Only numbers (e.g. 123456)"
-                value={form.password}
-                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value.replace(/[^0-9]/g, "") }))}
-                required
-              />
-              <p className="text-xs text-muted-foreground">Only numbers allowed (no letters or emoji)</p>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-1.5">
-                <Phone className="w-3.5 h-3.5" /> Admin Number
-              </label>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground font-medium shrink-0">+91</span>
+          {/* Step 1 — Details Form */}
+          {otpStep === "form" && (
+            <form onSubmit={handleSendCreationOtp} className="flex-1 flex flex-col p-5 gap-5 max-w-lg mx-auto w-full overflow-y-auto">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Email</label>
                 <Input
-                  placeholder="10-digit number"
-                  value={form.adminNumber}
-                  onChange={(e) => setForm((f) => ({ ...f, adminNumber: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
-                  maxLength={10}
+                  type="email"
+                  placeholder="admin@example.com"
+                  value={form.email}
+                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                  required
                 />
+                <p className="text-xs text-muted-foreground">Enter a valid email address (this will be used to login)</p>
               </div>
-            </div>
-
-            {/* Choose Plan */}
-            <button
-              type="button"
-              className="w-full flex items-center justify-between gap-3 rounded-xl px-5 py-4 font-semibold text-base transition-colors active:opacity-80"
-              style={{ background: "linear-gradient(135deg,#f59e0b,#fbbf24)", color: "#fff", boxShadow: "0 2px 12px rgba(251,191,36,0.4)" }}
-              onClick={() => setPageView("choosePlan")}
-            >
-              <div className="flex items-center gap-3">
-                <Star className="w-5 h-5 fill-white text-white shrink-0" />
-                <span>{selectedPlan ? "Change Plan" : "Choose Plan"}</span>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Password</label>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Only numbers (e.g. 123456)"
+                  value={form.password}
+                  onChange={(e) => setForm((f) => ({ ...f, password: e.target.value.replace(/[^0-9]/g, "") }))}
+                  required
+                />
+                <p className="text-xs text-muted-foreground">Only numbers allowed (no letters or emoji)</p>
               </div>
-              <ChevronRight className="w-5 h-5 shrink-0" />
-            </button>
-
-            {/* Selected Plan Card */}
-            {selectedPlan && (
-              <div className="rounded-xl border p-4 space-y-1" style={{ borderColor: selectedPlan.color + "55", background: selectedPlan.color + "11" }}>
-                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: selectedPlan.color }}>{selectedPlan.badge}</p>
-                <p className="font-bold text-sm">{selectedPlan.name}</p>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-extrabold" style={{ color: selectedPlan.color }}>{selectedPlan.price}</span>
-                  <span className="text-xs text-muted-foreground">{selectedPlan.period}</span>
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5" /> Admin Number
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground font-medium shrink-0">+91</span>
+                  <Input
+                    placeholder="10-digit number"
+                    value={form.adminNumber}
+                    onChange={(e) => setForm((f) => ({ ...f, adminNumber: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
+                    maxLength={10}
+                  />
                 </div>
-                <p className="text-xs text-muted-foreground">{selectedPlan.tagline}</p>
               </div>
-            )}
 
-            <div className="flex gap-3 mt-auto pt-2">
-              <Button
+              {/* Choose Plan */}
+              <button
                 type="button"
-                variant="outline"
-                className="flex-1"
-                onClick={() => { setPageView("main"); setForm({ email: "", password: "", adminNumber: "" }); setSelectedPlan(null); }}
+                className="w-full flex items-center justify-between gap-3 rounded-xl px-5 py-4 font-semibold text-base transition-colors active:opacity-80"
+                style={{ background: "linear-gradient(135deg,#f59e0b,#fbbf24)", color: "#fff", boxShadow: "0 2px 12px rgba(251,191,36,0.4)" }}
+                onClick={() => setPageView("choosePlan")}
               >
-                Cancel
-              </Button>
+                <div className="flex items-center gap-3">
+                  <Star className="w-5 h-5 fill-white text-white shrink-0" />
+                  <span>{selectedPlan ? "Change Plan" : "Choose Plan"}</span>
+                </div>
+                <ChevronRight className="w-5 h-5 shrink-0" />
+              </button>
+
+              {/* Selected Plan Card */}
+              {selectedPlan && (
+                <div className="rounded-xl border p-4 space-y-1" style={{ borderColor: selectedPlan.color + "55", background: selectedPlan.color + "11" }}>
+                  <p className="text-xs font-bold uppercase tracking-wider" style={{ color: selectedPlan.color }}>{selectedPlan.badge}</p>
+                  <p className="font-bold text-sm">{selectedPlan.name}</p>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-xl font-extrabold" style={{ color: selectedPlan.color }}>{selectedPlan.price}</span>
+                    <span className="text-xs text-muted-foreground">{selectedPlan.period}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{selectedPlan.tagline}</p>
+                </div>
+              )}
+
+              {otpError && (
+                <div className="rounded-xl px-4 py-3 text-sm font-medium bg-red-50 border border-red-200 text-red-600">
+                  {otpError}
+                </div>
+              )}
+
+              <div className="flex gap-3 mt-auto pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => { setPageView("main"); setForm({ email: "", password: "", adminNumber: "" }); setSelectedPlan(null); setOtpStep("form"); setOtpCode(""); setOtpError(""); }}
+                >
+                  Cancel
+                </Button>
               <Button
                 type="submit"
                 className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:opacity-40"
-                disabled={createAdmin.isPending || !form.email || !form.password || form.adminNumber.length !== 10 || !selectedPlan}
+                disabled={otpLoading || !form.email || !form.password}
               >
-                {createAdmin.isPending ? "Creating..." : "Create Admin"}
+                {otpLoading ? (
+                  <span className="flex items-center gap-2"><RefreshCw className="w-4 h-4 animate-spin" /> Sending...</span>
+                ) : (
+                  <span className="flex items-center gap-2"><Mail className="w-4 h-4" /> Send OTP to Email</span>
+                )}
               </Button>
             </div>
           </form>
+          )}
+
+          {/* Step 2 — OTP Verification */}
+          {otpStep === "otp" && (
+            <form onSubmit={handleVerifyAndCreate} className="flex-1 flex flex-col p-5 gap-5 max-w-lg mx-auto w-full overflow-y-auto">
+              {/* Info card */}
+              <div className="rounded-xl bg-green-50 border border-green-200 px-4 py-4 flex items-start gap-3">
+                <Mail className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-green-800">OTP sent to email</p>
+                  <p className="text-xs text-green-700 mt-0.5 break-all">{form.email}</p>
+                  <p className="text-xs text-green-600 mt-1">Check inbox (and spam folder). Valid for 10 minutes.</p>
+                </div>
+              </div>
+
+              {/* OTP input */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Enter 6-Digit OTP</label>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="_ _ _ _ _ _"
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={(e) => { setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6)); setOtpError(""); }}
+                  className="text-center tracking-[0.5em] text-xl font-bold"
+                  autoFocus
+                />
+              </div>
+
+              {otpError && (
+                <div className="rounded-xl px-4 py-3 text-sm font-medium bg-red-50 border border-red-200 text-red-600">
+                  {otpError}
+                </div>
+              )}
+
+              {/* Resend */}
+              <div className="text-center">
+                {resendCountdown > 0 ? (
+                  <p className="text-xs text-muted-foreground">Resend OTP in {resendCountdown}s</p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResendCreationOtp}
+                    disabled={otpLoading}
+                    className="text-xs font-medium text-green-600 underline underline-offset-2 disabled:opacity-40"
+                  >
+                    {otpLoading ? "Sending..." : "Resend OTP"}
+                  </button>
+                )}
+              </div>
+
+              <div className="flex gap-3 mt-auto pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => { setOtpStep("form"); setOtpCode(""); setOtpError(""); }}
+                >
+                  Back
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:opacity-40"
+                  disabled={otpLoading || otpCode.length !== 6 || createAdmin.isPending}
+                >
+                  {otpLoading || createAdmin.isPending ? (
+                    <span className="flex items-center gap-2"><RefreshCw className="w-4 h-4 animate-spin" /> Verifying...</span>
+                  ) : "Verify & Create Admin"}
+                </Button>
+              </div>
+            </form>
+          )}
         </div>
       )}
 

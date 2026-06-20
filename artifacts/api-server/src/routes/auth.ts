@@ -4,6 +4,8 @@ import { User } from "../models/User";
 import { Store } from "../models/Store";
 import { signToken, requireAuth, AuthRequest } from "../middlewares/auth";
 import { requireDb } from "../middlewares/dbCheck";
+import { OtpCode } from "../models/OtpCode";
+import { sendOtpEmail } from "../services/emailOtp";
 
 const SUPER_ADMIN_ACCESS_CODE = process.env.SUPER_ADMIN_ACCESS_CODE || "WMH@2024";
 
@@ -226,6 +228,81 @@ router.patch("/auth/change-password", requireDb, requireAuth, async (req: AuthRe
     });
   } catch (err) {
     req.log.error({ err }, "Change password error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── Admin Forgot Password — Send OTP ─────────────────────────────────────────
+router.post("/auth/admin/forgot-password/send-otp", requireDb, async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) { res.status(400).json({ error: "Email is required" }); return; }
+
+    const admin = await User.findOne({ email: email.trim().toLowerCase(), role: "admin" });
+    if (!admin) {
+      // Don't reveal if email exists — same message for security
+      res.json({ message: "If this email is registered, an OTP will be sent." }); return;
+    }
+
+    // Rate limit: max 3 OTPs per email in 10 min
+    const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000);
+    const recentCount = await OtpCode.countDocuments({
+      email: email.trim().toLowerCase(),
+      purpose: "admin-forgot-password",
+      createdAt: { $gte: tenMinAgo },
+    });
+    if (recentCount >= 3) {
+      res.status(429).json({ error: "Too many OTP requests. Please wait 10 minutes." }); return;
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await OtpCode.create({ email: email.trim().toLowerCase(), storeId: "admin", code, purpose: "admin-forgot-password", expiresAt });
+    await sendOtpEmail(email.trim(), code, "Web Media Hub", "admin-forgot-password");
+
+    res.json({ message: "OTP sent successfully" });
+  } catch (err) {
+    req.log.error({ err }, "Admin forgot password send OTP error");
+    res.status(500).json({ error: "Failed to send OTP" });
+  }
+});
+
+// ── Admin Forgot Password — Verify OTP & Reset Password ──────────────────────
+router.post("/auth/admin/forgot-password/reset", requireDb, async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) {
+      res.status(400).json({ error: "Email, OTP and new password are required" }); return;
+    }
+
+    if (!/^\d+$/.test(newPassword) || newPassword.length < 4) {
+      res.status(400).json({ error: "Password must be numbers only (minimum 4 digits)" }); return;
+    }
+
+    const record = await OtpCode.findOne({
+      email: email.trim().toLowerCase(),
+      purpose: "admin-forgot-password",
+      used: false,
+      expiresAt: { $gt: new Date() },
+    }).sort({ createdAt: -1 });
+
+    if (!record) { res.status(400).json({ error: "OTP expired or not found. Please request a new one." }); return; }
+    if (record.code !== otp.trim()) { res.status(400).json({ error: "Incorrect OTP. Please try again." }); return; }
+
+    const admin = await User.findOne({ email: email.trim().toLowerCase(), role: "admin" });
+    if (!admin) { res.status(404).json({ error: "Admin not found" }); return; }
+
+    admin.password = newPassword;
+    admin.plainPassword = newPassword;
+    await admin.save();
+
+    record.used = true;
+    await record.save();
+
+    res.json({ message: "Password reset successfully" });
+  } catch (err) {
+    req.log.error({ err }, "Admin forgot password reset error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
