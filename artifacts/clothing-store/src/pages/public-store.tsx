@@ -14,7 +14,7 @@ import HomeTab, { AdminCategory } from "@/components/store/HomeTab";
 import ShopTab from "@/components/store/ShopTab";
 import MyBookingTab from "@/components/store/MyBookingTab";
 import WishlistTab from "@/components/store/WishlistTab";
-import ProfileTab from "@/components/store/ProfileTab";
+import ProfileTab, { type CustomerAccountInfo } from "@/components/store/ProfileTab";
 
 interface PublicProduct {
   id: string;
@@ -151,6 +151,16 @@ export default function PublicStore() {
   const [lcForgotForm, setLcForgotForm] = useState({ name: "", mobile: "", password: "" });
   const [lcForgotLoading, setLcForgotLoading] = useState(false);
   const [lcForgotError, setLcForgotError] = useState<string | null>(null);
+
+  const [customerAccount, setCustomerAccount] = useState<CustomerAccountInfo | null>(() => {
+    try { return JSON.parse(localStorage.getItem(`wmh_account_${slug}`) || "null"); }
+    catch { return null; }
+  });
+  const [signUpLoading, setSignUpLoading] = useState(false);
+  const [signInLoading, setSignInLoading] = useState(false);
+  const [signUpError, setSignUpError] = useState<string | null>(null);
+  const [signInError, setSignInError] = useState<string | null>(null);
+  const [showAccountFieldsPopup, setShowAccountFieldsPopup] = useState(false);
 
   const photoInputRef = useRef<HTMLInputElement>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -339,8 +349,10 @@ export default function PublicStore() {
   }
 
   async function submitLoyaltyCardRequest() {
-    const { name, mobile, password } = loyaltyCardForm;
-    if (!name.trim() || !mobile || !password) return;
+    const { name } = loyaltyCardForm;
+    if (!name.trim() || !customerAccount) return;
+    const mobile = customerAccount.mobileNumber;
+    const password = customerAccount.password;
     setLoyaltyCardLoading(true);
     setLoyaltyCardError(null);
     try {
@@ -384,6 +396,51 @@ export default function PublicStore() {
       setLcForgotVisible(false);
     } catch { setLcLoginError("Something went wrong. Please try again."); }
     finally { setLcLoginLoading(false); }
+  }
+
+  async function handleAccountSignUp(mobile: string, password: string) {
+    setSignUpLoading(true);
+    setSignUpError(null);
+    try {
+      const res = await fetch("/api/public/customer-account/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storeSlug: slug, mobileNumber: mobile, password }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setSignUpError(d.error || "Sign up failed"); return; }
+      const acc: CustomerAccountInfo = { id: d.id, mobileNumber: d.mobileNumber, password, createdAt: d.createdAt };
+      setCustomerAccount(acc);
+      localStorage.setItem(`wmh_account_${slug}`, JSON.stringify(acc));
+      setSignUpError(null);
+    } catch { setSignUpError("Something went wrong. Please try again."); }
+    finally { setSignUpLoading(false); }
+  }
+
+  async function handleAccountSignIn(mobile: string, password: string) {
+    setSignInLoading(true);
+    setSignInError(null);
+    try {
+      const res = await fetch("/api/public/customer-account/signin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storeSlug: slug, mobileNumber: mobile, password }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setSignInError(d.error || "Sign in failed"); return; }
+      const acc: CustomerAccountInfo = { id: d.id, mobileNumber: d.mobileNumber, password, createdAt: d.createdAt };
+      setCustomerAccount(acc);
+      localStorage.setItem(`wmh_account_${slug}`, JSON.stringify(acc));
+      setSignInError(null);
+    } catch { setSignInError("Something went wrong. Please try again."); }
+    finally { setSignInLoading(false); }
+  }
+
+  function handleAccountLogout() {
+    setCustomerAccount(null);
+    localStorage.removeItem(`wmh_account_${slug}`);
+    setSignUpError(null);
+    setSignInError(null);
   }
 
   async function lcRecoverSubmit() {
@@ -734,6 +791,24 @@ export default function PublicStore() {
             </div>
           ) : (
             <>
+          {/* Account fields locked popup */}
+          {showAccountFieldsPopup && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-6" onClick={() => setShowAccountFieldsPopup(false)}>
+              <div className="w-full max-w-sm bg-white rounded-3xl p-6 space-y-4" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-center w-14 h-14 rounded-2xl mx-auto" style={{ background: "rgba(239,68,68,0.1)" }}>
+                  <span className="text-2xl">🔒</span>
+                </div>
+                <div className="text-center space-y-2">
+                  <p className="font-black text-gray-900 text-base" style={{ fontFamily: "'Montserrat', sans-serif" }}>Loyalty card & account have same number and password</p>
+                  <p className="text-xs text-gray-400 leading-relaxed">Your loyalty card uses the same mobile number and password as your store account. These fields cannot be changed.</p>
+                </div>
+                <button onClick={() => setShowAccountFieldsPopup(false)} className="w-full font-bold py-3 rounded-2xl text-sm" style={{ background: "#000000", color: "white", fontFamily: "'Montserrat', sans-serif" }}>
+                  Got it
+                </button>
+              </div>
+            </div>
+          )}
+            
               <div className="mb-5">
                 <div className="flex items-center gap-2 mb-3">
                   <CreditCard className="w-5 h-5 text-black" />
@@ -767,6 +842,24 @@ export default function PublicStore() {
               <div style={{ overflow: "hidden" }}>
                 <div style={{ display: "flex", width: "200%", transform: `translateX(${lcTab === "registration" ? "0%" : "-50%"})`, transition: "transform 0.35s cubic-bezier(0.4,0,0.2,1)" }}>
                   <div style={{ width: "50%", paddingRight: "8px" }}>
+                    {!customerAccount ? (
+                      <div className="flex flex-col items-center text-center gap-4 py-4">
+                        <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: "#f5f5f5" }}>
+                          <CreditCard className="w-8 h-8 text-gray-300" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900" style={{ fontFamily: "'Montserrat', sans-serif" }}>Account Required</p>
+                          <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">Please create a store account first to request a loyalty card. Go to <strong>Profile</strong> tab to sign up.</p>
+                        </div>
+                        <button
+                          onClick={() => { setView("browse"); setTab("profile"); }}
+                          className="w-full font-bold py-3 rounded-2xl text-sm"
+                          style={{ background: "#000000", color: "white", fontFamily: "'Montserrat', sans-serif" }}
+                        >
+                          Go to Profile
+                        </button>
+                      </div>
+                    ) : (
                     <div className="space-y-4">
                       {loyaltyCardError && (
                         <div className="flex items-start gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)" }}>
@@ -774,30 +867,71 @@ export default function PublicStore() {
                           <p className="text-xs text-red-500">{loyaltyCardError}</p>
                         </div>
                       )}
-                      {[
-                        { label: "Customer Name *", key: "name" as const, type: "text", placeholder: "Enter your real name", hint: "Real name only — fake names not allowed" },
-                      ].map(({ label, key, type, placeholder, hint }) => (
-                        <div key={key}>
-                          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">{label}</label>
-                          <input type={type} value={loyaltyCardForm[key]} onChange={(e) => setLoyaltyCardForm(f => ({ ...f, [key]: e.target.value }))} placeholder={placeholder} className="w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-300 focus:outline-none border" style={{ background: "#ffffff", borderColor: "#e8e8e8" }} />
-                          {hint && <p className="text-[10px] text-gray-400 mt-1">{hint}</p>}
+                      <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)" }}>
+                        <span className="text-base">🔒</span>
+                        <p className="text-xs text-green-700">Your account number and password are used for the loyalty card</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Customer Name *</label>
+                        <input
+                          type="text"
+                          value={loyaltyCardForm.name}
+                          onChange={(e) => setLoyaltyCardForm(f => ({ ...f, name: e.target.value }))}
+                          placeholder="Enter your real name"
+                          className="w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-300 focus:outline-none border"
+                          style={{ background: "#ffffff", borderColor: "#e8e8e8" }}
+                        />
+                        <p className="text-[10px] text-gray-400 mt-1">Real name only — fake names not allowed</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Mobile Number</label>
+                        <div className="relative" onClick={() => setShowAccountFieldsPopup(true)}>
+                          <input
+                            type="tel"
+                            readOnly
+                            value={customerAccount.mobileNumber}
+                            className="w-full rounded-xl px-4 py-3 text-sm font-semibold text-gray-500 focus:outline-none border cursor-not-allowed"
+                            style={{ background: "#f5f5f5", borderColor: "#e8e8e8" }}
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-base">🔒</span>
                         </div>
-                      ))}
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Mobile Number *</label>
-                        <input type="tel" inputMode="numeric" maxLength={10} value={loyaltyCardForm.mobile} onChange={(e) => setLoyaltyCardForm(f => ({ ...f, mobile: e.target.value.replace(/\D/g, "").slice(0, 10) }))} placeholder="10-digit mobile number" className="w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-300 focus:outline-none border" style={{ background: "#ffffff", borderColor: "#e8e8e8" }} />
-                        <p className="text-[10px] text-gray-400 mt-1">Repeated & spam numbers not allowed</p>
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Password *</label>
-                        <input type="password" inputMode="numeric" maxLength={10} value={loyaltyCardForm.password} onChange={(e) => setLoyaltyCardForm(f => ({ ...f, password: e.target.value.replace(/\D/g, "").slice(0, 10) }))} placeholder="10-digit numeric password" className="w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-300 focus:outline-none border" style={{ background: "#ffffff", borderColor: "#e8e8e8" }} />
-                        <p className="text-[10px] text-gray-400 mt-1">Must be exactly 10 digits</p>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Password</label>
+                        <div className="relative" onClick={() => setShowAccountFieldsPopup(true)}>
+                          <input
+                            type="password"
+                            readOnly
+                            value={customerAccount ? "1234567890" : ""}
+                            className="w-full rounded-xl px-4 py-3 text-sm font-semibold text-gray-500 focus:outline-none border cursor-not-allowed"
+                            style={{ background: "#f5f5f5", borderColor: "#e8e8e8" }}
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-base">🔒</span>
+                        </div>
                       </div>
-                      <button onClick={submitLoyaltyCardRequest} disabled={!lcFormValid} className="w-full font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 transition-all" style={{ background: lcFormValid ? "#000000" : "#e5e7eb", color: lcFormValid ? "white" : "#9ca3af", fontFamily: "'Montserrat', sans-serif" }}>
+                      <button
+                        onClick={() => {
+                          if (!customerAccount) return;
+                          setLoyaltyCardForm(f => ({
+                            ...f,
+                            mobile: customerAccount.mobileNumber,
+                            password: "",
+                          }));
+                          submitLoyaltyCardRequest();
+                        }}
+                        disabled={!(loyaltyCardForm.name.trim().length >= 3 && !/\d/.test(loyaltyCardForm.name) && !loyaltyCardLoading)}
+                        className="w-full font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 transition-all"
+                        style={{
+                          background: (loyaltyCardForm.name.trim().length >= 3 && !/\d/.test(loyaltyCardForm.name) && !loyaltyCardLoading) ? "#000000" : "#e5e7eb",
+                          color: (loyaltyCardForm.name.trim().length >= 3 && !/\d/.test(loyaltyCardForm.name) && !loyaltyCardLoading) ? "white" : "#9ca3af",
+                          fontFamily: "'Montserrat', sans-serif"
+                        }}
+                      >
                         {loyaltyCardLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                         Request Card
                       </button>
                     </div>
+                    )}
                   </div>
 
                   <div style={{ width: "50%", paddingLeft: "8px" }}>
@@ -1357,7 +1491,17 @@ export default function PublicStore() {
           />
         )}
         {tab === "profile" && (
-          <ProfileTab data={data} />
+          <ProfileTab
+            data={data}
+            customerAccount={customerAccount}
+            onSignUp={handleAccountSignUp}
+            onSignIn={handleAccountSignIn}
+            onLogout={handleAccountLogout}
+            signUpLoading={signUpLoading}
+            signInLoading={signInLoading}
+            signUpError={signUpError}
+            signInError={signInError}
+          />
         )}
       </div>
 

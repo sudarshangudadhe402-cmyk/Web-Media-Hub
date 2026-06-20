@@ -1,7 +1,7 @@
 import { useGetDashboardSummary, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Package, Tags, CalendarCheck, MessageCircle, ChevronLeft, ShoppingBag, CreditCard, CheckCircle, X, Clock, BookMarked, CheckCheck, Search } from "lucide-react";
+import { Package, Tags, CalendarCheck, MessageCircle, ChevronLeft, ShoppingBag, CreditCard, CheckCircle, X, Clock, BookMarked, CheckCheck, Search, User } from "lucide-react";
 import { LoyaltyCardVisual } from "@/components/loyalty-card-visual";
 import { useLocation } from "wouter";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -43,7 +43,14 @@ interface LoyaltyCardItem {
   rejectedAt: string | null;
 }
 
-type View = "summary" | "bookings" | "detail" | "loyaltycards";
+interface CustomerAccountItem {
+  id: string;
+  mobileNumber: string;
+  password: string;
+  createdAt: string;
+}
+
+type View = "summary" | "bookings" | "detail" | "loyaltycards" | "customeraccounts";
 
 export default function Dashboard() {
   const { data: summary, isLoading } = useGetDashboardSummary();
@@ -55,6 +62,9 @@ export default function Dashboard() {
   const [loyaltyCardsLoading, setLoyaltyCardsLoading] = useState(false);
   const [loyaltyTab, setLoyaltyTab] = useState<"requested" | "approved" | "rejected">("requested");
   const [lcSearch, setLcSearch] = useState("");
+  const [customerAccounts, setCustomerAccounts] = useState<CustomerAccountItem[] | null>(null);
+  const [customerAccountsLoading, setCustomerAccountsLoading] = useState(false);
+  const [caSearch, setCaSearch] = useState("");
   const [adminBookingTab, setAdminBookingTab] = useState<"all" | "loyalty" | "completed">("all");
   const [completedBookings, setCompletedBookings] = useState<AdminBooking[]>([]);
   const [completedBookingsLoading, setCompletedBookingsLoading] = useState(false);
@@ -87,6 +97,17 @@ export default function Dashboard() {
       })
       .catch(() => {});
   }, [view, selectedBooking?.id]);
+
+  useEffect(() => {
+    if (view !== "customeraccounts") return;
+    setCustomerAccountsLoading(true);
+    const token = localStorage.getItem("wmh_token");
+    fetch("/api/customer-accounts", { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then(r => r.ok ? r.json() : [])
+      .then(d => setCustomerAccounts(d))
+      .catch(() => {})
+      .finally(() => setCustomerAccountsLoading(false));
+  }, [view]);
 
   useEffect(() => {
     if (view !== "loyaltycards") return;
@@ -517,6 +538,91 @@ export default function Dashboard() {
     );
   }
 
+  /* ── CUSTOMER ACCOUNTS VIEW ── */
+  if (view === "customeraccounts") {
+    const searchQ = caSearch.trim().toLowerCase();
+    const visibleAccounts = (customerAccounts ?? []).filter(a =>
+      !searchQ || a.mobileNumber.includes(searchQ)
+    );
+
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <button onClick={() => setView("summary")} className="p-1.5 rounded-full hover:bg-gray-100">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <h1 className="text-xl font-bold tracking-tight">Customer Accounts</h1>
+        </div>
+
+        <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border-2 bg-white"
+          style={{ borderColor: caSearch ? "#2563eb" : "#e5e7eb" }}>
+          <Search className="w-4 h-4 flex-shrink-0" style={{ color: caSearch ? "#2563eb" : "#9ca3af" }} />
+          <input
+            type="text"
+            value={caSearch}
+            onChange={e => setCaSearch(e.target.value)}
+            placeholder="Search by mobile number"
+            className="flex-1 text-sm text-gray-800 placeholder-gray-400 focus:outline-none bg-transparent"
+          />
+          {caSearch && (
+            <button onClick={() => setCaSearch("")} className="text-gray-400 hover:text-gray-600">
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        {customerAccountsLoading ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="rounded-xl border border-gray-100 p-4 bg-white">
+                <div className="h-4 bg-gray-200 rounded animate-pulse w-1/2 mb-2" />
+                <div className="h-3 bg-gray-100 rounded animate-pulse w-1/3" />
+              </div>
+            ))}
+          </div>
+        ) : visibleAccounts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center text-gray-400">
+            <User className="w-12 h-12 mb-3 opacity-20" />
+            <p className="text-sm font-medium">{caSearch ? `No accounts matching "${caSearch}"` : "No customer accounts yet"}</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {visibleAccounts.map((acc) => (
+              <div key={acc.id} className="rounded-xl border border-gray-100 bg-white p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(37,99,235,0.08)" }}>
+                    <User className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-bold text-gray-900 text-sm">{acc.mobileNumber}</p>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(37,99,235,0.08)", color: "#2563eb" }}>Active</span>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="text-xs text-gray-400">Password: <span className="font-bold text-gray-700">{acc.password}</span></span>
+                    </div>
+                    <p className="text-[10px] text-gray-300 mt-0.5">
+                      Joined {new Date(acc.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                    </p>
+                  </div>
+                  <a
+                    href={`https://wa.me/${acc.mobileNumber.replace(/\D/g, "")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-lg flex-shrink-0"
+                    style={{ background: "#25D366", color: "white" }}
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   /* ── LOYALTY CARDS VIEW ── */
   if (view === "loyaltycards") {
     const tabs: { key: "requested" | "approved" | "rejected"; label: string; icon: ReactNode }[] = [
@@ -796,6 +902,21 @@ export default function Dashboard() {
           ) : (
             <p className="text-xs text-muted-foreground mt-1">Click to view all</p>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Customer Accounts section */}
+      <Card
+        className="relative cursor-pointer hover:border-blue-400 transition-colors border-blue-200"
+        onClick={() => setView("customeraccounts")}
+      >
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-sm font-medium text-blue-700">Customer Accounts</CardTitle>
+          <User className="h-4 w-4 text-blue-500" />
+        </CardHeader>
+        <CardContent>
+          <p className="text-xs text-muted-foreground">View all customer accounts registered on your store</p>
+          <p className="text-xs text-blue-600 font-semibold mt-1">Click to manage →</p>
         </CardContent>
       </Card>
 
