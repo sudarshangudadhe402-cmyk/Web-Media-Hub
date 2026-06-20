@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -67,6 +67,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
   const [showForgotModal, setShowForgotModal] = useState(false);
+  const [showCapacityFull, setShowCapacityFull] = useState(false);
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -98,6 +99,10 @@ export default function Login() {
       const data = await res.json();
       if (!res.ok) {
         const msg: string = data?.error || "Login failed";
+        if (msg === "LOGIN_CAPACITY_FULL") {
+          setShowCapacityFull(true);
+          return;
+        }
         const isLocked = res.status === 429 || msg.toLowerCase().includes("locked");
         const isInactive = msg.toLowerCase().includes("not-active");
         const isInvalidCreds = msg.toLowerCase().includes("invalid credentials");
@@ -793,6 +798,64 @@ export default function Login() {
                     Got it, I understand
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── Login Capacity Full Popup ── */}
+      <AnimatePresence>
+        {showCapacityFull && (
+          <>
+            <motion.div
+              key="cap-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowCapacityFull(false)}
+              className="fixed inset-0 z-50"
+              style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+            />
+            <motion.div
+              key="cap-modal"
+              initial={{ opacity: 0, scale: 0.88, y: 32 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.88, y: 32 }}
+              transition={{ type: "spring", stiffness: 340, damping: 28 }}
+              className="fixed inset-0 z-50 flex items-center justify-center px-5"
+              style={{ pointerEvents: "none" }}
+            >
+              <div
+                className="w-full max-w-sm rounded-2xl p-6 flex flex-col items-center gap-4 shadow-2xl"
+                style={{ background: "#fff", pointerEvents: "auto" }}
+              >
+                {/* Icon */}
+                <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: "#FEF2F2" }}>
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                </div>
+
+                {/* Text */}
+                <div className="text-center space-y-1">
+                  <h3 className="text-lg font-bold text-gray-900">Login Capacity Full</h3>
+                  <p className="text-sm text-gray-500 leading-relaxed">
+                    All login slots for your plan are in use.<br />
+                    Please <span className="font-semibold text-red-600">logout from an old device</span> first, then try again.
+                  </p>
+                </div>
+
+                {/* Close Button */}
+                <button
+                  onClick={() => setShowCapacityFull(false)}
+                  className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                  style={{ background: "#DC2626" }}
+                >
+                  OK, Got It
+                </button>
               </div>
             </motion.div>
           </>

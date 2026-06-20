@@ -1,6 +1,11 @@
 import mongoose, { Schema, Document } from "mongoose";
 import bcrypt from "bcryptjs";
 
+export interface ActiveSession {
+  sessionId: string;
+  loginAt: Date;
+}
+
 export interface IUser extends Document {
   username: string;
   email: string;
@@ -9,8 +14,7 @@ export interface IUser extends Document {
   adminNumber: string;
   role: "super_admin" | "admin";
   isActive: boolean;
-  sessionId: string;
-  multiDeviceAllowed: boolean;
+  activeSessions: ActiveSession[];
   planName: string;
   planPrice: string;
   planPeriod: string;
@@ -22,6 +26,14 @@ export interface IUser extends Document {
   comparePassword(candidate: string): Promise<boolean>;
 }
 
+const ActiveSessionSchema = new Schema<ActiveSession>(
+  {
+    sessionId: { type: String, required: true },
+    loginAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
 const UserSchema = new Schema<IUser>(
   {
     username: { type: String, required: true, unique: true, trim: true },
@@ -31,8 +43,7 @@ const UserSchema = new Schema<IUser>(
     adminNumber: { type: String, default: "" },
     role: { type: String, enum: ["super_admin", "admin"], default: "admin" },
     isActive: { type: Boolean, default: true },
-    sessionId: { type: String, default: "" },
-    multiDeviceAllowed: { type: Boolean, default: false },
+    activeSessions: { type: [ActiveSessionSchema], default: [] },
     planName: { type: String, default: "" },
     planPrice: { type: String, default: "" },
     planPeriod: { type: String, default: "" },

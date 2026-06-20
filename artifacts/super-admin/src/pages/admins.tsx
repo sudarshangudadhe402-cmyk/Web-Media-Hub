@@ -536,22 +536,25 @@ export default function Admins() {
                   />
                 </div>
 
-                {/* Multi-Device Toggle */}
+                {/* Login Capacity */}
                 {selectedAdmin.role !== "super_admin" && (() => {
-                  const multiDevice = (selectedAdmin as any).multiDeviceAllowed === true;
+                  const capacity = (selectedAdmin as any).loginCapacity as number;
+                  const active = (selectedAdmin as any).activeSessionCount as number ?? 0;
+                  const isUnlimited = capacity === Infinity || capacity > 100;
+                  const capacityLabel = isUnlimited ? "∞ Unlimited" : String(capacity);
+                  const usageLabel = isUnlimited ? `${active} active` : `${active} / ${capacity}`;
+                  const isFull = !isUnlimited && active >= capacity;
                   return (
-                    <div className="flex items-center justify-between bg-muted rounded-xl px-4 py-3">
+                    <div className="bg-muted rounded-xl px-4 py-3 flex items-center justify-between gap-3">
                       <div>
-                        <p className="font-medium text-sm">Multi-Device Login</p>
+                        <p className="font-medium text-sm">Login Capacity</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {multiDevice ? "Admin can login from multiple devices simultaneously" : "Only 1 device allowed — new login kicks out old session"}
+                          Max devices for this plan: <span className="font-semibold">{capacityLabel}</span>
                         </p>
                       </div>
-                      <Switch
-                        checked={multiDevice}
-                        disabled={toggleMultiDevice.isPending}
-                        onCheckedChange={(val) => toggleMultiDevice.mutate({ id: selectedAdmin.id, multiDeviceAllowed: val })}
-                      />
+                      <div className={`text-sm font-bold px-3 py-1 rounded-lg ${isFull ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
+                        {usageLabel}
+                      </div>
                     </div>
                   );
                 })()}
