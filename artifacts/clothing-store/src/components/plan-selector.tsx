@@ -63,7 +63,7 @@ export const PLANS: Plan[] = [
     glow: "rgba(255,45,45,0.3)",
     borderActive: "border-[#FF2D2D]",
     checkColor: "text-[#FF2D2D]",
-    features: ["Unlimited Store Login (with Logo)", "4000₹ WMH Coin", "Premium AI Resources", "Early Access", "VIP Support"],
+    features: ["Unlimited Store Login + ∞", "4000₹ WMH Coin", "Premium AI Resources", "Early Access", "VIP Support"],
   },
 ];
 
