@@ -27,7 +27,7 @@ export const PLANS: Plan[] = [
     glow: "rgba(255,255,255,0.15)",
     borderActive: "border-white/50",
     checkColor: "text-white",
-    features: ["Full Feature Access", "1 Store Login", "Virtual Try-On", "Loyalty Card", "AI Videos", "Online Booking"],
+    features: ["Full Feature Access", "2 Store Login", "Virtual Try-On", "Loyalty Card", "AI Videos", "Online Booking"],
   },
   {
     id: "premium",
@@ -51,7 +51,7 @@ export const PLANS: Plan[] = [
     glow: "rgba(0,255,136,0.3)",
     borderActive: "border-[#00FF88]",
     checkColor: "text-[#00FF88]",
-    features: ["Everything in Premium", "Lifetime Access", "2000₹ WMH Coin", "Future Updates", "Priority Support"],
+    features: ["Everything in Premium", "Lifetime Access", "4 Store Login", "2000₹ WMH Coin", "Future Updates", "Priority Support"],
   },
   {
     id: "enterprise",
@@ -63,7 +63,7 @@ export const PLANS: Plan[] = [
     glow: "rgba(255,45,45,0.3)",
     borderActive: "border-[#FF2D2D]",
     checkColor: "text-[#FF2D2D]",
-    features: ["Everything in Lifetime", "6000₹ WMH Coin", "Premium AI Resources", "Early Access", "VIP Support"],
+    features: ["Unlimited Store Login (with Logo)", "4000₹ WMH Coin", "Premium AI Resources", "Early Access", "VIP Support"],
   },
 ];
 
