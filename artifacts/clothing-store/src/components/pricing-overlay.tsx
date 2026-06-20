@@ -282,7 +282,7 @@ export default function PricingOverlay({ onBack, onSelectPlan }: Props) {
                   </div>
                   <p className="text-[#FF2D2D]/80 text-sm font-medium mb-6">Designed for large stores and premium brands.</p>
                   <div className="space-y-4 mb-8 flex-1">
-                    {['Unlimited Store Login + ∞', '₹4000 Web Media Hub Coin', 'Premium AI Resources', 'Early Access Features', 'VIP Support'].map((f, i) => (
+                    {['Unlimited Store Login  ∞', '₹4000 Web Media Hub Coin', 'Premium AI Resources', 'Early Access Features', 'VIP Support'].map((f, i) => (
                       <div key={i} className="flex items-start gap-3">
                         <div className="w-5 h-5 rounded-full bg-[#FF2D2D]/20 flex items-center justify-center shrink-0 mt-0.5">
                           <Check className="w-3 h-3 text-[#FF2D2D]" />
@@ -296,7 +296,7 @@ export default function PricingOverlay({ onBack, onSelectPlan }: Props) {
                     onClick={() => selectAndBack({
                       badge: "👑 PREMIUM BRAND", name: "Enterprise Plan", price: "₹19,999",
                       period: "One-Time", tagline: "Designed for large stores and premium brands.", color: "#FF2D2D",
-                      features: ['Unlimited Store Login + ∞', '₹4000 Web Media Hub Coin', 'Premium AI Resources', 'Early Access Features', 'VIP Support'],
+                      features: ['Unlimited Store Login  ∞', '₹4000 Web Media Hub Coin', 'Premium AI Resources', 'Early Access Features', 'VIP Support'],
                     })}
                   >
                     Upgrade To Enterprise
