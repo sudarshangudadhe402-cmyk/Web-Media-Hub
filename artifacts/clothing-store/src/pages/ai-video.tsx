@@ -288,7 +288,8 @@ export default function AiVideo() {
                 Store Submitted
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 pt-2">
+            <div className="space-y-3 pt-2">
+              {/* Point 1 — Payment */}
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3">
                 <MapPin className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                 <div>
@@ -298,13 +299,25 @@ export default function AiVideo() {
                   </p>
                 </div>
               </div>
+              {/* Point 2 — Reward */}
               <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex gap-3">
                 <Gift className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
                 <div>
                   <p className="font-semibold text-green-800 text-sm">Your Reward</p>
                   <p className="text-green-700 text-sm mt-1">
                     Once the store is approved, you will receive{" "}
-                    <span className="font-bold text-green-800">2000 free NGS Coins</span> added to your account.
+                    <span className="font-bold text-green-800">2000 ₹ Web Media Hub Coins</span> added to your account.
+                  </p>
+                </div>
+              </div>
+              {/* Point 3 — Not applicable on ₹999 plan */}
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-3">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0 mt-1" />
+                <div>
+                  <p className="font-semibold text-red-800 text-sm">Important — Plan Restriction</p>
+                  <p className="text-red-700 text-sm mt-1">
+                    This reward is <span className="font-bold underline">not applicable</span> on the{" "}
+                    <span className="font-bold">₹999/month</span> plan. Reward is only earned when the referred store purchases a higher plan.
                   </p>
                 </div>
               </div>
@@ -615,7 +628,8 @@ export default function AiVideo() {
               Store Submitted
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 pt-2">
+          <div className="space-y-3 pt-2">
+            {/* Point 1 — Payment */}
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3">
               <MapPin className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
               <div>
@@ -625,13 +639,25 @@ export default function AiVideo() {
                 </p>
               </div>
             </div>
+            {/* Point 2 — Reward */}
             <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex gap-3">
               <Gift className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
               <div>
                 <p className="font-semibold text-green-800 text-sm">Your Reward</p>
                 <p className="text-green-700 text-sm mt-1">
                   Once the store is approved, you will receive{" "}
-                  <span className="font-bold text-green-800">2000 free NGS Coins</span> added to your account.
+                  <span className="font-bold text-green-800">2000 ₹ Web Media Hub Coins</span> added to your account.
+                </p>
+              </div>
+            </div>
+            {/* Point 3 — Not applicable on ₹999 plan */}
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-3">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0 mt-1" />
+              <div>
+                <p className="font-semibold text-red-800 text-sm">Important — Plan Restriction</p>
+                <p className="text-red-700 text-sm mt-1">
+                  This reward is <span className="font-bold underline">not applicable</span> on the{" "}
+                  <span className="font-bold">₹999/month</span> plan. Reward is only earned when the referred store purchases a higher plan.
                 </p>
               </div>
             </div>
@@ -666,6 +692,16 @@ export default function AiVideo() {
                 <p className="text-sm text-green-900 leading-relaxed">{step}</p>
               </div>
             ))}
+
+            {/* Red dot — Plan restriction note */}
+            <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+              <span className="w-3 h-3 rounded-full bg-red-500 shrink-0 mt-1" />
+              <p className="text-sm text-red-800 leading-relaxed">
+                <span className="font-bold">Note:</span> This reward is{" "}
+                <span className="font-bold underline">not applicable</span> on the{" "}
+                <span className="font-bold">₹999/month</span> plan. Only referrals who purchase a higher plan will earn you the 2000 ₹ Web Media Hub Coins reward.
+              </p>
+            </div>
           </div>
           <div className="pt-3">
             <Button className="w-full bg-green-600 hover:bg-green-700 text-white" onClick={() => setClaimHelpOpen(false)}>
