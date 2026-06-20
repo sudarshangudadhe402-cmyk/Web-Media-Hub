@@ -158,8 +158,10 @@ export default function PublicStore() {
   });
   const [signUpLoading, setSignUpLoading] = useState(false);
   const [signInLoading, setSignInLoading] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
   const [signUpError, setSignUpError] = useState<string | null>(null);
   const [signInError, setSignInError] = useState<string | null>(null);
+  const [otpError, setOtpError] = useState<string | null>(null);
   const [showAccountFieldsPopup, setShowAccountFieldsPopup] = useState(false);
 
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -398,17 +400,36 @@ export default function PublicStore() {
     finally { setLcLoginLoading(false); }
   }
 
-  async function handleAccountSignUp(mobile: string, password: string) {
+  async function handleSendOtp(email: string, mobile: string, password: string, purpose: "signup" | "signin") {
+    setOtpLoading(true);
+    setOtpError(null);
+    setSignUpError(null);
+    setSignInError(null);
+    try {
+      const res = await fetch("/api/public/customer-account/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storeSlug: slug, email, mobileNumber: mobile, password, purpose }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setOtpError(d.error || "Failed to send OTP"); throw new Error(d.error); }
+    } catch (err: any) {
+      setOtpError(err.message || "Failed to send OTP");
+      throw err;
+    } finally { setOtpLoading(false); }
+  }
+
+  async function handleAccountSignUp(email: string, mobile: string, password: string, otp: string) {
     setSignUpLoading(true);
     setSignUpError(null);
     try {
-      const res = await fetch("/api/public/customer-account/signup", {
+      const res = await fetch("/api/public/customer-account/verify-signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storeSlug: slug, mobileNumber: mobile, password }),
+        body: JSON.stringify({ storeSlug: slug, email, mobileNumber: mobile, password, otp }),
       });
       const d = await res.json();
-      if (!res.ok) { setSignUpError(d.error || "Sign up failed"); return; }
+      if (!res.ok) { setSignUpError(d.error || "Verification failed"); return; }
       const acc: CustomerAccountInfo = { id: d.id, mobileNumber: d.mobileNumber, password, createdAt: d.createdAt };
       setCustomerAccount(acc);
       localStorage.setItem(`wmh_account_${slug}`, JSON.stringify(acc));
@@ -417,17 +438,17 @@ export default function PublicStore() {
     finally { setSignUpLoading(false); }
   }
 
-  async function handleAccountSignIn(mobile: string, password: string) {
+  async function handleAccountSignIn(email: string, mobile: string, password: string, otp: string) {
     setSignInLoading(true);
     setSignInError(null);
     try {
-      const res = await fetch("/api/public/customer-account/signin", {
+      const res = await fetch("/api/public/customer-account/verify-signin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storeSlug: slug, mobileNumber: mobile, password }),
+        body: JSON.stringify({ storeSlug: slug, email, mobileNumber: mobile, password, otp }),
       });
       const d = await res.json();
-      if (!res.ok) { setSignInError(d.error || "Sign in failed"); return; }
+      if (!res.ok) { setSignInError(d.error || "Verification failed"); return; }
       const acc: CustomerAccountInfo = { id: d.id, mobileNumber: d.mobileNumber, password, createdAt: d.createdAt };
       setCustomerAccount(acc);
       localStorage.setItem(`wmh_account_${slug}`, JSON.stringify(acc));
@@ -441,6 +462,7 @@ export default function PublicStore() {
     localStorage.removeItem(`wmh_account_${slug}`);
     setSignUpError(null);
     setSignInError(null);
+    setOtpError(null);
   }
 
   async function lcRecoverSubmit() {
@@ -1497,10 +1519,13 @@ export default function PublicStore() {
             onSignUp={handleAccountSignUp}
             onSignIn={handleAccountSignIn}
             onLogout={handleAccountLogout}
+            onSendOtp={handleSendOtp}
             signUpLoading={signUpLoading}
             signInLoading={signInLoading}
+            otpLoading={otpLoading}
             signUpError={signUpError}
             signInError={signInError}
+            otpError={otpError}
           />
         )}
       </div>
