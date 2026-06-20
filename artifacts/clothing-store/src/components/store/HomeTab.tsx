@@ -66,7 +66,7 @@ export default function HomeTab({
 }: HomeTabProps) {
   const [search, setSearch] = useState("");
 
-  const newArrivals = products.slice(0, 6);
+  const newArrivals = products.slice(0, 8);
   const filteredBySearch = search.trim()
     ? products.filter(
         (p) =>
