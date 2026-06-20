@@ -211,15 +211,57 @@ export default function Admins() {
   }
 
   const [storeSearch, setStoreSearch] = useState("");
+  const [planFilter, setPlanFilter] = useState<"all" | "demo" | "premium" | "lifetime" | "enterprise">("all");
+
   const adminCount = admins?.length ?? 0;
 
-  const filteredAdmins = storeSearch.trim()
+  const PLAN_TABS = [
+    { id: "all" as const, label: "All", price: null, color: "#6b7280", bg: "rgba(107,114,128,0.10)" },
+    { id: "demo" as const, label: "Month (31 day)", price: "₹999/Month", color: "#2563eb", bg: "rgba(37,99,235,0.10)" },
+    { id: "premium" as const, label: "Premium Annual Plan", price: "₹5,999/Year", color: "#d97706", bg: "rgba(217,119,6,0.10)" },
+    { id: "lifetime" as const, label: "Lifetime Business Plan", price: "₹15,999 One-Time", color: "#16a34a", bg: "rgba(22,163,74,0.10)" },
+    { id: "enterprise" as const, label: "Enterprise Plan", price: "₹19,999 One-Time", color: "#FF2D2D", bg: "rgba(255,45,45,0.10)" },
+  ];
+
+  function matchesPlan(a: (typeof admins)[number], planId: typeof planFilter) {
+    if (planId === "all") return true;
+    const planName = ((a as any).planName as string ?? "").toLowerCase();
+    const planPrice = ((a as any).planPrice as string ?? "").toLowerCase();
+    if (planId === "demo") return planPrice.includes("999") && !planPrice.includes("5,999") && !planPrice.includes("15,999") && !planPrice.includes("19,999") || planName.includes("starting");
+    if (planId === "premium") return planPrice.includes("5,999") || planName.includes("premium annual");
+    if (planId === "lifetime") return planPrice.includes("15,999") || planName.includes("lifetime");
+    if (planId === "enterprise") return planPrice.includes("19,999") || planName.includes("enterprise");
+    return true;
+  }
+
+  const searchTrimmed = storeSearch.trim().toLowerCase();
+
+  const searchFiltered = searchTrimmed
     ? admins?.filter((a) =>
-        ((a as any).storeName as string | null)
-          ?.toLowerCase()
-          .includes(storeSearch.trim().toLowerCase())
+        ((a as any).storeName as string | null)?.toLowerCase().includes(searchTrimmed)
       )
     : admins;
+
+  const filteredAdmins = searchFiltered?.filter((a) => matchesPlan(a, planFilter));
+
+  // Auto-switch: if current tab has 0 results but search is active, find first tab with results
+  function handleSearchChange(val: string) {
+    setStoreSearch(val);
+    if (!val.trim()) return;
+    const q = val.trim().toLowerCase();
+    const matched = admins?.filter((a) =>
+      ((a as any).storeName as string | null)?.toLowerCase().includes(q)
+    ) ?? [];
+    const countInCurrent = matched.filter((a) => matchesPlan(a, planFilter)).length;
+    if (countInCurrent === 0 && matched.length > 0) {
+      for (const tab of PLAN_TABS) {
+        const countInTab = matched.filter((a) => matchesPlan(a, tab.id)).length;
+        if (countInTab > 0) { setPlanFilter(tab.id); break; }
+      }
+    }
+  }
+
+  const activePlanTab = PLAN_TABS.find(t => t.id === planFilter)!;
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-12">
@@ -234,16 +276,44 @@ export default function Admins() {
         <Input
           placeholder="Search by store name..."
           value={storeSearch}
-          onChange={(e) => setStoreSearch(e.target.value)}
+          onChange={(e) => handleSearchChange(e.target.value)}
           className="pl-9"
         />
       </div>
 
+      {/* Plan filter tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
+        {PLAN_TABS.map((tab) => {
+          const isActive = planFilter === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setPlanFilter(tab.id)}
+              className="flex-shrink-0 rounded-xl px-3 py-2 text-left transition-all border-2"
+              style={{
+                borderColor: isActive ? tab.color : "transparent",
+                background: isActive ? tab.bg : "rgba(0,0,0,0.03)",
+                minWidth: tab.id === "all" ? "56px" : "120px",
+              }}
+            >
+              <p className="text-xs font-bold leading-tight" style={{ color: isActive ? tab.color : "#6b7280" }}>
+                {tab.label}
+              </p>
+              {tab.price && (
+                <p className="text-[10px] font-semibold mt-0.5" style={{ color: isActive ? tab.color : "#9ca3af" }}>
+                  {tab.price}
+                </p>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
       <div>
         <div className="flex items-center gap-2 mb-4">
-          <Users className="w-5 h-5 text-primary" />
-          <h2 className="text-lg font-semibold">All Admins</h2>
-          <Badge className="ml-1">{filteredAdmins?.length ?? 0}</Badge>
+          <Users className="w-5 h-5" style={{ color: activePlanTab.color }} />
+          <h2 className="text-lg font-semibold">{activePlanTab.id === "all" ? "All Admins" : activePlanTab.label}</h2>
+          <Badge className="ml-1" style={{ background: activePlanTab.bg, color: activePlanTab.color, border: "none" }}>{filteredAdmins?.length ?? 0}</Badge>
         </div>
 
         {isLoading ? (
