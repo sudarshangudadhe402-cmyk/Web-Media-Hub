@@ -592,22 +592,28 @@ export default function StoreRequest() {
 
                 {/* Reward Code */}
                 {selectedReq.rewardCode && (
-                  <div className="rounded-2xl px-4 py-3 flex items-center justify-between" style={{ background: "#F0FDF4", border: "1.5px solid #BBF7D0" }}>
-                    <span className="text-xs" style={{ color: "#166534" }}>Reward Code</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-sm tracking-[0.15em]" style={{ color: "#15803D" }}>
-                        {selectedReq.rewardCode}
+                  <div className="rounded-2xl px-4 py-3 flex items-center justify-between gap-3" style={{ background: selectedReq.rewardCode === "NO_REWARD_MONTHLY_PLAN" ? "#FEF2F2" : "#F0FDF4", border: `1.5px solid ${selectedReq.rewardCode === "NO_REWARD_MONTHLY_PLAN" ? "#FECACA" : "#BBF7D0"}` }}>
+                    <span className="text-xs shrink-0" style={{ color: selectedReq.rewardCode === "NO_REWARD_MONTHLY_PLAN" ? "#991B1B" : "#166534" }}>Reward Code</span>
+                    {selectedReq.rewardCode === "NO_REWARD_MONTHLY_PLAN" ? (
+                      <span className="text-xs font-medium text-right leading-snug" style={{ color: "#DC2626" }}>
+                        No reward available on the Starting Monthly Plan. To earn a reward, please submit the request with a higher plan.
                       </span>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(selectedReq.rewardCode);
-                          toast({ title: "Reward code copied ✅" });
-                        }}
-                        className="w-7 h-7 rounded-full bg-green-100 hover:bg-green-200 flex items-center justify-center text-green-700 transition-colors"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-sm tracking-[0.15em]" style={{ color: "#15803D" }}>
+                          {selectedReq.rewardCode}
+                        </span>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(selectedReq.rewardCode);
+                            toast({ title: "Reward code copied ✅" });
+                          }}
+                          className="w-7 h-7 rounded-full bg-green-100 hover:bg-green-200 flex items-center justify-center text-green-700 transition-colors"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 

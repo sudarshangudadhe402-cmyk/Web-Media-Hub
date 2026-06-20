@@ -66,7 +66,7 @@ export default function AiVideo() {
   const pending = (myRequests ?? []).filter((r) => r.status === "pending");
   const approved = (myRequests ?? []).filter((r) => r.status === "approved");
   const rejected = (myRequests ?? []).filter((r) => r.status === "rejected");
-  const rewardCoins = approved.length * 2000;
+  const rewardCoins = approved.filter((r) => r.rewardCode !== "NO_REWARD_MONTHLY_PLAN").length * 2000;
 
   const approvedTabHasDot =
     approved.length > 0 &&
@@ -565,7 +565,11 @@ export default function AiVideo() {
                 <div className="divide-y divide-border">
                   <div className="flex items-center justify-between px-4 py-3 gap-3">
                     <span className="text-sm text-muted-foreground shrink-0">Reward Code</span>
-                    {selectedApproved.rewardCode ? (
+                    {selectedApproved.rewardCode === "NO_REWARD_MONTHLY_PLAN" ? (
+                      <span className="text-xs text-red-600 font-medium text-right max-w-[220px] leading-snug">
+                        No reward available on the Starting Monthly Plan. To earn a reward, please submit the request with a higher plan.
+                      </span>
+                    ) : selectedApproved.rewardCode ? (
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-mono font-bold tracking-[0.15em] text-green-700 bg-green-50 border border-green-200 px-3 py-1 rounded-md select-all">
                           {selectedApproved.rewardCode}
