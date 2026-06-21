@@ -4,7 +4,7 @@ import {
   MapPin, Clock, CalendarDays, MessageCircle, Heart, ShoppingBag,
   ChevronLeft, X, Camera, Loader2, RefreshCw,
   CheckCircle2, TrendingDown, Download, Share2,
-  CreditCard, CheckCircle, AlertCircle,
+  CreditCard, CheckCircle, AlertCircle, Edit2, Trash2,
 } from "lucide-react";
 import { LoyaltyCardVisual } from "@/components/loyalty-card-visual";
 import { useState, useRef, useEffect, useMemo } from "react";
@@ -66,6 +66,17 @@ interface LoyaltyCardInfo {
   name: string;
   mobile: string;
   status: "requested" | "approved" | "rejected";
+}
+
+interface ReviewItem {
+  id: string;
+  customerId: string;
+  maskedMobile: string;
+  text: string;
+  likeCount: number;
+  likes: string[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 type ViewType = "browse" | "product" | "tryon" | "booking" | "loyaltycard" | "loyaltycardapply";
@@ -170,6 +181,15 @@ export default function PublicStore() {
   const [otpError, setOtpError] = useState<string | null>(null);
   const [showAccountFieldsPopup, setShowAccountFieldsPopup] = useState(false);
 
+  const [reviews, setReviews] = useState<ReviewItem[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewBoxOpen, setReviewBoxOpen] = useState(false);
+  const [reviewText, setReviewText] = useState("");
+  const [reviewPosting, setReviewPosting] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
+  const [editReviewText, setEditReviewText] = useState("");
+
   const photoInputRef = useRef<HTMLInputElement>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
 
@@ -200,6 +220,22 @@ export default function PublicStore() {
     if (!slug || !data) return;
     fetch(`/api/public/store/${slug}/visit`, { method: "POST" }).catch(() => {});
   }, [slug, !!data]);
+
+  useEffect(() => {
+    if (view === "product" && selectedProduct && data?.id) {
+      setReviews([]);
+      setReviewBoxOpen(false);
+      setReviewText("");
+      setReviewError(null);
+      setEditingReviewId(null);
+      setReviewsLoading(true);
+      fetch(`/api/public/reviews/${selectedProduct.id}?storeId=${data.id}`)
+        .then(r => r.ok ? r.json() : [])
+        .then(d => setReviews(d))
+        .catch(() => {})
+        .finally(() => setReviewsLoading(false));
+    }
+  }, [selectedProduct?.id, view, data?.id]);
 
   useEffect(() => {
     if (tab !== "mybookings" || myBookings.length === 0) return;
@@ -1363,6 +1399,215 @@ export default function PublicStore() {
               </div>
             </div>
           )}
+          {/* ── Reviews Section ───────────────────────────────────────────── */}
+          <div className="border-t" style={{ borderColor: "#f0f0f0" }}>
+            <div className="px-4 pt-4 pb-2 flex items-center gap-2">
+              <span className="text-sm font-black text-gray-900" style={{ fontFamily: "'Montserrat', sans-serif" }}>Customer Reviews</span>
+              {reviews.length > 0 && (
+                <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{reviews.length}</span>
+              )}
+            </div>
+
+            <div className="px-4 pb-3">
+              {!customerAccount ? (
+                <p className="text-xs text-gray-400 text-center py-2 bg-gray-50 rounded-xl">Login to your account to write a review</p>
+              ) : reviews.find(r => r.customerId === customerAccount.id) ? null : !reviewBoxOpen ? (
+                <button
+                  onClick={() => setReviewBoxOpen(true)}
+                  className="w-full py-2.5 rounded-xl font-bold text-sm transition-all active:scale-[0.98]"
+                  style={{ background: "#22c55e", color: "white" }}
+                >
+                  ✏️ Write Review
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <textarea
+                    value={reviewText}
+                    onChange={e => setReviewText(e.target.value)}
+                    placeholder="Share your experience with this product..."
+                    maxLength={500}
+                    rows={4}
+                    className="w-full rounded-xl border px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-green-400"
+                    style={{ borderColor: "#e5e7eb" }}
+                  />
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-400">{reviewText.length}/500</span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => { setReviewBoxOpen(false); setReviewText(""); setReviewError(null); }}
+                        className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-500 border"
+                        style={{ borderColor: "#e5e7eb" }}
+                      >Cancel</button>
+                      <button
+                        disabled={reviewPosting || !reviewText.trim()}
+                        onClick={async () => {
+                          if (!reviewText.trim() || !customerAccount || !data) return;
+                          setReviewPosting(true);
+                          setReviewError(null);
+                          try {
+                            const res = await fetch("/api/public/reviews", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ productId: selectedProduct.id, storeId: data.id, customerId: customerAccount.id, text: reviewText.trim() }),
+                            });
+                            const json = await res.json();
+                            if (!res.ok) { setReviewError(json.error || "Failed to post review"); return; }
+                            setReviews(prev => [json, ...prev]);
+                            setReviewBoxOpen(false);
+                            setReviewText("");
+                          } catch { setReviewError("Something went wrong"); }
+                          finally { setReviewPosting(false); }
+                        }}
+                        className="px-4 py-2 rounded-xl text-sm font-bold text-white transition-all"
+                        style={{ background: reviewPosting || !reviewText.trim() ? "#86efac" : "#22c55e" }}
+                      >
+                        {reviewPosting ? "Posting..." : "Post"}
+                      </button>
+                    </div>
+                  </div>
+                  {reviewError && <p className="text-xs text-red-500">{reviewError}</p>}
+                </div>
+              )}
+            </div>
+
+            <div className="mx-4 border-t" style={{ borderColor: "#f0f0f0" }} />
+
+            <div className="px-4 py-3 space-y-3">
+              {reviewsLoading ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                </div>
+              ) : reviews.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-4">No reviews yet. Be the first to review!</p>
+              ) : (
+                (() => {
+                  const myReview = reviews.find(r => r.customerId === customerAccount?.id);
+                  const otherReviews = reviews
+                    .filter(r => r.customerId !== customerAccount?.id)
+                    .sort((a, b) => b.likeCount - a.likeCount);
+                  const sorted = [...(myReview ? [myReview] : []), ...otherReviews];
+                  return sorted.map(review => {
+                    const isOwn = review.customerId === customerAccount?.id;
+                    const isLiked = customerAccount ? review.likes.includes(customerAccount.id) : false;
+                    const isEditing = editingReviewId === review.id;
+                    return (
+                      <div key={review.id} className="rounded-2xl p-3 space-y-2" style={{ background: isOwn ? "#f0fdf4" : "#fafafa", border: isOwn ? "1px solid #bbf7d0" : "1px solid #f3f4f6" }}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black text-white shrink-0" style={{ background: isOwn ? "#22c55e" : "#9ca3af" }}>
+                              {review.maskedMobile.slice(-2)}
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-gray-800">
+                                {review.maskedMobile}
+                                {isOwn && <span className="ml-1 text-green-600 font-semibold">(You)</span>}
+                              </p>
+                              <p className="text-[10px] text-gray-400">
+                                {new Date(review.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                                {review.updatedAt !== review.createdAt && " · edited"}
+                              </p>
+                            </div>
+                          </div>
+                          {isOwn && (
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => { setEditingReviewId(review.id); setEditReviewText(review.text); }}
+                                className="p-1.5 rounded-full hover:bg-green-100 transition-colors"
+                              >
+                                <Edit2 className="w-3.5 h-3.5 text-gray-500" />
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (!customerAccount) return;
+                                  const res = await fetch(`/api/public/reviews/${review.id}`, {
+                                    method: "DELETE",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ customerId: customerAccount.id }),
+                                  });
+                                  if (res.ok) setReviews(prev => prev.filter(r => r.id !== review.id));
+                                }}
+                                className="p-1.5 rounded-full hover:bg-red-100 transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {isEditing ? (
+                          <div className="space-y-2">
+                            <textarea
+                              value={editReviewText}
+                              onChange={e => setEditReviewText(e.target.value)}
+                              maxLength={500}
+                              rows={3}
+                              className="w-full rounded-xl border px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-green-400"
+                              style={{ borderColor: "#e5e7eb" }}
+                            />
+                            <div className="flex justify-end gap-2">
+                              <button
+                                onClick={() => setEditingReviewId(null)}
+                                className="px-3 py-1.5 text-xs rounded-lg border text-gray-500"
+                                style={{ borderColor: "#e5e7eb" }}
+                              >Cancel</button>
+                              <button
+                                onClick={async () => {
+                                  if (!editReviewText.trim() || !customerAccount) return;
+                                  const res = await fetch(`/api/public/reviews/${review.id}`, {
+                                    method: "PUT",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ customerId: customerAccount.id, text: editReviewText.trim() }),
+                                  });
+                                  if (res.ok) {
+                                    setReviews(prev => prev.map(r => r.id === review.id ? { ...r, text: editReviewText.trim(), updatedAt: new Date().toISOString() } : r));
+                                    setEditingReviewId(null);
+                                  }
+                                }}
+                                className="px-3 py-1.5 text-xs rounded-lg font-bold text-white"
+                                style={{ background: "#22c55e" }}
+                              >Save</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-700 leading-relaxed">{review.text}</p>
+                        )}
+
+                        {!isOwn && (
+                          <button
+                            onClick={async () => {
+                              if (!customerAccount) return;
+                              const res = await fetch(`/api/public/reviews/${review.id}/like`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ customerId: customerAccount.id }),
+                              });
+                              if (res.ok) {
+                                const json = await res.json();
+                                setReviews(prev => prev.map(r => r.id === review.id ? {
+                                  ...r,
+                                  likeCount: json.likeCount,
+                                  likes: json.liked
+                                    ? [...r.likes, customerAccount.id]
+                                    : r.likes.filter(id => id !== customerAccount.id),
+                                } : r));
+                              }
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all"
+                            style={{ background: isLiked ? "rgba(239,68,68,0.08)" : "#f3f4f6", color: isLiked ? "#ef4444" : "#6b7280" }}
+                          >
+                            <Heart className={`w-3 h-3 ${isLiked ? "fill-red-500 text-red-500" : ""}`} />
+                            {review.likeCount > 0 ? `${review.likeCount} Helpful` : "Helpful"}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  });
+                })()
+              )}
+            </div>
+          </div>
+          {/* ──────────────────────────────────────────────────────────────── */}
+
           <div className="pb-28" />
         </div>
 

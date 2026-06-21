@@ -6,6 +6,8 @@ import { Notification } from "../models/Notification";
 import { Booking } from "../models/Booking";
 import { LikeEvent } from "../models/LikeEvent";
 import { StoreVisitor } from "../models/StoreVisitor";
+import { CustomerAccount } from "../models/CustomerAccount";
+import { Review } from "../models/Review";
 
 const router = Router();
 
@@ -211,5 +213,111 @@ router.post(
     }
   }
 );
+
+// ─── Reviews ─────────────────────────────────────────────────────────────────
+
+router.get("/public/reviews/:productId", async (req, res) => {
+  try {
+    const { storeId } = req.query;
+    if (!storeId) { res.status(400).json({ error: "storeId required" }); return; }
+    const reviews = await Review.find({ productId: req.params.productId, storeId }).sort({ createdAt: -1 });
+    res.json(reviews.map(r => ({
+      id: String(r._id),
+      customerId: r.customerId,
+      maskedMobile: r.maskedMobile,
+      text: r.text,
+      likeCount: r.likes.length,
+      likes: r.likes,
+      createdAt: (r as any).createdAt.toISOString(),
+      updatedAt: (r as any).updatedAt.toISOString(),
+    })));
+  } catch (err) {
+    req.log.error({ err }, "Get reviews error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/public/reviews", ipRateLimit(5, 60_000), async (req, res) => {
+  try {
+    const { productId, storeId, customerId, text } = req.body;
+    if (!productId || !storeId || !customerId || !text?.trim()) {
+      res.status(400).json({ error: "All fields required" }); return;
+    }
+    if (text.trim().length > 500) {
+      res.status(400).json({ error: "Review too long (max 500 characters)" }); return;
+    }
+    const account = await CustomerAccount.findOne({ _id: customerId, storeId });
+    if (!account) { res.status(403).json({ error: "Invalid customer account" }); return; }
+    const existing = await Review.findOne({ productId, customerId });
+    if (existing) { res.status(409).json({ error: "You already reviewed this product" }); return; }
+    const maskedMobile = "User ***" + account.mobileNumber.slice(-4);
+    const review = await Review.create({ productId, storeId, customerId, maskedMobile, text: text.trim(), likes: [] });
+    res.status(201).json({
+      id: String(review._id),
+      customerId: review.customerId,
+      maskedMobile: review.maskedMobile,
+      text: review.text,
+      likeCount: 0,
+      likes: [],
+      createdAt: (review as any).createdAt.toISOString(),
+      updatedAt: (review as any).updatedAt.toISOString(),
+    });
+  } catch (err) {
+    req.log.error({ err }, "Create review error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.put("/public/reviews/:id", ipRateLimit(10, 60_000), async (req, res) => {
+  try {
+    const { customerId, text } = req.body;
+    if (!customerId || !text?.trim()) { res.status(400).json({ error: "customerId and text required" }); return; }
+    if (text.trim().length > 500) { res.status(400).json({ error: "Review too long (max 500 characters)" }); return; }
+    const review = await Review.findById(req.params.id);
+    if (!review) { res.status(404).json({ error: "Review not found" }); return; }
+    if (review.customerId !== customerId) { res.status(403).json({ error: "Not your review" }); return; }
+    review.text = text.trim();
+    await review.save();
+    res.json({ id: String(review._id), text: review.text, updatedAt: (review as any).updatedAt.toISOString() });
+  } catch (err) {
+    req.log.error({ err }, "Edit review error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/public/reviews/:id", async (req, res) => {
+  try {
+    const { customerId } = req.body;
+    if (!customerId) { res.status(400).json({ error: "customerId required" }); return; }
+    const review = await Review.findById(req.params.id);
+    if (!review) { res.status(404).json({ error: "Review not found" }); return; }
+    if (review.customerId !== customerId) { res.status(403).json({ error: "Not your review" }); return; }
+    await review.deleteOne();
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error({ err }, "Delete review error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/public/reviews/:id/like", ipRateLimit(20, 60_000), async (req, res) => {
+  try {
+    const { customerId } = req.body;
+    if (!customerId) { res.status(400).json({ error: "customerId required" }); return; }
+    const review = await Review.findById(req.params.id);
+    if (!review) { res.status(404).json({ error: "Review not found" }); return; }
+    if (review.customerId === customerId) { res.status(400).json({ error: "Cannot like your own review" }); return; }
+    const idx = review.likes.indexOf(customerId);
+    if (idx === -1) { review.likes.push(customerId); }
+    else { review.likes.splice(idx, 1); }
+    await review.save();
+    res.json({ likeCount: review.likes.length, liked: idx === -1 });
+  } catch (err) {
+    req.log.error({ err }, "Like review error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default router;
