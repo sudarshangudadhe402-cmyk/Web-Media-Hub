@@ -624,11 +624,6 @@ export default function Login() {
                     className="text-xs font-medium hover:underline"
                     style={{ color: "#B05EB0" }}
                     onClick={() => { setForgotOpen(true); setForgotStep("email"); setForgotError(""); }}
-
-                    onClick={() => setShowForgotModal(true)}
-                    className="text-xs font-medium hover:underline"
-                    style={{ color: "#B05EB0" }}
-
                   >
                     Forgot Password?
                   </button>
