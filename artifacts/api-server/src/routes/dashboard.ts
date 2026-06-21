@@ -23,15 +23,6 @@ router.get("/dashboard/summary", requireAuth, async (req: AuthRequest, res) => {
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
 
-    // Helper: products that have NO functionCategory (belong to their productType bucket)
-    const noFuncCat = {
-      $or: [
-        { functionCategory: { $exists: false } },
-        { functionCategory: null },
-        { functionCategory: "" },
-      ],
-    };
-
     const [
       totalProducts,
       topCount,
@@ -44,17 +35,14 @@ router.get("/dashboard/summary", requireAuth, async (req: AuthRequest, res) => {
       allVisitorsAgg,
     ] = await Promise.all([
       Product.countDocuments(storeFilter),
-      // Top/Bottom/Full Outfit: exclude products that have a functionCategory set
-      Product.countDocuments({ ...storeFilter, productType: "Top", ...noFuncCat }),
-      Product.countDocuments({ ...storeFilter, productType: "Bottom", ...noFuncCat }),
-      Product.countDocuments({ ...storeFilter, productType: "Full Outfit", ...noFuncCat }),
-      // Functional: productType=Functional OR has a functionCategory (union, no double-count)
+      // Top/Bottom/Full Outfit: count ALL products of that type (including those that also have a functionCategory)
+      Product.countDocuments({ ...storeFilter, productType: "Top" }),
+      Product.countDocuments({ ...storeFilter, productType: "Bottom" }),
+      Product.countDocuments({ ...storeFilter, productType: "Full Outfit" }),
+      // Functional: products that have a functionCategory set (any productType)
       Product.countDocuments({
         ...storeFilter,
-        $or: [
-          { productType: "Functional" },
-          { functionCategory: { $exists: true, $nin: [null, ""] } },
-        ],
+        functionCategory: { $exists: true, $nin: [null, ""] },
       }),
       storeId ? Notification.countDocuments({ read: false, storeId }) : Promise.resolve(0),
       storeId
