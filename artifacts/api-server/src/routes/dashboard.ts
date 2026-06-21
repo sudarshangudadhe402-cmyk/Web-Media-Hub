@@ -23,6 +23,15 @@ router.get("/dashboard/summary", requireAuth, async (req: AuthRequest, res) => {
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
 
+    // Helper: products that have NO functionCategory (belong to their productType bucket)
+    const noFuncCat = {
+      $or: [
+        { functionCategory: { $exists: false } },
+        { functionCategory: null },
+        { functionCategory: "" },
+      ],
+    };
+
     const [
       totalProducts,
       topCount,
@@ -30,18 +39,24 @@ router.get("/dashboard/summary", requireAuth, async (req: AuthRequest, res) => {
       fullOutfitCount,
       functionalCount,
       unreadNotifications,
-      funcCatCount,
       dayVisitorsAgg,
       monthVisitorsAgg,
       allVisitorsAgg,
     ] = await Promise.all([
       Product.countDocuments(storeFilter),
-      Product.countDocuments({ ...storeFilter, productType: "Top" }),
-      Product.countDocuments({ ...storeFilter, productType: "Bottom" }),
-      Product.countDocuments({ ...storeFilter, productType: "Full Outfit" }),
-      Product.countDocuments({ ...storeFilter, productType: "Functional" }),
+      // Top/Bottom/Full Outfit: exclude products that have a functionCategory set
+      Product.countDocuments({ ...storeFilter, productType: "Top", ...noFuncCat }),
+      Product.countDocuments({ ...storeFilter, productType: "Bottom", ...noFuncCat }),
+      Product.countDocuments({ ...storeFilter, productType: "Full Outfit", ...noFuncCat }),
+      // Functional: productType=Functional OR has a functionCategory (union, no double-count)
+      Product.countDocuments({
+        ...storeFilter,
+        $or: [
+          { productType: "Functional" },
+          { functionCategory: { $exists: true, $nin: [null, ""] } },
+        ],
+      }),
       storeId ? Notification.countDocuments({ read: false, storeId }) : Promise.resolve(0),
-      Product.countDocuments({ ...storeFilter, functionCategory: { $exists: true, $nin: [null, ""] } }),
       storeId
         ? StoreVisitor.aggregate([
             { $match: { storeId, visitedAt: { $gte: todayStart } } },
@@ -87,8 +102,6 @@ router.get("/dashboard/summary", requireAuth, async (req: AuthRequest, res) => {
         : Promise.resolve(0),
     ]);
 
-    const functionalTotal = functionalCount + funcCatCount;
-
     const recentBookings = recentBookingsDocs.map((b) => {
       const prod = b.populated("productId") ? (b.productId as Record<string, unknown>) : null;
       return {
@@ -126,7 +139,7 @@ router.get("/dashboard/summary", requireAuth, async (req: AuthRequest, res) => {
         Top: topCount,
         Bottom: bottomCount,
         "Full Outfit": fullOutfitCount,
-        Functional: functionalTotal,
+        Functional: functionalCount,
       },
       activeBookings,
       unseenBookings,
