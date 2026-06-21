@@ -221,45 +221,56 @@ export default function HomeTab({
                   View All <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <div className="overflow-x-auto px-4" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateRows: "repeat(2, auto)",
-                    gridAutoFlow: "column",
-                    gap: "10px",
-                    width: "max-content",
-                  }}
-                >
-                  {categories.map((cat) => (
-                    <button
-                      key={cat.id}
-                      onClick={() => onCategoryOpen(cat)}
-                      className="flex flex-col items-center gap-2 active:scale-95 transition-transform"
-                      style={{ width: 90 }}
+              {(() => {
+                const mid = Math.ceil(categories.length / 2);
+                const row1 = categories.slice(0, mid);
+                const row2 = categories.slice(mid);
+                const renderCat = (cat: typeof categories[0]) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => onCategoryOpen(cat)}
+                    className="flex flex-col items-center gap-2 active:scale-95 transition-transform shrink-0"
+                    style={{ width: 90 }}
+                  >
+                    <div
+                      className="w-full overflow-hidden"
+                      style={{ height: 110, borderRadius: 18, background: "#f5f5f5", boxShadow: "0 4px 16px rgba(0,0,0,0.08)" }}
                     >
+                      {cat.coverImage ? (
+                        <img
+                          src={cat.coverImage}
+                          alt={cat.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <ShoppingBag className="w-8 h-8 text-gray-200" />
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[11px] font-bold text-gray-700 uppercase tracking-wide text-center leading-tight">{cat.name}</p>
+                  </button>
+                );
+                return (
+                  <div className="flex flex-col gap-2.5">
+                    <div
+                      className="flex gap-2.5 overflow-x-auto px-4"
+                      style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
+                    >
+                      {row1.map(renderCat)}
+                    </div>
+                    {row2.length > 0 && (
                       <div
-                        className="w-full overflow-hidden"
-                        style={{ height: 110, borderRadius: 18, background: "#f5f5f5", boxShadow: "0 4px 16px rgba(0,0,0,0.08)" }}
+                        className="flex gap-2.5 overflow-x-auto px-4"
+                        style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
                       >
-                        {cat.coverImage ? (
-                          <img
-                            src={cat.coverImage}
-                            alt={cat.name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <ShoppingBag className="w-8 h-8 text-gray-200" />
-                          </div>
-                        )}
+                        {row2.map(renderCat)}
                       </div>
-                      <p className="text-[11px] font-bold text-gray-700 uppercase tracking-wide text-center leading-tight">{cat.name}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           )}
 
