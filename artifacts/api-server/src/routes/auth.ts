@@ -36,13 +36,11 @@ function getRecord(key: string): AttemptRecord {
 function isLocked(record: AttemptRecord): boolean {
   if (!record.lockedUntil) return false;
   if (Date.now() < record.lockedUntil) return true;
-  // Lock expired — reset
   return false;
 }
 
 function recordFailure(key: string): AttemptRecord {
   const rec = getRecord(key);
-  // If previous lock expired, reset count
   if (rec.lockedUntil && Date.now() >= rec.lockedUntil) {
     rec.count = 0;
     rec.lockedUntil = null;
@@ -69,12 +67,21 @@ setInterval(() => {
 }, 60 * 60 * 1000);
 // ────────────────────────────────────────────────────────────────────────────
 
+// ─── Plan-based login capacity ───────────────────────────────────────────────
+function getLoginCapacity(planName: string, planPrice: string): number {
+  if (planName === "Starting Plan" || planPrice === "₹999") return 2;
+  if (planName === "Lifetime Business" || planPrice === "₹15,999") return 4;
+  if (planName === "Enterprise" || planPrice === "₹19,999") return Infinity;
+  // Premium Annual (₹5,999) or any unknown plan → 1 device
+  return 1;
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 const router = Router();
 
 router.post("/auth/login", requireDb, async (req, res) => {
   try {
     const { username, email: emailId, password } = req.body;
-    // Accept either "email" (from admin login) or "username" (from super admin login)
     const identifier = (emailId || username || "").trim();
 
     if (!identifier || !password) {
@@ -85,7 +92,6 @@ router.post("/auth/login", requireDb, async (req, res) => {
     const attemptKey = getAttemptKey(req, identifier);
     const record = getRecord(attemptKey);
 
-    // Check lockout
     if (isLocked(record)) {
       const remainingMs = (record.lockedUntil! - Date.now());
       const remainingMin = Math.ceil(remainingMs / 60000);
@@ -96,7 +102,6 @@ router.post("/auth/login", requireDb, async (req, res) => {
       return;
     }
 
-    // Find user: try by username (super_admin path) OR by email (admin path)
     const user = await User.findOne({
       $or: [{ username: identifier }, { email: identifier }],
     });
@@ -137,16 +142,27 @@ router.post("/auth/login", requireDb, async (req, res) => {
       }
     }
 
-    if (user.role === "admin" && !user.multiDeviceAllowed && user.sessionId && user.sessionId !== "") {
-      res.status(403).json({ error: "Multi-device not allowed from super-admin, please allow first" });
-      return;
+    // ── Plan-based device limit check (admins only) ──────────────────────────
+    if (user.role === "admin") {
+      const capacity = getLoginCapacity(user.planName ?? "", user.planPrice ?? "");
+      const currentCount = (user.activeSessions ?? []).length;
+      if (currentCount >= capacity) {
+        res.status(403).json({
+          error: "LOGIN_CAPACITY_FULL",
+          capacity,
+          current: currentCount,
+        });
+        return;
+      }
     }
+    // ─────────────────────────────────────────────────────────────────────────
 
-    // Success — clear failed attempts
     clearFailures(attemptKey);
 
     const sessionId = crypto.randomUUID();
-    user.sessionId = sessionId;
+
+    if (!user.activeSessions) user.activeSessions = [];
+    user.activeSessions.push({ sessionId, loginAt: new Date() });
     await user.save();
 
     const token = signToken(String(user._id), sessionId, user.role);
@@ -169,7 +185,24 @@ router.post("/auth/login", requireDb, async (req, res) => {
 router.post("/auth/logout", requireDb, requireAuth, async (req: AuthRequest, res) => {
   try {
     const user = req.user!;
-    user.sessionId = "";
+    const authHeader = req.headers.authorization ?? "";
+    const token = authHeader.split(" ")[1];
+
+    let sessionIdToRemove: string | undefined;
+    try {
+      const jwt = await import("jsonwebtoken");
+      const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || "wmh-secret-key-2024";
+      const decoded = jwt.default.decode(token) as { sessionId?: string } | null;
+      sessionIdToRemove = decoded?.sessionId;
+    } catch {
+      // ignore decode errors
+    }
+
+    if (sessionIdToRemove) {
+      user.activeSessions = (user.activeSessions ?? []).filter((s) => s.sessionId !== sessionIdToRemove);
+    } else {
+      user.activeSessions = [];
+    }
     await user.save();
     res.json({ success: true });
   } catch (err) {
@@ -216,7 +249,7 @@ router.patch("/auth/change-password", requireDb, requireAuth, async (req: AuthRe
     if (username) user.username = username;
     if (newPassword) {
       user.password = newPassword;
-      user.plainPassword = newPassword; // keep plain copy in sync for super admin view
+      user.plainPassword = newPassword;
     }
     await user.save();
 

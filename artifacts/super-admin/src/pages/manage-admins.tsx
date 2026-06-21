@@ -876,20 +876,26 @@ export default function ManageAdmins() {
                   </span>
                 </div>
                 {(selectedRequest as any).rewardCode && (
-                  <div className="flex items-center justify-between px-4 py-3">
-                    <span className="text-sm text-muted-foreground">Reward Code</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-mono font-bold tracking-widest text-green-700 bg-green-50 border border-green-200 px-2.5 py-0.5 rounded-lg">
-                        {(selectedRequest as any).rewardCode}
+                  <div className="flex items-center justify-between px-4 py-3 gap-3">
+                    <span className="text-sm text-muted-foreground shrink-0">Reward Code</span>
+                    {(selectedRequest as any).rewardCode === "NO_REWARD_MONTHLY_PLAN" ? (
+                      <span className="text-xs font-medium text-right leading-snug text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1.5 rounded-lg max-w-[220px]">
+                        This admin chose monthly plan, reward Not set on this plan
                       </span>
-                      <button
-                        onClick={() => navigator.clipboard.writeText((selectedRequest as any).rewardCode)}
-                        className="text-muted-foreground hover:text-foreground transition-colors"
-                        title="Copy reward code"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-mono font-bold tracking-widest text-green-700 bg-green-50 border border-green-200 px-2.5 py-0.5 rounded-lg">
+                          {(selectedRequest as any).rewardCode}
+                        </span>
+                        <button
+                          onClick={() => navigator.clipboard.writeText((selectedRequest as any).rewardCode)}
+                          className="text-muted-foreground hover:text-foreground transition-colors"
+                          title="Copy reward code"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

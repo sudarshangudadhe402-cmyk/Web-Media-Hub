@@ -96,6 +96,12 @@ export default function PublicStore() {
       return new Set(Object.entries(raw).filter(([, ts]) => now - ts < 86400000).map(([id]) => id));
     } catch { return new Set(); }
   });
+  const [tryOnProducts, setTryOnProducts] = useState<Set<string>>(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem(`wmh_tryons_${slug}`) || "{}") as Record<string, number>;
+      return new Set(Object.keys(raw));
+    } catch { return new Set(); }
+  });
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
   const [tryOnLikeCounts, setTryOnLikeCounts] = useState<Record<string, number>>({});
 
@@ -523,6 +529,14 @@ export default function PublicStore() {
           const d = await res.json();
           setTryOnLikeCounts((prev) => ({ ...prev, [selectedProduct.id]: d.tryOnLikeCount }));
           setLastCountedPhoto(customerPhoto);
+          // Record try-on in localStorage and state
+          try {
+            const tryOnKey = `wmh_tryons_${slug}`;
+            const raw = JSON.parse(localStorage.getItem(tryOnKey) || "{}") as Record<string, number>;
+            raw[selectedProduct.id] = Date.now();
+            localStorage.setItem(tryOnKey, JSON.stringify(raw));
+            setTryOnProducts((prev) => new Set([...prev, selectedProduct.id]));
+          } catch {}
         }
       }
       await new Promise<void>((resolve) => {
@@ -1506,7 +1520,7 @@ export default function PublicStore() {
         {tab === "wishlist" && (
           <WishlistTab
             products={data.products}
-            likedProducts={likedProducts}
+            wishlistProducts={new Set([...likedProducts].filter((id) => tryOnProducts.has(id)))}
             likeCounts={likeCounts}
             onProductClick={openProduct}
             onUnlike={handleLike}
@@ -1534,7 +1548,7 @@ export default function PublicStore() {
         activeTab={tab}
         onTabChange={(newTab) => { setTab(newTab); setShopInitCategory("all"); }}
         bookingCount={myBookings.filter(b => !completedStatus[b.id]).length}
-        wishlistCount={likedProducts.size}
+        wishlistCount={[...likedProducts].filter((id) => tryOnProducts.has(id)).length}
       />
     </div>
   );

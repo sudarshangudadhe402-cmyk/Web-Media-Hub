@@ -116,12 +116,12 @@ export default function Pricing() {
               <h3 className="text-xl font-medium text-white/90 mb-2">Starting Plan</h3>
               <div className="flex items-baseline gap-1 mb-4">
                 <span className="text-4xl font-bold text-white">₹999</span>
-                <span className="text-white/50 text-sm">/ Month ( 30 days )</span>
+                <span className="text-white/50 text-sm">/ Month ( 31 Day )</span>
               </div>
               <p className="text-white/60 text-sm mb-8">Perfect for testing the platform before upgrading.</p>
 
               <div className="space-y-4 mb-8 flex-1">
-                {['Full Feature Access', '1 Store Login', 'Virtual Try-On', 'Loyalty Card', 'AI Promotional Videos', 'Online Booking', 'Live Notifications'].map((feature, i) => (
+                {['Full Feature Access', '2 Store Login', 'Virtual Try-On', 'Loyalty Card', 'AI Promotional Videos', 'Online Booking', 'Live Notifications'].map((feature, i) => (
                   <div key={i} className="flex items-start gap-3">
                     <Check className="w-4 h-4 text-white/40 shrink-0 mt-0.5" />
                     <span className="text-sm text-white/70">{feature}</span>
@@ -219,7 +219,7 @@ export default function Pricing() {
                 </div>
 
                 <div className="space-y-4 mb-8 flex-1">
-                  {['Everything in Premium Annual', 'Lifetime Access, No Renewal Ever', '2000₹ Web Media Hub Coin', 'Future Feature Updates', 'Priority Support'].map((feature, i) => (
+                  {['Everything in Premium Annual', 'Lifetime Access, No Renewal Ever', '4 Store Login', '2000₹ Web Media Hub Coin', 'Future Feature Updates', 'Priority Support'].map((feature, i) => (
                     <div key={i} className="flex items-start gap-3">
                       <div className="w-5 h-5 rounded-full bg-[#00FF88]/20 flex items-center justify-center shrink-0 mt-0.5">
                         <Check className="w-3 h-3 text-[#00FF88]" />
@@ -272,7 +272,7 @@ export default function Pricing() {
                 <p className="text-[#FF2D2D]/80 text-sm font-medium mb-6">Designed for large stores and premium brands.</p>
 
                 <div className="space-y-4 mb-8 flex-1">
-                  {['Everything in Lifetime Plan', '6000₹ Web Media Hub Coin', 'Premium AI Resources', 'Early Access Features', 'VIP Support'].map((feature, i) => (
+                  {['Unlimited Store Login  ∞', '4000₹ Web Media Hub Coin', 'Premium AI Resources', 'Early Access Features', 'VIP Support'].map((feature, i) => (
                     <div key={i} className="flex items-start gap-3">
                       <div className="w-5 h-5 rounded-full bg-[#FF2D2D]/20 flex items-center justify-center shrink-0 mt-0.5">
                         <Check className="w-3 h-3 text-[#FF2D2D]" />

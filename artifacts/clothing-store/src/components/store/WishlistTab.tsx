@@ -1,4 +1,4 @@
-import { Heart, ShoppingBag, Camera } from "lucide-react";
+import { Heart, ShoppingBag, Camera, Sparkles } from "lucide-react";
 
 interface PublicProduct {
   id: string;
@@ -20,7 +20,7 @@ interface PublicProduct {
 
 interface WishlistTabProps {
   products: PublicProduct[];
-  likedProducts: Set<string>;
+  wishlistProducts: Set<string>;
   likeCounts: Record<string, number>;
   onProductClick: (product: PublicProduct) => void;
   onUnlike: (productId: string, e: React.MouseEvent) => void;
@@ -32,10 +32,10 @@ function discountPct(p: PublicProduct) {
     : 0;
 }
 
-export default function WishlistTab({ products, likedProducts, likeCounts, onProductClick, onUnlike }: WishlistTabProps) {
-  const wishlistProducts = products.filter((p) => likedProducts.has(p.id));
+export default function WishlistTab({ products, wishlistProducts, likeCounts, onProductClick, onUnlike }: WishlistTabProps) {
+  const filtered = products.filter((p) => wishlistProducts.has(p.id));
 
-  if (wishlistProducts.length === 0) {
+  if (filtered.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center pb-24 px-6 text-center" style={{ background: "#ffffff" }}>
         <div
@@ -47,8 +47,24 @@ export default function WishlistTab({ products, likedProducts, likeCounts, onPro
         <h2 className="text-lg font-black text-gray-900 mb-2" style={{ fontFamily: "'Montserrat', sans-serif" }}>
           Your Wishlist is Empty
         </h2>
-        <p className="text-sm text-gray-400 leading-relaxed">
-          Tap the ♡ on any product to save it here for later.
+        <p className="text-sm text-gray-400 leading-relaxed max-w-xs">
+          To save a product to your wishlist, you need to do <span className="font-semibold text-gray-600">both</span>:
+        </p>
+        <div className="mt-4 space-y-2 w-full max-w-xs">
+          <div className="flex items-center gap-3 bg-red-50 rounded-xl px-4 py-2.5">
+            <Heart className="w-4 h-4 text-red-400 fill-current shrink-0" />
+            <span className="text-sm text-gray-700 font-medium">Like the product</span>
+          </div>
+          <div className="flex items-center gap-2 self-center justify-center">
+            <span className="text-xs font-bold text-gray-400">+</span>
+          </div>
+          <div className="flex items-center gap-3 bg-blue-50 rounded-xl px-4 py-2.5">
+            <Camera className="w-4 h-4 text-blue-400 shrink-0" />
+            <span className="text-sm text-gray-700 font-medium">Do a Virtual Try-On</span>
+          </div>
+        </div>
+        <p className="text-xs text-gray-400 mt-4 leading-relaxed max-w-xs">
+          Only products where you've done <strong>both</strong> will appear here.
         </p>
       </div>
     );
@@ -60,11 +76,19 @@ export default function WishlistTab({ products, likedProducts, likeCounts, onPro
         <h2 className="font-black text-gray-900 text-lg" style={{ fontFamily: "'Montserrat', sans-serif" }}>
           Wishlist
         </h2>
-        <span className="text-xs text-gray-400 font-medium">{wishlistProducts.length} item{wishlistProducts.length !== 1 ? "s" : ""}</span>
+        <span className="text-xs text-gray-400 font-medium">{filtered.length} item{filtered.length !== 1 ? "s" : ""}</span>
+      </div>
+
+      {/* Hint bar */}
+      <div className="mx-4 mb-3 rounded-xl px-3 py-2 flex items-center gap-2" style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)" }}>
+        <Sparkles className="w-3.5 h-3.5 text-red-400 shrink-0" />
+        <p className="text-[11px] text-gray-500 leading-snug">
+          Saved by <span className="font-semibold text-red-500">Like ♡</span> + <span className="font-semibold text-blue-500">Virtual Try-On</span>
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 px-4">
-        {wishlistProducts.map((p) => {
+        {filtered.map((p) => {
           const disc = discountPct(p);
           return (
             <div
@@ -89,6 +113,15 @@ export default function WishlistTab({ products, likedProducts, likeCounts, onPro
                     {disc}% OFF
                   </span>
                 )}
+                {/* Like + TryOn badge */}
+                <div className="absolute bottom-2 left-2 flex items-center gap-1">
+                  <span className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)" }}>
+                    <Heart className="w-3 h-3 fill-red-500 text-red-500" />
+                  </span>
+                  <span className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)" }}>
+                    <Camera className="w-3 h-3 text-blue-500" />
+                  </span>
+                </div>
                 <button
                   className="absolute bottom-2 right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform"
                   style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)" }}

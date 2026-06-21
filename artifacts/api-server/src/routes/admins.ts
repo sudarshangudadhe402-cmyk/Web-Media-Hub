@@ -7,6 +7,13 @@ import { sendOtpEmail } from "../services/emailOtp";
 
 const router = Router();
 
+function getLoginCapacity(planName: string, planPrice: string): number {
+  if (planName === "Starting Plan" || planPrice === "₹999") return 2;
+  if (planName === "Lifetime Business" || planPrice === "₹15,999") return 4;
+  if (planName === "Enterprise" || planPrice === "₹19,999") return Infinity;
+  return 1;
+}
+
 function calcSubscriptionDates(planPeriod: string): { start: Date | null; end: Date | null } {
   const p = (planPeriod ?? "").toLowerCase();
   const now = new Date();
@@ -110,7 +117,8 @@ router.get("/admins", requireSuperAdmin, async (req, res) => {
         adminNumber: a.adminNumber ?? "",
         role: a.role,
         isActive: a.isActive !== false,
-        multiDeviceAllowed: a.multiDeviceAllowed === true,
+        activeSessionCount: (a.activeSessions ?? []).length,
+        loginCapacity: getLoginCapacity(a.planName ?? "", a.planPrice ?? ""),
         storeSlug: storeMap[String(a._id)]?.publicSlug ?? null,
         storeName: storeMap[String(a._id)]?.name ?? null,
         storeCreatedAt: storeMap[String(a._id)]?.createdAt?.toISOString() ?? null,
@@ -186,7 +194,8 @@ router.post("/admins", requireSuperAdmin, async (req, res) => {
       adminNumber: admin.adminNumber ?? "",
       role: admin.role,
       isActive: true,
-      multiDeviceAllowed: false,
+      activeSessionCount: 0,
+      loginCapacity: getLoginCapacity(planName ?? "", planPrice ?? ""),
       storeSlug: null,
       storeName: null,
       storeCreatedAt: null,
@@ -243,7 +252,7 @@ router.patch("/admins/:id/toggle-active", requireSuperAdmin, async (req, res) =>
     }
     const updateFields: Record<string, unknown> = { isActive };
     if (!isActive) {
-      updateFields.sessionId = null;
+      updateFields.activeSessions = [];
     }
     const admin = await User.findByIdAndUpdate(req.params.id, updateFields, { new: true });
     if (!admin) {

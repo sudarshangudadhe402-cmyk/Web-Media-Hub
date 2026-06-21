@@ -35,15 +35,11 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
       return;
     }
 
-    if (decoded.sessionId && user.sessionId) {
-      const sessionValid = decoded.sessionId === user.sessionId;
-      if (!sessionValid) {
-        const isSuperAdmin = user.role === "super_admin";
-        const multiDeviceOk = user.role === "admin" && user.multiDeviceAllowed === true;
-        if (isSuperAdmin || !multiDeviceOk) {
-          res.status(401).json({ error: "Session expired — you have been logged in from another device" });
-          return;
-        }
+    if (decoded.sessionId) {
+      const sessionExists = user.activeSessions.some((s) => s.sessionId === decoded.sessionId);
+      if (!sessionExists && user.role !== "super_admin") {
+        res.status(401).json({ error: "Session expired — you have been logged in from another device" });
+        return;
       }
     }
 
