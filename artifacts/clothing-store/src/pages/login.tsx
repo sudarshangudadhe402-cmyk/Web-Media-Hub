@@ -68,7 +68,6 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
-  const [showForgotModal, setShowForgotModal] = useState(false);
   const [showCapacityFull, setShowCapacityFull] = useState(false);
 
   // Forgot password state
