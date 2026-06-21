@@ -65,8 +65,13 @@ export default function HomeTab({
   onTryOnClick,
 }: HomeTabProps) {
   const [search, setSearch] = useState("");
+  const [arrivalTab, setArrivalTab] = useState<"arrivals" | "trending">("arrivals");
 
   const newArrivals = products.slice(0, 8);
+  const mostTrending = [...products]
+    .filter((p) => p.likeCount > 0 && p.tryOnLikeCount > 0)
+    .sort((a, b) => (b.recentLikeCount + b.recentTryOnCount) - (a.recentLikeCount + a.recentTryOnCount))
+    .slice(0, 10);
   const filteredBySearch = search.trim()
     ? products.filter(
         (p) =>
@@ -274,79 +279,126 @@ export default function HomeTab({
             </div>
           )}
 
-          {/* ── New Arrivals ── */}
-          {newArrivals.length > 0 && (
+          {/* ── New Arrivals / Most Trending Toggle ── */}
+          {(newArrivals.length > 0 || mostTrending.length > 0) && (
             <div className="pb-5">
+              {/* Toggle Header */}
               <div className="flex items-center justify-between px-4 mb-3">
-                <h3 className="font-black text-gray-900 text-base" style={{ fontFamily: "'Montserrat', sans-serif" }}>
-                  New Arrivals
-                </h3>
+                <div className="flex items-center gap-1 p-1 rounded-2xl" style={{ background: "#f0f0f0" }}>
+                  <button
+                    onClick={() => setArrivalTab("arrivals")}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
+                    style={
+                      arrivalTab === "arrivals"
+                        ? { background: "#000000", color: "white" }
+                        : { background: "transparent", color: "#888888" }
+                    }
+                  >
+                    New Arrivals
+                  </button>
+                  <button
+                    onClick={() => setArrivalTab("trending")}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
+                    style={
+                      arrivalTab === "trending"
+                        ? { background: "#000000", color: "white" }
+                        : { background: "transparent", color: "#888888" }
+                    }
+                  >
+                    Most Trending 🚀
+                  </button>
+                </div>
                 <button onClick={onViewAll} className="flex items-center gap-0.5 text-xs font-semibold text-gray-500">
                   View All <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-3 px-4">
-                {newArrivals.map((p) => {
-                  const disc = discountPct(p);
-                  const liked = likedProducts.has(p.id);
+
+              {/* Products Grid */}
+              {(() => {
+                const list = arrivalTab === "arrivals" ? newArrivals : mostTrending;
+                if (list.length === 0) {
                   return (
-                    <div
-                      key={p.id}
-                      onClick={() => onProductClick(p)}
-                      className="rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
-                      style={{ background: "#f8f8f8", boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}
-                    >
-                      <div className="relative" style={{ aspectRatio: "3/4", background: "#f0f0f0" }}>
-                        {p.images[0] ? (
-                          <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <ShoppingBag className="w-8 h-8 text-gray-200" />
-                          </div>
-                        )}
-                        {disc > 0 && (
-                          <span
-                            className="absolute top-2 left-2 text-[10px] font-black px-2 py-0.5 rounded-full"
-                            style={{ background: "#000000", color: "white" }}
-                          >
-                            {disc}% OFF
-                          </span>
-                        )}
-                        <button
-                          className="absolute bottom-2 right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-md active:scale-90 transition-transform"
-                          style={{ background: liked ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.95)" }}
-                          onClick={(e) => { e.stopPropagation(); onLike(p.id, e); }}
-                        >
-                          <Heart className={`w-4 h-4 ${liked ? "fill-red-500 text-red-500" : "text-gray-400"}`} />
-                        </button>
-                      </div>
-                      <div className="px-3 pt-2.5 pb-3">
-                        <p className="text-[12px] font-semibold text-gray-900 line-clamp-2 leading-tight mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                          {p.name}
-                        </p>
-                        <p className="text-[10px] text-gray-400 mb-1">{p.productType}</p>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[14px] font-black text-gray-900">₹{p.discountPrice.toLocaleString()}</span>
-                          {disc > 0 && (
-                            <>
-                              <span className="text-[11px] text-gray-400 line-through">₹{p.actualPrice.toLocaleString()}</span>
-                              <span className="text-[10px] font-bold text-green-500">{disc}% OFF</span>
-                            </>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2.5 mt-1.5">
-                          <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
-                            <Heart className="w-3 h-3 text-red-400 fill-current" />{likeCounts[p.id] ?? p.likeCount}
-                          </span>
-                          <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
-                            <Camera className="w-3 h-3 text-blue-400" />{p.tryOnLikeCount}
-                          </span>
-                        </div>
-                      </div>
+                    <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+                      <span className="text-4xl mb-2">🚀</span>
+                      <p className="text-sm text-gray-400 font-medium">No trending products yet</p>
+                      <p className="text-xs text-gray-300 mt-1">Products with likes + Virtual Try-Ons will appear here</p>
                     </div>
                   );
-                })}
-              </div>
+                }
+                return (
+                  <div className="grid grid-cols-2 gap-3 px-4">
+                    {list.map((p) => {
+                      const disc = discountPct(p);
+                      const liked = likedProducts.has(p.id);
+                      const isTrending = arrivalTab === "trending";
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => onProductClick(p)}
+                          className="rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+                          style={{ background: "#f8f8f8", boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}
+                        >
+                          <div className="relative" style={{ aspectRatio: "3/4", background: "#f0f0f0" }}>
+                            {p.images[0] ? (
+                              <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <ShoppingBag className="w-8 h-8 text-gray-200" />
+                              </div>
+                            )}
+                            {isTrending && (
+                              <span
+                                className="absolute top-2 left-2 text-[10px] font-black px-2 py-0.5 rounded-full"
+                                style={{ background: "linear-gradient(135deg,#ff6b00,#ff0066)", color: "white" }}
+                              >
+                                🚀 Trending
+                              </span>
+                            )}
+                            {!isTrending && disc > 0 && (
+                              <span
+                                className="absolute top-2 left-2 text-[10px] font-black px-2 py-0.5 rounded-full"
+                                style={{ background: "#000000", color: "white" }}
+                              >
+                                {disc}% OFF
+                              </span>
+                            )}
+                            <button
+                              className="absolute bottom-2 right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-md active:scale-90 transition-transform"
+                              style={{ background: liked ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.95)" }}
+                              onClick={(e) => { e.stopPropagation(); onLike(p.id, e); }}
+                            >
+                              <Heart className={`w-4 h-4 ${liked ? "fill-red-500 text-red-500" : "text-gray-400"}`} />
+                            </button>
+                          </div>
+                          <div className="px-3 pt-2.5 pb-3">
+                            <p className="text-[12px] font-semibold text-gray-900 line-clamp-2 leading-tight mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                              {p.name}
+                            </p>
+                            <p className="text-[10px] text-gray-400 mb-1">{p.productType}</p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[14px] font-black text-gray-900">₹{p.discountPrice.toLocaleString()}</span>
+                              {disc > 0 && (
+                                <>
+                                  <span className="text-[11px] text-gray-400 line-through">₹{p.actualPrice.toLocaleString()}</span>
+                                  <span className="text-[10px] font-bold text-green-500">{disc}% OFF</span>
+                                </>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2.5 mt-1.5">
+                              <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
+                                <Heart className="w-3 h-3 text-red-400 fill-current" />{likeCounts[p.id] ?? p.likeCount}
+                              </span>
+                              <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
+                                <Camera className="w-3 h-3 text-blue-400" />{p.tryOnLikeCount}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           )}
 
