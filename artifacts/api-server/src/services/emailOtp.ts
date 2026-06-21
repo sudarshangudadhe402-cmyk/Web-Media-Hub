@@ -61,7 +61,13 @@ export async function sendOtpEmail(
   await transporter.sendMail({
     from: `"Web Media Hub" <${process.env.GMAIL_USER}>`,
     to: toEmail,
+    replyTo: process.env.GMAIL_USER,
     subject,
     html,
+    text: `Your OTP is: ${otp}\n\nThis code is valid for 10 minutes.\n\nWeb Media Hub`,
+    headers: {
+      "X-Priority": "1",
+      "X-Mailer": "Web Media Hub Mailer",
+    },
   });
 }
