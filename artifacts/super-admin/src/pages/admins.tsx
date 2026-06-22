@@ -432,8 +432,11 @@ export default function Admins() {
             const subEnd = (selectedAdmin as any).subscriptionEndDate as string | null;
             const storeCreatedAt = (selectedAdmin as any).storeCreatedAt as string | null;
             const days = getDaysRemaining(subEnd);
-            const isLifetime = planPeriod && !planPeriod.toLowerCase().includes("month") && !planPeriod.toLowerCase().includes("year");
-            const isExpired = subEnd && days !== null && days <= 0;
+            const isLifetime =
+              planName?.toLowerCase().includes("lifetime") ||
+              planPrice?.includes("15,999") ||
+              (planPeriod ? !planPeriod.toLowerCase().includes("month") && !planPeriod.toLowerCase().includes("year") : false);
+            const isExpired = !isLifetime && subEnd && days !== null && days <= 0;
 
             return (
               <div className="space-y-5 pt-2">
@@ -449,99 +452,97 @@ export default function Admins() {
                   </div>
                 </div>
 
-                {/* Plan Card */}
-                {planName && (
-                  <div
-                    className="rounded-xl border px-4 py-3 space-y-1"
-                    style={{ borderColor: planColor ? planColor + "55" : undefined, background: planColor ? planColor + "11" : undefined }}
-                  >
+                {/* Plan Card — always show */}
+                <div
+                  className="rounded-xl border px-4 py-3 space-y-1"
+                  style={{
+                    borderColor: planColor ? planColor + "55" : "rgba(0,0,0,0.1)",
+                    background: planColor ? planColor + "11" : "rgba(0,0,0,0.02)",
+                  }}
+                >
+                  {planBadge ? (
                     <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: planColor || "#888" }}>{planBadge}</p>
-                    <p className="font-bold text-sm">{planName}</p>
-                    {planPrice && (
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-lg font-extrabold" style={{ color: planColor || undefined }}>{planPrice}</span>
-                        {planPeriod && <span className="text-xs text-muted-foreground">{planPeriod}</span>}
+                  ) : (
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Plan Info</p>
+                  )}
+                  <p className="font-bold text-sm">{planName || "No Plan Assigned"}</p>
+                  {planPrice ? (
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-lg font-extrabold" style={{ color: planColor || undefined }}>{planPrice}</span>
+                      {planPeriod && <span className="text-xs text-muted-foreground">{planPeriod}</span>}
+                    </div>
+                  ) : planName ? null : (
+                    <p className="text-xs text-muted-foreground">Contact super admin to assign a plan</p>
+                  )}
+                </div>
+
+                {/* Subscription Timeline — always show */}
+                <div className="rounded-xl border overflow-hidden">
+                  <div className="bg-muted/50 px-4 py-2 border-b">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Subscription Timeline</p>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {storeCreatedAt && (
+                      <div className="flex items-center justify-between px-4 py-3">
+                        <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                          <Store className="w-3.5 h-3.5" /> Store Registered
+                        </span>
+                        <span className="text-sm font-semibold">{fmtDate(storeCreatedAt)}</span>
                       </div>
                     )}
-                  </div>
-                )}
-
-                {/* Subscription Timeline */}
-                {!isLifetime && planName && (
-                  <div className="rounded-xl border overflow-hidden">
-                    <div className="bg-muted/50 px-4 py-2 border-b">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Subscription Timeline</p>
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                        <CalendarDays className="w-3.5 h-3.5" /> Subscription Start
+                      </span>
+                      <span className="text-sm font-semibold">{subStart ? fmtDate(subStart) : "—"}</span>
                     </div>
-                    <div className="divide-y divide-border">
-                      {storeCreatedAt && (
-                        <div className="flex items-center justify-between px-4 py-3">
-                          <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-                            <Store className="w-3.5 h-3.5" /> Store Registered
-                          </span>
-                          <span className="text-sm font-semibold">{fmtDate(storeCreatedAt)}</span>
-                        </div>
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5" /> Subscription End
+                      </span>
+                      {isLifetime ? (
+                        <span className="text-sm font-bold flex items-center gap-1" style={{ color: "#9333ea" }}>∞ Unlimited</span>
+                      ) : (
+                        <span className={`text-sm font-semibold ${isExpired ? "text-red-500" : ""}`}>{subEnd ? fmtDate(subEnd) : "—"}</span>
                       )}
-                      <div className="flex items-center justify-between px-4 py-3">
-                        <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-                          <CalendarDays className="w-3.5 h-3.5" /> Subscription Start
-                        </span>
-                        <span className="text-sm font-semibold">{fmtDate(subStart)}</span>
-                      </div>
-                      <div className="flex items-center justify-between px-4 py-3">
-                        <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5" /> Subscription End
-                        </span>
-                        <span className={`text-sm font-semibold ${isExpired ? "text-red-500" : ""}`}>{fmtDate(subEnd)}</span>
-                      </div>
-                      <div className="flex items-center justify-between px-4 py-3">
-                        <span className="text-sm text-muted-foreground">Days Remaining</span>
-                        {days === null ? (
-                          <span className="text-sm font-semibold text-muted-foreground">—</span>
-                        ) : days <= 0 ? (
-                          <span className="text-sm font-bold text-red-500 flex items-center gap-1">
-                            <AlertTriangle className="w-3.5 h-3.5" /> Expired
-                          </span>
-                        ) : (
-                          <span className={`text-sm font-bold flex items-center gap-1 ${days <= 5 ? "text-yellow-600" : "text-green-600"}`}>
-                            <CheckCircle2 className="w-3.5 h-3.5" /> {days} days
-                          </span>
-                        )}
-                      </div>
                     </div>
-
-                    {/* Renew button — only after subscription expires */}
-                    {subEnd && isExpired && (
-                      <div className="px-4 py-3 border-t bg-muted/30">
-                        <Button
-                          size="sm"
-                          className="w-full gap-2"
-                          style={{ background: planColor || undefined }}
-                          disabled={renewSubscription.isPending}
-                          onClick={() => renewSubscription.mutate(selectedAdmin.id)}
-                        >
-                          <RefreshCw className={`w-3.5 h-3.5 ${renewSubscription.isPending ? "animate-spin" : ""}`} />
-                          {renewSubscription.isPending ? "Renewing..." : "Reactivate & Renew Subscription"}
-                        </Button>
-                        <p className="text-[10px] text-muted-foreground text-center mt-1.5">
-                          Renewal resets the subscription period from today. New analysis period begins.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Lifetime badge */}
-                {isLifetime && planName && (
-                  <div className="rounded-xl border px-4 py-3 flex items-center gap-3" style={{ background: "rgba(168,85,247,0.07)", borderColor: "rgba(168,85,247,0.25)" }}>
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: "rgba(168,85,247,0.15)" }}>
-                      <CheckCircle2 className="w-4 h-4" style={{ color: "#9333ea" }} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold" style={{ color: "#9333ea" }}>Lifetime Access</p>
-                      <p className="text-xs text-muted-foreground">No renewal needed — access never expires</p>
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <span className="text-sm text-muted-foreground">Days Remaining</span>
+                      {isLifetime ? (
+                        <span className="text-sm font-bold flex items-center gap-1" style={{ color: "#9333ea" }}>∞ Unlimited</span>
+                      ) : days === null ? (
+                        <span className="text-sm font-semibold text-muted-foreground">—</span>
+                      ) : days <= 0 ? (
+                        <span className="text-sm font-bold text-red-500 flex items-center gap-1">
+                          <AlertTriangle className="w-3.5 h-3.5" /> Expired
+                        </span>
+                      ) : (
+                        <span className={`text-sm font-bold flex items-center gap-1 ${days <= 5 ? "text-yellow-600" : "text-green-600"}`}>
+                          <CheckCircle2 className="w-3.5 h-3.5" /> {days} days
+                        </span>
+                      )}
                     </div>
                   </div>
-                )}
+
+                  {/* Renew button — only after subscription expires (non-lifetime) */}
+                  {!isLifetime && subEnd && isExpired && (
+                    <div className="px-4 py-3 border-t bg-muted/30">
+                      <Button
+                        size="sm"
+                        className="w-full gap-2"
+                        style={{ background: planColor || undefined }}
+                        disabled={renewSubscription.isPending}
+                        onClick={() => renewSubscription.mutate(selectedAdmin.id)}
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${renewSubscription.isPending ? "animate-spin" : ""}`} />
+                        {renewSubscription.isPending ? "Renewing..." : "Reactivate & Renew Subscription"}
+                      </Button>
+                      <p className="text-[10px] text-muted-foreground text-center mt-1.5">
+                        Renewal resets the subscription period from today. New analysis period begins.
+                      </p>
+                    </div>
+                  )}
+                </div>
 
                 <div className="bg-muted rounded-xl divide-y divide-border">
                   <div className="flex items-center justify-between px-4 py-3">
