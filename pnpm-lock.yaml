@@ -363,6 +363,9 @@ importers:
       '@workspace/api-client-react':
         specifier: workspace:*
         version: link:../../lib/api-client-react
+      '@workspace/pricing':
+        specifier: workspace:*
+        version: link:../../lib/pricing
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1
@@ -741,6 +744,9 @@ importers:
       '@workspace/api-client-react':
         specifier: workspace:*
         version: link:../../lib/api-client-react
+      '@workspace/pricing':
+        specifier: workspace:*
+        version: link:../../lib/pricing
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1
@@ -856,6 +862,15 @@ importers:
       drizzle-kit:
         specifier: ^0.31.10
         version: 0.31.10
+
+  lib/pricing:
+    dependencies:
+      framer-motion:
+        specifier: 'catalog:'
+        version: 12.38.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      lucide-react:
+        specifier: 'catalog:'
+        version: 0.545.0(react@19.1.0)
 
   scripts:
     devDependencies:

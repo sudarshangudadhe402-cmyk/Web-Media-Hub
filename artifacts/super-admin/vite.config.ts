@@ -52,7 +52,9 @@ export default defineConfig({
       "@assets": path.resolve(import.meta.dirname, "..", "..", "attached_assets"),
     },
     dedupe: ["react", "react-dom"],
+    preserveSymlinks: false,
   },
+
   root: path.resolve(import.meta.dirname),
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
@@ -65,6 +67,11 @@ export default defineConfig({
     allowedHosts: true,
     fs: {
       strict: true,
+      allow: [
+        path.resolve(import.meta.dirname),
+        path.resolve(import.meta.dirname, "../../lib/pricing/src"),
+        path.resolve(import.meta.dirname, "../../lib/api-client-react/src"),
+      ],
     },
   },
   preview: {

@@ -1,0 +1,1 @@
+- [Shared lib package framer-motion resolution](shared-lib-peer-deps.md) — pnpm strict isolation blocks peer dep resolution from lib/ packages; use actual dependencies not peerDependencies.

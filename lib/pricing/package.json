@@ -1,0 +1,16 @@
+{
+  "name": "@workspace/pricing",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "framer-motion": "catalog:",
+    "lucide-react": "catalog:"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  }
+}
