@@ -97,6 +97,61 @@ router.post("/admins/verify-creation-otp", requireSuperAdmin, async (req, res) =
   }
 });
 
+// ── All-admins try-on + ads stats (for Revenue page) ─────────────────────────
+router.get("/admins/stats-overview", requireSuperAdmin, async (req, res) => {
+  try {
+    const admins = await User.find({ role: "admin" }).select("_id username email adminNumber planName planBadge planColor").lean();
+    const adminIds = admins.map((a: any) => String(a._id));
+
+    // Get all stores for these admins
+    const stores = await Store.find({ ownerId: { $in: adminIds } }).select("_id ownerId name").lean();
+    const storeIdToOwnerId: Record<string, string> = {};
+    const ownerIdToStoreName: Record<string, string> = {};
+    for (const s of stores) {
+      storeIdToOwnerId[String(s._id)] = String((s as any).ownerId);
+      ownerIdToStoreName[String((s as any).ownerId)] = (s as any).name ?? "";
+    }
+
+    // Aggregate try-on counts per store
+    const tryOnAgg = await Product.aggregate([
+      { $match: { storeId: { $in: Object.keys(storeIdToOwnerId) } } },
+      { $group: { _id: "$storeId", tryOnCount: { $sum: "$tryOnLikeCount" } } },
+    ]);
+
+    // Build ownerId → tryOnCount map
+    const ownerTryOn: Record<string, number> = {};
+    let totalTryOn = 0;
+    for (const row of tryOnAgg) {
+      const ownerId = storeIdToOwnerId[row._id];
+      if (ownerId) {
+        ownerTryOn[ownerId] = (ownerTryOn[ownerId] ?? 0) + row.tryOnCount;
+        totalTryOn += row.tryOnCount;
+      }
+    }
+
+    // Build per-admin list sorted by tryOnCount desc
+    const adminStats = admins
+      .map((a: any) => ({
+        id: String(a._id),
+        username: a.username,
+        email: a.email ?? "",
+        adminNumber: a.adminNumber ?? "",
+        planName: a.planName ?? "",
+        planBadge: a.planBadge ?? "",
+        planColor: a.planColor ?? "",
+        storeName: ownerIdToStoreName[String(a._id)] ?? "",
+        tryOnCount: ownerTryOn[String(a._id)] ?? 0,
+        adsCount: 0,
+      }))
+      .sort((x: any, y: any) => y.tryOnCount - x.tryOnCount);
+
+    res.json({ totalTryOn, totalAds: 0, admins: adminStats });
+  } catch (err) {
+    req.log.error({ err }, "Stats overview error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/admins", requireSuperAdmin, async (req, res) => {
   try {
     const admins = await User.find({ role: "admin" }).sort({ createdAt: -1 });
