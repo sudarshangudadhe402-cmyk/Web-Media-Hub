@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   FileText,
   TrendingUp,
+  Tag,
 } from "lucide-react";
 
 const SA_MANAGE_SEEN_KEY = "wmh_sa_manage_seen_at";
@@ -20,6 +21,7 @@ const navItems = [
   { path: "/manage-admins", name: "Manage Admins", icon: Shield },
   { path: "/admins", name: "Admin History", icon: Users },
   { path: "/revenue", name: "Revenue & Growth", icon: TrendingUp },
+  { path: "/pricing-config", name: "Pricing Plans", icon: Tag },
   { path: "/legal-log", name: "Legal Agreements Log", icon: FileText },
 ];
 

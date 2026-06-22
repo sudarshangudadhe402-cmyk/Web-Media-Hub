@@ -1,16 +1,31 @@
 import { Check } from "lucide-react";
 import { motion } from "framer-motion";
-import { PLANS, type PlanId } from "./pricing-data";
+import { DEFAULT_PRICING_CONFIG, PLAN_VISUAL_CONFIG, type PlanId, type PricingConfigData } from "./pricing-data";
 
-export { PLANS };
+export { DEFAULT_PRICING_CONFIG as PLANS };
 export type { PlanId };
 
 interface PlanSelectorProps {
   selected: PlanId | null;
   onChange: (id: PlanId) => void;
+  config?: PricingConfigData;
 }
 
-export default function PlanSelector({ selected, onChange }: PlanSelectorProps) {
+const PLAN_IDS: PlanId[] = ["demo", "premium", "lifetime", "enterprise"];
+
+export default function PlanSelector({ selected, onChange, config }: PlanSelectorProps) {
+  const cfg = config ?? DEFAULT_PRICING_CONFIG;
+
+  const plans = PLAN_IDS.map((id) => ({
+    id,
+    label: cfg[id].displayName,
+    badge: cfg[id].displayBadge,
+    price: cfg[id].price,
+    period: cfg[id].shortPeriod,
+    features: cfg[id].features,
+    ...PLAN_VISUAL_CONFIG[id],
+  }));
+
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
@@ -22,7 +37,7 @@ export default function PlanSelector({ selected, onChange }: PlanSelectorProps) 
       </div>
 
       <div className="grid grid-cols-2 gap-2.5">
-        {PLANS.map((plan) => {
+        {plans.map((plan) => {
           const isSelected = selected === plan.id;
           return (
             <motion.button
@@ -68,7 +83,7 @@ export default function PlanSelector({ selected, onChange }: PlanSelectorProps) 
       )}
       {selected && (
         <p className="text-xs text-center text-green-400/80 font-medium">
-          ✅ {PLANS.find((p) => p.id === selected)?.label} selected
+          ✅ {cfg[selected].displayName} selected
         </p>
       )}
     </div>

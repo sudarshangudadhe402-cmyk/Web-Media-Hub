@@ -9,6 +9,7 @@ import ManageAdmins from "@/pages/manage-admins";
 import Admins from "@/pages/admins";
 import LegalLog from "@/pages/legal-log";
 import Revenue from "@/pages/revenue";
+import PricingConfig from "@/pages/pricing-config";
 import Layout from "@/components/layout";
 import NotFound from "@/pages/not-found";
 
@@ -64,6 +65,11 @@ function Router() {
       <Route path="/legal-log">
         <ProtectedRoute>
           <LegalLog />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/pricing-config">
+        <ProtectedRoute>
+          <PricingConfig />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />
