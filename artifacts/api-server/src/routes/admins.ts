@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { User } from "../models/User";
 import { Store } from "../models/Store";
+import { Product } from "../models/Product";
 import { requireSuperAdmin } from "../middlewares/auth";
 import { OtpCode } from "../models/OtpCode";
 import { sendOtpEmail } from "../services/emailOtp";
@@ -288,6 +289,27 @@ router.delete("/admins/:id", requireSuperAdmin, async (req, res) => {
     res.json({ success: true, message: "Admin deleted" });
   } catch (err) {
     req.log.error({ err }, "Delete admin error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* ── Store Stats for a specific admin (try-on count, ads count) ── */
+router.get("/admins/:id/store-stats", requireSuperAdmin, async (req, res) => {
+  try {
+    const store = await Store.findOne({ ownerId: req.params.id }).select("_id");
+    if (!store) {
+      res.json({ tryOnCount: 0, adsCount: 0 });
+      return;
+    }
+    const storeId = String(store._id);
+    const agg = await Product.aggregate([
+      { $match: { storeId } },
+      { $group: { _id: null, total: { $sum: "$tryOnLikeCount" } } },
+    ]);
+    const tryOnCount: number = agg[0]?.total ?? 0;
+    res.json({ tryOnCount, adsCount: 0 });
+  } catch (err) {
+    req.log.error({ err }, "Store stats error");
     res.status(500).json({ error: "Internal server error" });
   }
 });

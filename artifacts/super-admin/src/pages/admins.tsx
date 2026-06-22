@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   useListAdmins,
   useDeleteAdmin,
@@ -106,6 +106,16 @@ export default function Admins() {
   const [adminDetailOpen, setAdminDetailOpen] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [storeStats, setStoreStats] = useState<{ tryOnCount: number; adsCount: number } | null>(null);
+
+  useEffect(() => {
+    if (!selectedAdmin) { setStoreStats(null); return; }
+    setStoreStats(null);
+    authFetch(`/api/admins/${selectedAdmin.id}/store-stats`)
+      .then((r) => r.json())
+      .then((d) => setStoreStats(d))
+      .catch(() => setStoreStats({ tryOnCount: 0, adsCount: 0 }));
+  }, [(selectedAdmin as any)?.id]);
 
   const toggleActive = useMutation({
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
@@ -578,6 +588,46 @@ export default function Admins() {
                     ) : (
                       <p className="text-xs text-muted-foreground italic">No store created yet</p>
                     )}
+                  </div>
+                </div>
+
+                {/* ── Virtual Try-On & Ads Stats ── */}
+                <div className="rounded-xl border border-border overflow-hidden">
+                  <div className="flex">
+                    {/* Left: Virtual Try-On */}
+                    <div className="flex-1 px-4 py-4 flex flex-col items-center gap-1">
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center mb-1" style={{ background: "rgba(99,102,241,0.1)" }}>
+                        <span className="text-lg">🪞</span>
+                      </div>
+                      <span className="text-2xl font-extrabold text-gray-900">
+                        {storeStats === null ? (
+                          <span className="inline-block w-8 h-6 bg-muted animate-pulse rounded" />
+                        ) : (
+                          storeStats.tryOnCount.toLocaleString("en-IN")
+                        )}
+                      </span>
+                      <span className="text-[11px] font-semibold text-muted-foreground text-center leading-tight">Virtual Try-On</span>
+                      <span className="text-[10px] text-muted-foreground/70 text-center">Total on this store</span>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="w-px bg-border self-stretch my-3" />
+
+                    {/* Right: Ads Run */}
+                    <div className="flex-1 px-4 py-4 flex flex-col items-center gap-1">
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center mb-1" style={{ background: "rgba(234,179,8,0.1)" }}>
+                        <span className="text-lg">📢</span>
+                      </div>
+                      <span className="text-2xl font-extrabold text-gray-900">
+                        {storeStats === null ? (
+                          <span className="inline-block w-8 h-6 bg-muted animate-pulse rounded" />
+                        ) : (
+                          storeStats.adsCount.toLocaleString("en-IN")
+                        )}
+                      </span>
+                      <span className="text-[11px] font-semibold text-muted-foreground text-center leading-tight">Total Ads Run</span>
+                      <span className="text-[10px] text-muted-foreground/70 text-center">Campaigns on store</span>
+                    </div>
                   </div>
                 </div>
 
