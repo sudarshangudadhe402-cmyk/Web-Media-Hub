@@ -1975,6 +1975,11 @@ export interface StoreRequestItem {
   storeName: string;
   whatsapp: string;
   plan?: string | null;
+  planName?: string | null;
+  planPrice?: string | null;
+  planPeriod?: string | null;
+  planBadge?: string | null;
+  planColor?: string | null;
   status: "pending" | "approved" | "rejected";
   submittedBy: string;
   rewardCode?: string | null;
@@ -1988,6 +1993,11 @@ export interface StoreRequestInput {
   storeName: string;
   whatsapp: string;
   plan?: string | null;
+  planName?: string | null;
+  planPrice?: string | null;
+  planPeriod?: string | null;
+  planBadge?: string | null;
+  planColor?: string | null;
 }
 
 // ── submitStoreRequest ────────────────────────────────────────────────────────

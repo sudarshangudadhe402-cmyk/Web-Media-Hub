@@ -833,7 +833,14 @@ export default function ManageAdmins() {
                 </div>
                 <div className="flex items-center justify-between px-4 py-3">
                   <span className="text-sm text-muted-foreground">Plan</span>
-                  <span className="text-sm font-medium">{(selectedRequest as any).plan ?? "—"}</span>
+                  <div className="text-right">
+                    <span className="text-sm font-semibold">
+                      {(selectedRequest as any).planName ?? (selectedRequest as any).plan ?? "—"}
+                    </span>
+                    {(selectedRequest as any).planPrice && (
+                      <p className="text-xs text-muted-foreground">{(selectedRequest as any).planPrice}</p>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center justify-between px-4 py-3">
                   <span className="text-sm text-muted-foreground">Password</span>

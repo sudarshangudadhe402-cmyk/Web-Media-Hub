@@ -593,20 +593,113 @@ components:
           type: string
         username:
           type: string
+        email:
+          type: string
+        adminNumber:
+          type: string
         role:
           type: string
           enum: [super_admin, admin]
+        isActive:
+          type: boolean
+        planName:
+          type: string
+        planPrice:
+          type: string
+        planPeriod:
+          type: string
+        planBadge:
+          type: string
+        planColor:
+          type: string
+        subscriptionStartDate:
+          type: ["string", "null"]
+        subscriptionEndDate:
+          type: ["string", "null"]
         createdAt:
           type: string
 
     AdminInput:
       type: object
-      required: [username, password]
+      required: [email, password]
       properties:
-        username:
+        email:
           type: string
         password:
           type: string
+        adminNumber:
+          type: string
+        planName:
+          type: string
+        planPrice:
+          type: string
+        planPeriod:
+          type: string
+        planBadge:
+          type: string
+        planColor:
+          type: string
+
+    StoreRequestItem:
+      type: object
+      required: [id, email, storeName, whatsapp, status, submittedBy, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        storeName:
+          type: string
+        whatsapp:
+          type: string
+        plan:
+          type: ["string", "null"]
+        planName:
+          type: ["string", "null"]
+        planPrice:
+          type: ["string", "null"]
+        planPeriod:
+          type: ["string", "null"]
+        planBadge:
+          type: ["string", "null"]
+        planColor:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        submittedBy:
+          type: string
+        rewardCode:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    StoreRequestInput:
+      type: object
+      required: [email, password, storeName, whatsapp]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+        storeName:
+          type: string
+        whatsapp:
+          type: string
+        plan:
+          type: ["string", "null"]
+        planName:
+          type: ["string", "null"]
+        planPrice:
+          type: ["string", "null"]
+        planPeriod:
+          type: ["string", "null"]
+        planBadge:
+          type: ["string", "null"]
+        planColor:
+          type: ["string", "null"]
 
     Product:
       type: object
