@@ -19,12 +19,12 @@ function calcSubscriptionDates(planPeriod: string): { start: Date | null; end: D
   const now = new Date();
   if (p.includes("month")) {
     const end = new Date(now);
-    end.setDate(end.getDate() + 31); // 30 days + 1 extra
+    end.setDate(end.getDate() + 30);
     return { start: now, end };
   }
   if (p.includes("year")) {
     const end = new Date(now);
-    end.setDate(end.getDate() + 366); // 365 days + 1 extra
+    end.setDate(end.getDate() + 365);
     return { start: now, end };
   }
   return { start: null, end: null }; // Lifetime / one-time plans

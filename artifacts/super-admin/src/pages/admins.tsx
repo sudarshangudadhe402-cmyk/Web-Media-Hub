@@ -55,7 +55,7 @@ function getDaysRemaining(endDateStr: string | null | undefined): number | null 
   if (!endDateStr) return null;
   const end = new Date(endDateStr);
   const now = new Date();
-  return Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.floor((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 function fmtDate(iso: string | null | undefined) {
