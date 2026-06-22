@@ -14,6 +14,7 @@ export interface Plan {
 }
 
 export interface SelectedPlan {
+  planKey: string;
   badge: string;
   name: string;
   price: string;
@@ -33,6 +34,7 @@ export interface PricingPlanData {
   features: string[];
   highlights: string[];
   savingsNote?: string | null;
+  subscriptionDays: number | null;
 }
 
 export interface PricingConfigData {
@@ -52,6 +54,7 @@ export const DEFAULT_PRICING_CONFIG: PricingConfigData = {
     tagline: "Perfect for testing the platform before upgrading.",
     features: ["Full Feature Access", "2 Store Login", "Virtual Try-On", "Loyalty Card", "AI Promotional Videos", "Online Booking", "Live Notifications"],
     highlights: ["Low investment to get started", "Full access to all features", "Upgrade anytime"],
+    subscriptionDays: 30,
   },
   premium: {
     displayName: "Premium Annual Plan",
@@ -62,6 +65,7 @@ export const DEFAULT_PRICING_CONFIG: PricingConfigData = {
     tagline: "Only around ₹16 per day",
     features: ["1 Store Login", "Virtual Try-On Experience", "Loyalty Card System", "AI Promotional Videos", "Online Booking System", "Smart Product Categories", "Live Customer Notifications", "Free Feature Updates", "Priority Support"],
     highlights: ["Low investment", "High return potential", "Ideal for growing clothing stores", "Recover cost with just a few extra sales", "Recommended for 80% of store owners"],
+    subscriptionDays: 365,
   },
   lifetime: {
     displayName: "Lifetime Business Plan",
@@ -73,6 +77,7 @@ export const DEFAULT_PRICING_CONFIG: PricingConfigData = {
     features: ["Everything in Premium Annual", "Lifetime Access, No Renewal Ever", "4 Store Login", "₹2000 Web Media Hub Coin", "Future Feature Updates", "Priority Support"],
     highlights: ["One-time investment", "No yearly payments", "Better ROI after first year", "Business asset for life", "Long-term savings"],
     savingsNote: "🔥 Save ₹8,000+ Compared To Renewing Every Year",
+    subscriptionDays: null,
   },
   enterprise: {
     displayName: "Enterprise Plan",
@@ -83,6 +88,7 @@ export const DEFAULT_PRICING_CONFIG: PricingConfigData = {
     tagline: "Designed for large stores and premium brands.",
     features: ["Unlimited Store Login  ∞", "₹4000 Web Media Hub Coin", "Premium AI Resources", "Early Access Features", "VIP Support"],
     highlights: [],
+    subscriptionDays: null,
   },
 };
 

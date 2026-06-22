@@ -44,7 +44,7 @@ router.delete("/settings/global-link", requireSuperAdmin, async (req, res) => {
 
 // ── Pricing Config ────────────────────────────────────────────────────────────
 
-const DEFAULT_PRICING_CONFIG = {
+export const DEFAULT_PRICING_CONFIG = {
   demo: {
     displayName: "Starting Plan",
     displayBadge: "🧪 Try First",
@@ -55,6 +55,7 @@ const DEFAULT_PRICING_CONFIG = {
     features: ["Full Feature Access", "2 Store Login", "Virtual Try-On", "Loyalty Card", "AI Promotional Videos", "Online Booking", "Live Notifications"],
     highlights: ["Low investment to get started", "Full access to all features", "Upgrade anytime"],
     savingsNote: null,
+    subscriptionDays: 30,
   },
   premium: {
     displayName: "Premium Annual Plan",
@@ -66,6 +67,7 @@ const DEFAULT_PRICING_CONFIG = {
     features: ["1 Store Login", "Virtual Try-On Experience", "Loyalty Card System", "AI Promotional Videos", "Online Booking System", "Smart Product Categories", "Live Customer Notifications", "Free Feature Updates", "Priority Support"],
     highlights: ["Low investment", "High return potential", "Ideal for growing clothing stores", "Recover cost with just a few extra sales", "Recommended for 80% of store owners"],
     savingsNote: null,
+    subscriptionDays: 365,
   },
   lifetime: {
     displayName: "Lifetime Business Plan",
@@ -77,6 +79,7 @@ const DEFAULT_PRICING_CONFIG = {
     features: ["Everything in Premium Annual", "Lifetime Access, No Renewal Ever", "4 Store Login", "₹2000 Web Media Hub Coin", "Future Feature Updates", "Priority Support"],
     highlights: ["One-time investment", "No yearly payments", "Better ROI after first year", "Business asset for life", "Long-term savings"],
     savingsNote: "🔥 Save ₹8,000+ Compared To Renewing Every Year",
+    subscriptionDays: null,
   },
   enterprise: {
     displayName: "Enterprise Plan",
@@ -88,6 +91,7 @@ const DEFAULT_PRICING_CONFIG = {
     features: ["Unlimited Store Login  ∞", "₹4000 Web Media Hub Coin", "Premium AI Resources", "Early Access Features", "VIP Support"],
     highlights: [],
     savingsNote: null,
+    subscriptionDays: null,
   },
 };
 

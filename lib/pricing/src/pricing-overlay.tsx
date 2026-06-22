@@ -48,6 +48,7 @@ export default function PricingOverlay({ onBack, onSelectPlan, config }: Props) 
   function selectAndBack(planKey: keyof PricingConfigData) {
     const plan = cfg[planKey];
     onSelectPlan({
+      planKey,
       badge: plan.displayBadge,
       name: plan.displayName,
       price: plan.price,

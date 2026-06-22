@@ -11,6 +11,7 @@ const PricingPlanSchema = new Schema(
     features: { type: [String], default: [] },
     highlights: { type: [String], default: [] },
     savingsNote: { type: String, default: null },
+    subscriptionDays: { type: Number, default: null },
   },
   { _id: false }
 );

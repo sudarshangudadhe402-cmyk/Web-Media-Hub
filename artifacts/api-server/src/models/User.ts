@@ -14,6 +14,8 @@ export interface IUser extends Document {
   role: "super_admin" | "admin";
   isActive: boolean;
   activeSessions: ActiveSession[];
+  planKey: string;
+  multiDeviceAllowed: boolean;
   planName: string;
   planPrice: string;
   planPeriod: string;
@@ -42,6 +44,8 @@ const UserSchema = new Schema<IUser>(
     role: { type: String, enum: ["super_admin", "admin"], default: "admin" },
     isActive: { type: Boolean, default: true },
     activeSessions: { type: [ActiveSessionSchema], default: [] },
+    planKey: { type: String, default: "" },
+    multiDeviceAllowed: { type: Boolean, default: false },
     planName: { type: String, default: "" },
     planPrice: { type: String, default: "" },
     planPeriod: { type: String, default: "" },

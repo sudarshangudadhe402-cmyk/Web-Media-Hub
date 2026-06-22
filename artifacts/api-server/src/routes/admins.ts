@@ -5,6 +5,8 @@ import { Product } from "../models/Product";
 import { requireSuperAdmin } from "../middlewares/auth";
 import { OtpCode } from "../models/OtpCode";
 import { sendOtpEmail } from "../services/emailOtp";
+import { PricingSettings } from "../models/PricingSettings";
+import { DEFAULT_PRICING_CONFIG } from "./settings";
 
 const router = Router();
 
@@ -15,9 +17,19 @@ function getLoginCapacity(planName: string, planPrice: string): number {
   return 1;
 }
 
-function calcSubscriptionDates(planPeriod: string): { start: Date | null; end: Date | null } {
-  const p = (planPeriod ?? "").toLowerCase();
+function calcSubscriptionDates(
+  subscriptionDays: number | null | undefined,
+  planPeriod: string
+): { start: Date | null; end: Date | null } {
   const now = new Date();
+
+  if (subscriptionDays !== null && subscriptionDays !== undefined && subscriptionDays > 0) {
+    const end = new Date(now);
+    end.setDate(end.getDate() + subscriptionDays);
+    return { start: now, end };
+  }
+
+  const p = (planPeriod ?? "").toLowerCase();
   if (p.includes("month")) {
     const end = new Date(now);
     end.setDate(end.getDate() + 30);
@@ -28,7 +40,16 @@ function calcSubscriptionDates(planPeriod: string): { start: Date | null; end: D
     end.setDate(end.getDate() + 365);
     return { start: now, end };
   }
-  return { start: null, end: null }; // Lifetime / one-time plans
+  return { start: null, end: null };
+}
+
+async function getPricingPlans() {
+  try {
+    const s = await PricingSettings.findById("pricing");
+    return (s?.plans ?? DEFAULT_PRICING_CONFIG) as typeof DEFAULT_PRICING_CONFIG;
+  } catch {
+    return DEFAULT_PRICING_CONFIG;
+  }
 }
 
 // ── Send OTP to verify admin email before creation ──────────────────────────
@@ -47,7 +68,6 @@ router.post("/admins/send-creation-otp", requireSuperAdmin, async (req, res) => 
       res.status(400).json({ error: "Email already exists — this email is already registered" }); return;
     }
 
-    // Rate limit: max 3 OTPs per email in 10 min
     const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000);
     const recentCount = await OtpCode.countDocuments({
       email: email.trim().toLowerCase(),
@@ -103,7 +123,6 @@ router.get("/admins/stats-overview", requireSuperAdmin, async (req, res) => {
     const admins = await User.find({ role: "admin" }).select("_id username email adminNumber planName planBadge planColor").lean();
     const adminIds = admins.map((a: any) => String(a._id));
 
-    // Get all stores for these admins
     const stores = await Store.find({ ownerId: { $in: adminIds } }).select("_id ownerId name").lean();
     const storeIdToOwnerId: Record<string, string> = {};
     const ownerIdToStoreName: Record<string, string> = {};
@@ -112,13 +131,11 @@ router.get("/admins/stats-overview", requireSuperAdmin, async (req, res) => {
       ownerIdToStoreName[String((s as any).ownerId)] = (s as any).name ?? "";
     }
 
-    // Aggregate try-on counts per store
     const tryOnAgg = await Product.aggregate([
       { $match: { storeId: { $in: Object.keys(storeIdToOwnerId) } } },
       { $group: { _id: "$storeId", tryOnCount: { $sum: "$tryOnLikeCount" } } },
     ]);
 
-    // Build ownerId → tryOnCount map
     const ownerTryOn: Record<string, number> = {};
     let totalTryOn = 0;
     for (const row of tryOnAgg) {
@@ -129,7 +146,6 @@ router.get("/admins/stats-overview", requireSuperAdmin, async (req, res) => {
       }
     }
 
-    // Build per-admin list sorted by tryOnCount desc
     const adminStats = admins
       .map((a: any) => ({
         id: String(a._id),
@@ -177,6 +193,7 @@ router.get("/admins", requireSuperAdmin, async (req, res) => {
         storeSlug: storeMap[String(a._id)]?.publicSlug ?? null,
         storeName: storeMap[String(a._id)]?.name ?? null,
         storeCreatedAt: storeMap[String(a._id)]?.createdAt?.toISOString() ?? null,
+        planKey: a.planKey ?? "",
         planName: a.planName ?? "",
         planPrice: a.planPrice ?? "",
         planPeriod: a.planPeriod ?? "",
@@ -195,7 +212,7 @@ router.get("/admins", requireSuperAdmin, async (req, res) => {
 
 router.post("/admins", requireSuperAdmin, async (req, res) => {
   try {
-    const { email, password, adminNumber, planName, planPrice, planPeriod, planBadge, planColor } = req.body;
+    const { email, password, adminNumber, planKey, planName, planPrice, planPeriod, planBadge, planColor } = req.body;
     if (!email || !password) {
       res.status(400).json({ error: "Email and password are required" });
       return;
@@ -221,8 +238,12 @@ router.post("/admins", requireSuperAdmin, async (req, res) => {
       }
     }
 
+    const pricingPlans = await getPricingPlans();
+    const planCfg = planKey ? (pricingPlans as any)[planKey] : null;
+    const subscriptionDays: number | null = planCfg?.subscriptionDays ?? null;
+
     const autoUsername = `admin_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
-    const { start, end } = calcSubscriptionDates(planPeriod ?? "");
+    const { start, end } = calcSubscriptionDates(subscriptionDays, planPeriod ?? "");
 
     const admin = await User.create({
       username: autoUsername,
@@ -231,6 +252,7 @@ router.post("/admins", requireSuperAdmin, async (req, res) => {
       adminNumber: adminNumber ?? "",
       role: "admin",
       isActive: true,
+      planKey: planKey ?? "",
       planName: planName ?? "",
       planPrice: planPrice ?? "",
       planPeriod: planPeriod ?? "",
@@ -252,6 +274,7 @@ router.post("/admins", requireSuperAdmin, async (req, res) => {
       storeSlug: null,
       storeName: null,
       storeCreatedAt: null,
+      planKey: admin.planKey ?? "",
       planName: admin.planName ?? "",
       planPrice: admin.planPrice ?? "",
       planPeriod: admin.planPeriod ?? "",
@@ -267,7 +290,7 @@ router.post("/admins", requireSuperAdmin, async (req, res) => {
   }
 });
 
-// Renew subscription — resets start/end date from today
+// Renew subscription — uses current pricing config for subscriptionDays
 router.patch("/admins/:id/renew-subscription", requireSuperAdmin, async (req, res) => {
   try {
     const admin = await User.findById(req.params.id);
@@ -275,7 +298,13 @@ router.patch("/admins/:id/renew-subscription", requireSuperAdmin, async (req, re
       res.status(404).json({ error: "Admin not found" });
       return;
     }
-    const { start, end } = calcSubscriptionDates(admin.planPeriod ?? "");
+
+    const pricingPlans = await getPricingPlans();
+    const planKey = admin.planKey || "";
+    const planCfg = planKey ? (pricingPlans as any)[planKey] : null;
+    const subscriptionDays: number | null = planCfg?.subscriptionDays ?? null;
+
+    const { start, end } = calcSubscriptionDates(subscriptionDays, admin.planPeriod ?? "");
     if (!end) {
       res.status(400).json({ error: "This plan does not have a subscription period" });
       return;
@@ -348,7 +377,6 @@ router.delete("/admins/:id", requireSuperAdmin, async (req, res) => {
   }
 });
 
-/* ── Store Stats for a specific admin (try-on count, ads count) ── */
 router.get("/admins/:id/store-stats", requireSuperAdmin, async (req, res) => {
   try {
     const store = await Store.findOne({ ownerId: req.params.id }).select("_id");
