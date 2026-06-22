@@ -8,6 +8,7 @@ import Login from "@/pages/login";
 import ManageAdmins from "@/pages/manage-admins";
 import Admins from "@/pages/admins";
 import LegalLog from "@/pages/legal-log";
+import Revenue from "@/pages/revenue";
 import Layout from "@/components/layout";
 import NotFound from "@/pages/not-found";
 
@@ -53,6 +54,11 @@ function Router() {
       <Route path="/admins">
         <ProtectedRoute>
           <Admins />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/revenue">
+        <ProtectedRoute>
+          <Revenue />
         </ProtectedRoute>
       </Route>
       <Route path="/legal-log">
