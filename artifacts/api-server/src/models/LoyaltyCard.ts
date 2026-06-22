@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
+import bcrypt from "bcryptjs";
 
 export interface ILoyaltyCard extends Document {
   storeId: string;
@@ -12,6 +13,7 @@ export interface ILoyaltyCard extends Document {
   cardGeneration: number;
   refreshedAt?: Date;
   seenByAdmin?: boolean;
+  comparePassword(candidate: string): Promise<boolean>;
 }
 
 const LoyaltyCardSchema = new Schema<ILoyaltyCard>(
@@ -34,5 +36,16 @@ const LoyaltyCardSchema = new Schema<ILoyaltyCard>(
   },
   { timestamps: true }
 );
+
+LoyaltyCardSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
+  if (this.password.startsWith("$2")) return;
+  const salt = await bcrypt.genSalt(12);
+  this.password = await bcrypt.hash(this.password, salt);
+});
+
+LoyaltyCardSchema.methods.comparePassword = async function (candidate: string): Promise<boolean> {
+  return bcrypt.compare(candidate, this.password);
+};
 
 export const LoyaltyCard = mongoose.model<ILoyaltyCard>("LoyaltyCard", LoyaltyCardSchema);

@@ -227,7 +227,6 @@ router.patch("/store-requests/:id/approve", requireSuperAdmin, async (req, res) 
       username: autoUsername,
       email: request.email,
       password: request.password,
-      plainPassword: request.password,
       adminNumber: cleanPhone,
       role: "admin",
       planName: request.planName ?? request.plan ?? "",

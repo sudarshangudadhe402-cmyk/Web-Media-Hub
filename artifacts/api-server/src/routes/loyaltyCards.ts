@@ -1,4 +1,5 @@
 import { Router } from "express";
+import bcrypt from "bcryptjs";
 import { LoyaltyCard } from "../models/LoyaltyCard";
 import { Booking } from "../models/Booking";
 import { Store } from "../models/Store";
@@ -276,7 +277,8 @@ router.post("/public/loyalty-card/login", async (req, res) => {
       return;
     }
 
-    if (cardMatch.password !== password) {
+    const pwMatch = await bcrypt.compare(password, cardMatch.password);
+    if (!pwMatch) {
       res.status(401).json({ error: "Wrong password please try current password", code: "wrong_password" });
       return;
     }
@@ -306,9 +308,13 @@ router.post("/public/loyalty-card/recover", async (req, res) => {
       storeId,
       customerName: new RegExp(`^${customerName.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
       mobileNumber,
-      password,
     });
     if (!card) {
+      res.status(404).json({ error: "No Loyalty card found with these details" });
+      return;
+    }
+    const recoverMatch = await bcrypt.compare(password, card.password);
+    if (!recoverMatch) {
       res.status(404).json({ error: "No Loyalty card found with these details" });
       return;
     }
@@ -357,7 +363,6 @@ router.get("/loyalty-cards", requireAuth, async (req: AuthRequest, res) => {
       id: String(c._id),
       customerName: c.customerName,
       mobileNumber: c.mobileNumber,
-      password: c.password,
       status: c.status,
       requestedAt: c.requestedAt,
       approvedAt: c.approvedAt ?? null,

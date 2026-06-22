@@ -10,7 +10,6 @@ export interface IUser extends Document {
   username: string;
   email: string;
   password: string;
-  plainPassword: string;
   adminNumber: string;
   role: "super_admin" | "admin";
   isActive: boolean;
@@ -39,7 +38,6 @@ const UserSchema = new Schema<IUser>(
     username: { type: String, required: true, unique: true, trim: true },
     email: { type: String, default: "", trim: true },
     password: { type: String, required: true },
-    plainPassword: { type: String, default: "" },
     adminNumber: { type: String, default: "" },
     role: { type: String, enum: ["super_admin", "admin"], default: "admin" },
     isActive: { type: Boolean, default: true },
@@ -57,7 +55,8 @@ const UserSchema = new Schema<IUser>(
 
 UserSchema.pre("save", async function () {
   if (!this.isModified("password")) return;
-  const salt = await bcrypt.genSalt(10);
+  if (this.password.startsWith("$2")) return;
+  const salt = await bcrypt.genSalt(12);
   this.password = await bcrypt.hash(this.password, salt);
 });
 

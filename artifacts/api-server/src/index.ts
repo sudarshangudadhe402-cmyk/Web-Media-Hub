@@ -1,9 +1,12 @@
 import app from "./app";
+import bcrypt from "bcryptjs";
 import { logger } from "./lib/logger";
 import { connectDB, dbAvailable } from "./lib/mongodb";
 import { User } from "./models/User";
 import { Store } from "./models/Store";
 import { Product } from "./models/Product";
+import { CustomerAccount } from "./models/CustomerAccount";
+import { LoyaltyCard } from "./models/LoyaltyCard";
 
 // ─── Global crash handlers — prevent silent server death ─────────────────────
 process.on("uncaughtException", (err) => {
@@ -42,7 +45,7 @@ async function seedSuperAdmin() {
         logger.warn("No super admin found and SEED_SUPER_ADMIN_USERNAME / SEED_SUPER_ADMIN_PASSWORD env vars not set — skipping seed");
         return;
       }
-      await User.create({ username, password, plainPassword: password, role: "super_admin", email });
+      await User.create({ username, password, role: "super_admin", email });
       logger.info({ username, email }, "Default super admin created from env vars");
     } else if (email && existing.email !== email) {
       // Update email if env var is set and differs from stored value
@@ -52,6 +55,59 @@ async function seedSuperAdmin() {
     }
   } catch (err) {
     logger.error({ err }, "Failed to seed super admin");
+  }
+}
+
+async function migratePasswordsToHash() {
+  if (!dbAvailable) return;
+  try {
+    // Migrate CustomerAccount plain text passwords
+    const customers = await CustomerAccount.find({});
+    let customerMigrated = 0;
+    for (const c of customers) {
+      if (!c.password.startsWith("$2")) {
+        const salt = await bcrypt.genSalt(12);
+        c.password = await bcrypt.hash(c.password, salt);
+        await CustomerAccount.updateOne({ _id: c._id }, { password: c.password });
+        customerMigrated++;
+      }
+    }
+    if (customerMigrated > 0) {
+      logger.info({ count: customerMigrated }, "Migrated CustomerAccount plain-text passwords to bcrypt");
+    }
+
+    // Migrate LoyaltyCard plain text passwords
+    const cards = await LoyaltyCard.find({});
+    let cardMigrated = 0;
+    for (const lc of cards) {
+      if (!lc.password.startsWith("$2")) {
+        const salt = await bcrypt.genSalt(12);
+        lc.password = await bcrypt.hash(lc.password, salt);
+        await LoyaltyCard.updateOne({ _id: lc._id }, { password: lc.password });
+        cardMigrated++;
+      }
+    }
+    if (cardMigrated > 0) {
+      logger.info({ count: cardMigrated }, "Migrated LoyaltyCard plain-text passwords to bcrypt");
+    }
+
+    // Migrate User (admin) passwords stored with 10 rounds — re-hash only truly plain text ones
+    // (bcrypt hashes always start with $2, so we skip already-hashed ones)
+    const users = await User.find({});
+    let userMigrated = 0;
+    for (const u of users) {
+      if (!u.password.startsWith("$2")) {
+        const salt = await bcrypt.genSalt(12);
+        u.password = await bcrypt.hash(u.password, salt);
+        await User.updateOne({ _id: u._id }, { password: u.password });
+        userMigrated++;
+      }
+    }
+    if (userMigrated > 0) {
+      logger.info({ count: userMigrated }, "Migrated User plain-text passwords to bcrypt");
+    }
+  } catch (err) {
+    logger.error({ err }, "Password migration error");
   }
 }
 
@@ -99,6 +155,7 @@ async function startSubscriptionExpiryJob() {
 async function start() {
   await connectDB();
   await seedSuperAdmin();
+  await migratePasswordsToHash();
   await cleanupSuperAdminProducts();
   startSubscriptionExpiryJob();
 

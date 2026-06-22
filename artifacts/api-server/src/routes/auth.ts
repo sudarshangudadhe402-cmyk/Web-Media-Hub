@@ -249,7 +249,6 @@ router.patch("/auth/change-password", requireDb, requireAuth, async (req: AuthRe
     if (username) user.username = username;
     if (newPassword) {
       user.password = newPassword;
-      user.plainPassword = newPassword;
     }
     await user.save();
 
@@ -327,7 +326,6 @@ router.post("/auth/admin/forgot-password/reset", requireDb, async (req, res) => 
     if (!admin) { res.status(404).json({ error: "Admin not found" }); return; }
 
     admin.password = newPassword;
-    admin.plainPassword = newPassword;
     await admin.save();
 
     record.used = true;

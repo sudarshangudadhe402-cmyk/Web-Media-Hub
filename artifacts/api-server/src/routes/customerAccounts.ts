@@ -1,4 +1,5 @@
 import { Router } from "express";
+import bcrypt from "bcryptjs";
 import { CustomerAccount } from "../models/CustomerAccount";
 import { OtpCode } from "../models/OtpCode";
 import { Store } from "../models/Store";
@@ -67,7 +68,8 @@ router.post("/public/customer-account/send-otp", async (req, res) => {
         res.status(404).json({ error: "No account found with this number", code: "not_found" });
         return;
       }
-      if (account.password !== password) {
+      const passwordMatch = await bcrypt.compare(password, account.password);
+      if (!passwordMatch) {
         res.status(401).json({ error: "Wrong password", code: "wrong_password" });
         return;
       }
@@ -181,7 +183,12 @@ router.post("/public/customer-account/verify-signin", async (req, res) => {
     }
 
     const account = await CustomerAccount.findOne({ storeId, mobileNumber });
-    if (!account || account.password !== password) {
+    if (!account) {
+      res.status(401).json({ error: "Account verification failed", code: "wrong_password" });
+      return;
+    }
+    const passwordMatch = await bcrypt.compare(password, account.password);
+    if (!passwordMatch) {
       res.status(401).json({ error: "Account verification failed", code: "wrong_password" });
       return;
     }
@@ -215,7 +222,6 @@ router.get("/customer-accounts", requireAuth, async (req: AuthRequest, res) => {
     res.json(accounts.map(a => ({
       id: String(a._id),
       mobileNumber: a.mobileNumber,
-      password: a.password,
       createdAt: a.createdAt,
     })));
   } catch (err) {
