@@ -1,5 +1,15 @@
 import mongoose, { Schema } from "mongoose";
 
+const CouponSchema = new Schema(
+  {
+    code: { type: String, required: true },
+    discountedPrice: { type: String, required: true },
+    maxUses: { type: Number, required: true },
+    usedCount: { type: Number, default: 0 },
+  },
+  { _id: false }
+);
+
 const PricingPlanSchema = new Schema(
   {
     displayName: { type: String, required: true },
@@ -12,6 +22,7 @@ const PricingPlanSchema = new Schema(
     highlights: { type: [String], default: [] },
     savingsNote: { type: String, default: null },
     subscriptionDays: { type: Number, default: null },
+    coupon: { type: CouponSchema, default: null },
   },
   { _id: false }
 );

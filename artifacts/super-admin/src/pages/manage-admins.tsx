@@ -180,6 +180,7 @@ export default function ManageAdmins() {
           planPeriod: selectedPlan?.period ?? "",
           planBadge: selectedPlan?.badge ?? "",
           planColor: selectedPlan?.color ?? "",
+          couponCode: selectedPlan?.couponCode ?? "",
         } },
         {
           onSuccess: () => {
@@ -216,6 +217,7 @@ export default function ManageAdmins() {
         planPeriod: selectedPlan?.period ?? "",
         planBadge: selectedPlan?.badge ?? "",
         planColor: selectedPlan?.color ?? "",
+        couponCode: selectedPlan?.couponCode ?? "",
       } },
       {
         onSuccess: () => {

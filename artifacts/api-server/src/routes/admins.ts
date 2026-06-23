@@ -22,13 +22,11 @@ function calcSubscriptionDates(
   planPeriod: string
 ): { start: Date | null; end: Date | null } {
   const now = new Date();
-
   if (subscriptionDays !== null && subscriptionDays !== undefined && subscriptionDays > 0) {
     const end = new Date(now);
     end.setDate(end.getDate() + subscriptionDays);
     return { start: now, end };
   }
-
   const p = (planPeriod ?? "").toLowerCase();
   if (p.includes("month")) {
     const end = new Date(now);
@@ -49,6 +47,22 @@ async function getPricingPlans() {
     return (s?.plans ?? DEFAULT_PRICING_CONFIG) as typeof DEFAULT_PRICING_CONFIG;
   } catch {
     return DEFAULT_PRICING_CONFIG;
+  }
+}
+
+async function incrementCouponUsed(planKey: string, couponCode: string) {
+  try {
+    const settings = await PricingSettings.findById("pricing");
+    if (!settings?.plans) return;
+    const plan = (settings.plans as any)[planKey];
+    if (!plan?.coupon) return;
+    if (plan.coupon.code.toUpperCase() !== couponCode.toUpperCase()) return;
+    await PricingSettings.updateOne(
+      { _id: "pricing" },
+      { $inc: { [`plans.${planKey}.coupon.usedCount`]: 1 } }
+    );
+  } catch {
+    // Non-critical
   }
 }
 
@@ -91,7 +105,7 @@ router.post("/admins/send-creation-otp", requireSuperAdmin, async (req, res) => 
   }
 });
 
-// ── Verify OTP for admin email (called before create) ────────────────────────
+// ── Verify OTP for admin email ────────────────────────────────────────────────
 router.post("/admins/verify-creation-otp", requireSuperAdmin, async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -117,7 +131,7 @@ router.post("/admins/verify-creation-otp", requireSuperAdmin, async (req, res) =
   }
 });
 
-// ── All-admins try-on + ads stats (for Revenue page) ─────────────────────────
+// ── All-admins stats overview ─────────────────────────────────────────────────
 router.get("/admins/stats-overview", requireSuperAdmin, async (req, res) => {
   try {
     const admins = await User.find({ role: "admin" }).select("_id username email adminNumber planName planBadge planColor").lean();
@@ -212,7 +226,7 @@ router.get("/admins", requireSuperAdmin, async (req, res) => {
 
 router.post("/admins", requireSuperAdmin, async (req, res) => {
   try {
-    const { email, password, adminNumber, planKey, planName, planPrice, planPeriod, planBadge, planColor } = req.body;
+    const { email, password, adminNumber, planKey, planName, planPrice, planPeriod, planBadge, planColor, couponCode } = req.body;
     if (!email || !password) {
       res.status(400).json({ error: "Email and password are required" });
       return;
@@ -261,6 +275,11 @@ router.post("/admins", requireSuperAdmin, async (req, res) => {
       subscriptionStartDate: start,
       subscriptionEndDate: end,
     });
+
+    // Increment coupon usage if a coupon was applied
+    if (couponCode && planKey) {
+      await incrementCouponUsed(planKey, couponCode);
+    }
 
     res.status(201).json({
       id: String(admin._id),

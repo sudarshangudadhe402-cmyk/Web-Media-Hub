@@ -56,6 +56,7 @@ export const DEFAULT_PRICING_CONFIG = {
     highlights: ["Low investment to get started", "Full access to all features", "Upgrade anytime"],
     savingsNote: null,
     subscriptionDays: 30,
+    coupon: null,
   },
   premium: {
     displayName: "Premium Annual Plan",
@@ -68,6 +69,7 @@ export const DEFAULT_PRICING_CONFIG = {
     highlights: ["Low investment", "High return potential", "Ideal for growing clothing stores", "Recover cost with just a few extra sales", "Recommended for 80% of store owners"],
     savingsNote: null,
     subscriptionDays: 365,
+    coupon: null,
   },
   lifetime: {
     displayName: "Lifetime Business Plan",
@@ -80,6 +82,7 @@ export const DEFAULT_PRICING_CONFIG = {
     highlights: ["One-time investment", "No yearly payments", "Better ROI after first year", "Business asset for life", "Long-term savings"],
     savingsNote: "🔥 Save ₹8,000+ Compared To Renewing Every Year",
     subscriptionDays: null,
+    coupon: null,
   },
   enterprise: {
     displayName: "Enterprise Plan",
@@ -92,6 +95,7 @@ export const DEFAULT_PRICING_CONFIG = {
     highlights: [],
     savingsNote: null,
     subscriptionDays: null,
+    coupon: null,
   },
 };
 
