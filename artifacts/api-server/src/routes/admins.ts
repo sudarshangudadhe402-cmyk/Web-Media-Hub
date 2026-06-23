@@ -55,11 +55,14 @@ async function incrementCouponUsed(planKey: string, couponCode: string) {
     const settings = await PricingSettings.findById("pricing");
     if (!settings?.plans) return;
     const plan = (settings.plans as any)[planKey];
-    if (!plan?.coupon) return;
-    if (plan.coupon.code.toUpperCase() !== couponCode.toUpperCase()) return;
+    const coupons: any[] = Array.isArray(plan?.coupons) ? plan.coupons : [];
+    const idx = coupons.findIndex(
+      (c: any) => c.code.toUpperCase() === couponCode.toUpperCase()
+    );
+    if (idx === -1) return;
     await PricingSettings.updateOne(
       { _id: "pricing" },
-      { $inc: { [`plans.${planKey}.coupon.usedCount`]: 1 } }
+      { $inc: { [`plans.${planKey}.coupons.${idx}.usedCount`]: 1 } }
     );
   } catch {
     // Non-critical
@@ -276,7 +279,6 @@ router.post("/admins", requireSuperAdmin, async (req, res) => {
       subscriptionEndDate: end,
     });
 
-    // Increment coupon usage if a coupon was applied
     if (couponCode && planKey) {
       await incrementCouponUsed(planKey, couponCode);
     }
@@ -309,14 +311,10 @@ router.post("/admins", requireSuperAdmin, async (req, res) => {
   }
 });
 
-// Renew subscription — uses current pricing config for subscriptionDays
 router.patch("/admins/:id/renew-subscription", requireSuperAdmin, async (req, res) => {
   try {
     const admin = await User.findById(req.params.id);
-    if (!admin) {
-      res.status(404).json({ error: "Admin not found" });
-      return;
-    }
+    if (!admin) { res.status(404).json({ error: "Admin not found" }); return; }
 
     const pricingPlans = await getPricingPlans();
     const planKey = admin.planKey || "";
@@ -324,10 +322,8 @@ router.patch("/admins/:id/renew-subscription", requireSuperAdmin, async (req, re
     const subscriptionDays: number | null = planCfg?.subscriptionDays ?? null;
 
     const { start, end } = calcSubscriptionDates(subscriptionDays, admin.planPeriod ?? "");
-    if (!end) {
-      res.status(400).json({ error: "This plan does not have a subscription period" });
-      return;
-    }
+    if (!end) { res.status(400).json({ error: "This plan does not have a subscription period" }); return; }
+
     admin.subscriptionStartDate = start;
     admin.subscriptionEndDate = end;
     admin.isActive = true;
@@ -347,19 +343,11 @@ router.patch("/admins/:id/renew-subscription", requireSuperAdmin, async (req, re
 router.patch("/admins/:id/toggle-active", requireSuperAdmin, async (req, res) => {
   try {
     const { isActive } = req.body;
-    if (typeof isActive !== "boolean") {
-      res.status(400).json({ error: "isActive must be a boolean" });
-      return;
-    }
+    if (typeof isActive !== "boolean") { res.status(400).json({ error: "isActive must be a boolean" }); return; }
     const updateFields: Record<string, unknown> = { isActive };
-    if (!isActive) {
-      updateFields.activeSessions = [];
-    }
+    if (!isActive) updateFields.activeSessions = [];
     const admin = await User.findByIdAndUpdate(req.params.id, updateFields, { new: true });
-    if (!admin) {
-      res.status(404).json({ error: "Admin not found" });
-      return;
-    }
+    if (!admin) { res.status(404).json({ error: "Admin not found" }); return; }
     res.json({ id: String(admin._id), isActive: admin.isActive });
   } catch (err) {
     req.log.error({ err }, "Toggle active error");
@@ -370,15 +358,9 @@ router.patch("/admins/:id/toggle-active", requireSuperAdmin, async (req, res) =>
 router.patch("/admins/:id/multi-device", requireSuperAdmin, async (req, res) => {
   try {
     const { multiDeviceAllowed } = req.body;
-    if (typeof multiDeviceAllowed !== "boolean") {
-      res.status(400).json({ error: "multiDeviceAllowed must be a boolean" });
-      return;
-    }
+    if (typeof multiDeviceAllowed !== "boolean") { res.status(400).json({ error: "multiDeviceAllowed must be a boolean" }); return; }
     const admin = await User.findByIdAndUpdate(req.params.id, { multiDeviceAllowed }, { new: true });
-    if (!admin) {
-      res.status(404).json({ error: "Admin not found" });
-      return;
-    }
+    if (!admin) { res.status(404).json({ error: "Admin not found" }); return; }
     res.json({ id: String(admin._id), multiDeviceAllowed: admin.multiDeviceAllowed });
   } catch (err) {
     req.log.error({ err }, "Toggle multi-device error");
@@ -399,10 +381,7 @@ router.delete("/admins/:id", requireSuperAdmin, async (req, res) => {
 router.get("/admins/:id/store-stats", requireSuperAdmin, async (req, res) => {
   try {
     const store = await Store.findOne({ ownerId: req.params.id }).select("_id");
-    if (!store) {
-      res.json({ tryOnCount: 0, adsCount: 0 });
-      return;
-    }
+    if (!store) { res.json({ tryOnCount: 0, adsCount: 0 }); return; }
     const storeId = String(store._id);
     const agg = await Product.aggregate([
       { $match: { storeId } },

@@ -25,18 +25,23 @@ router.get("/coupons/validate", async (req, res) => {
     const plans = (settings?.plans ?? DEFAULT_PRICING_CONFIG) as any;
     const plan = plans[planKey];
 
-    if (!plan?.coupon) {
-      res.json({ valid: false, error: "No coupon available for this plan" });
+    const coupons: any[] = Array.isArray(plan?.coupons) ? plan.coupons : [];
+
+    if (coupons.length === 0) {
+      res.json({ valid: false, error: "No coupons available for this plan" });
       return;
     }
 
-    const coupon = plan.coupon;
-    if (coupon.code.toUpperCase() !== code.toUpperCase()) {
+    const matched = coupons.find(
+      (c: any) => c.code.toUpperCase() === code.toUpperCase()
+    );
+
+    if (!matched) {
       res.json({ valid: false, error: "Invalid coupon code" });
       return;
     }
 
-    const remaining = coupon.maxUses - (coupon.usedCount ?? 0);
+    const remaining = matched.maxUses - (matched.usedCount ?? 0);
     if (remaining <= 0) {
       res.json({ valid: false, error: "Coupon limit reached" });
       return;
@@ -45,7 +50,7 @@ router.get("/coupons/validate", async (req, res) => {
     res.json({
       valid: true,
       planKey,
-      discountedPrice: coupon.discountedPrice,
+      discountedPrice: matched.discountedPrice,
       originalPrice: plan.price,
       remaining,
     });

@@ -43,7 +43,7 @@ export interface PricingPlanData {
   highlights: string[];
   savingsNote?: string | null;
   subscriptionDays: number | null;
-  coupon?: PlanCoupon | null;
+  coupons?: PlanCoupon[];
 }
 
 export interface PricingConfigData {
@@ -64,7 +64,7 @@ export const DEFAULT_PRICING_CONFIG: PricingConfigData = {
     features: ["Full Feature Access", "2 Store Login", "Virtual Try-On", "Loyalty Card", "AI Promotional Videos", "Online Booking", "Live Notifications"],
     highlights: ["Low investment to get started", "Full access to all features", "Upgrade anytime"],
     subscriptionDays: 30,
-    coupon: null,
+    coupons: [],
   },
   premium: {
     displayName: "Premium Annual Plan",
@@ -76,7 +76,7 @@ export const DEFAULT_PRICING_CONFIG: PricingConfigData = {
     features: ["1 Store Login", "Virtual Try-On Experience", "Loyalty Card System", "AI Promotional Videos", "Online Booking System", "Smart Product Categories", "Live Customer Notifications", "Free Feature Updates", "Priority Support"],
     highlights: ["Low investment", "High return potential", "Ideal for growing clothing stores", "Recover cost with just a few extra sales", "Recommended for 80% of store owners"],
     subscriptionDays: 365,
-    coupon: null,
+    coupons: [],
   },
   lifetime: {
     displayName: "Lifetime Business Plan",
@@ -89,7 +89,7 @@ export const DEFAULT_PRICING_CONFIG: PricingConfigData = {
     highlights: ["One-time investment", "No yearly payments", "Better ROI after first year", "Business asset for life", "Long-term savings"],
     savingsNote: "🔥 Save ₹8,000+ Compared To Renewing Every Year",
     subscriptionDays: null,
-    coupon: null,
+    coupons: [],
   },
   enterprise: {
     displayName: "Enterprise Plan",
@@ -101,7 +101,7 @@ export const DEFAULT_PRICING_CONFIG: PricingConfigData = {
     features: ["Unlimited Store Login  ∞", "₹4000 Web Media Hub Coin", "Premium AI Resources", "Early Access Features", "VIP Support"],
     highlights: [],
     subscriptionDays: null,
-    coupon: null,
+    coupons: [],
   },
 };
 

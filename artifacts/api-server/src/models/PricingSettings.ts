@@ -22,7 +22,7 @@ const PricingPlanSchema = new Schema(
     highlights: { type: [String], default: [] },
     savingsNote: { type: String, default: null },
     subscriptionDays: { type: Number, default: null },
-    coupon: { type: CouponSchema, default: null },
+    coupons: { type: [CouponSchema], default: [] },
   },
   { _id: false }
 );
