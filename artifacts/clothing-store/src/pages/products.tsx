@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "wouter";
 import {
   useListProducts,
@@ -124,6 +124,26 @@ export default function Products() {
   const deleteProduct = useDeleteProduct();
   const uploadImage = useUploadProductImage();
   const uploadModel = useUploadProductModel();
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    if (uploadModel.isPending) {
+      setUploadProgress(0);
+      interval = setInterval(() => {
+        setUploadProgress((prev) => {
+          if (prev >= 90) { clearInterval(interval); return 90; }
+          return prev + Math.random() * 12;
+        });
+      }, 200);
+    } else if (!uploadModel.isPending && uploadProgress > 0) {
+      setUploadProgress(100);
+      const t = setTimeout(() => setUploadProgress(0), 600);
+      return () => clearTimeout(t);
+    }
+    return () => clearInterval(interval);
+  }, [uploadModel.isPending]);
+
   /* ── helpers ── */
   function resetForm() {
     setForm(EMPTY_FORM);
@@ -758,14 +778,26 @@ export default function Products() {
                   </button>
                 </div>
               ) : (
-                <label className={`flex flex-col items-center justify-center w-full h-20 border-2 border-dashed rounded-xl transition-colors bg-muted/40 ${uploadModel.isPending ? "opacity-50 cursor-not-allowed border-muted" : "cursor-pointer hover:border-purple-400 hover:bg-purple-50/40"}`}>
+                <label className={`flex flex-col items-center justify-center w-full border-2 border-dashed rounded-xl transition-colors bg-muted/40 overflow-hidden ${uploadModel.isPending ? "cursor-not-allowed border-purple-300" : "cursor-pointer hover:border-purple-400 hover:bg-purple-50/40"}`}>
                   {uploadModel.isPending ? (
-                    <span className="text-xs text-muted-foreground">Uploading model…</span>
+                    <div className="w-full px-4 py-3 flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-purple-700">Uploading 3D model…</span>
+                        <span className="text-xs font-semibold text-purple-600">{Math.min(Math.round(uploadProgress), 100)}%</span>
+                      </div>
+                      <div className="w-full h-2 bg-purple-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-purple-400 to-purple-600 rounded-full transition-all duration-200 ease-out"
+                          style={{ width: `${Math.min(uploadProgress, 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] text-muted-foreground text-center">Please wait, do not close this window</span>
+                    </div>
                   ) : (
-                    <>
+                    <div className="flex flex-col items-center justify-center h-20">
                       <Box className="w-5 h-5 text-purple-400 mb-1" />
                       <span className="text-xs text-muted-foreground">Click to upload 3D model</span>
-                    </>
+                    </div>
                   )}
                   <input
                     type="file"
