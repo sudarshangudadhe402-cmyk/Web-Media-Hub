@@ -212,6 +212,21 @@ export default function Products() {
   async function handleModelFileChange(files: FileList | null) {
     if (!files || files.length === 0) return;
     const file = files[0];
+
+    const allowed3DExtensions = [".glb", ".gltf"];
+    const fileName = file.name.toLowerCase();
+    const is3DModel = allowed3DExtensions.some((ext) => fileName.endsWith(ext));
+    if (!is3DModel) {
+      toast({ title: "Only 3D model allowed", description: "Please upload a .glb or .gltf file.", variant: "destructive" });
+      return;
+    }
+
+    const maxSizeBytes = 10 * 1024 * 1024;
+    if (file.size > maxSizeBytes) {
+      toast({ title: "File limit 10MB", description: "Your 3D model file exceeds the 10MB limit.", variant: "destructive" });
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = (reader.result as string).split(",")[1];
