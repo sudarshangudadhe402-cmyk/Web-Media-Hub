@@ -641,6 +641,21 @@ function ReferralTab() {
 }
 
 /* ── MARKETING SOURCES ── */
+function ToggleSwitch({ checked, onChange, disabled }: { checked: boolean; onChange: () => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      disabled={disabled}
+      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${checked ? "bg-green-500" : "bg-muted-foreground/30"}`}
+      aria-checked={checked}
+      role="switch"
+    >
+      <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-md transition-transform duration-200 ${checked ? "translate-x-4" : "translate-x-0"}`} />
+    </button>
+  );
+}
+
 function SourcesTab() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -654,6 +669,10 @@ function SourcesTab() {
   const [newLabel, setNewLabel] = useState("");
   const [newColor, setNewColor] = useState("#6b7280");
   const [saving, setSaving] = useState(false);
+
+  // builtin active/inactive map: key → isActive (default true)
+  const [builtinSettings, setBuiltinSettings] = useState<Record<string, boolean>>({});
+  const [togglingKey, setTogglingKey] = useState<string | null>(null);
 
   const { toast } = useToast();
 
@@ -672,9 +691,14 @@ function SourcesTab() {
   const loadCustom = async () => {
     setCsLoading(true);
     try {
-      const r = await fetch(`${BASE}/marketing/sources/config`, { headers: authHeaders() });
-      const d = await r.json();
-      setCustomSources(Array.isArray(d) ? d : []);
+      const [cr, br] = await Promise.all([
+        fetch(`${BASE}/marketing/sources/config`, { headers: authHeaders() }),
+        fetch(`${BASE}/marketing/sources/builtin`, { headers: authHeaders() }),
+      ]);
+      const cd = await cr.json();
+      const bd = await br.json();
+      setCustomSources(Array.isArray(cd) ? cd : []);
+      if (bd && typeof bd === "object") setBuiltinSettings(bd);
     } catch { }
     finally { setCsLoading(false); }
   };
@@ -683,6 +707,22 @@ function SourcesTab() {
   useEffect(() => { loadCustom(); }, []);
 
   const chartData = data.filter(s => s.total_signups > 0);
+
+  async function toggleBuiltin(key: string) {
+    const current = builtinSettings[key] !== false; // default true
+    setTogglingKey(key);
+    try {
+      const r = await fetch(`${BASE}/marketing/sources/builtin/${key}`, {
+        method: "PATCH",
+        headers: authHeaders(),
+        body: JSON.stringify({ isActive: !current }),
+      });
+      if (!r.ok) { toast({ title: "Failed to update", variant: "destructive" }); return; }
+      setBuiltinSettings(prev => ({ ...prev, [key]: !current }));
+      toast({ title: `${SOURCE_LABELS[key]} ${!current ? "activated" : "deactivated"}` });
+    } catch { toast({ title: "Failed", variant: "destructive" }); }
+    finally { setTogglingKey(null); }
+  }
 
   async function addSource() {
     if (!newLabel.trim()) { toast({ title: "Label is required", variant: "destructive" }); return; }
@@ -764,20 +804,22 @@ function SourcesTab() {
         </>
       )}
 
-      {/* ── Marketing Sources Management ── */}
+      {/* ── Sources Management ── */}
       <Card>
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm">Marketing Sources Management</CardTitle>
+            <CardTitle className="text-sm">Sources Management</CardTitle>
             <Button size="sm" onClick={() => setShowAddForm(v => !v)}>
               <Plus className="w-4 h-4 mr-1" />{showAddForm ? "Cancel" : "Add Source"}
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">All sources shown to admins on the source selection page. Built-in sources cannot be deleted.</p>
+          <p className="text-xs text-muted-foreground mt-1">Trackable sources auto-detected via UTM/coupon — toggle Active/Inactive. Manual sources shown to admins for self-selection.</p>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-0 p-0 pt-0">
+
+          {/* Add form — sits above the list */}
           {showAddForm && (
-            <div className="flex flex-wrap gap-3 items-end p-3 bg-muted/40 rounded-xl border border-border">
+            <div className="flex flex-wrap gap-3 items-end p-4 border-b border-border bg-muted/20">
               <div className="flex-1 min-w-[160px]">
                 <label className="text-xs font-medium mb-1 block">Source Name *</label>
                 <Input value={newLabel} onChange={e => setNewLabel(e.target.value)} placeholder="e.g. Telegram, Twitter" className="h-9" onKeyDown={e => e.key === "Enter" && addSource()} />
@@ -795,26 +837,53 @@ function SourcesTab() {
             </div>
           )}
 
-          <div className="divide-y divide-border rounded-xl border border-border overflow-hidden">
-            {/* Built-in sources */}
-            {SOURCES.map(key => (
-              <div key={key} className="flex items-center justify-between px-4 py-2.5 bg-muted/10">
-                <div className="flex items-center gap-3">
-                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: SOURCE_COLORS[key] }} />
-                  <div>
-                    <p className="text-sm font-medium">{SOURCE_LABELS[key]}</p>
-                    <p className="text-xs text-muted-foreground font-mono">{key}</p>
+          {/* ── Section: Trackable (built-in, non-deletable) ── */}
+          <div className="px-4 py-2 bg-muted/30 border-b border-border">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Trackable Sources — Non-deletable</p>
+          </div>
+
+          <div className="divide-y divide-border">
+            {SOURCES.map(key => {
+              const isActive = builtinSettings[key] !== false;
+              return (
+                <div key={key} className={`flex items-center justify-between px-4 py-3 transition-colors ${isActive ? "hover:bg-muted/10" : "opacity-50 hover:bg-muted/10"}`}>
+                  <div className="flex items-center gap-3">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: SOURCE_COLORS[key] }} />
+                    <div>
+                      <p className="text-sm font-medium">{SOURCE_LABELS[key]}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{key}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-medium ${isActive ? "text-green-600" : "text-muted-foreground"}`}>
+                      {isActive ? "Active" : "Inactive"}
+                    </span>
+                    <ToggleSwitch
+                      checked={isActive}
+                      onChange={() => toggleBuiltin(key)}
+                      disabled={togglingKey === key}
+                    />
                   </div>
                 </div>
-                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Built-in</span>
-              </div>
-            ))}
+              );
+            })}
+          </div>
 
-            {/* Custom sources */}
+          {/* ── Divider ── */}
+          <div className="relative border-t-2 border-border">
+            <div className="px-4 py-2 bg-muted/30 border-b border-border flex items-center justify-between">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Manual / Custom Sources — Deletable</p>
+            </div>
+          </div>
+
+          {/* Custom sources */}
+          <div className="divide-y divide-border">
             {csLoading ? (
-              <div className="flex justify-center py-4"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+              <div className="flex justify-center py-5"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+            ) : customSources.length === 0 ? (
+              <div className="px-4 py-4 text-center text-xs text-muted-foreground">No custom sources yet — click "Add Source" above to add one.</div>
             ) : customSources.map(src => (
-              <div key={src._id} className="flex items-center justify-between px-4 py-2.5 hover:bg-muted/20">
+              <div key={src._id} className="flex items-center justify-between px-4 py-3 hover:bg-muted/10">
                 <div className="flex items-center gap-3">
                   <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: src.color }} />
                   <div>
@@ -827,11 +896,8 @@ function SourcesTab() {
                 </Button>
               </div>
             ))}
-
-            {!csLoading && customSources.length === 0 && (
-              <div className="px-4 py-3 text-center text-xs text-muted-foreground">No custom sources added yet — click "Add Source" to add one.</div>
-            )}
           </div>
+
         </CardContent>
       </Card>
     </div>

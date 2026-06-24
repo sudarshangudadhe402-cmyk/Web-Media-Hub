@@ -5,6 +5,7 @@ import { Influencer } from "../models/Influencer";
 import { Ambassador } from "../models/Ambassador";
 import { ReferralCode } from "../models/ReferralCode";
 import { MarketingSourceConfig } from "../models/MarketingSourceConfig";
+import { BuiltinSourceSetting } from "../models/BuiltinSourceSetting";
 
 const router = Router();
 
@@ -300,6 +301,31 @@ router.get("/marketing/export/csv", requireSuperAdmin, async (req: AuthRequest, 
     res.setHeader("Content-Type", "text/csv");
     res.setHeader("Content-Disposition", `attachment; filename="${type}-export.csv"`);
     res.send(csv);
+  } catch { res.status(500).json({ error: "Failed" }); }
+});
+
+/* ── BUILTIN SOURCE SETTINGS (active/inactive toggle) ── */
+router.get("/marketing/sources/builtin", requireSuperAdmin, async (_req, res: Response): Promise<void> => {
+  try {
+    const settings = await BuiltinSourceSetting.find().lean();
+    // Return a map key → isActive; missing keys default to true
+    const map: Record<string, boolean> = {};
+    for (const s of settings) { map[s.key] = s.isActive; }
+    res.json(map);
+  } catch { res.status(500).json({ error: "Failed" }); }
+});
+
+router.patch("/marketing/sources/builtin/:key", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { key } = req.params;
+    const { isActive } = req.body;
+    if (typeof isActive !== "boolean") { res.status(400).json({ error: "isActive (boolean) required" }); return; }
+    const setting = await BuiltinSourceSetting.findOneAndUpdate(
+      { key },
+      { isActive },
+      { upsert: true, new: true }
+    );
+    res.json(setting);
   } catch { res.status(500).json({ error: "Failed" }); }
 });
 
