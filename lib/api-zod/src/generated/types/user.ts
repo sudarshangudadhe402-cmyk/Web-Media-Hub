@@ -10,6 +10,18 @@ import type { UserRole } from './userRole';
 export interface User {
   id: string;
   username: string;
+  email?: string;
+  adminNumber?: string;
   role: UserRole;
+  isActive?: boolean;
+  planName?: string;
+  planPrice?: string;
+  planPeriod?: string;
+  planBadge?: string;
+  planColor?: string;
+  /** @nullable */
+  subscriptionStartDate?: string | null;
+  /** @nullable */
+  subscriptionEndDate?: string | null;
   createdAt?: string;
 }

@@ -253,6 +253,27 @@ paths:
               schema:
                 $ref: "#/components/schemas/ImageUploadResponse"
 
+  /products/upload-model:
+    post:
+      operationId: uploadProductModel
+      tags: [products]
+      summary: Upload product 3D model (base64)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModelUploadInput"
+      responses:
+        "200":
+          description: Uploaded model URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelUploadResponse"
+
   /categories:
     get:
       operationId: listCategories
@@ -715,6 +736,9 @@ components:
           type: array
           items:
             type: string
+        modelUrl:
+          type: ["string", "null"]
+          description: URL of the 3D model file (.glb/.gltf)
         discountPrice:
           type: number
         actualPrice:
@@ -747,6 +771,9 @@ components:
           type: array
           items:
             type: string
+        modelUrl:
+          type: string
+          description: URL of the 3D model file (.glb/.gltf)
         discountPrice:
           type: number
         actualPrice:
@@ -772,6 +799,9 @@ components:
           type: array
           items:
             type: string
+        modelUrl:
+          type: string
+          description: URL of the 3D model file (.glb/.gltf)
         discountPrice:
           type: number
         actualPrice:
@@ -792,6 +822,23 @@ components:
       properties:
         likeCount:
           type: integer
+
+    ModelUploadInput:
+      type: object
+      required: [modelData, fileName]
+      properties:
+        modelData:
+          type: string
+          description: Base64 encoded 3D model data (.glb/.gltf)
+        fileName:
+          type: string
+
+    ModelUploadResponse:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
 
     ImageUploadInput:
       type: object

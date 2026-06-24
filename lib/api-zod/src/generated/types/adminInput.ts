@@ -7,6 +7,12 @@
  */
 
 export interface AdminInput {
-  username: string;
+  email: string;
   password: string;
+  adminNumber?: string;
+  planName?: string;
+  planPrice?: string;
+  planPeriod?: string;
+  planBadge?: string;
+  planColor?: string;
 }

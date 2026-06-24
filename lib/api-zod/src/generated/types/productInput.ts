@@ -11,6 +11,8 @@ export interface ProductInput {
   name: string;
   description?: string;
   images: string[];
+  /** URL of the 3D model file (.glb/.gltf) */
+  modelUrl?: string;
   discountPrice: number;
   actualPrice: number;
   functionCategory?: string;

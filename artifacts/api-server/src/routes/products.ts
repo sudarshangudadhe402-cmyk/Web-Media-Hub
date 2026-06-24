@@ -13,6 +13,7 @@ function formatProduct(p: InstanceType<typeof Product>) {
     name: p.name,
     description: p.description ?? null,
     images: p.images,
+    modelUrl: p.modelUrl ?? null,
     discountPrice: p.discountPrice,
     actualPrice: p.actualPrice,
     functionCategory: p.functionCategory ?? null,
@@ -55,7 +56,7 @@ router.get("/products", requireAuth, async (req: AuthRequest, res) => {
 
 router.post("/products", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { name, description, images, discountPrice, actualPrice, functionCategory, productType, sizes, age, gender } = req.body;
+    const { name, description, images, modelUrl, discountPrice, actualPrice, functionCategory, productType, sizes, age, gender } = req.body;
     const userId = String(req.user!._id);
     const store = await getMyStore(userId);
 
@@ -74,6 +75,7 @@ router.post("/products", requireAuth, async (req: AuthRequest, res) => {
       name,
       description,
       images: images || [],
+      modelUrl,
       discountPrice,
       actualPrice,
       functionCategory,
@@ -106,6 +108,26 @@ router.post("/products/upload-image", requireAuth, async (req, res) => {
     res.json({ url });
   } catch (err) {
     req.log.error({ err }, "Upload image error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/products/upload-model", requireAuth, async (req, res) => {
+  res.status(405).json({ error: "Use POST" });
+});
+
+router.post("/products/upload-model", requireAuth, async (req, res) => {
+  try {
+    const { modelData, fileName } = req.body;
+    if (!modelData) {
+      res.status(400).json({ error: "modelData is required" });
+      return;
+    }
+    const ext = fileName?.split(".").pop()?.toLowerCase() || "glb";
+    const url = `data:model/${ext};base64,${modelData}`;
+    res.json({ url });
+  } catch (err) {
+    req.log.error({ err }, "Upload model error");
     res.status(500).json({ error: "Internal server error" });
   }
 });

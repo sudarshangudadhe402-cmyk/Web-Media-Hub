@@ -36,6 +36,8 @@ import type {
   LikeResponse,
   ListProductsParams,
   LoginInput,
+  ModelUploadInput,
+  ModelUploadResponse,
   Notification,
   Product,
   ProductInput,
@@ -867,6 +869,77 @@ export const useUploadProductImage = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUploadProductImageMutationOptions(options));
+    }
+
+export const getUploadProductModelUrl = () => {
+
+
+
+
+  return `/api/products/upload-model`
+}
+
+/**
+ * @summary Upload product 3D model (base64)
+ */
+export const uploadProductModel = async (modelUploadInput: ModelUploadInput, options?: RequestInit): Promise<ModelUploadResponse> => {
+
+  return customFetch<ModelUploadResponse>(getUploadProductModelUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      modelUploadInput,)
+  }
+);}
+
+
+
+
+export const getUploadProductModelMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadProductModel>>, TError,{data: BodyType<ModelUploadInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof uploadProductModel>>, TError,{data: BodyType<ModelUploadInput>}, TContext> => {
+
+const mutationKey = ['uploadProductModel'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadProductModel>>, {data: BodyType<ModelUploadInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  uploadProductModel(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UploadProductModelMutationResult = NonNullable<Awaited<ReturnType<typeof uploadProductModel>>>
+    export type UploadProductModelMutationBody = BodyType<ModelUploadInput>
+    export type UploadProductModelMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Upload product 3D model (base64)
+ */
+export const useUploadProductModel = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadProductModel>>, TError,{data: BodyType<ModelUploadInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof uploadProductModel>>,
+        TError,
+        {data: BodyType<ModelUploadInput>},
+        TContext
+      > => {
+      return useMutation(getUploadProductModelMutationOptions(options));
     }
 
 export const getListCategoriesUrl = () => {
@@ -1967,7 +2040,7 @@ export function useGetDashboardSummary<TData = Awaited<ReturnType<typeof getDash
 
 
 
-// ── Store Request Types ──────────────────────────────────────────────────────
+// ── Store Request Types (custom – preserved across codegen) ──────────────────
 
 export interface StoreRequestItem {
   id: string;
@@ -1999,8 +2072,6 @@ export interface StoreRequestInput {
   planBadge?: string | null;
   planColor?: string | null;
 }
-
-// ── submitStoreRequest ────────────────────────────────────────────────────────
 
 export const submitStoreRequest = async (
   data: StoreRequestInput,
@@ -2034,8 +2105,6 @@ export const useSubmitStoreRequest = <
     submitStoreRequest(data);
   return useMutation({ mutationFn, ...options?.mutation });
 };
-
-// ── listStoreRequests ─────────────────────────────────────────────────────────
 
 export const listStoreRequests = async (
   params?: { status?: string },
@@ -2077,8 +2146,6 @@ export const useListStoreRequests = <
   return { ...query, queryKey };
 };
 
-// ── myStoreRequests ───────────────────────────────────────────────────────────
-
 export const myStoreRequests = async (
   options?: RequestInit
 ): Promise<StoreRequestItem[]> => {
@@ -2114,8 +2181,6 @@ export const useMyStoreRequests = <
   return { ...query, queryKey };
 };
 
-// ── approveStoreRequest ───────────────────────────────────────────────────────
-
 export const approveStoreRequest = async (
   id: string,
   options?: RequestInit
@@ -2145,8 +2210,6 @@ export const useApproveStoreRequest = <
   const mutationFn = ({ id }: { id: string }) => approveStoreRequest(id);
   return useMutation({ mutationFn, ...options?.mutation });
 };
-
-// ── rejectStoreRequest ────────────────────────────────────────────────────────
 
 export const rejectStoreRequest = async (
   id: string,

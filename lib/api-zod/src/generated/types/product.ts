@@ -13,6 +13,11 @@ export interface Product {
   /** @nullable */
   description?: string | null;
   images: string[];
+  /**
+     * URL of the 3D model file (.glb/.gltf)
+     * @nullable
+     */
+  modelUrl?: string | null;
   discountPrice: number;
   actualPrice: number;
   /** @nullable */

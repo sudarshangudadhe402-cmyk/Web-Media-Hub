@@ -29,7 +29,17 @@ export const LoginResponse = zod.object({
   "user": zod.object({
   "id": zod.string(),
   "username": zod.string(),
+  "email": zod.string().optional(),
+  "adminNumber": zod.string().optional(),
   "role": zod.enum(['super_admin', 'admin']),
+  "isActive": zod.boolean().optional(),
+  "planName": zod.string().optional(),
+  "planPrice": zod.string().optional(),
+  "planPeriod": zod.string().optional(),
+  "planBadge": zod.string().optional(),
+  "planColor": zod.string().optional(),
+  "subscriptionStartDate": zod.string().nullish(),
+  "subscriptionEndDate": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
 })
@@ -41,7 +51,17 @@ export const LoginResponse = zod.object({
 export const GetMeResponse = zod.object({
   "id": zod.string(),
   "username": zod.string(),
+  "email": zod.string().optional(),
+  "adminNumber": zod.string().optional(),
   "role": zod.enum(['super_admin', 'admin']),
+  "isActive": zod.boolean().optional(),
+  "planName": zod.string().optional(),
+  "planPrice": zod.string().optional(),
+  "planPeriod": zod.string().optional(),
+  "planBadge": zod.string().optional(),
+  "planColor": zod.string().optional(),
+  "subscriptionStartDate": zod.string().nullish(),
+  "subscriptionEndDate": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
 
@@ -58,7 +78,17 @@ export const ChangePasswordBody = zod.object({
 export const ChangePasswordResponse = zod.object({
   "id": zod.string(),
   "username": zod.string(),
+  "email": zod.string().optional(),
+  "adminNumber": zod.string().optional(),
   "role": zod.enum(['super_admin', 'admin']),
+  "isActive": zod.boolean().optional(),
+  "planName": zod.string().optional(),
+  "planPrice": zod.string().optional(),
+  "planPeriod": zod.string().optional(),
+  "planBadge": zod.string().optional(),
+  "planColor": zod.string().optional(),
+  "subscriptionStartDate": zod.string().nullish(),
+  "subscriptionEndDate": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
 
@@ -76,6 +106,7 @@ export const ListProductsResponseItem = zod.object({
   "name": zod.string(),
   "description": zod.string().nullish(),
   "images": zod.array(zod.string()),
+  "modelUrl": zod.string().nullish().describe('URL of the 3D model file (.glb\/.gltf)'),
   "discountPrice": zod.number(),
   "actualPrice": zod.number(),
   "functionCategory": zod.string().nullish(),
@@ -95,6 +126,7 @@ export const CreateProductBody = zod.object({
   "name": zod.string(),
   "description": zod.string().optional(),
   "images": zod.array(zod.string()),
+  "modelUrl": zod.string().optional().describe('URL of the 3D model file (.glb\/.gltf)'),
   "discountPrice": zod.number(),
   "actualPrice": zod.number(),
   "functionCategory": zod.string().optional(),
@@ -115,6 +147,7 @@ export const GetProductResponse = zod.object({
   "name": zod.string(),
   "description": zod.string().nullish(),
   "images": zod.array(zod.string()),
+  "modelUrl": zod.string().nullish().describe('URL of the 3D model file (.glb\/.gltf)'),
   "discountPrice": zod.number(),
   "actualPrice": zod.number(),
   "functionCategory": zod.string().nullish(),
@@ -137,6 +170,7 @@ export const UpdateProductBody = zod.object({
   "name": zod.string().optional(),
   "description": zod.string().optional(),
   "images": zod.array(zod.string()).optional(),
+  "modelUrl": zod.string().optional().describe('URL of the 3D model file (.glb\/.gltf)'),
   "discountPrice": zod.number().optional(),
   "actualPrice": zod.number().optional(),
   "functionCategory": zod.string().optional(),
@@ -149,6 +183,7 @@ export const UpdateProductResponse = zod.object({
   "name": zod.string(),
   "description": zod.string().nullish(),
   "images": zod.array(zod.string()),
+  "modelUrl": zod.string().nullish().describe('URL of the 3D model file (.glb\/.gltf)'),
   "discountPrice": zod.number(),
   "actualPrice": zod.number(),
   "functionCategory": zod.string().nullish(),
@@ -199,6 +234,19 @@ export const UploadProductImageResponse = zod.object({
 
 
 /**
+ * @summary Upload product 3D model (base64)
+ */
+export const UploadProductModelBody = zod.object({
+  "modelData": zod.string().describe('Base64 encoded 3D model data (.glb\/.gltf)'),
+  "fileName": zod.string()
+})
+
+export const UploadProductModelResponse = zod.object({
+  "url": zod.string()
+})
+
+
+/**
  * @summary List all function/event categories
  */
 export const ListCategoriesResponseItem = zod.object({
@@ -241,6 +289,7 @@ export const ListBookingsResponseItem = zod.object({
   "name": zod.string(),
   "description": zod.string().nullish(),
   "images": zod.array(zod.string()),
+  "modelUrl": zod.string().nullish().describe('URL of the 3D model file (.glb\/.gltf)'),
   "discountPrice": zod.number(),
   "actualPrice": zod.number(),
   "functionCategory": zod.string().nullish(),
@@ -287,6 +336,7 @@ export const IgnoreBookingResponse = zod.object({
   "name": zod.string(),
   "description": zod.string().nullish(),
   "images": zod.array(zod.string()),
+  "modelUrl": zod.string().nullish().describe('URL of the 3D model file (.glb\/.gltf)'),
   "discountPrice": zod.number(),
   "actualPrice": zod.number(),
   "functionCategory": zod.string().nullish(),
@@ -385,7 +435,17 @@ export const UpdateStoreResponse = zod.object({
 export const ListAdminsResponseItem = zod.object({
   "id": zod.string(),
   "username": zod.string(),
+  "email": zod.string().optional(),
+  "adminNumber": zod.string().optional(),
   "role": zod.enum(['super_admin', 'admin']),
+  "isActive": zod.boolean().optional(),
+  "planName": zod.string().optional(),
+  "planPrice": zod.string().optional(),
+  "planPeriod": zod.string().optional(),
+  "planBadge": zod.string().optional(),
+  "planColor": zod.string().optional(),
+  "subscriptionStartDate": zod.string().nullish(),
+  "subscriptionEndDate": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
 export const ListAdminsResponse = zod.array(ListAdminsResponseItem)
@@ -395,8 +455,14 @@ export const ListAdminsResponse = zod.array(ListAdminsResponseItem)
  * @summary Create a new admin (super_admin only)
  */
 export const CreateAdminBody = zod.object({
-  "username": zod.string(),
-  "password": zod.string()
+  "email": zod.string(),
+  "password": zod.string(),
+  "adminNumber": zod.string().optional(),
+  "planName": zod.string().optional(),
+  "planPrice": zod.string().optional(),
+  "planPeriod": zod.string().optional(),
+  "planBadge": zod.string().optional(),
+  "planColor": zod.string().optional()
 })
 
 
@@ -457,6 +523,7 @@ export const GetDashboardSummaryResponse = zod.object({
   "name": zod.string(),
   "description": zod.string().nullish(),
   "images": zod.array(zod.string()),
+  "modelUrl": zod.string().nullish().describe('URL of the 3D model file (.glb\/.gltf)'),
   "discountPrice": zod.number(),
   "actualPrice": zod.number(),
   "functionCategory": zod.string().nullish(),

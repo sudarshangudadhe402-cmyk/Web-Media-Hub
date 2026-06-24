@@ -41,15 +41,19 @@ export interface User {
   id: string;
   username: string;
   email?: string;
-  plainPassword?: string;
   adminNumber?: string;
   role: UserRole;
-  createdAt?: string;
+  isActive?: boolean;
   planName?: string;
   planPrice?: string;
   planPeriod?: string;
   planBadge?: string;
   planColor?: string;
+  /** @nullable */
+  subscriptionStartDate?: string | null;
+  /** @nullable */
+  subscriptionEndDate?: string | null;
+  createdAt?: string;
 }
 
 export interface AuthResponse {
@@ -68,6 +72,59 @@ export interface AdminInput {
   planColor?: string;
 }
 
+export type StoreRequestItemStatus = typeof StoreRequestItemStatus[keyof typeof StoreRequestItemStatus];
+
+
+export const StoreRequestItemStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export interface StoreRequestItem {
+  id: string;
+  email: string;
+  storeName: string;
+  whatsapp: string;
+  /** @nullable */
+  plan?: string | null;
+  /** @nullable */
+  planName?: string | null;
+  /** @nullable */
+  planPrice?: string | null;
+  /** @nullable */
+  planPeriod?: string | null;
+  /** @nullable */
+  planBadge?: string | null;
+  /** @nullable */
+  planColor?: string | null;
+  status: StoreRequestItemStatus;
+  submittedBy: string;
+  /** @nullable */
+  rewardCode?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StoreRequestInput {
+  email: string;
+  password: string;
+  storeName: string;
+  whatsapp: string;
+  /** @nullable */
+  plan?: string | null;
+  /** @nullable */
+  planName?: string | null;
+  /** @nullable */
+  planPrice?: string | null;
+  /** @nullable */
+  planPeriod?: string | null;
+  /** @nullable */
+  planBadge?: string | null;
+  /** @nullable */
+  planColor?: string | null;
+}
+
 export type ProductProductType = typeof ProductProductType[keyof typeof ProductProductType];
 
 
@@ -84,6 +141,11 @@ export interface Product {
   /** @nullable */
   description?: string | null;
   images: string[];
+  /**
+     * URL of the 3D model file (.glb/.gltf)
+     * @nullable
+     */
+  modelUrl?: string | null;
   discountPrice: number;
   actualPrice: number;
   /** @nullable */
@@ -110,6 +172,8 @@ export interface ProductInput {
   name: string;
   description?: string;
   images: string[];
+  /** URL of the 3D model file (.glb/.gltf) */
+  modelUrl?: string;
   discountPrice: number;
   actualPrice: number;
   functionCategory?: string;
@@ -131,6 +195,8 @@ export interface ProductUpdate {
   name?: string;
   description?: string;
   images?: string[];
+  /** URL of the 3D model file (.glb/.gltf) */
+  modelUrl?: string;
   discountPrice?: number;
   actualPrice?: number;
   functionCategory?: string;
@@ -140,6 +206,16 @@ export interface ProductUpdate {
 
 export interface LikeResponse {
   likeCount: number;
+}
+
+export interface ModelUploadInput {
+  /** Base64 encoded 3D model data (.glb/.gltf) */
+  modelData: string;
+  fileName: string;
+}
+
+export interface ModelUploadResponse {
+  url: string;
 }
 
 export interface ImageUploadInput {
@@ -155,15 +231,11 @@ export interface ImageUploadResponse {
 export interface Category {
   id: string;
   name: string;
-  coverImage?: string | null;
-  description?: string | null;
   createdAt: string;
 }
 
 export interface CategoryInput {
   name: string;
-  coverImage?: string | null;
-  description?: string | null;
 }
 
 export interface Booking {
@@ -256,7 +328,6 @@ export type DashboardSummaryCategoryCounts = {
 export interface DashboardSummary {
   totalProducts: number;
   categoryCounts: DashboardSummaryCategoryCounts;
-  functionCategoryCounts?: Record<string, number>;
   activeBookings: number;
   unreadNotifications: number;
   recentBookings?: Booking[];

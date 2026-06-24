@@ -14,6 +14,4 @@ export interface DashboardSummary {
   activeBookings: number;
   unreadNotifications: number;
   recentBookings?: Booking[];
-  unseenBookings?: number;
-  unseenLoyaltyCards?: number;
 }

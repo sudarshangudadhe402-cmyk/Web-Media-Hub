@@ -6,6 +6,7 @@ import {
   useUpdateProduct,
   useDeleteProduct,
   useUploadProductImage,
+  useUploadProductModel,
   useListCategories,
   getListProductsQueryKey,
 } from "@workspace/api-client-react";
@@ -45,6 +46,7 @@ import {
   CheckCircle2,
   Circle,
   Search,
+  Box,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -91,6 +93,7 @@ export default function Products() {
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [form, setForm] = useState<ProductForm>(EMPTY_FORM);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [modelUrl, setModelUrl] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
@@ -120,10 +123,12 @@ export default function Products() {
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
   const uploadImage = useUploadProductImage();
+  const uploadModel = useUploadProductModel();
   /* ── helpers ── */
   function resetForm() {
     setForm(EMPTY_FORM);
     setImageUrls([]);
+    setModelUrl(null);
     setEditingId(null);
   }
 
@@ -149,6 +154,7 @@ export default function Products() {
       gender: product.gender ?? "",
     });
     setImageUrls(product.images ?? []);
+    setModelUrl(product.modelUrl ?? null);
     setEditingId(product.id);
     setSelectedProduct(null);
     setFormOpen(true);
@@ -203,6 +209,24 @@ export default function Products() {
     }
   }
 
+  async function handleModelFileChange(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(",")[1];
+      uploadModel.mutate(
+        { data: { modelData: base64, fileName: file.name } },
+        {
+          onSuccess: (res) => setModelUrl(res.url),
+          onError: () =>
+            toast({ title: "Failed to upload 3D model", variant: "destructive" }),
+        }
+      );
+    };
+    reader.readAsDataURL(file);
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name.trim()) {
@@ -220,6 +244,7 @@ export default function Products() {
       age: form.age || undefined,
       gender: form.gender || undefined,
       images: imageUrls,
+      modelUrl: modelUrl || undefined,
     };
 
     if (editingId) {
@@ -302,7 +327,7 @@ export default function Products() {
     setSelectedIds(new Set());
   }
 
-  const isPending = createProduct.isPending || updateProduct.isPending;
+  const isPending = createProduct.isPending || updateProduct.isPending || uploadModel.isPending;
 
   /* ── render ── */
   return (
@@ -694,7 +719,51 @@ export default function Products() {
               )}
             </div>
 
-            {/* 3. Description */}
+            {/* 3. 3D Model Upload */}
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1.5">
+                <Box className="w-3.5 h-3.5 text-purple-500" />
+                3D Model <span className="text-[11px] text-muted-foreground font-normal">(optional · .glb / .gltf)</span>
+              </Label>
+              {modelUrl ? (
+                <div className="flex items-center gap-3 p-3 rounded-xl border bg-purple-50 border-purple-200">
+                  <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
+                    <Box className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-purple-700">3D model uploaded</p>
+                    <p className="text-[10px] text-purple-400 truncate">{modelUrl.slice(0, 40)}…</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setModelUrl(null)}
+                    className="w-6 h-6 rounded-full bg-red-100 text-red-500 flex items-center justify-center shrink-0 hover:bg-red-200 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <label className={`flex flex-col items-center justify-center w-full h-20 border-2 border-dashed rounded-xl transition-colors bg-muted/40 ${uploadModel.isPending ? "opacity-50 cursor-not-allowed border-muted" : "cursor-pointer hover:border-purple-400 hover:bg-purple-50/40"}`}>
+                  {uploadModel.isPending ? (
+                    <span className="text-xs text-muted-foreground">Uploading model…</span>
+                  ) : (
+                    <>
+                      <Box className="w-5 h-5 text-purple-400 mb-1" />
+                      <span className="text-xs text-muted-foreground">Click to upload 3D model</span>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    accept=".glb,.gltf"
+                    className="hidden"
+                    onChange={(e) => handleModelFileChange(e.target.files)}
+                    disabled={uploadModel.isPending}
+                  />
+                </label>
+              )}
+            </div>
+
+            {/* 4. Description */}
             <div className="space-y-1.5">
               <Label>Description</Label>
               <Textarea
