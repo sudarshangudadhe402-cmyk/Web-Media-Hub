@@ -68,10 +68,12 @@ app.use(
   })
 );
 
-// Limit body size — 10 MB for image upload endpoints, 1 MB for everything else
+// Limit body size — 50 MB for 3D model uploads, 10 MB for image uploads, 1 MB for everything else
 app.use((req: Request, res: Response, next: NextFunction) => {
+  const isModelUpload = req.path.includes("/upload-model");
   const isImageUpload = req.path.includes("/upload-image");
-  express.json({ limit: isImageUpload ? "10mb" : "1mb" })(req, res, next);
+  const limit = isModelUpload ? "50mb" : isImageUpload ? "10mb" : "1mb";
+  express.json({ limit })(req, res, next);
 });
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
