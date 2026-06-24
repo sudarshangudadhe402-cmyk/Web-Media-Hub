@@ -42,8 +42,8 @@ const DATE_RANGES = [
   { label:"Custom", value:"custom" },
 ];
 
-function fmt(n: number) { return n.toLocaleString("en-IN"); }
-function fmtRs(n: number) { return `₹${fmt(n)}`; }
+function fmt(n: number | undefined | null) { return (n ?? 0).toLocaleString("en-IN"); }
+function fmtRs(n: number | undefined | null) { return `₹${fmt(n)}`; }
 
 /* ── Stat Card ── */
 function StatCard({ title, value, sub, icon: Icon, color }: { title: string; value: string; sub?: string; icon: any; color: string }) {
