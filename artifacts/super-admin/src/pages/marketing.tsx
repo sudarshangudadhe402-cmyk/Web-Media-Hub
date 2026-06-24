@@ -18,6 +18,13 @@ function token() { return sessionStorage.getItem("wmh_super_token") || ""; }
 function authHeaders() { return { "Content-Type": "application/json", Authorization: `Bearer ${token()}` }; }
 
 const SOURCES = ["ORGANIC","GOOGLE_AD","FACEBOOK_AD","INSTAGRAM_AD","YOUTUBE","REFERRAL","AMBASSADOR","INFLUENCER","AFFILIATE","WHATSAPP","DIRECT"];
+
+// Auto-tracked by system (UTM params / coupon codes / referral codes) — non-deletable, toggleable
+const AUTO_SOURCES = ["GOOGLE_AD","FACEBOOK_AD","INSTAGRAM_AD","YOUTUBE","REFERRAL","AMBASSADOR","INFLUENCER","AFFILIATE"];
+
+// Admin manually selects these when signup can't be auto-detected — in deletable section
+const MANUAL_BUILTIN_SOURCES = ["ORGANIC","WHATSAPP","DIRECT"];
+
 const SOURCE_COLORS: Record<string, string> = {
   ORGANIC:"#22c55e", GOOGLE_AD:"#3b82f6", FACEBOOK_AD:"#6366f1", INSTAGRAM_AD:"#ec4899",
   YOUTUBE:"#ef4444", REFERRAL:"#f59e0b", AMBASSADOR:"#8b5cf6", INFLUENCER:"#06b6d4",
@@ -837,13 +844,14 @@ function SourcesTab() {
             </div>
           )}
 
-          {/* ── Section: Trackable (built-in, non-deletable) ── */}
+          {/* ── Section: Auto-Trackable (non-deletable, toggleable) ── */}
           <div className="px-4 py-2 bg-muted/30 border-b border-border">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Trackable Sources — Non-deletable</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Direct Trackable Sources — Non-deletable</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Auto-detected via UTM params, coupon codes, or referral links</p>
           </div>
 
           <div className="divide-y divide-border">
-            {SOURCES.map(key => {
+            {AUTO_SOURCES.map(key => {
               const isActive = builtinSettings[key] !== false;
               return (
                 <div key={key} className={`flex items-center justify-between px-4 py-3 transition-colors ${isActive ? "hover:bg-muted/10" : "opacity-50 hover:bg-muted/10"}`}>
@@ -870,13 +878,42 @@ function SourcesTab() {
           </div>
 
           {/* ── Divider ── */}
-          <div className="relative border-t-2 border-border">
-            <div className="px-4 py-2 bg-muted/30 border-b border-border flex items-center justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Manual / Custom Sources — Deletable</p>
+          <div className="border-t-2 border-border">
+            <div className="px-4 py-2 bg-muted/30 border-b border-border">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Manual Selection Sources — Deletable</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Admin manually chooses these when signup can't be auto-tracked</p>
             </div>
           </div>
 
-          {/* Custom sources */}
+          {/* Manual built-in sources (ORGANIC, WHATSAPP, DIRECT) — toggleable, no delete */}
+          <div className="divide-y divide-border">
+            {MANUAL_BUILTIN_SOURCES.map(key => {
+              const isActive = builtinSettings[key] !== false;
+              return (
+                <div key={key} className={`flex items-center justify-between px-4 py-3 transition-colors ${isActive ? "hover:bg-muted/10" : "opacity-50 hover:bg-muted/10"}`}>
+                  <div className="flex items-center gap-3">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: SOURCE_COLORS[key] }} />
+                    <div>
+                      <p className="text-sm font-medium">{SOURCE_LABELS[key]}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{key}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-medium ${isActive ? "text-green-600" : "text-muted-foreground"}`}>
+                      {isActive ? "Active" : "Inactive"}
+                    </span>
+                    <ToggleSwitch
+                      checked={isActive}
+                      onChange={() => toggleBuiltin(key)}
+                      disabled={togglingKey === key}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Custom sources — toggleable + deletable */}
           <div className="divide-y divide-border">
             {csLoading ? (
               <div className="flex justify-center py-5"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
