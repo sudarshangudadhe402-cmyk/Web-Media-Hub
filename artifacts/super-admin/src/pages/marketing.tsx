@@ -312,7 +312,8 @@ function InfluencersTab() {
     setLoading(true);
     try {
       const r = await fetch(`${BASE}/marketing/influencers`, { headers: authHeaders() });
-      setList(await r.json());
+      const data = await r.json();
+      setList(Array.isArray(data) ? data : []);
     } catch { toast({ title: "Failed to load", variant: "destructive" }); }
     finally { setLoading(false); }
   };
@@ -439,7 +440,8 @@ function AmbassadorsTab() {
     setLoading(true);
     try {
       const r = await fetch(`${BASE}/marketing/ambassadors`, { headers: authHeaders() });
-      setList(await r.json());
+      const data = await r.json();
+      setList(Array.isArray(data) ? data : []);
     } catch { toast({ title: "Failed", variant: "destructive" }); }
     finally { setLoading(false); }
   };
@@ -565,7 +567,8 @@ function ReferralTab() {
     setLoading(true);
     try {
       const r = await fetch(`${BASE}/marketing/referral-codes`, { headers: authHeaders() });
-      setList(await r.json());
+      const data = await r.json();
+      setList(Array.isArray(data) ? data : []);
     } catch { toast({ title: "Failed", variant: "destructive" }); }
     finally { setLoading(false); }
   };
@@ -652,7 +655,8 @@ function SourcesTab() {
       const params = new URLSearchParams({ range });
       if (range === "custom" && from && to) { params.set("from", from); params.set("to", to); }
       const r = await fetch(`${BASE}/marketing/sources?${params}`, { headers: authHeaders() });
-      setData(await r.json());
+      const d = await r.json();
+      setData(Array.isArray(d) ? d : []);
     } catch { toast({ title: "Failed", variant: "destructive" }); }
     finally { setLoading(false); }
   }, [range, from, to]);
