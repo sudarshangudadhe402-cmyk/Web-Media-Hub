@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { AdminLegalAcceptance } from "../models/AdminLegalAcceptance";
 import { Store } from "../models/Store";
+import { User } from "../models/User";
+import { MarketingSourceConfig } from "../models/MarketingSourceConfig";
 import { requireAuth, requireSuperAdmin, AuthRequest } from "../middlewares/auth";
 
 const router = Router();
@@ -161,6 +163,78 @@ router.get("/legal/acceptances/export", requireSuperAdmin, async (req: AuthReque
     res.send(csv);
   } catch (err) {
     req.log.error({ err }, "Legal export error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* ── SOURCE STATUS & CONFIRM ── */
+const DEFAULT_SOURCES = [
+  "ORGANIC","GOOGLE_AD","FACEBOOK_AD","INSTAGRAM_AD","YOUTUBE",
+  "REFERRAL","AMBASSADOR","INFLUENCER","AFFILIATE","WHATSAPP","DIRECT",
+];
+const DEFAULT_LABELS: Record<string,string> = {
+  ORGANIC:"Organic",GOOGLE_AD:"Google Ads",FACEBOOK_AD:"Facebook Ads",
+  INSTAGRAM_AD:"Instagram Ads",YOUTUBE:"YouTube",REFERRAL:"Referral",
+  AMBASSADOR:"Ambassador",INFLUENCER:"Influencer",AFFILIATE:"Affiliate",
+  WHATSAPP:"WhatsApp",DIRECT:"Direct",
+};
+const DEFAULT_COLORS: Record<string,string> = {
+  ORGANIC:"#22c55e",GOOGLE_AD:"#3b82f6",FACEBOOK_AD:"#6366f1",
+  INSTAGRAM_AD:"#ec4899",YOUTUBE:"#ef4444",REFERRAL:"#f59e0b",
+  AMBASSADOR:"#8b5cf6",INFLUENCER:"#06b6d4",AFFILIATE:"#14b8a6",
+  WHATSAPP:"#10b981",DIRECT:"#6b7280",
+};
+
+router.get("/legal/source-status", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const user = req.user!;
+    if (user.role === "super_admin") { res.json({ needsSelection: false }); return; }
+
+    const isTrackable = (
+      user.signup_source !== "ORGANIC" ||
+      !!user.coupon_code ||
+      !!user.utm_source ||
+      !!user.source_id
+    );
+
+    if (isTrackable || user.source_confirmed) {
+      res.json({ needsSelection: false });
+      return;
+    }
+
+    const customSources = await MarketingSourceConfig.find().lean();
+    const allSources = [
+      ...DEFAULT_SOURCES.map(key => ({ key, label: DEFAULT_LABELS[key], color: DEFAULT_COLORS[key] })),
+      ...customSources.map((s: any) => ({ key: s.key, label: s.label, color: s.color })),
+    ];
+
+    res.json({ needsSelection: true, sources: allSources });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/legal/source-confirm", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const user = req.user!;
+    if (user.role === "super_admin") { res.status(403).json({ error: "Not applicable" }); return; }
+
+    const { source } = req.body;
+    if (!source) { res.status(400).json({ error: "source is required" }); return; }
+
+    const allKeys = [
+      ...DEFAULT_SOURCES,
+      ...(await MarketingSourceConfig.find().lean()).map((s: any) => s.key),
+    ];
+    if (!allKeys.includes(source)) { res.status(400).json({ error: "Invalid source" }); return; }
+
+    await User.findByIdAndUpdate(user._id, {
+      signup_source: source,
+      source_confirmed: true,
+    });
+
+    res.json({ success: true });
+  } catch (err) {
     res.status(500).json({ error: "Internal server error" });
   }
 });

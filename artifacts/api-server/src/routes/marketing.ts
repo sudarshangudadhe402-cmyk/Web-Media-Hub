@@ -4,6 +4,7 @@ import { User } from "../models/User";
 import { Influencer } from "../models/Influencer";
 import { Ambassador } from "../models/Ambassador";
 import { ReferralCode } from "../models/ReferralCode";
+import { MarketingSourceConfig } from "../models/MarketingSourceConfig";
 
 const router = Router();
 
@@ -299,6 +300,33 @@ router.get("/marketing/export/csv", requireSuperAdmin, async (req: AuthRequest, 
     res.setHeader("Content-Type", "text/csv");
     res.setHeader("Content-Disposition", `attachment; filename="${type}-export.csv"`);
     res.send(csv);
+  } catch { res.status(500).json({ error: "Failed" }); }
+});
+
+/* ── CUSTOM MARKETING SOURCES (Super Admin CRUD) ── */
+router.get("/marketing/sources/config", requireSuperAdmin, async (_req, res: Response): Promise<void> => {
+  try {
+    const custom = await MarketingSourceConfig.find().sort({ createdAt: 1 }).lean();
+    res.json(custom);
+  } catch { res.status(500).json({ error: "Failed" }); }
+});
+
+router.post("/marketing/sources/config", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { key, label, color } = req.body;
+    if (!key || !label) { res.status(400).json({ error: "key and label required" }); return; }
+    const src = await MarketingSourceConfig.create({ key: key.toUpperCase().replace(/\s+/g, "_"), label, color: color || "#6b7280" });
+    res.status(201).json(src);
+  } catch (err: any) {
+    if (err.code === 11000) { res.status(409).json({ error: "Source key already exists" }); return; }
+    res.status(500).json({ error: "Failed" });
+  }
+});
+
+router.delete("/marketing/sources/config/:id", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    await MarketingSourceConfig.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
   } catch { res.status(500).json({ error: "Failed" }); }
 });
 

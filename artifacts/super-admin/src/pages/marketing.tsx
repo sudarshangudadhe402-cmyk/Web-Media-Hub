@@ -647,6 +647,14 @@ function SourcesTab() {
   const [range, setRange] = useState("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+
+  const [customSources, setCustomSources] = useState<any[]>([]);
+  const [csLoading, setCsLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newLabel, setNewLabel] = useState("");
+  const [newColor, setNewColor] = useState("#6b7280");
+  const [saving, setSaving] = useState(false);
+
   const { toast } = useToast();
 
   const load = useCallback(async () => {
@@ -661,9 +669,43 @@ function SourcesTab() {
     finally { setLoading(false); }
   }, [range, from, to]);
 
+  const loadCustom = async () => {
+    setCsLoading(true);
+    try {
+      const r = await fetch(`${BASE}/marketing/sources/config`, { headers: authHeaders() });
+      const d = await r.json();
+      setCustomSources(Array.isArray(d) ? d : []);
+    } catch { }
+    finally { setCsLoading(false); }
+  };
+
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadCustom(); }, []);
 
   const chartData = data.filter(s => s.total_signups > 0);
+
+  async function addSource() {
+    if (!newLabel.trim()) { toast({ title: "Label is required", variant: "destructive" }); return; }
+    setSaving(true);
+    try {
+      const r = await fetch(`${BASE}/marketing/sources/config`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ key: newLabel.trim().toUpperCase().replace(/\s+/g, "_"), label: newLabel.trim(), color: newColor }),
+      });
+      if (!r.ok) { const e = await r.json(); toast({ title: e.error || "Failed", variant: "destructive" }); return; }
+      toast({ title: "Source added" });
+      setNewLabel(""); setNewColor("#6b7280"); setShowAddForm(false);
+      loadCustom();
+    } catch { toast({ title: "Failed", variant: "destructive" }); }
+    finally { setSaving(false); }
+  }
+
+  async function deleteSource(id: string) {
+    if (!confirm("Delete this custom source?")) return;
+    await fetch(`${BASE}/marketing/sources/config/${id}`, { method: "DELETE", headers: authHeaders() });
+    loadCustom();
+  }
 
   return (
     <div className="space-y-4">
@@ -677,11 +719,11 @@ function SourcesTab() {
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={chartData} margin={{ left: -10 }}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="source" tick={{ fontSize: 9 }} tickFormatter={v => SOURCE_LABELS[v]?.split(" ")[0]} />
+                  <XAxis dataKey="source" tick={{ fontSize: 9 }} tickFormatter={v => SOURCE_LABELS[v]?.split(" ")[0] || v} />
                   <YAxis tick={{ fontSize: 10 }} />
                   <Tooltip labelFormatter={l => SOURCE_LABELS[l] || l} />
                   <Bar dataKey="total_signups" name="Signups" radius={[4,4,0,0]}>
-                    {chartData.map((s, i) => <Cell key={i} fill={SOURCE_COLORS[s.source]} />)}
+                    {chartData.map((s, i) => <Cell key={i} fill={SOURCE_COLORS[s.source] || "#6b7280"} />)}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -704,8 +746,8 @@ function SourcesTab() {
                       <tr key={s.source} className="border-b last:border-0 hover:bg-muted/20">
                         <td className="p-3">
                           <div className="flex items-center gap-2">
-                            <span className="w-3 h-3 rounded-full" style={{ background: SOURCE_COLORS[s.source] }} />
-                            <span className="font-medium">{SOURCE_LABELS[s.source]}</span>
+                            <span className="w-3 h-3 rounded-full" style={{ background: SOURCE_COLORS[s.source] || "#6b7280" }} />
+                            <span className="font-medium">{SOURCE_LABELS[s.source] || s.source}</span>
                           </div>
                         </td>
                         <td className="p-3 text-right font-semibold">{s.total_signups}</td>
@@ -721,6 +763,62 @@ function SourcesTab() {
           </Card>
         </>
       )}
+
+      {/* ── Custom Source Management ── */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm">Custom Marketing Sources</CardTitle>
+            <Button size="sm" onClick={() => setShowAddForm(v => !v)}>
+              <Plus className="w-4 h-4 mr-1" />{showAddForm ? "Cancel" : "Add Source"}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">Add custom sources that admins can select when their signup is not trackable.</p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {showAddForm && (
+            <div className="flex flex-wrap gap-3 items-end p-3 bg-muted/40 rounded-xl border border-border">
+              <div className="flex-1 min-w-[160px]">
+                <label className="text-xs font-medium mb-1 block">Source Name *</label>
+                <Input value={newLabel} onChange={e => setNewLabel(e.target.value)} placeholder="e.g. Telegram, Twitter" className="h-9" />
+              </div>
+              <div>
+                <label className="text-xs font-medium mb-1 block">Color</label>
+                <div className="flex items-center gap-2">
+                  <input type="color" value={newColor} onChange={e => setNewColor(e.target.value)} className="w-9 h-9 rounded border border-border cursor-pointer p-0.5 bg-card" />
+                  <span className="text-xs text-muted-foreground font-mono">{newColor}</span>
+                </div>
+              </div>
+              <Button size="sm" onClick={addSource} disabled={saving}>
+                <Check className="w-4 h-4 mr-1" />{saving ? "Saving..." : "Add"}
+              </Button>
+            </div>
+          )}
+
+          {csLoading ? (
+            <div className="flex justify-center py-6"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+          ) : customSources.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">No custom sources added yet.</p>
+          ) : (
+            <div className="divide-y divide-border rounded-xl border border-border overflow-hidden">
+              {customSources.map(src => (
+                <div key={src._id} className="flex items-center justify-between px-4 py-3 hover:bg-muted/20">
+                  <div className="flex items-center gap-3">
+                    <span className="w-3 h-3 rounded-full shrink-0" style={{ background: src.color }} />
+                    <div>
+                      <p className="text-sm font-medium">{src.label}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{src.key}</p>
+                    </div>
+                  </div>
+                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => deleteSource(src._id)}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -27,6 +27,7 @@ export interface IUser extends Document {
   source_id: string;
   coupon_code: string;
   utm_source: string;
+  source_confirmed: boolean;
   createdAt: Date;
   comparePassword(candidate: string): Promise<boolean>;
 }
@@ -61,6 +62,7 @@ const UserSchema = new Schema<IUser>(
     source_id: { type: String, default: "" },
     coupon_code: { type: String, default: "" },
     utm_source: { type: String, default: "" },
+    source_confirmed: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
