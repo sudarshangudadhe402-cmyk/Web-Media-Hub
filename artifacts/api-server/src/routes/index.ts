@@ -16,6 +16,7 @@ import loyaltyCardsRouter from "./loyaltyCards";
 import legalRouter from "./legal";
 import ledgerRouter from "./ledger";
 import customerAccountsRouter from "./customerAccounts";
+import marketingRouter from "./marketing";
 import { requireDb } from "../middlewares/dbCheck";
 
 const router: IRouter = Router();
@@ -40,5 +41,6 @@ router.use(couponsRouter);
 router.use(loyaltyCardsRouter);
 router.use(ledgerRouter);
 router.use(customerAccountsRouter);
+router.use(marketingRouter);
 
 export default router;

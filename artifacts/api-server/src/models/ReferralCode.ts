@@ -1,0 +1,22 @@
+import mongoose, { Schema, Document, Types } from "mongoose";
+
+export interface IReferralCode extends Document {
+  owner_admin_id: Types.ObjectId;
+  referral_code: string;
+  total_signups: number;
+  total_paid_admins: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const ReferralCodeSchema = new Schema<IReferralCode>(
+  {
+    owner_admin_id: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    referral_code: { type: String, required: true, unique: true, trim: true, uppercase: true },
+    total_signups: { type: Number, default: 0 },
+    total_paid_admins: { type: Number, default: 0 },
+  },
+  { timestamps: true }
+);
+
+export const ReferralCode = mongoose.model<IReferralCode>("ReferralCode", ReferralCodeSchema);

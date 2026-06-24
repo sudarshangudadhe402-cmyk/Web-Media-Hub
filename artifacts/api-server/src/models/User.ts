@@ -23,6 +23,10 @@ export interface IUser extends Document {
   planColor: string;
   subscriptionStartDate: Date | null;
   subscriptionEndDate: Date | null;
+  signup_source: string;
+  source_id: string;
+  coupon_code: string;
+  utm_source: string;
   createdAt: Date;
   comparePassword(candidate: string): Promise<boolean>;
 }
@@ -53,6 +57,10 @@ const UserSchema = new Schema<IUser>(
     planColor: { type: String, default: "" },
     subscriptionStartDate: { type: Date, default: null },
     subscriptionEndDate: { type: Date, default: null },
+    signup_source: { type: String, default: "ORGANIC" },
+    source_id: { type: String, default: "" },
+    coupon_code: { type: String, default: "" },
+    utm_source: { type: String, default: "" },
   },
   { timestamps: true }
 );

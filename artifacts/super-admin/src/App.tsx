@@ -10,6 +10,7 @@ import Admins from "@/pages/admins";
 import LegalLog from "@/pages/legal-log";
 import Revenue from "@/pages/revenue";
 import PricingConfig from "@/pages/pricing-config";
+import MarketingAnalytics from "@/pages/marketing";
 import Layout from "@/components/layout";
 import NotFound from "@/pages/not-found";
 
@@ -70,6 +71,11 @@ function Router() {
       <Route path="/pricing-config">
         <ProtectedRoute>
           <PricingConfig />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/marketing">
+        <ProtectedRoute>
+          <MarketingAnalytics />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />
