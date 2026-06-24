@@ -21,6 +21,7 @@ interface PublicProduct {
   name: string;
   description: string | null;
   images: string[];
+  modelUrl?: string | null;
   discountPrice: number;
   actualPrice: number;
   productType: string;

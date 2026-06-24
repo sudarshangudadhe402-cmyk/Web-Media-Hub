@@ -1,11 +1,28 @@
-import { Search, X, SlidersHorizontal, ShoppingBag, Heart, Camera } from "lucide-react";
+import { Search, X, SlidersHorizontal, ShoppingBag, Heart, Camera, Box } from "lucide-react";
 import { useState } from "react";
+
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      "model-viewer": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement> & {
+        src?: string;
+        alt?: string;
+        "auto-rotate"?: boolean | string;
+        "camera-controls"?: boolean | string;
+        "shadow-intensity"?: string;
+        exposure?: string;
+        style?: React.CSSProperties;
+      }, HTMLElement>;
+    }
+  }
+}
 
 interface PublicProduct {
   id: string;
   name: string;
   description: string | null;
   images: string[];
+  modelUrl?: string | null;
   discountPrice: number;
   actualPrice: number;
   productType: string;
@@ -50,6 +67,7 @@ export default function ShopTab({
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [sortBy, setSortBy] = useState<"newest" | "most-liked" | "most-tried" | "trending">("newest");
   const [showFilterSheet, setShowFilterSheet] = useState(false);
+  const [viewing3D, setViewing3D] = useState<PublicProduct | null>(null);
 
   const filteredProducts = (() => {
     let list = [...products];
@@ -167,6 +185,7 @@ export default function ShopTab({
               const disc = discountPct(p);
               const liked = likedProducts.has(p.id);
               const isTrending = p.recentLikeCount > 0 && p.recentTryOnCount > 0;
+              const has3D = !!p.modelUrl;
               return (
                 <div
                   key={p.id}
@@ -198,6 +217,22 @@ export default function ShopTab({
                         {disc}%
                       </div>
                     )}
+
+                    {/* 3D View button */}
+                    {has3D && (
+                      <button
+                        className="absolute bottom-2 left-2 flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold shadow-md active:scale-90 transition-transform"
+                        style={{ background: "rgba(124,58,237,0.92)", color: "white" }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setViewing3D(p);
+                        }}
+                      >
+                        <Box className="w-3 h-3" />
+                        3D
+                      </button>
+                    )}
+
                     <button
                       className="absolute bottom-2 right-2 w-7 h-7 rounded-full flex items-center justify-center shadow active:scale-90 transition-transform"
                       style={{ background: liked ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.9)" }}
@@ -226,6 +261,11 @@ export default function ShopTab({
                       <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
                         <Camera className="w-3 h-3 text-blue-400" />{p.tryOnLikeCount}
                       </span>
+                      {has3D && (
+                        <span className="flex items-center gap-0.5 text-[10px] font-semibold" style={{ color: "#7c3aed" }}>
+                          <Box className="w-3 h-3" />3D
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -278,6 +318,59 @@ export default function ShopTab({
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3D Model Viewer Modal */}
+      {viewing3D && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col"
+          style={{ background: "rgba(0,0,0,0.92)" }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 pt-10 pb-3">
+            <div className="flex items-center gap-2">
+              <Box className="w-5 h-5 text-purple-400" />
+              <div>
+                <p className="text-white text-sm font-bold leading-tight" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                  {viewing3D.name}
+                </p>
+                <p className="text-purple-300 text-[11px]">3D Model Viewer</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setViewing3D(null)}
+              className="w-9 h-9 rounded-full flex items-center justify-center"
+              style={{ background: "rgba(255,255,255,0.12)" }}
+            >
+              <X className="w-5 h-5 text-white" />
+            </button>
+          </div>
+
+          {/* Viewer */}
+          <div className="flex-1 flex flex-col items-center justify-center px-4">
+            <model-viewer
+              src={viewing3D.modelUrl!}
+              alt={viewing3D.name}
+              auto-rotate="true"
+              camera-controls="true"
+              shadow-intensity="1"
+              exposure="1"
+              style={{
+                width: "100%",
+                height: "420px",
+                background: "transparent",
+                borderRadius: "20px",
+              }}
+            />
+          </div>
+
+          {/* Hint */}
+          <div className="px-4 pb-10 pt-2 text-center">
+            <p className="text-gray-400 text-[12px]">
+              👆 Drag to rotate &nbsp;·&nbsp; Pinch to zoom
+            </p>
           </div>
         </div>
       )}
