@@ -48,7 +48,7 @@ function buildDateFilter(range: string, from?: string, to?: string) {
 }
 
 /* ── DASHBOARD ── */
-router.get("/api/marketing/dashboard", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get("/marketing/dashboard", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { range = "all", from, to } = req.query as Record<string, string>;
     const dateFilter = buildDateFilter(range, from, to);
@@ -117,14 +117,14 @@ router.get("/api/marketing/dashboard", requireSuperAdmin, async (req: AuthReques
 });
 
 /* ── INFLUENCERS ── */
-router.get("/api/marketing/influencers", requireSuperAdmin, async (_req, res: Response): Promise<void> => {
+router.get("/marketing/influencers", requireSuperAdmin, async (_req, res: Response): Promise<void> => {
   try {
     const list = await Influencer.find().sort({ createdAt: -1 }).lean();
     res.json(list);
   } catch { res.status(500).json({ error: "Failed" }); }
 });
 
-router.post("/api/marketing/influencers", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post("/marketing/influencers", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { name, coupon_code, commission_percentage } = req.body;
     if (!name || !coupon_code) { res.status(400).json({ error: "name and coupon_code required" }); return; }
@@ -136,7 +136,7 @@ router.post("/api/marketing/influencers", requireSuperAdmin, async (req: AuthReq
   }
 });
 
-router.put("/api/marketing/influencers/:id", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.put("/marketing/influencers/:id", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { name, coupon_code, commission_percentage } = req.body;
     const inf = await Influencer.findByIdAndUpdate(
@@ -149,7 +149,7 @@ router.put("/api/marketing/influencers/:id", requireSuperAdmin, async (req: Auth
   } catch { res.status(500).json({ error: "Failed" }); }
 });
 
-router.delete("/api/marketing/influencers/:id", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.delete("/marketing/influencers/:id", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     await Influencer.findByIdAndDelete(req.params.id);
     res.json({ success: true });
@@ -157,14 +157,14 @@ router.delete("/api/marketing/influencers/:id", requireSuperAdmin, async (req: A
 });
 
 /* ── AMBASSADORS ── */
-router.get("/api/marketing/ambassadors", requireSuperAdmin, async (_req, res: Response): Promise<void> => {
+router.get("/marketing/ambassadors", requireSuperAdmin, async (_req, res: Response): Promise<void> => {
   try {
     const list = await Ambassador.find().sort({ createdAt: -1 }).lean();
     res.json(list);
   } catch { res.status(500).json({ error: "Failed" }); }
 });
 
-router.post("/api/marketing/ambassadors", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post("/marketing/ambassadors", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { name, city, referral_code, commission_percentage } = req.body;
     if (!name || !referral_code) { res.status(400).json({ error: "name and referral_code required" }); return; }
@@ -176,7 +176,7 @@ router.post("/api/marketing/ambassadors", requireSuperAdmin, async (req: AuthReq
   }
 });
 
-router.put("/api/marketing/ambassadors/:id", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.put("/marketing/ambassadors/:id", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { name, city, referral_code, commission_percentage } = req.body;
     const amb = await Ambassador.findByIdAndUpdate(
@@ -189,7 +189,7 @@ router.put("/api/marketing/ambassadors/:id", requireSuperAdmin, async (req: Auth
   } catch { res.status(500).json({ error: "Failed" }); }
 });
 
-router.delete("/api/marketing/ambassadors/:id", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.delete("/marketing/ambassadors/:id", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     await Ambassador.findByIdAndDelete(req.params.id);
     res.json({ success: true });
@@ -197,14 +197,14 @@ router.delete("/api/marketing/ambassadors/:id", requireSuperAdmin, async (req: A
 });
 
 /* ── REFERRAL CODES ── */
-router.get("/api/marketing/referral-codes", requireSuperAdmin, async (_req, res: Response): Promise<void> => {
+router.get("/marketing/referral-codes", requireSuperAdmin, async (_req, res: Response): Promise<void> => {
   try {
     const list = await ReferralCode.find().populate("owner_admin_id", "username email").sort({ createdAt: -1 }).lean();
     res.json(list);
   } catch { res.status(500).json({ error: "Failed" }); }
 });
 
-router.post("/api/marketing/referral-codes", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post("/marketing/referral-codes", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { owner_admin_id, referral_code } = req.body;
     if (!owner_admin_id || !referral_code) { res.status(400).json({ error: "owner_admin_id and referral_code required" }); return; }
@@ -216,7 +216,7 @@ router.post("/api/marketing/referral-codes", requireSuperAdmin, async (req: Auth
   }
 });
 
-router.delete("/api/marketing/referral-codes/:id", requireSuperAdmin, async (_req, res: Response): Promise<void> => {
+router.delete("/marketing/referral-codes/:id", requireSuperAdmin, async (_req, res: Response): Promise<void> => {
   try {
     await ReferralCode.findByIdAndDelete(_req.params.id);
     res.json({ success: true });
@@ -224,7 +224,7 @@ router.delete("/api/marketing/referral-codes/:id", requireSuperAdmin, async (_re
 });
 
 /* ── MARKETING SOURCES ── */
-router.get("/api/marketing/sources", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get("/marketing/sources", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { range = "all", from, to } = req.query as Record<string, string>;
     const dateFilter = buildDateFilter(range, from, to);
@@ -246,7 +246,7 @@ router.get("/api/marketing/sources", requireSuperAdmin, async (req: AuthRequest,
 });
 
 /* ── REVENUE ANALYTICS ── */
-router.get("/api/marketing/revenue", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get("/marketing/revenue", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { range = "all", from, to } = req.query as Record<string, string>;
     const dateFilter = buildDateFilter(range, from, to);
@@ -279,7 +279,7 @@ router.get("/api/marketing/revenue", requireSuperAdmin, async (req: AuthRequest,
 });
 
 /* ── EXPORT ── */
-router.get("/api/marketing/export/csv", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get("/marketing/export/csv", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { type = "admins" } = req.query as Record<string, string>;
     let csv = "";
