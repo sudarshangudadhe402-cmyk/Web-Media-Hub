@@ -261,7 +261,7 @@ export default function MarketingGrowth() {
   const pending = (myRequests ?? []).filter((r) => r.status === "pending");
   const approved = (myRequests ?? []).filter((r) => r.status === "approved");
   const rejected = (myRequests ?? []).filter((r) => r.status === "rejected");
-  const rewardCoins = approved.filter((r) => r.rewardCode !== "NO_REWARD_MONTHLY_PLAN").length * 2000;
+  const rewardCoins = approved.filter((r) => r.rewardCode && r.rewardCode !== "NO_REWARD_MONTHLY_PLAN").length * 1000;
 
   const approvedTabHasDot =
     approved.length > 0 &&
@@ -531,7 +531,7 @@ export default function MarketingGrowth() {
                 <Gift className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
                 <div>
                   <p className="font-semibold text-green-800 text-sm">Your Reward</p>
-                  <p className="text-green-700 text-sm mt-1">Once the store is approved, you will receive <span className="font-bold text-green-800">2000 ₹ Web Media Hub Coins</span> added to your account.</p>
+                  <p className="text-green-700 text-sm mt-1">Once the store is approved, you will receive <span className="font-bold text-green-800">1000 ₹ Web Media Hub Coins</span> added to your account.</p>
                 </div>
               </div>
               <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-3">
@@ -800,7 +800,7 @@ export default function MarketingGrowth() {
             <PlusCircle className="w-6 h-6 shrink-0" />
             <div className="text-left">
               <p className="font-semibold text-lg leading-tight">Add My Friend's Store</p>
-              <p className="text-green-100 text-sm">Refer a store and earn 2000 coins on approval</p>
+              <p className="text-green-100 text-sm">Refer a store and earn 1000 coins on approval</p>
             </div>
           </div>
           <Store className="w-8 h-8 text-green-200 shrink-0" />
@@ -823,7 +823,7 @@ export default function MarketingGrowth() {
               </div>
               <div className="text-right shrink-0">
                 <p className="text-xs text-muted-foreground font-medium">Per approved store</p>
-                <p className="text-3xl font-bold text-green-600 leading-none mt-1">+2000</p>
+                <p className="text-3xl font-bold text-green-600 leading-none mt-1">+1000</p>
                 <p className="text-xs text-muted-foreground mt-0.5">coin</p>
               </div>
             </div>
@@ -907,7 +907,7 @@ export default function MarketingGrowth() {
                 {activeTab === "approved" && (<>
                   <CheckCircle className="w-12 h-12 mx-auto text-green-400/40" />
                   <p className="text-muted-foreground font-medium">No approved stores yet</p>
-                  <p className="text-sm text-muted-foreground/70">Once your referral is approved you'll earn 2000 coins</p>
+                  <p className="text-sm text-muted-foreground/70">Once your referral is approved you'll earn 1000 coins</p>
                 </>)}
                 {activeTab === "rejected" && (<>
                   <XCircle className="w-12 h-12 mx-auto text-red-400/40" />

@@ -219,7 +219,7 @@ export default function Home() {
                 </div>
 
                 <div className="space-y-4 mb-8 flex-1">
-                  {['Everything in Premium Annual', 'Lifetime Access, No Renewal Ever', '4 Store Login', '2000₹ Web Media Hub Coin', 'Future Feature Updates', 'Priority Support'].map((feature, i) => (
+                  {['Everything in Premium Annual', 'Lifetime Access, No Renewal Ever', '4 Store Login', '1000₹ Web Media Hub Coin', 'Future Feature Updates', 'Priority Support'].map((feature, i) => (
                     <div key={i} className="flex items-start gap-3">
                       <div className="w-5 h-5 rounded-full bg-[#00FF88]/20 flex items-center justify-center shrink-0 mt-0.5">
                         <Check className="w-3 h-3 text-[#00FF88]" />

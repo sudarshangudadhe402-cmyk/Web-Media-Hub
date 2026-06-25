@@ -85,7 +85,7 @@ export const DEFAULT_PRICING_CONFIG: PricingConfigData = {
     displayPeriod: "One-Time",
     shortPeriod: "One-Time",
     tagline: "Pay Once. Use Forever.",
-    features: ["Everything in Premium Annual", "Lifetime Access, No Renewal Ever", "4 Store Login", "₹2000 Web Media Hub Coin", "Future Feature Updates", "Priority Support"],
+    features: ["Everything in Premium Annual", "Lifetime Access, No Renewal Ever", "4 Store Login", "₹1000 Web Media Hub Coin", "Future Feature Updates", "Priority Support"],
     highlights: ["One-time investment", "No yearly payments", "Better ROI after first year", "Business asset for life", "Long-term savings"],
     savingsNote: "🔥 Save ₹8,000+ Compared To Renewing Every Year",
     subscriptionDays: null,

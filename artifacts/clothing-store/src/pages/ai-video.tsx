@@ -66,7 +66,7 @@ export default function AiVideo() {
   const pending = (myRequests ?? []).filter((r) => r.status === "pending");
   const approved = (myRequests ?? []).filter((r) => r.status === "approved");
   const rejected = (myRequests ?? []).filter((r) => r.status === "rejected");
-  const rewardCoins = approved.filter((r) => r.rewardCode !== "NO_REWARD_MONTHLY_PLAN").length * 2000;
+  const rewardCoins = approved.filter((r) => r.rewardCode && r.rewardCode !== "NO_REWARD_MONTHLY_PLAN").length * 1000;
 
   const approvedTabHasDot =
     approved.length > 0 &&
@@ -306,7 +306,7 @@ export default function AiVideo() {
                   <p className="font-semibold text-green-800 text-sm">Your Reward</p>
                   <p className="text-green-700 text-sm mt-1">
                     Once the store is approved, you will receive{" "}
-                    <span className="font-bold text-green-800">2000 ₹ Web Media Hub Coins</span> added to your account.
+                    <span className="font-bold text-green-800">1000 ₹ Web Media Hub Coins</span> added to your account.
                   </p>
                 </div>
               </div>
@@ -349,7 +349,7 @@ export default function AiVideo() {
           <PlusCircle className="w-6 h-6 shrink-0" />
           <div className="text-left">
             <p className="font-semibold text-lg leading-tight">Add My Friend's Store</p>
-            <p className="text-green-100 text-sm">Refer a store and earn 2000 coins on approval</p>
+            <p className="text-green-100 text-sm">Refer a store and earn 1000 coins on approval</p>
           </div>
         </div>
         <Store className="w-8 h-8 text-green-200 shrink-0" />
@@ -372,7 +372,7 @@ export default function AiVideo() {
             </div>
             <div className="text-right shrink-0">
               <p className="text-xs text-muted-foreground font-medium">Per approved store</p>
-              <p className="text-3xl font-bold text-green-600 leading-none mt-1">+2000</p>
+              <p className="text-3xl font-bold text-green-600 leading-none mt-1">+1000</p>
               <p className="text-xs text-muted-foreground mt-0.5">coin</p>
             </div>
           </div>
@@ -463,7 +463,7 @@ export default function AiVideo() {
                 <>
                   <CheckCircle className="w-12 h-12 mx-auto text-green-400/40" />
                   <p className="text-muted-foreground font-medium">No approved stores yet</p>
-                  <p className="text-sm text-muted-foreground/70">Once your referral is approved you'll earn 2000 coins</p>
+                  <p className="text-sm text-muted-foreground/70">Once your referral is approved you'll earn 1000 coins</p>
                 </>
               )}
               {activeTab === "rejected" && (
@@ -650,18 +650,18 @@ export default function AiVideo() {
                 <p className="font-semibold text-green-800 text-sm">Your Reward</p>
                 <p className="text-green-700 text-sm mt-1">
                   Once the store is approved, you will receive{" "}
-                  <span className="font-bold text-green-800">2000 ₹ Web Media Hub Coins</span> added to your account.
+                  <span className="font-bold text-green-800">1000 ₹ Web Media Hub Coins</span> added to your account.
                 </p>
               </div>
             </div>
-            {/* Point 3 — Not applicable on ₹999 plan */}
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-3">
-              <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0 mt-1" />
+            {/* Point 3 — Applicable on all plans */}
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex gap-3">
+              <span className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0 mt-1" />
               <div>
-                <p className="font-semibold text-red-800 text-sm">Important — Plan Restriction</p>
-                <p className="text-red-700 text-sm mt-1">
-                  This reward is <span className="font-bold underline">not applicable</span> on the{" "}
-                  <span className="font-bold">₹999/month</span> plan. Reward is only earned when the referred store purchases a higher plan.
+                <p className="font-semibold text-green-800 text-sm">Valid on All Plans 🎉</p>
+                <p className="text-green-700 text-sm mt-1">
+                  This reward is applicable on <span className="font-bold underline">every plan</span>.
+                  Every approved referral earns you <span className="font-bold">1000 ₹ Web Media Hub Coins</span> — no restrictions!
                 </p>
               </div>
             </div>
@@ -703,7 +703,7 @@ export default function AiVideo() {
               <p className="text-sm text-red-800 leading-relaxed">
                 <span className="font-bold">Note:</span> This reward is{" "}
                 <span className="font-bold underline">not applicable</span> on the{" "}
-                <span className="font-bold">₹999/month</span> plan. Only referrals who purchase a higher plan will earn you the 2000 ₹ Web Media Hub Coins reward.
+                <span className="font-bold">any plan</span>. All referrals who get approved will earn you 1000 ₹ Web Media Hub Coins reward.
               </p>
             </div>
           </div>
