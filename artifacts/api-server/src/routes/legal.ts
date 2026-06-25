@@ -219,6 +219,12 @@ router.post("/legal/source-confirm", requireAuth, async (req: AuthRequest, res) 
     const user = req.user!;
     if (user.role === "super_admin") { res.status(403).json({ error: "Not applicable" }); return; }
 
+    // Source is locked after first confirmation — cannot be changed again
+    if (user.source_confirmed) {
+      res.status(400).json({ error: "Source already confirmed and locked" });
+      return;
+    }
+
     const { source } = req.body;
     if (!source) { res.status(400).json({ error: "source is required" }); return; }
 

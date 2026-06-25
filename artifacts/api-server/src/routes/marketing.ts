@@ -49,6 +49,19 @@ function buildDateFilter(range: string, from?: string, to?: string) {
   return undefined;
 }
 
+/* ── helper: build known-source lookup including custom sources ── */
+async function buildSourceLookup() {
+  const customSources = await MarketingSourceConfig.find().lean();
+  const customMap: Record<string, { label: string; color: string }> = {};
+  for (const s of customSources as any[]) {
+    customMap[s.key] = { label: s.label, color: s.color };
+  }
+  const allKnownKeys = [...SOURCES, ...Object.keys(customMap)];
+  function labelFor(key: string) { return SOURCE_LABELS[key] || customMap[key]?.label || key; }
+  function colorFor(key: string) { return SOURCE_COLORS[key] || customMap[key]?.color || "#6b7280"; }
+  return { customMap, allKnownKeys, labelFor, colorFor };
+}
+
 /* ── DASHBOARD ── */
 router.get("/marketing/dashboard", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -58,10 +71,11 @@ router.get("/marketing/dashboard", requireSuperAdmin, async (req: AuthRequest, r
 
     const adminQuery = { role: "admin", ...createdAtQuery };
 
-    const [allAdmins, influencers, ambassadors] = await Promise.all([
+    const [allAdmins, influencers, ambassadors, { allKnownKeys, labelFor, colorFor }] = await Promise.all([
       User.find(adminQuery).select("signup_source planPrice planName createdAt").lean(),
       Influencer.find().lean(),
       Ambassador.find().lean(),
+      buildSourceLookup(),
     ]);
 
     const totalAdmins = allAdmins.length;
@@ -91,16 +105,31 @@ router.get("/marketing/dashboard", requireSuperAdmin, async (req: AuthRequest, r
     const thisMonthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
     const monthlyRevenueValue = monthlyMap[thisMonthKey]?.revenue ?? 0;
 
-    // By source
-    const bySource = SOURCES.map(source => {
+    // By source — includes custom sources
+    const bySource = allKnownKeys.map(source => {
       const group = allAdmins.filter(a => (a.signup_source || "ORGANIC") === source);
       return {
         source,
+        label: labelFor(source),
+        color: colorFor(source),
         signups: group.length,
         payingAdmins: group.filter(a => parsePlanPrice(a.planPrice) > 0).length,
         revenue: group.reduce((sum, a) => sum + parsePlanPrice(a.planPrice), 0),
       };
     });
+
+    // Deleted source bucket — admins whose source no longer exists
+    const deletedGroup = allAdmins.filter(a => !allKnownKeys.includes(a.signup_source || "ORGANIC"));
+    if (deletedGroup.length > 0) {
+      bySource.push({
+        source: "__DELETED__",
+        label: "Deleted Source",
+        color: "#ef4444",
+        signups: deletedGroup.length,
+        payingAdmins: deletedGroup.filter(a => parsePlanPrice(a.planPrice) > 0).length,
+        revenue: deletedGroup.reduce((sum, a) => sum + parsePlanPrice(a.planPrice), 0),
+      });
+    }
 
     res.json({
       totalAdmins,
@@ -231,17 +260,35 @@ router.get("/marketing/sources", requireSuperAdmin, async (req: AuthRequest, res
     const { range = "all", from, to } = req.query as Record<string, string>;
     const dateFilter = buildDateFilter(range, from, to);
     const q = { role: "admin", ...(dateFilter ? { createdAt: dateFilter } : {}) };
-    const admins = await User.find(q).select("signup_source planPrice").lean();
+    const [admins, { allKnownKeys, labelFor, colorFor }] = await Promise.all([
+      User.find(q).select("signup_source planPrice").lean(),
+      buildSourceLookup(),
+    ]);
 
-    const sources = SOURCES.map(source => {
+    const sources = allKnownKeys.map(source => {
       const group = admins.filter(a => (a.signup_source || "ORGANIC") === source);
       return {
         source,
+        label: labelFor(source),
+        color: colorFor(source),
         total_signups: group.length,
         total_paid_admins: group.filter(a => parsePlanPrice(a.planPrice) > 0).length,
         total_revenue: group.reduce((sum, a) => sum + parsePlanPrice(a.planPrice), 0),
       };
     }).sort((a,b) => b.total_signups - a.total_signups);
+
+    // Deleted source bucket — admins whose source was removed
+    const deletedGroup = admins.filter(a => !allKnownKeys.includes(a.signup_source || "ORGANIC"));
+    if (deletedGroup.length > 0) {
+      sources.push({
+        source: "__DELETED__",
+        label: "Deleted Source",
+        color: "#ef4444",
+        total_signups: deletedGroup.length,
+        total_paid_admins: deletedGroup.filter(a => parsePlanPrice(a.planPrice) > 0).length,
+        total_revenue: deletedGroup.reduce((sum, a) => sum + parsePlanPrice(a.planPrice), 0),
+      });
+    }
 
     res.json(sources);
   } catch { res.status(500).json({ error: "Failed" }); }
@@ -255,14 +302,25 @@ router.get("/marketing/revenue", requireSuperAdmin, async (req: AuthRequest, res
     const q = { role: "admin", ...(dateFilter ? { createdAt: dateFilter } : {}) };
     const admins = await User.find(q).select("signup_source planPrice planName createdAt").lean();
 
-    const bySource = SOURCES.map(source => {
+    const { allKnownKeys, labelFor, colorFor } = await buildSourceLookup();
+
+    const bySource = allKnownKeys.map(source => {
       const group = admins.filter(a => (a.signup_source || "ORGANIC") === source);
       return {
         source,
+        label: labelFor(source),
+        color: colorFor(source),
         revenue: group.reduce((sum, a) => sum + parsePlanPrice(a.planPrice), 0),
         admins: group.length,
       };
     }).filter(s => s.revenue > 0).sort((a,b) => b.revenue - a.revenue);
+
+    // Deleted bucket
+    const deletedGroup = admins.filter(a => !allKnownKeys.includes(a.signup_source || "ORGANIC"));
+    if (deletedGroup.length > 0) {
+      const delRev = deletedGroup.reduce((sum, a) => sum + parsePlanPrice(a.planPrice), 0);
+      if (delRev > 0) bySource.push({ source: "__DELETED__", label: "Deleted Source", color: "#ef4444", revenue: delRev, admins: deletedGroup.length });
+    }
 
     // By plan
     const planMap: Record<string, { count: number; revenue: number }> = {};

@@ -764,13 +764,13 @@ function SourcesTab() {
             <CardHeader className="pb-2"><CardTitle className="text-sm">Signups by Marketing Source</CardTitle></CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={chartData} margin={{ left: -10 }}>
+                <BarChart data={chartData.filter(s => s.source !== "__DELETED__")} margin={{ left: -10 }}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="source" tick={{ fontSize: 9 }} tickFormatter={v => SOURCE_LABELS[v]?.split(" ")[0] || v} />
+                  <XAxis dataKey="source" tick={{ fontSize: 9 }} tickFormatter={v => (SOURCE_LABELS[v] || v).split(" ")[0]} />
                   <YAxis tick={{ fontSize: 10 }} />
                   <Tooltip labelFormatter={l => SOURCE_LABELS[l] || l} />
                   <Bar dataKey="total_signups" name="Signups" radius={[4,4,0,0]}>
-                    {chartData.map((s, i) => <Cell key={i} fill={SOURCE_COLORS[s.source] || "#6b7280"} />)}
+                    {chartData.filter(s => s.source !== "__DELETED__").map((s, i) => <Cell key={i} fill={s.color || SOURCE_COLORS[s.source] || "#6b7280"} />)}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -789,15 +789,33 @@ function SourcesTab() {
                     <th className="text-right p-3 font-medium">Conversion</th>
                   </tr></thead>
                   <tbody>
-                    {data.map(s => (
+                    {data.filter(s => s.source !== "__DELETED__").map(s => (
                       <tr key={s.source} className="border-b last:border-0 hover:bg-muted/20">
                         <td className="p-3">
                           <div className="flex items-center gap-2">
-                            <span className="w-3 h-3 rounded-full" style={{ background: SOURCE_COLORS[s.source] || "#6b7280" }} />
-                            <span className="font-medium">{SOURCE_LABELS[s.source] || s.source}</span>
+                            <span className="w-3 h-3 rounded-full" style={{ background: s.color || SOURCE_COLORS[s.source] || "#6b7280" }} />
+                            <span className="font-medium">{s.label || SOURCE_LABELS[s.source] || s.source}</span>
                           </div>
                         </td>
                         <td className="p-3 text-right font-semibold">{s.total_signups}</td>
+                        <td className="p-3 text-right text-green-600 font-semibold">{s.total_paid_admins}</td>
+                        <td className="p-3 text-right font-semibold">{fmtRs(s.total_revenue)}</td>
+                        <td className="p-3 text-right text-muted-foreground">{s.total_signups > 0 ? `${Math.round(s.total_paid_admins/s.total_signups*100)}%` : "—"}</td>
+                      </tr>
+                    ))}
+                    {/* Deleted source bucket — always at bottom, styled distinctly */}
+                    {data.filter(s => s.source === "__DELETED__").map(s => (
+                      <tr key="__DELETED__" className="border-b last:border-0 bg-red-50 dark:bg-red-950/20">
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full bg-red-500 shrink-0" />
+                            <div>
+                              <span className="font-medium text-red-600 dark:text-red-400">Deleted Source</span>
+                              <p className="text-[10px] text-muted-foreground">Admins whose source was deleted — will auto-restore if source is re-added</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-3 text-right font-semibold text-red-600 dark:text-red-400">{s.total_signups}</td>
                         <td className="p-3 text-right text-green-600 font-semibold">{s.total_paid_admins}</td>
                         <td className="p-3 text-right font-semibold">{fmtRs(s.total_revenue)}</td>
                         <td className="p-3 text-right text-muted-foreground">{s.total_signups > 0 ? `${Math.round(s.total_paid_admins/s.total_signups*100)}%` : "—"}</td>
