@@ -83,7 +83,7 @@ function ProtectedRoute({ component: Component, adminOnly = false }: { component
     if (legalDone === true && sourceStatus?.needsSelection) { setLocation("/marketing-source-select"); return; }
   }, [user, isLoading, setLocation, adminOnly, legalDone, sourceStatus]);
 
-  if (isLoading || legalDone === null || (legalDone === true && sourceStatus === null)) {
+  if (isLoading || legalDone === null) {
     return <div className="h-screen w-full flex items-center justify-center">Loading...</div>;
   }
 
@@ -115,7 +115,7 @@ function ProtectedRouteFullPage({ component: Component }: { component: any }) {
     if (legalDone === true && sourceStatus?.needsSelection) { setLocation("/marketing-source-select"); return; }
   }, [user, isLoading, setLocation, legalDone, sourceStatus]);
 
-  if (isLoading || legalDone === null || (legalDone === true && sourceStatus === null)) {
+  if (isLoading || legalDone === null) {
     return <div className="h-screen w-full flex items-center justify-center">Loading...</div>;
   }
   if (!user || user.role === "super_admin") return null;
