@@ -148,7 +148,7 @@ export default function Login() {
       const data = await res.json();
       if (!res.ok) { setEvictError(data.error || "Verification failed"); return; }
       // Auto-login
-      login(data.token, data.user);
+      login(data.token);
       setShowCapacityFull(false);
       resetEvict();
     } catch {
