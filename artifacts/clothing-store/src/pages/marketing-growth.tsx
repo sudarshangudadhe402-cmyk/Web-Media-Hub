@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { QRCodeCanvas } from "qrcode.react";
 import PricingOverlay, { type SelectedPlan } from "@/components/pricing-overlay";
@@ -279,6 +279,16 @@ export default function MarketingGrowth() {
   const [campaignName, setCampaignName] = useState("");
   const [campaignSource, setCampaignSource] = useState("instagram");
   const [customSourceText, setCustomSourceText] = useState("");
+  const customSourceRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (campaignSource === "custom") {
+      const t = setTimeout(() => {
+        customSourceRef.current?.focus();
+      }, 300);
+      return () => clearTimeout(t);
+    }
+  }, [campaignSource]);
   const [qrEnabled, setQrEnabled] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
@@ -635,12 +645,15 @@ export default function MarketingGrowth() {
                     </SelectContent>
                   </Select>
                   {campaignSource === "custom" && (
-                    <Input
+                    <input
+                      ref={customSourceRef}
+                      type="text"
+                      inputMode="text"
+                      enterKeyHint="done"
                       placeholder='Type source name, e.g. "YouTube", "Pamphlet"'
                       value={customSourceText}
                       onChange={(e) => setCustomSourceText(e.target.value)}
-                      className="mt-2"
-                      autoFocus
+                      className="mt-2 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     />
                   )}
                   {campaignSource === "custom" && customSourceText.trim() && (
