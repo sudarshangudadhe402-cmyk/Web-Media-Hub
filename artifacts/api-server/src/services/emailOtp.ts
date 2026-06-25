@@ -12,7 +12,7 @@ export async function sendOtpEmail(
   toEmail: string,
   otp: string,
   storeName: string,
-  purpose: "signup" | "signin" | "admin-creation" | "admin-forgot-password"
+  purpose: "signup" | "signin" | "admin-creation" | "admin-forgot-password" | "capacity-evict"
 ) {
   let subject = "";
   let headingText = "";
@@ -34,6 +34,10 @@ export async function sendOtpEmail(
     subject = `${otp} — Reset your admin password on Web Media Hub`;
     headingText = "Admin Password Reset";
     bodyText = `Use the OTP below to <strong>reset your admin password</strong> on <strong>Web Media Hub</strong>. This code is valid for <strong>10 minutes</strong>.`;
+  } else if (purpose === "capacity-evict") {
+    subject = `${otp} — Login verification for Web Media Hub`;
+    headingText = "Login Slot Verification";
+    bodyText = `Your login slots are full. Use this OTP to <strong>verify your identity</strong> and login. Your <strong>oldest active session</strong> will be logged out automatically. This code is valid for <strong>5 minutes</strong>.`;
   }
 
   const html = `
@@ -41,7 +45,7 @@ export async function sendOtpEmail(
       <div style="background:#000;padding:24px 28px;">
         <p style="color:#fff;font-size:11px;letter-spacing:2px;font-weight:700;margin:0;text-transform:uppercase;">Web Media Hub</p>
         <p style="color:rgba(255,255,255,0.5);font-size:11px;margin:4px 0 0;">
-          ${purpose === "admin-creation" || purpose === "admin-forgot-password" ? "Admin Portal" : "Store Account Verification"}
+          ${purpose === "admin-creation" || purpose === "admin-forgot-password" || purpose === "capacity-evict" ? "Admin Portal" : "Store Account Verification"}
         </p>
       </div>
       <div style="padding:32px 28px;">

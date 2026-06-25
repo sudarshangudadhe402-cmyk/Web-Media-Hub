@@ -69,6 +69,13 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
   const [showCapacityFull, setShowCapacityFull] = useState(false);
+  const [evictStep, setEvictStep]         = useState<"idle" | "otp">("idle");
+  const [evictMaskedEmail, setEvictMaskedEmail] = useState("");
+  const [evictOtp, setEvictOtp]           = useState("");
+  const [evictLoading, setEvictLoading]   = useState(false);
+  const [evictError, setEvictError]       = useState("");
+  const [evictResend, setEvictResend]     = useState(0);
+  const [evictCreds, setEvictCreds]       = useState<{ identifier: string; password: string } | null>(null);
 
   // Forgot password state
   const [forgotOpen, setForgotOpen] = useState(false);
@@ -86,6 +93,70 @@ export default function Login() {
     const t = setTimeout(() => setForgotResend((c) => c - 1), 1000);
     return () => clearTimeout(t);
   }, [forgotResend]);
+
+  useEffect(() => {
+    if (evictResend <= 0) return;
+    const t = setTimeout(() => setEvictResend((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [evictResend]);
+
+  function resetEvict() {
+    setEvictStep("idle");
+    setEvictMaskedEmail("");
+    setEvictOtp("");
+    setEvictError("");
+    setEvictResend(0);
+    setEvictLoading(false);
+  }
+
+  async function handleEvictSendOtp() {
+    if (!evictCreds) return;
+    setEvictLoading(true);
+    setEvictError("");
+    try {
+      const res = await fetch("/api/auth/capacity-evict/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: evictCreds.identifier, password: evictCreds.password }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setEvictError(data.error || "Failed to send OTP"); return; }
+      setEvictMaskedEmail(data.maskedEmail || "");
+      setEvictStep("otp");
+      setEvictOtp("");
+      setEvictResend(30);
+    } catch {
+      setEvictError("Connection error. Please try again.");
+    } finally {
+      setEvictLoading(false);
+    }
+  }
+
+  async function handleEvictVerify() {
+    if (!evictCreds || evictOtp.length !== 6) {
+      setEvictError("Please enter the 6-digit OTP");
+      return;
+    }
+    setEvictLoading(true);
+    setEvictError("");
+    try {
+      const res = await fetch("/api/auth/capacity-evict/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: evictCreds.identifier, password: evictCreds.password, otp: evictOtp }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setEvictError(data.error || "Verification failed"); return; }
+      // Auto-login
+      login(data.token, data.user);
+      setShowCapacityFull(false);
+      resetEvict();
+    } catch {
+      setEvictError("Connection error. Please try again.");
+    } finally {
+      setEvictLoading(false);
+    }
+  }
 
   function resetForgot() {
     setForgotOpen(false);
@@ -209,6 +280,8 @@ export default function Login() {
       if (!res.ok) {
         const msg: string = data?.error || "Login failed";
         if (msg === "LOGIN_CAPACITY_FULL") {
+          setEvictCreds({ identifier: values.email.trim(), password: values.password });
+          resetEvict();
           setShowCapacityFull(true);
           return;
         }
@@ -1017,7 +1090,7 @@ export default function Login() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setShowCapacityFull(false)}
+              onClick={() => { if (evictStep === "idle") { setShowCapacityFull(false); resetEvict(); } }}
               className="fixed inset-0 z-50"
               style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
             />
@@ -1034,32 +1107,141 @@ export default function Login() {
                 className="w-full max-w-sm rounded-2xl p-6 flex flex-col items-center gap-4 shadow-2xl"
                 style={{ background: "#fff", pointerEvents: "auto" }}
               >
-                {/* Icon */}
-                <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: "#FEF2F2" }}>
-                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="8" x2="12" y2="12" />
-                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                  </svg>
-                </div>
+                {evictStep === "idle" ? (
+                  <>
+                    {/* Icon */}
+                    <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: "#FEF2F2" }}>
+                      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                    </div>
 
-                {/* Text */}
-                <div className="text-center space-y-1">
-                  <h3 className="text-lg font-bold text-gray-900">Login Capacity Full</h3>
-                  <p className="text-sm text-gray-500 leading-relaxed">
-                    All login slots for your plan are in use.<br />
-                    Please <span className="font-semibold text-red-600">logout from an old device</span> first, then try again.
-                  </p>
-                </div>
+                    {/* Text */}
+                    <div className="text-center space-y-1">
+                      <h3 className="text-lg font-bold text-gray-900">Login Capacity Full</h3>
+                      <p className="text-sm text-gray-500 leading-relaxed">
+                        All login slots for your plan are in use.<br />
+                        Please <span className="font-semibold text-red-600">logout from an old device</span> first, or verify your identity to force-login.
+                      </p>
+                    </div>
 
-                {/* Close Button */}
-                <button
-                  onClick={() => setShowCapacityFull(false)}
-                  className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                  style={{ background: "#DC2626" }}
-                >
-                  OK, Got It
-                </button>
+                    {/* Close Button */}
+                    <button
+                      onClick={() => { setShowCapacityFull(false); resetEvict(); }}
+                      className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                      style={{ background: "#DC2626" }}
+                    >
+                      OK, Got It
+                    </button>
+
+                    {/* Divider */}
+                    <div className="flex items-center gap-2 w-full">
+                      <div className="flex-1 h-px bg-gray-200" />
+                      <span className="text-xs text-gray-400 font-medium">OR</span>
+                      <div className="flex-1 h-px bg-gray-200" />
+                    </div>
+
+                    {/* Email Verification Option */}
+                    <button
+                      onClick={handleEvictSendOtp}
+                      disabled={evictLoading}
+                      className="w-full py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90 flex items-center justify-center gap-2 border-2"
+                      style={{ borderColor: "#1A1A1A", color: "#1A1A1A", background: "transparent" }}
+                    >
+                      {evictLoading ? (
+                        <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="32" strokeDashoffset="12" />
+                        </svg>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="2" y="4" width="20" height="16" rx="2" />
+                          <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                        </svg>
+                      )}
+                      {evictLoading ? "Sending OTP..." : "Login with Email Verification"}
+                    </button>
+
+                    {evictError && (
+                      <p className="text-xs text-red-500 text-center w-full">{evictError}</p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {/* OTP Step */}
+                    <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: "#F0FDF4" }}>
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="2" y="4" width="20" height="16" rx="2" />
+                        <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                      </svg>
+                    </div>
+
+                    <div className="text-center space-y-1">
+                      <h3 className="text-lg font-bold text-gray-900">Enter OTP</h3>
+                      <p className="text-sm text-gray-500 leading-relaxed">
+                        OTP sent to <span className="font-semibold text-gray-800">{evictMaskedEmail}</span>.<br />
+                        Your oldest session will be logged out automatically.
+                      </p>
+                    </div>
+
+                    {/* OTP Input */}
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={evictOtp}
+                      onChange={e => { setEvictOtp(e.target.value.replace(/\D/g, "").slice(0, 6)); setEvictError(""); }}
+                      placeholder="000000"
+                      className="w-full text-center text-3xl font-black tracking-[0.4em] py-4 rounded-xl border-2 outline-none transition-colors"
+                      style={{
+                        borderColor: evictError ? "#EF4444" : evictOtp.length === 6 ? "#16A34A" : "#E5E7EB",
+                        color: "#1A1A1A",
+                        fontFamily: "monospace",
+                      }}
+                      onKeyDown={e => { if (e.key === "Enter" && evictOtp.length === 6) handleEvictVerify(); }}
+                    />
+
+                    {evictError && (
+                      <p className="text-xs text-red-500 text-center w-full -mt-2">{evictError}</p>
+                    )}
+
+                    {/* Verify Button */}
+                    <button
+                      onClick={handleEvictVerify}
+                      disabled={evictLoading || evictOtp.length !== 6}
+                      className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-opacity flex items-center justify-center gap-2"
+                      style={{ background: evictOtp.length === 6 && !evictLoading ? "#16A34A" : "#9CA3AF", cursor: evictOtp.length === 6 && !evictLoading ? "pointer" : "not-allowed" }}
+                    >
+                      {evictLoading ? (
+                        <>
+                          <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="3" strokeDasharray="32" strokeDashoffset="12" />
+                          </svg>
+                          Verifying...
+                        </>
+                      ) : "Verify & Login"}
+                    </button>
+
+                    {/* Resend + Back */}
+                    <div className="flex items-center justify-between w-full text-xs">
+                      <button
+                        onClick={() => { resetEvict(); }}
+                        className="text-gray-500 hover:text-gray-700 font-medium"
+                      >
+                        ← Back
+                      </button>
+                      <button
+                        onClick={handleEvictSendOtp}
+                        disabled={evictResend > 0 || evictLoading}
+                        className="font-semibold"
+                        style={{ color: evictResend > 0 ? "#9CA3AF" : "#DC2626" }}
+                      >
+                        {evictResend > 0 ? `Resend in ${evictResend}s` : "Resend OTP"}
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </motion.div>
           </>

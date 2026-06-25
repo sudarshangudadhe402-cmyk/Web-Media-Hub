@@ -338,4 +338,123 @@ router.post("/auth/admin/forgot-password/reset", requireDb, async (req, res) => 
   }
 });
 
+// ── Capacity Evict — Send OTP ─────────────────────────────────────────────────
+router.post("/auth/capacity-evict/send-otp", requireDb, async (req, res) => {
+  try {
+    const { identifier, password } = req.body;
+    if (!identifier || !password) {
+      res.status(400).json({ error: "Identifier and password are required" }); return;
+    }
+
+    const user = await User.findOne({
+      $or: [{ username: identifier.trim() }, { email: identifier.trim() }],
+      role: "admin",
+    });
+    if (!user) { res.status(401).json({ error: "Invalid credentials" }); return; }
+
+    const valid = await user.comparePassword(password);
+    if (!valid) { res.status(401).json({ error: "Invalid credentials" }); return; }
+
+    if (!user.email) {
+      res.status(400).json({ error: "No email address on file for this account" }); return;
+    }
+
+    // Check capacity is actually full
+    const capacity = getLoginCapacity(user.planName ?? "", user.planPrice ?? "");
+    const currentCount = (user.activeSessions ?? []).length;
+    if (currentCount < capacity) {
+      res.status(400).json({ error: "Login slots are not full. Please try logging in normally." }); return;
+    }
+
+    // Rate limit: max 3 OTPs per email in 10 min
+    const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000);
+    const recentCount = await OtpCode.countDocuments({
+      email: user.email.toLowerCase(),
+      purpose: "capacity-evict",
+      createdAt: { $gte: tenMinAgo },
+    });
+    if (recentCount >= 3) {
+      res.status(429).json({ error: "Too many OTP requests. Please wait 10 minutes." }); return;
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min expiry
+
+    await OtpCode.create({ email: user.email.toLowerCase(), storeId: "admin", code, purpose: "capacity-evict", expiresAt });
+    await sendOtpEmail(user.email, code, "Web Media Hub", "capacity-evict");
+
+    // Return masked email
+    const parts = user.email.split("@");
+    const maskedLocal = parts[0].length <= 2
+      ? "*".repeat(parts[0].length)
+      : parts[0][0] + "*".repeat(parts[0].length - 2) + parts[0][parts[0].length - 1];
+    const maskedEmail = `${maskedLocal}@${parts[1]}`;
+
+    res.json({ message: "OTP sent", maskedEmail });
+  } catch (err) {
+    req.log.error({ err }, "Capacity evict send OTP error");
+    res.status(500).json({ error: "Failed to send OTP" });
+  }
+});
+
+// ── Capacity Evict — Verify OTP + Evict Oldest Session ───────────────────────
+router.post("/auth/capacity-evict/verify", requireDb, async (req, res) => {
+  try {
+    const { identifier, password, otp } = req.body;
+    if (!identifier || !password || !otp) {
+      res.status(400).json({ error: "Identifier, password and OTP are required" }); return;
+    }
+
+    const user = await User.findOne({
+      $or: [{ username: identifier.trim() }, { email: identifier.trim() }],
+      role: "admin",
+    });
+    if (!user) { res.status(401).json({ error: "Invalid credentials" }); return; }
+
+    const valid = await user.comparePassword(password);
+    if (!valid) { res.status(401).json({ error: "Invalid credentials" }); return; }
+
+    if (!user.email) { res.status(400).json({ error: "No email on file" }); return; }
+
+    // Verify OTP
+    const record = await OtpCode.findOne({
+      email: user.email.toLowerCase(),
+      purpose: "capacity-evict",
+      used: false,
+      expiresAt: { $gt: new Date() },
+    }).sort({ createdAt: -1 });
+
+    if (!record) { res.status(400).json({ error: "OTP expired or not found. Please request a new one." }); return; }
+    if (record.code !== otp.trim()) { res.status(400).json({ error: "Incorrect OTP. Please try again." }); return; }
+
+    record.used = true;
+    await record.save();
+
+    // Evict oldest session
+    if (!user.activeSessions) user.activeSessions = [];
+    user.activeSessions.sort((a, b) => new Date(a.loginAt).getTime() - new Date(b.loginAt).getTime());
+    user.activeSessions.shift(); // remove oldest
+
+    // Create new session
+    const sessionId = crypto.randomUUID();
+    user.activeSessions.push({ sessionId, loginAt: new Date() });
+    await user.save();
+
+    const token = signToken(String(user._id), sessionId, user.role);
+    res.json({
+      token,
+      user: {
+        id: String(user._id),
+        username: user.username,
+        email: user.email ?? "",
+        role: user.role,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (err) {
+    req.log.error({ err }, "Capacity evict verify error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;
