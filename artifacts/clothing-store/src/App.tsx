@@ -54,7 +54,6 @@ function useSourceStatus(userId: string | undefined, role: string | undefined, l
 
   useEffect(() => {
     if (!userId || role === "super_admin" || legalDone !== true) {
-      setSourceStatus({ needsSelection: false });
       return;
     }
     const token = localStorage.getItem("wmh_token");
