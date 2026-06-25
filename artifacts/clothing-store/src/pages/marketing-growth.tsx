@@ -27,6 +27,7 @@ import {
   useMyStoreRequests,
   getMyStoreRequestsQueryKey,
   useGetStore,
+  useGetDashboardSummary,
 } from "@workspace/api-client-react";
 import {
   TrendingUp,
@@ -64,6 +65,7 @@ const SOURCE_OPTIONS = [
   { value: "sms", label: "SMS", color: "#6B7280" },
   { value: "direct", label: "Direct", color: "#8B5CF6" },
   { value: "other", label: "Other", color: "#F59E0B" },
+  { value: "custom", label: "Custom (Type your own)…", color: "#0EA5E9" },
 ];
 
 function sourceColor(source: string) {
@@ -270,9 +272,13 @@ export default function MarketingGrowth() {
   const { data: store } = useGetStore({ query: { retry: false } });
   const storeSlug = (store as any)?.publicSlug ?? "";
 
+  /* ── Store visitors ── */
+  const { data: dashSummary } = useGetDashboardSummary();
+
   /* ── Campaign form state ── */
   const [campaignName, setCampaignName] = useState("");
   const [campaignSource, setCampaignSource] = useState("instagram");
+  const [customSourceText, setCustomSourceText] = useState("");
   const [qrEnabled, setQrEnabled] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
@@ -355,6 +361,10 @@ export default function MarketingGrowth() {
     toast({ title: "Link copied to clipboard!" });
   }
 
+  const effectiveSource = campaignSource === "custom"
+    ? (customSourceText.trim() || "custom")
+    : campaignSource;
+
   function handleCreateCampaign(e: React.FormEvent) {
     e.preventDefault();
     if (!campaignName.trim()) return;
@@ -362,9 +372,13 @@ export default function MarketingGrowth() {
       toast({ variant: "destructive", title: "Store not found. Please check your store setup." });
       return;
     }
+    if (campaignSource === "custom" && !customSourceText.trim()) {
+      toast({ variant: "destructive", title: "Please enter a custom source type name." });
+      return;
+    }
     const campaignSlug = slugify(campaignName);
-    const trackingLink = buildTrackingLink(storeSlug, campaignSource, campaignSlug);
-    createCampaign.mutate({ campaignName: campaignName.trim(), source: campaignSource, trackingLink, qrEnabled });
+    const trackingLink = buildTrackingLink(storeSlug, effectiveSource, campaignSlug);
+    createCampaign.mutate({ campaignName: campaignName.trim(), source: effectiveSource, trackingLink, qrEnabled });
   }
 
   function handleFormChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -554,6 +568,30 @@ export default function MarketingGrowth() {
           </div>
         </div>
 
+        {/* Store Visitors Card */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="w-4 h-4 text-primary" />
+              Store Visitors
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: "Today", val: (dashSummary as any)?.visitors?.today ?? 0, color: "#2874F0", bg: "rgba(40,116,240,0.08)" },
+                { label: "This Month", val: (dashSummary as any)?.visitors?.month ?? 0, color: "#7c3aed", bg: "rgba(124,58,237,0.08)" },
+                { label: "All Time", val: (dashSummary as any)?.visitors?.all ?? 0, color: "#16a34a", bg: "rgba(22,163,74,0.08)" },
+              ].map(({ label, val, color, bg }) => (
+                <div key={label} className="flex flex-col items-center justify-center rounded-xl px-3 py-3 gap-1" style={{ background: bg }}>
+                  <span className="text-2xl font-extrabold" style={{ color }}>{val.toLocaleString("en-IN")}</span>
+                  <span className="text-[11px] font-semibold" style={{ color }}>{label}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Create Campaign Card */}
         <Card>
           <CardHeader className="pb-3">
@@ -581,7 +619,7 @@ export default function MarketingGrowth() {
 
                 <div className="space-y-1.5">
                   <Label htmlFor="source">Source Type <span className="text-destructive">*</span></Label>
-                  <Select value={campaignSource} onValueChange={setCampaignSource}>
+                  <Select value={campaignSource} onValueChange={(v) => { setCampaignSource(v); if (v !== "custom") setCustomSourceText(""); }}>
                     <SelectTrigger id="source">
                       <SelectValue />
                     </SelectTrigger>
@@ -596,15 +634,30 @@ export default function MarketingGrowth() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {campaignSource === "custom" && (
+                    <Input
+                      placeholder='Type source name, e.g. "YouTube", "Pamphlet"'
+                      value={customSourceText}
+                      onChange={(e) => setCustomSourceText(e.target.value)}
+                      className="mt-2"
+                      autoFocus
+                    />
+                  )}
+                  {campaignSource === "custom" && customSourceText.trim() && (
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "#0EA5E9" }} />
+                      <span className="text-[11px] text-muted-foreground">Source: <span className="font-semibold text-foreground">{customSourceText.trim()}</span></span>
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Preview tracking link */}
-              {storeSlug && campaignName.trim() && (
+              {storeSlug && campaignName.trim() && (campaignSource !== "custom" || customSourceText.trim()) && (
                 <div className="bg-muted rounded-lg px-3 py-2.5 space-y-1">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Preview Tracking Link</p>
                   <p className="text-xs font-mono text-primary break-all">
-                    {buildTrackingLink(storeSlug, campaignSource, slugify(campaignName))}
+                    {buildTrackingLink(storeSlug, effectiveSource, slugify(campaignName))}
                   </p>
                 </div>
               )}
