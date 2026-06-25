@@ -1,4 +1,4 @@
-import { Search, X, SlidersHorizontal, ShoppingBag, Heart, Camera, Box } from "lucide-react";
+import { Search, X, SlidersHorizontal, ShoppingBag, Heart, Camera, Box, Star } from "lucide-react";
 import { useState } from "react";
 
 declare global {
@@ -45,12 +45,17 @@ interface ShopTabProps {
   initialCategory?: string;
   onProductClick: (product: PublicProduct) => void;
   onLike: (productId: string, e: React.MouseEvent) => void;
+  onTryOn?: (product: PublicProduct) => void;
 }
 
 function discountPct(p: PublicProduct) {
   return p.actualPrice > p.discountPrice
     ? Math.round(((p.actualPrice - p.discountPrice) / p.actualPrice) * 100)
     : 0;
+}
+
+function pseudoRating(likeCount: number) {
+  return (4.0 + (likeCount % 10) / 10).toFixed(1);
 }
 
 export default function ShopTab({
@@ -62,12 +67,14 @@ export default function ShopTab({
   initialCategory = "all",
   onProductClick,
   onLike,
+  onTryOn,
 }: ShopTabProps) {
   const [search, setSearch] = useState(initialSearch);
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [sortBy, setSortBy] = useState<"newest" | "most-liked" | "most-tried" | "trending">("newest");
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [viewing3D, setViewing3D] = useState<PublicProduct | null>(null);
+  const [show3DUnavailable, setShow3DUnavailable] = useState(false);
 
   const filteredProducts = (() => {
     let list = [...products];
@@ -101,7 +108,7 @@ export default function ShopTab({
   })();
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden" style={{ background: "#ffffff" }}>
+    <div className="flex-1 flex flex-col overflow-hidden" style={{ background: "#f5f5f5" }}>
       {/* Search + Category */}
       <div className="px-4 pt-3 pb-0 flex-shrink-0" style={{ background: "#ffffff" }}>
         <div className="relative mb-3">
@@ -145,7 +152,7 @@ export default function ShopTab({
       {/* Filter row */}
       <div
         className="px-4 py-2 flex items-center justify-between flex-shrink-0 border-b"
-        style={{ borderColor: "#f0f0f0" }}
+        style={{ background: "#ffffff", borderColor: "#f0f0f0" }}
       >
         <span className="text-[11px] text-gray-400 font-medium">
           {filteredProducts.length} product{filteredProducts.length !== 1 ? "s" : ""}
@@ -170,7 +177,7 @@ export default function ShopTab({
         </button>
       </div>
 
-      {/* Products Grid */}
+      {/* Products List */}
       <div className="flex-1 overflow-y-auto pb-24">
         {filteredProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -180,92 +187,104 @@ export default function ShopTab({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-[1px]" style={{ background: "#f0f0f0" }}>
+          <div className="flex flex-col gap-2 p-3">
             {filteredProducts.map((p) => {
               const disc = discountPct(p);
               const liked = likedProducts.has(p.id);
-              const isTrending = p.recentLikeCount > 0 && p.recentTryOnCount > 0;
               const has3D = !!p.modelUrl;
+              const count = likeCounts[p.id] ?? p.likeCount;
               return (
                 <div
                   key={p.id}
+                  className="flex gap-3 rounded-2xl overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
+                  style={{ background: "#ffffff", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
                   onClick={() => onProductClick(p)}
-                  className="cursor-pointer active:opacity-80 transition-opacity"
-                  style={{ background: "#ffffff" }}
                 >
-                  <div className="relative overflow-hidden" style={{ aspectRatio: "3/4", background: "#f8f8f8" }}>
+                  {/* Image */}
+                  <div
+                    className="relative shrink-0 overflow-hidden"
+                    style={{ width: 110, minHeight: 148, background: "#f8f8f8", borderRadius: "16px 0 0 16px" }}
+                  >
                     {p.images[0] ? (
-                      <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
+                      <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" style={{ minHeight: 148 }} />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center">
+                      <div className="w-full h-full flex items-center justify-center" style={{ minHeight: 148 }}>
                         <ShoppingBag className="w-8 h-8 text-gray-200" />
-                      </div>
-                    )}
-                    {isTrending && (
-                      <div
-                        className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full"
-                        style={{ background: "rgba(0,0,0,0.75)", color: "white" }}
-                      >
-                        🔥
                       </div>
                     )}
                     {disc > 0 && (
                       <div
-                        className="absolute top-2 right-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                        style={{ background: "#000000", color: "white" }}
+                        className="absolute top-2 left-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                        style={{ background: "#ff3b3b", color: "white" }}
                       >
-                        {disc}%
+                        -{disc}%
                       </div>
                     )}
-
-                    {/* 3D View button */}
-                    {has3D && (
-                      <button
-                        className="absolute bottom-2 left-2 flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold shadow-md active:scale-90 transition-transform"
-                        style={{ background: "rgba(124,58,237,0.92)", color: "white" }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setViewing3D(p);
-                        }}
-                      >
-                        <Box className="w-3 h-3" />
-                        3D
-                      </button>
-                    )}
-
-                    <button
-                      className="absolute bottom-2 right-2 w-7 h-7 rounded-full flex items-center justify-center shadow active:scale-90 transition-transform"
-                      style={{ background: liked ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.9)" }}
-                      onClick={(e) => { e.stopPropagation(); onLike(p.id, e); }}
-                    >
-                      <Heart className={`w-3.5 h-3.5 ${liked ? "fill-red-500 text-red-500" : "text-gray-400"}`} />
-                    </button>
                   </div>
-                  <div className="px-2.5 pt-2.5 pb-3">
-                    <p className="text-[12px] font-semibold text-gray-900 line-clamp-2 leading-tight mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                      {p.name}
-                    </p>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-[13px] font-bold text-gray-900">₹{p.discountPrice.toLocaleString()}</span>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0 py-3 pr-3 flex flex-col justify-between">
+                    {/* Top row: name + heart */}
+                    <div className="flex items-start gap-1">
+                      <p className="flex-1 font-semibold text-sm text-gray-900 leading-tight line-clamp-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                        {p.name}
+                      </p>
+                      <button
+                        className="shrink-0 w-8 h-8 flex items-center justify-center -mt-1 -mr-1"
+                        onClick={(e) => { e.stopPropagation(); onLike(p.id, e); }}
+                      >
+                        <Heart className={`w-5 h-5 transition-colors ${liked ? "fill-red-500 text-red-500" : "text-gray-300"}`} />
+                      </button>
+                    </div>
+
+                    {/* Price */}
+                    <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                      <span className="text-base font-black text-gray-900">₹{p.discountPrice.toLocaleString()}</span>
                       {disc > 0 && (
                         <>
-                          <span className="text-[10px] text-gray-400 line-through">₹{p.actualPrice.toLocaleString()}</span>
-                          <span className="text-[10px] font-bold text-green-500">↓{disc}%</span>
+                          <span className="text-xs text-gray-400 line-through">₹{p.actualPrice.toLocaleString()}</span>
+                          <span className="text-xs font-bold text-red-500">-{disc}%</span>
                         </>
                       )}
                     </div>
-                    <div className="flex items-center gap-2.5 mt-1">
-                      <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
-                        <Heart className="w-3 h-3 text-red-400 fill-current" />{likeCounts[p.id] ?? p.likeCount}
-                      </span>
-                      <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
-                        <Camera className="w-3 h-3 text-blue-400" />{p.tryOnLikeCount}
-                      </span>
-                      {has3D && (
-                        <span className="flex items-center gap-0.5 text-[10px] font-semibold" style={{ color: "#7c3aed" }}>
-                          <Box className="w-3 h-3" />3D
-                        </span>
-                      )}
+
+                    {/* Star rating */}
+                    <div className="flex items-center gap-1 mt-1">
+                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                      <span className="text-xs font-semibold text-gray-700">{pseudoRating(count)}</span>
+                      <span className="text-xs text-gray-400">({count})</span>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex items-center gap-2 mt-2.5">
+                      <button
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border active:scale-95 transition-transform"
+                        style={
+                          has3D
+                            ? { background: "#f3f0ff", color: "#7c3aed", borderColor: "#ddd6fe" }
+                            : { background: "#f5f5f5", color: "#9ca3af", borderColor: "#e5e7eb" }
+                        }
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (has3D) setViewing3D(p);
+                          else setShow3DUnavailable(true);
+                        }}
+                      >
+                        <Box className="w-3.5 h-3.5" />
+                        3D
+                      </button>
+                      <button
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border active:scale-95 transition-transform"
+                        style={{ background: "#fff0f8", color: "#db2777", borderColor: "#fbcfe8" }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onTryOn) onTryOn(p);
+                          else onProductClick(p);
+                        }}
+                      >
+                        <Camera className="w-3.5 h-3.5" />
+                        Try-On
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -274,6 +293,42 @@ export default function ShopTab({
           </div>
         )}
       </div>
+
+      {/* 3D Not Available popup */}
+      {show3DUnavailable && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center"
+          onClick={() => setShow3DUnavailable(false)}
+        >
+          <div className="absolute inset-0 bg-black/40" />
+          <div
+            className="relative w-full rounded-t-3xl px-6 pt-6 pb-12 text-center"
+            style={{ background: "#ffffff" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-1 rounded-full bg-gray-200 mx-auto mb-5" />
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+              style={{ background: "#f3f0ff" }}
+            >
+              <Box className="w-8 h-8" style={{ color: "#7c3aed" }} />
+            </div>
+            <p className="font-black text-lg text-gray-900 mb-2" style={{ fontFamily: "'Montserrat', sans-serif" }}>
+              3D Model Not Available
+            </p>
+            <p className="text-sm text-gray-500 mb-6">
+              This product doesn't have a 3D model yet. Check back later!
+            </p>
+            <button
+              className="w-full py-3.5 rounded-2xl font-bold text-sm"
+              style={{ background: "#000000", color: "white" }}
+              onClick={() => setShow3DUnavailable(false)}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filter Sheet */}
       {showFilterSheet && (
@@ -328,7 +383,6 @@ export default function ShopTab({
           className="fixed inset-0 z-50 flex flex-col"
           style={{ background: "rgba(0,0,0,0.92)" }}
         >
-          {/* Header */}
           <div className="flex items-center justify-between px-4 pt-10 pb-3">
             <div className="flex items-center gap-2">
               <Box className="w-5 h-5 text-purple-400" />
@@ -347,8 +401,6 @@ export default function ShopTab({
               <X className="w-5 h-5 text-white" />
             </button>
           </div>
-
-          {/* Viewer */}
           <div className="flex-1 flex flex-col items-center justify-center px-4">
             <model-viewer
               src={viewing3D.modelUrl!}
@@ -365,8 +417,6 @@ export default function ShopTab({
               }}
             />
           </div>
-
-          {/* Hint */}
           <div className="px-4 pb-10 pt-2 text-center">
             <p className="text-gray-400 text-[12px]">
               👆 Drag to rotate &nbsp;·&nbsp; Pinch to zoom

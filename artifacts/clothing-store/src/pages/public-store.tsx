@@ -1763,6 +1763,12 @@ export default function PublicStore() {
             initialCategory={shopInitCategory}
             onProductClick={openProduct}
             onLike={handleLike}
+            onTryOn={(p) => {
+              setSelectedProduct(p);
+              setCustomerPhoto(null);
+              setTryOnResult(null);
+              setView("tryon");
+            }}
           />
         )}
         {tab === "mybookings" && (
