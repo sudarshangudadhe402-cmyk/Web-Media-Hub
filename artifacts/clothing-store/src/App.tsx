@@ -14,6 +14,7 @@ import Products from "@/pages/products";
 import Categories from "@/pages/categories";
 import MyStore from "@/pages/my-store";
 import AiVideo from "@/pages/ai-video";
+import MarketingGrowth from "@/pages/marketing-growth";
 import UsernamePassword from "@/pages/username-password";
 import ManageAdmins from "@/pages/manage-admins";
 import AdminsPage from "@/pages/admins";
@@ -170,7 +171,10 @@ function Router() {
         {() => <ProtectedRoute component={MyStore} />}
       </Route>
       <Route path="/ai-video">
-        {() => <ProtectedRoute component={AiVideo} />}
+        {() => <ProtectedRoute component={MarketingGrowth} />}
+      </Route>
+      <Route path="/marketing-growth">
+        {() => <ProtectedRoute component={MarketingGrowth} />}
       </Route>
       <Route path="/username-password">
         {() => <ProtectedRoute component={UsernamePassword} />}

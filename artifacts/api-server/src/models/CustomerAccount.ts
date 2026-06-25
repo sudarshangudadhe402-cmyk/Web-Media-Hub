@@ -5,6 +5,8 @@ export interface ICustomerAccount extends Document {
   storeId: string;
   mobileNumber: string;
   password: string;
+  source?: string;
+  campaign?: string;
   createdAt: Date;
   comparePassword(candidate: string): Promise<boolean>;
 }
@@ -14,6 +16,8 @@ const CustomerAccountSchema = new Schema<ICustomerAccount>(
     storeId: { type: String, required: true },
     mobileNumber: { type: String, required: true },
     password: { type: String, required: true },
+    source: { type: String },
+    campaign: { type: String },
   },
   { timestamps: true }
 );

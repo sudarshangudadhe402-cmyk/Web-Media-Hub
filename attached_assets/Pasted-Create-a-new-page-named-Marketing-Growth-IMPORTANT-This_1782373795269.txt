@@ -1,0 +1,230 @@
+Create a new page named "Marketing & Growth".
+
+IMPORTANT:
+- This page must appear ABOVE the existing "AI Promotional Video" page in the admin sidebar/menu.
+- Rename the existing page "AI Promotional Video" to "Marketing & Growth".
+- Inside Marketing & Growth, create two sections:
+  1. Customer Source Tracking
+  2. AI Promotional Video (existing functionality remains unchanged)
+
+==================================================
+SECTION 1: CUSTOMER SOURCE TRACKING
+==================================================
+
+Purpose:
+Allow admins to create marketing campaigns and automatically track where customers come from.
+
+Features:
+
+1. Create Campaign Form
+
+Fields:
+- Campaign Name (Required)
+- Source Type (Dropdown)
+
+Source Options:
+- Instagram
+- Facebook
+- WhatsApp
+- Google
+- SMS
+- Direct
+- Other
+
+Optional:
+- Generate QR Code (Toggle)
+
+Button:
+- Create Campaign
+
+==================================================
+AUTO GENERATED TRACKING LINK
+==================================================
+
+When admin clicks Create Campaign:
+
+Automatically generate a unique tracking link.
+
+Example:
+
+Base URL:
+https://{admin-subdomain}.domain.com
+
+Generated URL:
+https://shopname.domain.com?source=instagram&campaign=summer_sale
+
+or
+
+https://shopname.domain.com?source=whatsapp&campaign=eid_offer
+
+Rules:
+- source comes from dropdown
+- campaign comes from campaign name
+- campaign should be converted into URL-safe slug
+
+Examples:
+"Summer Sale" → summer-sale
+"Eid Offer 2026" → eid-offer-2026
+
+Display:
+
+Campaign Name
+Source
+Tracking Link
+Copy Button
+
+==================================================
+QR CODE GENERATION
+==================================================
+
+If Generate QR Code is enabled:
+
+Automatically create QR code for the tracking link.
+
+Display:
+- QR Preview
+- Download QR Button
+
+Store QR image URL if needed.
+
+==================================================
+CUSTOMER SOURCE TRACKING LOGIC
+==================================================
+
+When a visitor opens a tracking link:
+
+Example:
+?source=instagram&campaign=summer-sale
+
+Store:
+
+source = instagram
+campaign = summer-sale
+
+Use:
+- local storage
+- cookie
+- session
+
+until customer signs up or joins loyalty program.
+
+==================================================
+WHEN CUSTOMER REGISTERS
+==================================================
+
+Save source information with customer.
+
+Customer Record:
+
+customer_id
+admin_id
+name
+phone
+source
+campaign
+join_date
+
+Example:
+
+source: instagram
+campaign: summer-sale
+
+==================================================
+MARKETING DASHBOARD
+==================================================
+
+Create dashboard cards.
+
+Show:
+
+Total Campaigns
+
+Campaign List
+
+For each campaign show:
+
+Campaign Name
+Source
+Tracking Link
+Customers Joined
+
+Example:
+
+Summer Sale
+Instagram
+125 Customers
+
+WhatsApp Offer
+WhatsApp
+52 Customers
+
+==================================================
+CAMPAIGN MANAGEMENT
+==================================================
+
+Allow:
+
+- View Campaign
+- Copy Link
+- Download QR
+- Deactivate Campaign
+- Delete Campaign
+
+==================================================
+DATABASE TABLE
+==================================================
+
+marketing_campaigns
+
+Fields:
+
+id
+admin_id
+campaign_name
+campaign_slug
+source
+tracking_link
+qr_enabled
+is_active
+created_at
+
+==================================================
+CUSTOMER TABLE UPDATE
+==================================================
+
+Add:
+
+source
+campaign
+
+to customer records.
+
+==================================================
+UI REQUIREMENTS
+==================================================
+
+- Modern SaaS design
+- Mobile responsive
+- Clean cards
+- Reuse existing admin theme
+- Fast loading
+- Easy for non-technical shop owners
+
+==================================================
+IMPORTANT
+==================================================
+
+Do NOT create:
+- Influencer tracking
+- Referral code system
+- Revenue attribution tracking
+- Super admin aggregate analytics
+
+Only create:
+- Campaign creation
+- Tracking links
+- Optional QR generation
+- Customer source tracking
+- Campaign dashboard
+
+Integrate everything into the Marketing & Growth page while keeping existing AI Promotional Video functionality unchanged below this section.

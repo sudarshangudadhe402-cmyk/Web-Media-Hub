@@ -92,6 +92,15 @@ export default function PublicStore() {
   const params = useParams<{ slug: string }>();
   const slug = params.slug;
 
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const source = sp.get("source");
+    const campaign = sp.get("campaign");
+    if (source || campaign) {
+      localStorage.setItem(`wmh_tracking_${slug}`, JSON.stringify({ source: source ?? null, campaign: campaign ?? null }));
+    }
+  }, [slug]);
+
   const [tab, setTab] = useState<TabType>("home");
   const [view, setView] = useState<ViewType>("browse");
   const [selectedAdminCategory, setSelectedAdminCategory] = useState<AdminCategory | null>(null);
@@ -466,10 +475,12 @@ export default function PublicStore() {
     setSignUpLoading(true);
     setSignUpError(null);
     try {
+      const trackingRaw = localStorage.getItem(`wmh_tracking_${slug}`);
+      const tracking = trackingRaw ? (() => { try { return JSON.parse(trackingRaw); } catch { return {}; } })() : {};
       const res = await fetch("/api/public/customer-account/verify-signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storeSlug: slug, email, mobileNumber: mobile, password, otp }),
+        body: JSON.stringify({ storeSlug: slug, email, mobileNumber: mobile, password, otp, source: tracking.source ?? undefined, campaign: tracking.campaign ?? undefined }),
       });
       const d = await res.json();
       if (!res.ok) { setSignUpError(d.error || "Verification failed"); return; }

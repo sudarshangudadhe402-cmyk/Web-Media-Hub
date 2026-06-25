@@ -6,7 +6,7 @@ import {
   Package,
   Tags,
   Store,
-  Video,
+  TrendingUp,
   Users,
   Shield,
   Bell,
@@ -84,7 +84,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       ));
 
   useEffect(() => {
-    if (location === "/ai-video") {
+    if (location === "/marketing-growth") {
       const now = new Date().toISOString();
       localStorage.setItem(AI_VIDEO_SEEN_KEY, now);
       setAiVideoSeenAt(now);
@@ -118,13 +118,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
         { name: "Sales & Ledger", href: "/", icon: BookOpen },
         { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
         { name: "Products", href: "/products", icon: Package },
-        { name: "AI Promotional Video", href: "/ai-video", icon: Video },
+        { name: "Marketing & Growth", href: "/marketing-growth", icon: TrendingUp },
         { name: "My Store", href: "/my-store", icon: Store },
       ];
 
   const navDots: Record<string, boolean> = {
     "/dashboard": dashboardHasDot,
-    "/ai-video": aiVideoHasDot,
+    "/marketing-growth": aiVideoHasDot,
   };
 
   const handleMarkRead = () => {

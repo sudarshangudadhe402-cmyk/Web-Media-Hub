@@ -138,7 +138,10 @@ router.post("/public/customer-account/verify-signup", async (req, res) => {
     otpDoc.used = true;
     await otpDoc.save();
 
-    const account = await CustomerAccount.create({ storeId, mobileNumber, password });
+    const source = typeof req.body.source === "string" ? req.body.source.slice(0, 50) : undefined;
+    const campaign = typeof req.body.campaign === "string" ? req.body.campaign.slice(0, 100) : undefined;
+
+    const account = await CustomerAccount.create({ storeId, mobileNumber, password, source, campaign });
 
     res.status(201).json({
       id: String(account._id),
