@@ -936,7 +936,7 @@ export default function MarketingGrowth() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-sm truncate">{req.storeName}</p>
-                        <p className="text-xs text-muted-foreground">@{req.username} · {req.whatsapp}</p>
+                        <p className="text-xs text-muted-foreground truncate">{req.email} · {req.whatsapp}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {new Date(req.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                         </p>
@@ -970,27 +970,44 @@ export default function MarketingGrowth() {
               <div className="space-y-3 pt-2">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-muted rounded-lg p-3">
-                    <p className="text-xs text-muted-foreground">Username</p>
-                    <p className="font-semibold text-sm mt-0.5">@{selectedApproved.username}</p>
+                    <p className="text-xs text-muted-foreground">Email</p>
+                    <p className="font-semibold text-sm mt-0.5 truncate">{selectedApproved.email}</p>
                   </div>
                   <div className="bg-muted rounded-lg p-3">
                     <p className="text-xs text-muted-foreground">WhatsApp</p>
                     <p className="font-semibold text-sm mt-0.5">{selectedApproved.whatsapp}</p>
                   </div>
                 </div>
-                <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex gap-3">
-                  <Gift className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold text-green-800 text-sm">
-                      {selectedApproved.rewardCode === "NO_REWARD_MONTHLY_PLAN" ? "No Reward" : "+2000 Coins Earned"}
-                    </p>
-                    <p className="text-green-700 text-xs mt-1">
-                      {selectedApproved.rewardCode === "NO_REWARD_MONTHLY_PLAN"
-                        ? "Reward not applicable on ₹999/month plan"
-                        : "Credited to your account"}
-                    </p>
+
+                {selectedApproved.rewardCode && selectedApproved.rewardCode !== "NO_REWARD_MONTHLY_PLAN" ? (
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Gift className="w-5 h-5 text-green-600 shrink-0" />
+                      <p className="font-semibold text-green-800 text-sm">+2000 Coins Earned 🎉</p>
+                    </div>
+                    <p className="text-green-700 text-xs">Your reward code — share this with support to claim:</p>
+                    <div className="flex items-center gap-2 bg-white border border-green-300 rounded-lg px-3 py-2">
+                      <span className="font-mono font-extrabold text-green-700 text-lg tracking-widest flex-1">
+                        {selectedApproved.rewardCode}
+                      </span>
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(selectedApproved.rewardCode ?? ""); toast({ title: "Reward code copied!" }); }}
+                        className="p-1.5 rounded hover:bg-green-50 transition-colors shrink-0"
+                      >
+                        <Copy className="w-4 h-4 text-green-600" />
+                      </button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-3">
+                    <Gift className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-red-700 text-sm">No Reward</p>
+                      <p className="text-red-600 text-xs mt-1">Reward not applicable on ₹999/month plan</p>
+                    </div>
+                  </div>
+                )}
+
                 <Button className="w-full" onClick={() => setSelectedApproved(null)}>Close</Button>
               </div>
             </>
