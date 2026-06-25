@@ -210,10 +210,7 @@ router.patch("/store-requests/:id/approve", requireSuperAdmin, async (req, res) 
       return;
     }
 
-    const isStartingPlan = request.planName === "Starting Plan" || request.planPrice === "₹999";
-    const rewardCode = isStartingPlan
-      ? "NO_REWARD_MONTHLY_PLAN"
-      : (request.rewardCode || generateRewardCode(request.email));
+    const rewardCode = request.rewardCode || generateRewardCode(request.email);
 
     request.status = "approved";
     request.rewardCode = rewardCode;
