@@ -7,7 +7,7 @@ import { useLocation } from "wouter";
 import {
   ChevronRight, Eye, EyeOff, Sparkles, ArrowLeft, Star,
   Mail, Lock, Store, Phone, CheckCircle, Lock as LockIcon,
-  CreditCard, KeyRound, X, AlertCircle,
+  CreditCard, KeyRound, X, AlertCircle, Shirt, Check,
 } from "lucide-react";
 import PricingOverlay, { SelectedPlan } from "@/components/pricing-overlay";
 
@@ -62,8 +62,14 @@ const BORDER = "#E8E0D0";
 const HINT = "#9A9485";
 const LABEL = "#1A1A1A";
 
+/* ─── Categories ─── */
+const CATEGORIES = [
+  { key: "fashion_clothing", label: "Fashion & Clothing Store", icon: Shirt, desc: "Sell clothes, accessories & fashion items" },
+];
+
 /* ─── Steps ─── */
 const STEPS = [
+  { label: "Category" },
   { label: "Information" },
   { label: "Payment" },
   { label: "Store Login" },
@@ -81,6 +87,7 @@ export default function CreateStore() {
   const [selectedPlan, setSelectedPlan] = useState<SelectedPlan | null>(null);
   const [checking,     setChecking]     = useState(false);
   const [dupePopup,    setDupePopup]    = useState<DupePopup | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -99,7 +106,7 @@ export default function CreateStore() {
     setStep(next);
   }
 
-  async function handleContinueStep1() {
+  async function handleContinueStep2() {
     if (!step1Ready) return;
     setChecking(true);
     try {
@@ -118,9 +125,9 @@ export default function CreateStore() {
         setDupePopup({ message: "Mobile number is already registered as a store, please choose different." });
         return;
       }
-      goTo(1);
+      goTo(2);
     } catch {
-      goTo(1);
+      goTo(2);
     } finally {
       setChecking(false);
     }
@@ -240,8 +247,105 @@ export default function CreateStore() {
       <div className="relative z-10 flex-1 flex items-start justify-center px-4 pb-4 overflow-hidden">
         <AnimatePresence mode="wait" custom={dir}>
 
-          {/* ══ STEP 1: Information ══ */}
+          {/* ══ STEP 1: Category ══ */}
           {step === 0 && (
+            <motion.div
+              key="step0"
+              custom={dir}
+              variants={{ hidden:(d:number)=>({opacity:0,x:d*36}), show:{opacity:1,x:0,transition:{duration:0.32,ease:"easeOut"}}, exit:(d:number)=>({opacity:0,x:d*-36,transition:{duration:0.22}}) }}
+              initial="hidden" animate="show" exit="exit"
+              className="w-full max-w-md overflow-y-auto"
+              style={{ maxHeight:"100%" }}
+            >
+              <div className="bg-white rounded-2xl overflow-hidden"
+                style={{ boxShadow:"0 10px 40px rgba(0,0,0,0.10)", border:`1px solid ${BORDER}` }}>
+
+                {/* Header */}
+                <div className="px-6 pt-5 pb-4 text-center">
+                  <div className="w-12 h-12 rounded-xl mx-auto mb-2 flex items-center justify-center" style={{ background:LABEL }}>
+                    <Sparkles className="w-6 h-6 text-white" />
+                  </div>
+                  <p className="font-extrabold text-xs tracking-widest mb-0.5" style={{ color:GOLD }}>WEB MEDIA HUB</p>
+                  <h1 className="text-2xl font-black mb-1.5" style={{ fontFamily:"'Playfair Display', Georgia, serif", color:LABEL }}>
+                    Create Your Store
+                  </h1>
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <div className="h-px flex-1" style={{ background:`linear-gradient(to right, transparent, ${GOLD})` }} />
+                    <span style={{ color:GOLD, fontSize:"12px" }}>◆</span>
+                    <div className="h-px flex-1" style={{ background:`linear-gradient(to left, transparent, ${GOLD})` }} />
+                  </div>
+                  <p className="text-sm font-medium" style={{ color:HINT }}>Choose your store category to get started</p>
+                </div>
+
+                {/* Category list */}
+                <div className="px-6 pb-6 space-y-3">
+                  <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color:HINT }}>Available Categories</p>
+
+                  {CATEGORIES.map(cat => {
+                    const isSelected = selectedCategory === cat.key;
+                    return (
+                      <motion.button
+                        key={cat.key}
+                        type="button"
+                        onClick={() => setSelectedCategory(cat.key)}
+                        whileHover={{ scale:1.012 }}
+                        whileTap={{ scale:0.97 }}
+                        className="w-full flex items-center gap-4 text-left transition-all"
+                        style={{
+                          padding:"16px 18px",
+                          borderRadius:"14px",
+                          border: isSelected ? `2px solid ${GOLD_BG}` : `2px solid ${BORDER}`,
+                          background: isSelected ? `${GOLD_BG}10` : "#FDFCF9",
+                          boxShadow: isSelected ? `0 4px 16px rgba(212,160,23,0.18)` : "none",
+                        }}
+                      >
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ background: isSelected ? LABEL : "#F0EBE1" }}>
+                          <cat.icon className="w-6 h-6" style={{ color: isSelected ? "white" : HINT }} />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-bold text-sm" style={{ color:LABEL }}>{cat.label}</p>
+                          <p className="text-xs mt-0.5" style={{ color:HINT }}>{cat.desc}</p>
+                        </div>
+                        <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0"
+                          style={{ borderColor: isSelected ? GOLD_BG : BORDER, background: isSelected ? GOLD_BG : "transparent" }}>
+                          {isSelected && <Check className="w-3 h-3 text-white" />}
+                        </div>
+                      </motion.button>
+                    );
+                  })}
+
+                  <p className="text-xs text-center py-2" style={{ color:"#C5BFB5" }}>More categories coming soon</p>
+
+                  {/* Continue button */}
+                  <motion.button
+                    type="button"
+                    disabled={!selectedCategory}
+                    onClick={() => selectedCategory && goTo(1)}
+                    whileHover={selectedCategory ? {scale:1.012} : {}}
+                    whileTap={selectedCategory ? {scale:0.97} : {}}
+                    className="w-full flex items-center justify-center gap-2 font-bold text-white"
+                    style={{
+                      height:"52px", borderRadius:"14px",
+                      background: selectedCategory ? LABEL : "#C5BFB5",
+                      fontSize:"15px", cursor: selectedCategory ? "pointer" : "not-allowed",
+                      boxShadow: selectedCategory ? "0 4px 16px rgba(0,0,0,0.18)" : "none",
+                      transition:"all 0.2s",
+                    }}
+                  >
+                    Continue <ChevronRight className="w-4 h-4" />
+                  </motion.button>
+
+                  {!selectedCategory && (
+                    <p className="text-center text-xs" style={{ color:"#BBAA99" }}>Select a category to continue</p>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ══ STEP 2: Information ══ */}
+          {step === 1 && (
             <motion.div
               key="step1"
               custom={dir}
@@ -382,7 +486,7 @@ export default function CreateStore() {
                   {/* Continue */}
                   <motion.button type="button"
                     disabled={!step1Ready || checking}
-                    onClick={handleContinueStep1}
+                    onClick={handleContinueStep2}
                     whileHover={step1Ready&&!checking?{scale:1.012}:{}}
                     whileTap={step1Ready&&!checking?{scale:0.97}:{}}
                     className="w-full flex items-center justify-center gap-2 font-bold text-white"
@@ -415,10 +519,10 @@ export default function CreateStore() {
             </motion.div>
           )}
 
-          {/* ══ STEP 2: Payment — split layout ══ */}
-          {step === 1 && (
+          {/* ══ STEP 3: Payment — split layout ══ */}
+          {step === 2 && (
             <motion.div
-              key="step2"
+              key="step3"
               custom={dir}
               variants={{ hidden:(d:number)=>({opacity:0,x:d*36}), show:{opacity:1,x:0,transition:{duration:0.32,ease:"easeOut"}}, exit:(d:number)=>({opacity:0,x:d*-36,transition:{duration:0.22}}) }}
               initial="hidden" animate="show" exit="exit"
@@ -504,14 +608,14 @@ export default function CreateStore() {
                     </p>
                   </div>
 
-                  {/* Step 2 navigation */}
+                  {/* Step 3 navigation */}
                   <div className="flex gap-3 w-full mt-2">
-                    <button type="button" onClick={()=>goTo(0)}
+                    <button type="button" onClick={()=>goTo(1)}
                       className="flex-1 flex items-center justify-center gap-2 font-semibold hover:opacity-80 transition-opacity"
                       style={{ height:"48px", borderRadius:"12px", border:`2px solid ${LABEL}`, color:LABEL, background:"transparent", fontSize:"14px" }}>
                       <ArrowLeft className="w-4 h-4" /> Back
                     </button>
-                    <motion.button type="button" onClick={()=>goTo(2)}
+                    <motion.button type="button" onClick={()=>goTo(3)}
                       whileHover={{scale:1.012}} whileTap={{scale:0.97}}
                       className="flex-1 flex items-center justify-center gap-2 font-bold text-white"
                       style={{ height:"48px", borderRadius:"12px", background:LABEL, fontSize:"14px", boxShadow:"0 4px 14px rgba(0,0,0,0.18)" }}>
@@ -524,10 +628,10 @@ export default function CreateStore() {
             </motion.div>
           )}
 
-          {/* ══ STEP 3: Store Login Details ══ */}
-          {step === 2 && (
+          {/* ══ STEP 4: Store Login Details ══ */}
+          {step === 3 && (
             <motion.div
-              key="step3"
+              key="step4"
               custom={dir}
               variants={{ hidden:(d:number)=>({opacity:0,x:d*36}), show:{opacity:1,x:0,transition:{duration:0.32,ease:"easeOut"}}, exit:(d:number)=>({opacity:0,x:d*-36,transition:{duration:0.22}}) }}
               initial="hidden" animate="show" exit="exit"
@@ -541,7 +645,7 @@ export default function CreateStore() {
                     style={{ background: "#16A34A" }}>
                     <KeyRound className="w-7 h-7 text-white" />
                   </div>
-                  <p className="font-extrabold text-xs tracking-widest mb-0.5" style={{ color: GOLD }}>STEP 3 OF 3</p>
+                  <p className="font-extrabold text-xs tracking-widest mb-0.5" style={{ color: GOLD }}>STEP 4 OF 4</p>
                   <h2 className="text-2xl font-black mb-1.5"
                     style={{ fontFamily:"'Playfair Display', Georgia, serif", color: LABEL }}>
                     Store Login Details
@@ -566,7 +670,7 @@ export default function CreateStore() {
                   </div>
 
                   <div className="flex gap-3 w-full mt-2">
-                    <button type="button" onClick={()=>goTo(1)}
+                    <button type="button" onClick={()=>goTo(2)}
                       className="flex-1 flex items-center justify-center gap-2 font-semibold hover:opacity-80 transition-opacity"
                       style={{ height:"48px", borderRadius:"12px", border:`2px solid ${LABEL}`, color:LABEL, background:"transparent", fontSize:"14px" }}>
                       <ArrowLeft className="w-4 h-4" /> Back
