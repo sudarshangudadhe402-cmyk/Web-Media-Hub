@@ -148,8 +148,6 @@ function DashboardTab() {
   if (loading) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
   if (!data) return null;
 
-  const pieData = (data.bySource || []).filter((s: any) => s.signups > 0).map((s: any) => ({ name: SOURCE_LABELS[s.source], value: s.signups, color: SOURCE_COLORS[s.source] }));
-
   return (
     <div className="space-y-6">
       <DateFilterBar range={range} setRange={setRange} from={from} setFrom={setFrom} to={to} setTo={setTo} />
@@ -162,38 +160,149 @@ function DashboardTab() {
         <StatCard title="This Month" value={fmtRs(data.monthlyRevenue)} icon={TrendingUp} color="bg-orange-500" />
       </div>
 
-      {/* Charts row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Admins by Source</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={90} dataKey="value" label={({ name, value }) => `${name}: ${value}`} labelLine={false} fontSize={10}>
-                  {pieData.map((entry: any, i: number) => <Cell key={i} fill={entry.color} />)}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Revenue by Source</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={(data.bySource || []).filter((s: any) => s.revenue > 0)} margin={{ left: -10 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="source" tick={{ fontSize: 9 }} tickFormatter={(v) => SOURCE_LABELS[v]?.split(" ")[0]} />
-                <YAxis tick={{ fontSize: 10 }} tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} />
-                <Tooltip formatter={(v: any) => fmtRs(v)} labelFormatter={(l) => SOURCE_LABELS[l] || l} />
-                <Bar dataKey="revenue" radius={[4,4,0,0]}>
-                  {(data.bySource || []).filter((s: any) => s.revenue > 0).map((s: any, i: number) => <Cell key={i} fill={SOURCE_COLORS[s.source]} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Combined Source Analysis */}
+      {(() => {
+        const sorted = [...(data.bySource || [])].sort((a: any, b: any) =>
+          analysisMode === "admin" ? b.signups - a.signups : b.revenue - a.revenue
+        );
+        return (
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <CardTitle className="text-sm">Source Analysis</CardTitle>
+                <div className="flex rounded-lg border overflow-hidden text-xs font-semibold">
+                  <button
+                    onClick={() => setAnalysisMode("admin")}
+                    className={`px-3 py-1.5 transition-colors ${analysisMode === "admin" ? "bg-blue-600 text-white" : "text-muted-foreground hover:bg-muted"}`}
+                  >
+                    Admin Analysis
+                  </button>
+                  <button
+                    onClick={() => setAnalysisMode("revenue")}
+                    className={`px-3 py-1.5 border-l transition-colors ${analysisMode === "revenue" ? "bg-green-600 text-white" : "text-muted-foreground hover:bg-muted"}`}
+                  >
+                    Revenue Analysis
+                  </button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="grid grid-cols-3 border-b bg-muted/30 px-3 py-2 text-xs font-semibold text-muted-foreground">
+                <span>Source</span>
+                <span className="text-center text-blue-600">Admins</span>
+                <span className="text-right text-green-600">Revenue</span>
+              </div>
+              {sorted.length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground text-sm">No data available</div>
+              ) : (
+                sorted.map((s: any, i: number) => {
+                  const color = SOURCE_COLORS[s.source] || "#6b7280";
+                  const label = SOURCE_LABELS[s.source] || s.source;
+                  const isTop = i === 0;
+                  return (
+                    <div
+                      key={s.source}
+                      className={`grid grid-cols-3 items-center px-3 py-3 border-b last:border-0 hover:bg-muted/20 transition-colors ${isTop ? "bg-muted/10" : ""}`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
+                        <span className="text-sm font-medium truncate">{label}</span>
+                        {isTop && (
+                          <span className="text-[9px] px-1 py-0.5 rounded font-bold shrink-0" style={{ background: color + "20", color }}>TOP</span>
+                        )}
+                      </div>
+                      <div className="text-center">
+                        <span className="text-sm font-bold" style={{ color: "#3b82f6" }}>{s.signups}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm font-bold" style={{ color: "#16a34a" }}>{fmtRs(s.revenue)}</span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
+
+      {/* Monthly Growth Trend by Source */}
+      {(() => {
+        const bySourceMonthly: Record<string, { month: string; signups: number; revenue: number }[]> = data.bySourceMonthly || {};
+        const sources = (data.bySource || []).filter((s: any) => s.signups > 0 || s.revenue > 0);
+        if (sources.length === 0) return null;
+        const sorted = [...sources].sort((a: any, b: any) =>
+          analysisMode === "admin" ? b.signups - a.signups : b.revenue - a.revenue
+        );
+        const monthKeys: string[] = sorted.length > 0
+          ? (bySourceMonthly[sorted[0].source] || []).map((m: any) => m.month)
+          : [];
+        const shortMonth = (key: string) => {
+          const [y, m] = key.split("-");
+          return new Date(Number(y), Number(m) - 1, 1).toLocaleString("en", { month: "short" });
+        };
+        return (
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <CardTitle className="text-sm">Monthly Growth Trend</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Last 6 months — {analysisMode === "admin" ? "Admin signups" : "Revenue"} per source
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="w-3 h-0.5 bg-green-500 inline-block rounded" /> Growing
+                  <span className="w-3 h-0.5 bg-red-500 inline-block rounded ml-2" /> Declining
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="flex items-center border-b bg-muted/30 px-4 py-2">
+                <div className="w-32 text-xs font-semibold text-muted-foreground shrink-0">Source</div>
+                <div className="flex-1 flex justify-between px-2">
+                  {monthKeys.map(k => (
+                    <span key={k} className="text-[10px] text-muted-foreground">{shortMonth(k)}</span>
+                  ))}
+                </div>
+                <div className="w-16 text-right text-xs font-semibold text-muted-foreground shrink-0">
+                  {analysisMode === "admin" ? "Signups" : "Revenue"}
+                </div>
+              </div>
+              {sorted.map((s: any) => {
+                const color = SOURCE_COLORS[s.source] || "#6b7280";
+                const label = SOURCE_LABELS[s.source] || s.source;
+                const monthly = bySourceMonthly[s.source] || [];
+                const values = monthly.map((m: any) => analysisMode === "admin" ? m.signups : m.revenue);
+                const last = values[values.length - 1] ?? 0;
+                const prev = values[values.length - 2] ?? 0;
+                const trend = last - prev;
+                return (
+                  <div key={s.source} className="flex items-center border-b last:border-0 px-4 py-2.5 hover:bg-muted/20 transition-colors">
+                    <div className="w-32 shrink-0 flex items-center gap-2 min-w-0">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
+                      <span className="text-xs font-medium truncate">{label}</span>
+                    </div>
+                    <div className="flex-1 flex items-center justify-center">
+                      <Sparkline values={values} color={color} width={160} height={28} />
+                    </div>
+                    <div className="w-16 shrink-0 text-right">
+                      <div className="text-xs font-bold" style={{ color }}>
+                        {analysisMode === "admin" ? last : fmtRs(last)}
+                      </div>
+                      {trend !== 0 && (
+                        <div className={`text-[10px] font-semibold ${trend > 0 ? "text-green-600" : "text-red-500"}`}>
+                          {trend > 0 ? "▲" : "▼"} {analysisMode === "admin" ? Math.abs(trend) : fmtRs(Math.abs(trend))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Monthly charts */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -226,167 +335,6 @@ function DashboardTab() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Combined Source Analysis */}
-      {(() => {
-        const sorted = [...(data.bySource || [])].sort((a: any, b: any) =>
-          analysisMode === "admin" ? b.signups - a.signups : b.revenue - a.revenue
-        );
-        return (
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <CardTitle className="text-sm">Source Analysis</CardTitle>
-                <div className="flex rounded-lg border overflow-hidden text-xs font-semibold">
-                  <button
-                    onClick={() => setAnalysisMode("admin")}
-                    className={`px-3 py-1.5 transition-colors ${analysisMode === "admin" ? "bg-blue-600 text-white" : "text-muted-foreground hover:bg-muted"}`}
-                  >
-                    Admin Analysis
-                  </button>
-                  <button
-                    onClick={() => setAnalysisMode("revenue")}
-                    className={`px-3 py-1.5 border-l transition-colors ${analysisMode === "revenue" ? "bg-green-600 text-white" : "text-muted-foreground hover:bg-muted"}`}
-                  >
-                    Revenue Analysis
-                  </button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              {/* Column headers */}
-              <div className="grid grid-cols-3 border-b bg-muted/30 px-3 py-2 text-xs font-semibold text-muted-foreground">
-                <span>Source</span>
-                <span className="text-center text-blue-600">Admins</span>
-                <span className="text-right text-green-600">Revenue</span>
-              </div>
-              {sorted.length === 0 ? (
-                <div className="py-8 text-center text-muted-foreground text-sm">No data available</div>
-              ) : (
-                sorted.map((s: any, i: number) => {
-                  const color = SOURCE_COLORS[s.source] || "#6b7280";
-                  const label = SOURCE_LABELS[s.source] || s.source;
-                  const isTop = i === 0;
-                  return (
-                    <div
-                      key={s.source}
-                      className={`grid grid-cols-3 items-center px-3 py-3 border-b last:border-0 hover:bg-muted/20 transition-colors ${isTop ? "bg-muted/10" : ""}`}
-                    >
-                      {/* Source */}
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
-                        <span className="text-sm font-medium truncate">{label}</span>
-                        {isTop && (
-                          <span className="text-[9px] px-1 py-0.5 rounded font-bold shrink-0" style={{ background: color + "20", color }}>
-                            TOP
-                          </span>
-                        )}
-                      </div>
-                      {/* Admin count */}
-                      <div className="text-center">
-                        <span className="text-sm font-bold" style={{ color: "#3b82f6" }}>{s.signups}</span>
-                      </div>
-                      {/* Revenue */}
-                      <div className="text-right">
-                        <span className="text-sm font-bold" style={{ color: "#16a34a" }}>{fmtRs(s.revenue)}</span>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </CardContent>
-          </Card>
-        );
-      })()}
-
-      {/* Monthly Growth Trend by Source */}
-      {(() => {
-        const bySourceMonthly: Record<string, { month: string; signups: number; revenue: number }[]> = data.bySourceMonthly || {};
-        const sources = (data.bySource || []).filter((s: any) => s.signups > 0 || s.revenue > 0);
-        if (sources.length === 0) return null;
-
-        const sorted = [...sources].sort((a: any, b: any) =>
-          analysisMode === "admin" ? b.signups - a.signups : b.revenue - a.revenue
-        );
-
-        const monthKeys: string[] = sorted.length > 0
-          ? (bySourceMonthly[sorted[0].source] || []).map((m: any) => m.month)
-          : [];
-
-        const shortMonth = (key: string) => {
-          const [y, m] = key.split("-");
-          return new Date(Number(y), Number(m) - 1, 1).toLocaleString("en", { month: "short" });
-        };
-
-        return (
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div>
-                  <CardTitle className="text-sm">Monthly Growth Trend</CardTitle>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Last 6 months — {analysisMode === "admin" ? "Admin signups" : "Revenue"} per source
-                  </p>
-                </div>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span className="w-3 h-0.5 bg-green-500 inline-block rounded" /> Growing
-                  <span className="w-3 h-0.5 bg-red-500 inline-block rounded ml-2" /> Declining
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              {/* Month labels header */}
-              <div className="flex items-center border-b bg-muted/30 px-4 py-2">
-                <div className="w-32 text-xs font-semibold text-muted-foreground shrink-0">Source</div>
-                <div className="flex-1 flex justify-between px-2">
-                  {monthKeys.map(k => (
-                    <span key={k} className="text-[10px] text-muted-foreground">{shortMonth(k)}</span>
-                  ))}
-                </div>
-                <div className="w-16 text-right text-xs font-semibold text-muted-foreground shrink-0">
-                  {analysisMode === "admin" ? "Signups" : "Revenue"}
-                </div>
-              </div>
-              {sorted.map((s: any, i: number) => {
-                const color = SOURCE_COLORS[s.source] || "#6b7280";
-                const label = SOURCE_LABELS[s.source] || s.source;
-                const monthly = bySourceMonthly[s.source] || [];
-                const values = monthly.map((m: any) => analysisMode === "admin" ? m.signups : m.revenue);
-                const last = values[values.length - 1] ?? 0;
-                const prev = values[values.length - 2] ?? 0;
-                const trend = last - prev;
-                return (
-                  <div
-                    key={s.source}
-                    className="flex items-center border-b last:border-0 px-4 py-2.5 hover:bg-muted/20 transition-colors"
-                  >
-                    {/* Source name */}
-                    <div className="w-32 shrink-0 flex items-center gap-2 min-w-0">
-                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
-                      <span className="text-xs font-medium truncate">{label}</span>
-                    </div>
-                    {/* Sparkline */}
-                    <div className="flex-1 flex items-center justify-center">
-                      <Sparkline values={values} color={color} width={160} height={28} />
-                    </div>
-                    {/* Current month value + trend arrow */}
-                    <div className="w-16 shrink-0 text-right">
-                      <div className="text-xs font-bold" style={{ color }}>
-                        {analysisMode === "admin" ? last : fmtRs(last)}
-                      </div>
-                      {trend !== 0 && (
-                        <div className={`text-[10px] font-semibold ${trend > 0 ? "text-green-600" : "text-red-500"}`}>
-                          {trend > 0 ? "▲" : "▼"} {analysisMode === "admin" ? Math.abs(trend) : fmtRs(Math.abs(trend))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
-        );
-      })()}
 
       {/* Top Influencers */}
       {data.topInfluencers?.length > 0 && (

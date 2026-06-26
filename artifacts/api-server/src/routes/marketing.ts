@@ -15,6 +15,34 @@ const SOURCES = [
   "AFFILIATE","WHATSAPP","DIRECT",
 ];
 
+const SOURCE_LABELS: Record<string, string> = {
+  ORGANIC: "Organic",
+  GOOGLE_AD: "Google Ad",
+  FACEBOOK_AD: "Facebook Ad",
+  INSTAGRAM_AD: "Instagram Ad",
+  YOUTUBE: "YouTube",
+  REFERRAL: "Referral",
+  AMBASSADOR: "Ambassador",
+  INFLUENCER: "Influencer",
+  AFFILIATE: "Affiliate",
+  WHATSAPP: "WhatsApp",
+  DIRECT: "Direct",
+};
+
+const SOURCE_COLORS: Record<string, string> = {
+  ORGANIC: "#22c55e",
+  GOOGLE_AD: "#3b82f6",
+  FACEBOOK_AD: "#6366f1",
+  INSTAGRAM_AD: "#ec4899",
+  YOUTUBE: "#ef4444",
+  REFERRAL: "#f59e0b",
+  AMBASSADOR: "#8b5cf6",
+  INFLUENCER: "#06b6d4",
+  AFFILIATE: "#f97316",
+  WHATSAPP: "#10b981",
+  DIRECT: "#6b7280",
+};
+
 function parsePlanPrice(priceStr: string): number {
   if (!priceStr) return 0;
   const n = parseFloat(priceStr.replace(/[^\d.]/g, ""));
