@@ -117,6 +117,20 @@ router.patch("/campaigns/:id/deactivate", requireAuth, async (req: AuthRequest, 
   }
 });
 
+router.patch("/campaigns/:id/toggle", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const store = await getMyStore(String(req.user!._id));
+    if (!store) { res.status(404).json({ error: "Store not found" }); return; }
+    const existing = await MarketingCampaign.findOne({ _id: req.params.id, storeId: String(store._id) });
+    if (!existing) { res.status(404).json({ error: "Campaign not found" }); return; }
+    existing.isActive = !existing.isActive;
+    await existing.save();
+    res.json({ success: true, isActive: existing.isActive });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.delete("/campaigns/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
     const store = await getMyStore(String(req.user!._id));

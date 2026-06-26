@@ -138,33 +138,61 @@ function CampaignQrDownload({ link, name }: { link: string; name: string }) {
   );
 }
 
-function CampaignCard({ campaign, onCopyLink, onDeactivate, onDelete }: {
+function CampaignRow({ campaign, onClick }: { campaign: Campaign; onClick: () => void }) {
+  const src = SOURCE_OPTIONS.find((s) => s.value === campaign.source);
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-3 px-4 py-3 bg-card border rounded-xl hover:bg-accent/40 active:bg-accent/60 transition-colors text-left"
+    >
+      <span
+        className="w-2.5 h-2.5 rounded-full shrink-0"
+        style={{ background: sourceColor(campaign.source) }}
+      />
+      <span
+        className="text-xs font-semibold px-2 py-0.5 rounded-full text-white shrink-0"
+        style={{ background: sourceColor(campaign.source) }}
+      >
+        {src?.label ?? campaign.source}
+      </span>
+      <span className="flex-1 text-sm font-medium truncate">{campaign.campaignName}</span>
+      {!campaign.isActive && (
+        <Badge variant="secondary" className="text-[10px] shrink-0">Inactive</Badge>
+      )}
+      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+    </button>
+  );
+}
+
+function CampaignDetail({ campaign, onBack, onCopyLink, onToggle, onDelete }: {
   campaign: Campaign;
+  onBack: () => void;
   onCopyLink: (link: string) => void;
-  onDeactivate: (id: string) => void;
+  onToggle: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
   const [showQr, setShowQr] = useState(false);
   const src = SOURCE_OPTIONS.find((s) => s.value === campaign.source);
 
   return (
-    <Card className={`overflow-hidden transition-all ${!campaign.isActive ? "opacity-60" : ""}`}>
-      <CardContent className="p-0">
-        {/* Header strip */}
-        <div
-          className="h-1.5 w-full"
-          style={{ background: sourceColor(campaign.source) }}
-        />
-        <div className="p-4 space-y-3">
+    <div className="space-y-4">
+      {/* Back button */}
+      <button
+        onClick={onBack}
+        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ChevronLeft className="w-4 h-4" />
+        All Campaigns
+      </button>
+
+      <Card className="overflow-hidden">
+        <div className="h-1.5 w-full" style={{ background: sourceColor(campaign.source) }} />
+        <CardContent className="p-4 space-y-4">
+          {/* Header */}
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="font-semibold text-sm truncate">{campaign.campaignName}</p>
-                {!campaign.isActive && (
-                  <Badge variant="secondary" className="text-[10px] shrink-0">Inactive</Badge>
-                )}
-              </div>
-              <div className="flex items-center gap-1.5 mt-1">
+              <p className="font-bold text-base truncate">{campaign.campaignName}</p>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <span
                   className="text-xs font-semibold px-2 py-0.5 rounded-full text-white shrink-0"
                   style={{ background: sourceColor(campaign.source) }}
@@ -176,34 +204,45 @@ function CampaignCard({ campaign, onCopyLink, onDeactivate, onDelete }: {
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="flex flex-col items-center bg-blue-50 rounded-lg px-2.5 py-1.5 shrink-0">
-                <div className="flex items-center gap-1">
-                  <Eye className="w-3 h-3 text-blue-500" />
-                  <span className="text-sm font-bold text-blue-600">{campaign.visitCount ?? 0}</span>
-                </div>
-                <span className="text-[9px] text-blue-400 font-medium leading-none mt-0.5">Visitors</span>
+            <Badge
+              className={`shrink-0 text-xs ${campaign.isActive ? "bg-green-100 text-green-700 border-green-200" : "bg-gray-100 text-gray-500 border-gray-200"}`}
+              variant="outline"
+            >
+              {campaign.isActive ? "Active" : "Inactive"}
+            </Badge>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col items-center bg-blue-50 rounded-xl py-3 gap-1">
+              <div className="flex items-center gap-1.5">
+                <Eye className="w-4 h-4 text-blue-500" />
+                <span className="text-xl font-extrabold text-blue-600">{campaign.visitCount ?? 0}</span>
               </div>
-              <div className="flex flex-col items-center bg-primary/5 rounded-lg px-2.5 py-1.5 shrink-0">
-                <div className="flex items-center gap-1">
-                  <Users className="w-3 h-3 text-primary" />
-                  <span className="text-sm font-bold text-primary">{campaign.customerCount}</span>
-                </div>
-                <span className="text-[9px] text-primary/60 font-medium leading-none mt-0.5">Accounts</span>
+              <span className="text-[11px] text-blue-400 font-semibold">Visitors</span>
+            </div>
+            <div className="flex flex-col items-center bg-primary/5 rounded-xl py-3 gap-1">
+              <div className="flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-primary" />
+                <span className="text-xl font-extrabold text-primary">{campaign.customerCount}</span>
               </div>
+              <span className="text-[11px] text-primary/60 font-semibold">Accounts</span>
             </div>
           </div>
 
           {/* Tracking Link */}
-          <div className="bg-muted rounded-lg px-3 py-2 flex items-center gap-2">
-            <LinkIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-            <span className="text-xs text-muted-foreground truncate flex-1 font-mono">{campaign.trackingLink}</span>
-            <button
-              onClick={() => onCopyLink(campaign.trackingLink)}
-              className="p-1 hover:bg-background rounded transition-colors shrink-0"
-            >
-              <Copy className="w-3.5 h-3.5 text-muted-foreground" />
-            </button>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Tracking Link</p>
+            <div className="bg-muted rounded-lg px-3 py-2.5 flex items-center gap-2">
+              <LinkIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <span className="text-xs text-muted-foreground truncate flex-1 font-mono">{campaign.trackingLink}</span>
+              <button
+                onClick={() => onCopyLink(campaign.trackingLink)}
+                className="p-1 hover:bg-background rounded transition-colors shrink-0"
+              >
+                <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+              </button>
+            </div>
           </div>
 
           {/* QR Code */}
@@ -225,18 +264,16 @@ function CampaignCard({ campaign, onCopyLink, onDeactivate, onDelete }: {
           )}
 
           {/* Actions */}
-          <div className="flex items-center gap-2 pt-1 border-t border-border">
-            {campaign.isActive && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="flex-1 gap-1.5 text-xs"
-                onClick={() => onDeactivate(campaign.id)}
-              >
-                <Power className="w-3 h-3" />
-                Deactivate
-              </Button>
-            )}
+          <div className="flex items-center gap-2 pt-2 border-t border-border">
+            <Button
+              size="sm"
+              variant="outline"
+              className={`flex-1 gap-1.5 text-xs ${campaign.isActive ? "text-amber-600 border-amber-300 hover:bg-amber-50" : "text-green-600 border-green-300 hover:bg-green-50"}`}
+              onClick={() => onToggle(campaign.id)}
+            >
+              <Power className="w-3 h-3" />
+              {campaign.isActive ? "Deactivate" : "Activate"}
+            </Button>
             <Button
               size="sm"
               variant="outline"
@@ -247,9 +284,9 @@ function CampaignCard({ campaign, onCopyLink, onDeactivate, onDelete }: {
               Delete
             </Button>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -305,6 +342,7 @@ export default function MarketingGrowth() {
   }, [campaignSource]);
   const [qrEnabled, setQrEnabled] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
 
   /* ── Campaigns query ── */
   const { data: campaigns = [], isLoading: campaignsLoading, refetch: refetchCampaigns } = useQuery<Campaign[]>({
@@ -356,14 +394,18 @@ export default function MarketingGrowth() {
     },
   });
 
-  /* ── Deactivate mutation ── */
-  const deactivateCampaign = useMutation({
+  /* ── Toggle (activate / deactivate) mutation ── */
+  const toggleCampaign = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/campaigns/${id}/deactivate`, { method: "PATCH", headers: authHeaders() });
-      if (!res.ok) throw new Error("Failed to deactivate");
+      const res = await fetch(`/api/campaigns/${id}/toggle`, { method: "PATCH", headers: authHeaders() });
+      if (!res.ok) throw new Error("Failed to toggle");
+      return res.json() as Promise<{ isActive: boolean }>;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["campaigns"] }),
-    onError: () => toast({ variant: "destructive", title: "Failed to deactivate campaign" }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+      toast({ title: data.isActive ? "Campaign activated!" : "Campaign deactivated" });
+    },
+    onError: () => toast({ variant: "destructive", title: "Failed to update campaign status" }),
   });
 
   /* ── Delete mutation ── */
@@ -375,6 +417,7 @@ export default function MarketingGrowth() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });
       setDeleteConfirmId(null);
+      setSelectedCampaignId(null);
       toast({ title: "Campaign deleted" });
     },
     onError: () => toast({ variant: "destructive", title: "Failed to delete campaign" }),
@@ -743,15 +786,27 @@ export default function MarketingGrowth() {
                 <p className="text-xs text-muted-foreground/70">Create your first campaign above to start tracking where customers come from</p>
               </CardContent>
             </Card>
+          ) : selectedCampaignId ? (
+            (() => {
+              const selected = campaigns.find((c) => c.id === selectedCampaignId);
+              if (!selected) { setSelectedCampaignId(null); return null; }
+              return (
+                <CampaignDetail
+                  campaign={selected}
+                  onBack={() => setSelectedCampaignId(null)}
+                  onCopyLink={handleCopyLink}
+                  onToggle={(id) => toggleCampaign.mutate(id)}
+                  onDelete={(id) => setDeleteConfirmId(id)}
+                />
+              );
+            })()
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="flex flex-col gap-2">
               {campaigns.map((campaign) => (
-                <CampaignCard
+                <CampaignRow
                   key={campaign.id}
                   campaign={campaign}
-                  onCopyLink={handleCopyLink}
-                  onDeactivate={(id) => deactivateCampaign.mutate(id)}
-                  onDelete={(id) => setDeleteConfirmId(id)}
+                  onClick={() => setSelectedCampaignId(campaign.id)}
                 />
               ))}
             </div>
