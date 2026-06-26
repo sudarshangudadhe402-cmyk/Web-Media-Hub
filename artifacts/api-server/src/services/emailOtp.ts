@@ -17,6 +17,53 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+export async function sendLockoutEmail(
+  toEmail: string,
+  username: string,
+  lockedUntil: Date
+) {
+  const safeUsername = escapeHtml(username);
+  const lockedUntilStr = lockedUntil.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+  const resetUrl = `${process.env.FRONTEND_URL || "https://web-media-hub.replit.app"}/super-admin/forgot-password`;
+
+  const subject = "Security Alert: Your Web Media Hub account has been temporarily locked";
+  const html = `
+    <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:480px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
+      <div style="background:#000;padding:24px 28px;">
+        <p style="color:#fff;font-size:11px;letter-spacing:2px;font-weight:700;margin:0;text-transform:uppercase;">Web Media Hub</p>
+        <p style="color:rgba(255,255,255,0.5);font-size:11px;margin:4px 0 0;">Security Alert</p>
+      </div>
+      <div style="padding:32px 28px;">
+        <p style="font-size:15px;color:#111;font-weight:600;margin:0 0 8px;">Account Temporarily Locked</p>
+        <p style="font-size:13px;color:#6b7280;margin:0 0 16px;">
+          We detected multiple failed login attempts on your account <strong>${safeUsername}</strong>.
+          For your security, access has been locked until <strong>${escapeHtml(lockedUntilStr)} IST</strong>.
+        </p>
+        <p style="font-size:13px;color:#6b7280;margin:0 0 24px;">
+          If this wasn't you, your credentials may be compromised. We strongly recommend resetting your password immediately.
+        </p>
+        <a href="${escapeHtml(resetUrl)}" style="display:inline-block;background:#000;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:600;">
+          Reset My Password
+        </a>
+        <p style="font-size:12px;color:#9ca3af;margin:24px 0 0;">If this was you and you forgot your password, use the button above to reset it. Otherwise, please contact support immediately.</p>
+      </div>
+      <div style="background:#f9fafb;padding:16px 28px;border-top:1px solid #f3f4f6;">
+        <p style="font-size:11px;color:#d1d5db;margin:0;text-align:center;">Powered by <strong style="color:#9ca3af;">Web Media Hub</strong></p>
+      </div>
+    </div>
+  `;
+
+  await transporter.sendMail({
+    from: `"Web Media Hub Security" <${process.env.GMAIL_USER}>`,
+    to: toEmail,
+    replyTo: process.env.GMAIL_USER,
+    subject,
+    html,
+    text: `Your account has been temporarily locked until ${lockedUntilStr} IST due to multiple failed login attempts.\n\nReset your password: ${resetUrl}\n\nWeb Media Hub`,
+    headers: { "X-Priority": "1", "X-Mailer": "Web Media Hub Mailer" },
+  });
+}
+
 export async function sendOtpEmail(
   toEmail: string,
   otp: string,

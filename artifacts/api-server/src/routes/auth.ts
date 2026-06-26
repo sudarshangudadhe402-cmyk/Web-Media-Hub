@@ -5,7 +5,7 @@ import { Store } from "../models/Store";
 import { signToken, requireAuth, AuthRequest } from "../middlewares/auth";
 import { requireDb } from "../middlewares/dbCheck";
 import { OtpCode } from "../models/OtpCode";
-import { sendOtpEmail } from "../services/emailOtp";
+import { sendOtpEmail, sendLockoutEmail } from "../services/emailOtp";
 import { authRateLimiter, loginStrictLimiter, otpRateLimiter } from "../middlewares/rateLimiter";
 import { validate } from "../middlewares/validate";
 import {
@@ -19,14 +19,19 @@ import {
 
 const SUPER_ADMIN_ACCESS_CODE = process.env.SUPER_ADMIN_ACCESS_CODE || "WMH@2024";
 
-// ─── Brute-force protection (in-memory) ─────────────────────────────────────
+// ─── Brute-force protection with progressive delay (in-memory) ───────────────
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
+
+// Progressive delay per attempt number (seconds): 0, 5, 15, 30, lockout
+const PROGRESSIVE_DELAY_S = [0, 0, 5, 15, 30];
 
 interface AttemptRecord {
   count: number;
   lockedUntil: number | null;
+  retryAfterMs: number;   // progressive delay before next attempt allowed
   lastAttempt: number;
+  lockoutEmailSent: boolean;
 }
 
 const loginAttempts = new Map<string, AttemptRecord>();
@@ -40,28 +45,38 @@ function getAttemptKey(req: Request, identifier: string): string {
 }
 
 function getRecord(key: string): AttemptRecord {
-  return loginAttempts.get(key) ?? { count: 0, lockedUntil: null, lastAttempt: 0 };
+  return loginAttempts.get(key) ?? {
+    count: 0, lockedUntil: null, retryAfterMs: 0, lastAttempt: 0, lockoutEmailSent: false,
+  };
 }
 
 function isLocked(record: AttemptRecord): boolean {
-  if (!record.lockedUntil) return false;
-  if (Date.now() < record.lockedUntil) return true;
-  return false;
+  return !!record.lockedUntil && Date.now() < record.lockedUntil;
 }
 
-function recordFailure(key: string): AttemptRecord {
+/** Returns the record after recording a failure.
+ *  `justLocked` is true only on the attempt that first triggers lockout. */
+function recordFailure(key: string): { rec: AttemptRecord; justLocked: boolean } {
   const rec = getRecord(key);
+  // Reset expired lockout
   if (rec.lockedUntil && Date.now() >= rec.lockedUntil) {
     rec.count = 0;
     rec.lockedUntil = null;
+    rec.retryAfterMs = 0;
+    rec.lockoutEmailSent = false;
   }
   rec.count += 1;
   rec.lastAttempt = Date.now();
-  if (rec.count >= MAX_ATTEMPTS) {
+  const justLocked = rec.count >= MAX_ATTEMPTS && !rec.lockedUntil;
+  if (justLocked) {
     rec.lockedUntil = Date.now() + LOCKOUT_MS;
+    rec.retryAfterMs = LOCKOUT_MS;
+  } else {
+    const delayS = PROGRESSIVE_DELAY_S[Math.min(rec.count, PROGRESSIVE_DELAY_S.length - 1)] ?? 30;
+    rec.retryAfterMs = delayS * 1000;
   }
   loginAttempts.set(key, rec);
-  return rec;
+  return { rec, justLocked };
 }
 
 function clearFailures(key: string): void {
@@ -103,13 +118,25 @@ router.post("/auth/login", loginStrictLimiter, validate(AdminLoginSchema), requi
     const record = getRecord(attemptKey);
 
     if (isLocked(record)) {
-      const remainingMs = (record.lockedUntil! - Date.now());
-      const remainingMin = Math.ceil(remainingMs / 60000);
-      res.status(429).json({
-        error: `Too many failed attempts. Account locked for ${remainingMin} more minute${remainingMin !== 1 ? "s" : ""}.`,
-        lockedUntil: record.lockedUntil,
-      });
+      const remainingMs = record.lockedUntil! - Date.now();
+      res
+        .status(429)
+        .set("Retry-After", String(Math.ceil(remainingMs / 1000)))
+        .json({ error: "Access temporarily restricted. Please try again later.", lockedUntil: record.lockedUntil });
       return;
+    }
+
+    // Enforce progressive delay from previous failed attempt
+    if (record.retryAfterMs > 0) {
+      const timeSinceLast = Date.now() - record.lastAttempt;
+      if (timeSinceLast < record.retryAfterMs) {
+        const waitS = Math.ceil((record.retryAfterMs - timeSinceLast) / 1000);
+        res
+          .status(429)
+          .set("Retry-After", String(waitS))
+          .json({ error: "Access temporarily restricted. Please try again later.", retryAfterSeconds: waitS });
+        return;
+      }
     }
 
     const user = await User.findOne({
@@ -117,24 +144,31 @@ router.post("/auth/login", loginStrictLimiter, validate(AdminLoginSchema), requi
     });
 
     if (!user) {
+      // Still track failure to prevent username enumeration via timing
       recordFailure(attemptKey);
-      res.status(401).json({ error: "Invalid credentials" });
+      res.status(401).json({ error: "Invalid credentials." });
       return;
     }
 
     const valid = await user.comparePassword(password);
     if (!valid) {
-      const rec = recordFailure(attemptKey);
-      const remaining = MAX_ATTEMPTS - rec.count;
-      if (rec.lockedUntil) {
-        res.status(401).json({
-          error: `Invalid credentials. Account locked for 15 minutes due to too many failed attempts.`,
-        });
-      } else {
-        res.status(401).json({
-          error: `Invalid credentials. ${remaining} attempt${remaining !== 1 ? "s" : ""} remaining before lockout.`,
-        });
+      const { rec, justLocked } = recordFailure(attemptKey);
+
+      if (justLocked && user.email && !rec.lockoutEmailSent) {
+        rec.lockoutEmailSent = true;
+        loginAttempts.set(attemptKey, rec);
+        // Fire-and-forget — do not block response on email delivery
+        sendLockoutEmail(user.email, user.username, new Date(rec.lockedUntil!)).catch(() => {});
       }
+
+      const retryAfterS = rec.retryAfterMs > 0 ? Math.ceil(rec.retryAfterMs / 1000) : undefined;
+      res
+        .status(401)
+        .set("Retry-After", retryAfterS ? String(retryAfterS) : "0")
+        .json({
+          error: "Invalid credentials.",
+          ...(retryAfterS ? { retryAfterSeconds: retryAfterS } : {}),
+        });
       return;
     }
 
@@ -146,8 +180,13 @@ router.post("/auth/login", loginStrictLimiter, validate(AdminLoginSchema), requi
     if (user.role === "super_admin") {
       const { accessCode } = req.body;
       if (!accessCode || accessCode !== SUPER_ADMIN_ACCESS_CODE) {
-        recordFailure(attemptKey);
-        res.status(401).json({ error: "Invalid access code. Super admin login requires a valid secret access code." });
+        const { rec: saRec, justLocked: saJustLocked } = recordFailure(attemptKey);
+        if (saJustLocked && user.email && !saRec.lockoutEmailSent) {
+          saRec.lockoutEmailSent = true;
+          loginAttempts.set(attemptKey, saRec);
+          sendLockoutEmail(user.email, user.username, new Date(saRec.lockedUntil!)).catch(() => {});
+        }
+        res.status(401).json({ error: "Invalid credentials." });
         return;
       }
     }
