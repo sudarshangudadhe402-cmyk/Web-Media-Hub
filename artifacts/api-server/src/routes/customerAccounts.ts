@@ -75,7 +75,7 @@ router.post("/public/customer-account/send-otp", validate(CustomerSendOtpSchema)
         res.status(401).json({ error: "Incorrect email or password.", code: "not_found" });
         return;
       }
-      const passwordMatch = await bcrypt.compare(password, account.password);
+      const passwordMatch = await account.comparePassword(password);
       if (!passwordMatch) {
         res.status(401).json({ error: "Incorrect email or password.", code: "wrong_password" });
         return;
@@ -99,7 +99,7 @@ router.post("/public/customer-account/send-otp", validate(CustomerSendOtpSchema)
 
     res.json({ success: true, message: `OTP sent to ${email}` });
   } catch (err: any) {
-    console.error("OTP send error:", err?.message);
+    req.log?.error({ err }, "OTP send error");
     res.status(500).json({ error: "Failed to send OTP. Please check your email address." });
   }
 });
@@ -203,10 +203,17 @@ router.post("/public/customer-account/verify-signin", validate(CustomerVerifySig
       res.status(401).json({ error: "Account verification failed", code: "wrong_password" });
       return;
     }
-    const passwordMatch = await bcrypt.compare(password, account.password);
+    const passwordMatch = await account.comparePassword(password);
     if (!passwordMatch) {
       res.status(401).json({ error: "Account verification failed", code: "wrong_password" });
       return;
+    }
+
+    // Lazy cost-factor upgrade — fire-and-forget
+    if (account.needsRehash()) {
+      bcrypt.hash(password, 12)
+        .then((newHash) => CustomerAccount.updateOne({ _id: account._id }, { $set: { password: newHash } }))
+        .catch(() => {});
     }
 
     otpDoc.used = true;

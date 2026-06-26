@@ -58,54 +58,70 @@ async function seedSuperAdmin() {
   }
 }
 
+const BCRYPT_MIN_ROUNDS = 12;
+
+function getBcryptRounds(hash: string): number {
+  const m = hash.match(/^\$2[aby]?\$(\d+)\$/);
+  return m ? parseInt(m[1], 10) : 0;
+}
+
 async function migratePasswordsToHash() {
   if (!dbAvailable) return;
   try {
-    // Migrate CustomerAccount plain text passwords
-    const customers = await CustomerAccount.find({});
+    // ── CustomerAccount ───────────────────────────────────────────────────────
     let customerMigrated = 0;
-    for (const c of customers) {
+    let customerLowCost = 0;
+    const customerCursor = CustomerAccount.find({}).cursor();
+    for await (const c of customerCursor) {
       if (!c.password.startsWith("$2")) {
-        const salt = await bcrypt.genSalt(12);
-        c.password = await bcrypt.hash(c.password, salt);
-        await CustomerAccount.updateOne({ _id: c._id }, { password: c.password });
+        const hash = await bcrypt.hash(c.password, BCRYPT_MIN_ROUNDS);
+        await CustomerAccount.updateOne({ _id: c._id }, { $set: { password: hash } });
         customerMigrated++;
+      } else if (getBcryptRounds(c.password) < BCRYPT_MIN_ROUNDS) {
+        customerLowCost++;
       }
     }
-    if (customerMigrated > 0) {
+    if (customerMigrated > 0)
       logger.info({ count: customerMigrated }, "Migrated CustomerAccount plain-text passwords to bcrypt");
-    }
+    if (customerLowCost > 0)
+      logger.warn({ count: customerLowCost }, "CustomerAccount: low-cost bcrypt hashes found — will upgrade lazily on next login");
 
-    // Migrate LoyaltyCard plain text passwords
-    const cards = await LoyaltyCard.find({});
+    // ── LoyaltyCard ───────────────────────────────────────────────────────────
     let cardMigrated = 0;
-    for (const lc of cards) {
+    let cardLowCost = 0;
+    const cardCursor = LoyaltyCard.find({}).cursor();
+    for await (const lc of cardCursor) {
       if (!lc.password.startsWith("$2")) {
-        const salt = await bcrypt.genSalt(12);
-        lc.password = await bcrypt.hash(lc.password, salt);
-        await LoyaltyCard.updateOne({ _id: lc._id }, { password: lc.password });
+        const hash = await bcrypt.hash(lc.password, BCRYPT_MIN_ROUNDS);
+        await LoyaltyCard.updateOne({ _id: lc._id }, { $set: { password: hash } });
         cardMigrated++;
+      } else if (getBcryptRounds(lc.password) < BCRYPT_MIN_ROUNDS) {
+        cardLowCost++;
       }
     }
-    if (cardMigrated > 0) {
+    if (cardMigrated > 0)
       logger.info({ count: cardMigrated }, "Migrated LoyaltyCard plain-text passwords to bcrypt");
-    }
+    if (cardLowCost > 0)
+      logger.warn({ count: cardLowCost }, "LoyaltyCard: low-cost bcrypt hashes found — will upgrade lazily on next login");
 
-    // Migrate User (admin) passwords stored with 10 rounds — re-hash only truly plain text ones
-    // (bcrypt hashes always start with $2, so we skip already-hashed ones)
-    const users = await User.find({});
+    // ── User (admin/super_admin) ──────────────────────────────────────────────
     let userMigrated = 0;
-    for (const u of users) {
+    let userLowCost = 0;
+    const userCursor = User.find({}).cursor();
+    for await (const u of userCursor) {
       if (!u.password.startsWith("$2")) {
-        const salt = await bcrypt.genSalt(12);
-        u.password = await bcrypt.hash(u.password, salt);
-        await User.updateOne({ _id: u._id }, { password: u.password });
+        const hash = await bcrypt.hash(u.password, BCRYPT_MIN_ROUNDS);
+        await User.updateOne({ _id: u._id }, { $set: { password: hash } });
         userMigrated++;
+      } else if (getBcryptRounds(u.password) < BCRYPT_MIN_ROUNDS) {
+        userLowCost++;
       }
     }
-    if (userMigrated > 0) {
+    if (userMigrated > 0)
       logger.info({ count: userMigrated }, "Migrated User plain-text passwords to bcrypt");
-    }
+    if (userLowCost > 0)
+      logger.warn({ count: userLowCost }, "User: low-cost bcrypt hashes found — will upgrade lazily on next login");
+
   } catch (err) {
     logger.error({ err }, "Password migration error");
   }

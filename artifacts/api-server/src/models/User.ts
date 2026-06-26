@@ -30,6 +30,14 @@ export interface IUser extends Document {
   source_confirmed: boolean;
   createdAt: Date;
   comparePassword(candidate: string): Promise<boolean>;
+  needsRehash(): boolean;
+}
+
+const BCRYPT_MIN_ROUNDS = 12;
+
+function getBcryptRounds(hash: string): number {
+  const m = hash.match(/^\$2[aby]?\$(\d+)\$/);
+  return m ? parseInt(m[1], 10) : 0;
 }
 
 const ActiveSessionSchema = new Schema<ActiveSession>(
@@ -70,12 +78,16 @@ const UserSchema = new Schema<IUser>(
 UserSchema.pre("save", async function () {
   if (!this.isModified("password")) return;
   if (this.password.startsWith("$2")) return;
-  const salt = await bcrypt.genSalt(12);
+  const salt = await bcrypt.genSalt(BCRYPT_MIN_ROUNDS);
   this.password = await bcrypt.hash(this.password, salt);
 });
 
 UserSchema.methods.comparePassword = async function (candidate: string): Promise<boolean> {
   return bcrypt.compare(candidate, this.password);
+};
+
+UserSchema.methods.needsRehash = function (): boolean {
+  return getBcryptRounds(this.password) < BCRYPT_MIN_ROUNDS;
 };
 
 export const User = mongoose.model<IUser>("User", UserSchema);

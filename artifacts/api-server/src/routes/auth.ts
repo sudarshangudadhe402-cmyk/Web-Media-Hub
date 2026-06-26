@@ -1,5 +1,6 @@
 import { Router, Request } from "express";
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
 import { User } from "../models/User";
 import { Store } from "../models/Store";
 import { signToken, requireAuth, AuthRequest } from "../middlewares/auth";
@@ -207,6 +208,13 @@ router.post("/auth/login", loginStrictLimiter, validate(AdminLoginSchema), requi
     // ─────────────────────────────────────────────────────────────────────────
 
     clearFailures(attemptKey);
+
+    // Lazy cost-factor upgrade — fire-and-forget, does not block login response
+    if (user.needsRehash()) {
+      bcrypt.hash(password, 12)
+        .then((newHash) => User.updateOne({ _id: user._id }, { $set: { password: newHash } }))
+        .catch(() => {});
+    }
 
     const sessionId = crypto.randomUUID();
 
