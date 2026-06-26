@@ -129,7 +129,7 @@ function DashboardTab() {
   const [range, setRange] = useState("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [analysisMode, setAnalysisMode] = useState<"admin" | "revenue">("admin");
+  const [analysisMode, setAnalysisMode] = useState<"admin" | "revenue" | "paying">("admin");
   const { toast } = useToast();
 
   const load = useCallback(async () => {
@@ -163,8 +163,11 @@ function DashboardTab() {
       {/* Combined Source Analysis */}
       {(() => {
         const sorted = [...(data.bySource || [])].sort((a: any, b: any) =>
-          analysisMode === "admin" ? b.signups - a.signups : b.revenue - a.revenue
+          analysisMode === "admin" ? b.signups - a.signups :
+          analysisMode === "paying" ? b.payingAdmins - a.payingAdmins :
+          b.revenue - a.revenue
         );
+        const topColor = analysisMode === "admin" ? "#3b82f6" : analysisMode === "paying" ? "#8b5cf6" : "#16a34a";
         return (
           <Card>
             <CardHeader className="pb-3">
@@ -175,21 +178,28 @@ function DashboardTab() {
                     onClick={() => setAnalysisMode("admin")}
                     className={`px-3 py-1.5 transition-colors ${analysisMode === "admin" ? "bg-blue-600 text-white" : "text-muted-foreground hover:bg-muted"}`}
                   >
-                    Admin Analysis
+                    Admin
+                  </button>
+                  <button
+                    onClick={() => setAnalysisMode("paying")}
+                    className={`px-3 py-1.5 border-l transition-colors ${analysisMode === "paying" ? "bg-purple-600 text-white" : "text-muted-foreground hover:bg-muted"}`}
+                  >
+                    Paying
                   </button>
                   <button
                     onClick={() => setAnalysisMode("revenue")}
                     className={`px-3 py-1.5 border-l transition-colors ${analysisMode === "revenue" ? "bg-green-600 text-white" : "text-muted-foreground hover:bg-muted"}`}
                   >
-                    Revenue Analysis
+                    Revenue
                   </button>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="grid grid-cols-3 border-b bg-muted/30 px-3 py-2 text-xs font-semibold text-muted-foreground">
+              <div className="grid grid-cols-4 border-b bg-muted/30 px-3 py-2 text-xs font-semibold text-muted-foreground">
                 <span>Source</span>
                 <span className="text-center text-blue-600">Admins</span>
+                <span className="text-center text-purple-600">Paying</span>
                 <span className="text-right text-green-600">Revenue</span>
               </div>
               {sorted.length === 0 ? (
@@ -202,17 +212,20 @@ function DashboardTab() {
                   return (
                     <div
                       key={s.source}
-                      className={`grid grid-cols-3 items-center px-3 py-3 border-b last:border-0 hover:bg-muted/20 transition-colors ${isTop ? "bg-muted/10" : ""}`}
+                      className={`grid grid-cols-4 items-center px-3 py-3 border-b last:border-0 hover:bg-muted/20 transition-colors ${isTop ? "bg-muted/10" : ""}`}
                     >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
-                        <span className="text-sm font-medium truncate">{label}</span>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
+                        <span className="text-xs font-medium truncate">{label}</span>
                         {isTop && (
-                          <span className="text-[9px] px-1 py-0.5 rounded font-bold shrink-0" style={{ background: color + "20", color }}>TOP</span>
+                          <span className="text-[9px] px-1 py-0.5 rounded font-bold shrink-0" style={{ background: topColor + "22", color: topColor }}>TOP</span>
                         )}
                       </div>
                       <div className="text-center">
                         <span className="text-sm font-bold" style={{ color: "#3b82f6" }}>{s.signups}</span>
+                      </div>
+                      <div className="text-center">
+                        <span className="text-sm font-bold" style={{ color: "#8b5cf6" }}>{s.payingAdmins ?? 0}</span>
                       </div>
                       <div className="text-right">
                         <span className="text-sm font-bold" style={{ color: "#16a34a" }}>{fmtRs(s.revenue)}</span>
@@ -232,7 +245,9 @@ function DashboardTab() {
         const sources = (data.bySource || []).filter((s: any) => s.signups > 0 || s.revenue > 0);
         if (sources.length === 0) return null;
         const sorted = [...sources].sort((a: any, b: any) =>
-          analysisMode === "admin" ? b.signups - a.signups : b.revenue - a.revenue
+          analysisMode === "admin" ? b.signups - a.signups :
+          analysisMode === "paying" ? b.payingAdmins - a.payingAdmins :
+          b.revenue - a.revenue
         );
         const monthKeys: string[] = sorted.length > 0
           ? (bySourceMonthly[sorted[0].source] || []).map((m: any) => m.month)
@@ -817,8 +832,6 @@ function SourcesTab() {
   useEffect(() => { load(); }, [load]);
   useEffect(() => { loadCustom(); }, []);
 
-  const chartData = data.filter(s => s.total_signups > 0);
-
   async function toggleBuiltin(key: string) {
     const current = builtinSettings[key] !== false; // default true
     setTogglingKey(key);
@@ -862,76 +875,7 @@ function SourcesTab() {
     <div className="space-y-4">
       <DateFilterBar range={range} setRange={setRange} from={from} setFrom={setFrom} to={to} setTo={setTo} />
 
-      {loading ? <div className="flex justify-center py-10"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div> : (
-        <>
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm">Signups by Marketing Source</CardTitle></CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={chartData.filter(s => s.source !== "__DELETED__")} margin={{ left: -10 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="source" tick={{ fontSize: 9 }} tickFormatter={v => (SOURCE_LABELS[v] || v).split(" ")[0]} />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip labelFormatter={l => SOURCE_LABELS[l] || l} />
-                  <Bar dataKey="total_signups" name="Signups" radius={[4,4,0,0]}>
-                    {chartData.filter(s => s.source !== "__DELETED__").map((s, i) => <Cell key={i} fill={s.color || SOURCE_COLORS[s.source] || "#6b7280"} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead><tr className="border-b bg-muted/30 text-xs text-muted-foreground">
-                    <th className="text-left p-3 font-medium">Source</th>
-                    <th className="text-right p-3 font-medium">Total Signups</th>
-                    <th className="text-right p-3 font-medium">Paying Admins</th>
-                    <th className="text-right p-3 font-medium">Revenue</th>
-                    <th className="text-right p-3 font-medium">Conversion</th>
-                  </tr></thead>
-                  <tbody>
-                    {data.filter(s => s.source !== "__DELETED__").map(s => (
-                      <tr key={s.source} className="border-b last:border-0 hover:bg-muted/20">
-                        <td className="p-3">
-                          <div className="flex items-center gap-2">
-                            <span className="w-3 h-3 rounded-full" style={{ background: s.color || SOURCE_COLORS[s.source] || "#6b7280" }} />
-                            <span className="font-medium">{s.label || SOURCE_LABELS[s.source] || s.source}</span>
-                          </div>
-                        </td>
-                        <td className="p-3 text-right font-semibold">{s.total_signups}</td>
-                        <td className="p-3 text-right text-green-600 font-semibold">{s.total_paid_admins}</td>
-                        <td className="p-3 text-right font-semibold">{fmtRs(s.total_revenue)}</td>
-                        <td className="p-3 text-right text-muted-foreground">{s.total_signups > 0 ? `${Math.round(s.total_paid_admins/s.total_signups*100)}%` : "—"}</td>
-                      </tr>
-                    ))}
-                    {/* Deleted source bucket — always at bottom, styled distinctly */}
-                    {data.filter(s => s.source === "__DELETED__").map(s => (
-                      <tr key="__DELETED__" className="border-b last:border-0 bg-red-50 dark:bg-red-950/20">
-                        <td className="p-3">
-                          <div className="flex items-center gap-2">
-                            <span className="w-3 h-3 rounded-full bg-red-500 shrink-0" />
-                            <div>
-                              <span className="font-medium text-red-600 dark:text-red-400">Deleted Source</span>
-                              <p className="text-[10px] text-muted-foreground">Admins whose source was deleted — will auto-restore if source is re-added</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-3 text-right font-semibold text-red-600 dark:text-red-400">{s.total_signups}</td>
-                        <td className="p-3 text-right text-green-600 font-semibold">{s.total_paid_admins}</td>
-                        <td className="p-3 text-right font-semibold">{fmtRs(s.total_revenue)}</td>
-                        <td className="p-3 text-right text-muted-foreground">{s.total_signups > 0 ? `${Math.round(s.total_paid_admins/s.total_signups*100)}%` : "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </>
-      )}
+      {loading && <div className="flex justify-center py-10"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}
 
       {/* ── Sources Management ── */}
       <Card>
