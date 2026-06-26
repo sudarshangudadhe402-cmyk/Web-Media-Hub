@@ -211,7 +211,6 @@ function DashboardTab() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <CardTitle className="text-sm">Source Analysis</CardTitle>
-                {/* Filter toggle */}
                 <div className="flex rounded-lg border overflow-hidden text-xs font-semibold">
                   <button
                     onClick={() => setAnalysisMode("admin")}
@@ -230,15 +229,10 @@ function DashboardTab() {
             </CardHeader>
             <CardContent className="p-0">
               {/* Column headers */}
-              <div className="grid grid-cols-2 border-b bg-muted/30">
-                <div className="grid grid-cols-2 border-r px-3 py-2">
-                  <span className="text-xs font-semibold text-blue-600">Source</span>
-                  <span className="text-xs font-semibold text-blue-600 text-right">Admins</span>
-                </div>
-                <div className="grid grid-cols-2 px-3 py-2">
-                  <span className="text-xs font-semibold text-green-600">Revenue</span>
-                  <span className="text-xs font-semibold text-green-600 text-right">Source</span>
-                </div>
+              <div className="grid grid-cols-3 border-b bg-muted/30 px-3 py-2 text-xs font-semibold text-muted-foreground">
+                <span>Source</span>
+                <span className="text-center text-blue-600">Admins</span>
+                <span className="text-right text-green-600">Revenue</span>
               </div>
               {sorted.length === 0 ? (
                 <div className="py-8 text-center text-muted-foreground text-sm">No data available</div>
@@ -250,37 +244,25 @@ function DashboardTab() {
                   return (
                     <div
                       key={s.source}
-                      className="grid grid-cols-2 border-b last:border-0 hover:bg-muted/20 transition-colors"
+                      className={`grid grid-cols-3 items-center px-3 py-3 border-b last:border-0 hover:bg-muted/20 transition-colors ${isTop ? "bg-muted/10" : ""}`}
                     >
-                      {/* LEFT: Admin by Source — Source | Count */}
-                      <div className="grid grid-cols-2 items-center border-r px-3 py-3">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
-                          <span className="text-sm font-medium truncate" style={{ color: isTop && analysisMode === "admin" ? color : undefined }}>
-                            {label}
+                      {/* Source */}
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
+                        <span className="text-sm font-medium truncate">{label}</span>
+                        {isTop && (
+                          <span className="text-[9px] px-1 py-0.5 rounded font-bold shrink-0" style={{ background: color + "20", color }}>
+                            TOP
                           </span>
-                          {isTop && analysisMode === "admin" && (
-                            <span className="text-[9px] px-1 py-0.5 rounded font-bold shrink-0" style={{ background: color + "20", color }}>TOP</span>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <span className="text-sm font-bold" style={{ color: "#3b82f6" }}>{s.signups}</span>
-                        </div>
+                        )}
                       </div>
-                      {/* RIGHT: Revenue by Source — Revenue | Source */}
-                      <div className="grid grid-cols-2 items-center px-3 py-3">
-                        <div className="flex items-center gap-1">
-                          <span className="text-sm font-bold" style={{ color: "#16a34a" }}>{fmtRs(s.revenue)}</span>
-                          {isTop && analysisMode === "revenue" && (
-                            <span className="text-[9px] px-1 py-0.5 rounded font-bold shrink-0" style={{ background: "#16a34a20", color: "#16a34a" }}>TOP</span>
-                          )}
-                        </div>
-                        <div className="flex items-center justify-end gap-1.5 min-w-0">
-                          <span className="text-sm font-medium truncate text-right" style={{ color: isTop && analysisMode === "revenue" ? color : undefined }}>
-                            {label}
-                          </span>
-                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
-                        </div>
+                      {/* Admin count */}
+                      <div className="text-center">
+                        <span className="text-sm font-bold" style={{ color: "#3b82f6" }}>{s.signups}</span>
+                      </div>
+                      {/* Revenue */}
+                      <div className="text-right">
+                        <span className="text-sm font-bold" style={{ color: "#16a34a" }}>{fmtRs(s.revenue)}</span>
                       </div>
                     </div>
                   );
