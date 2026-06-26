@@ -103,6 +103,7 @@ function DashboardTab() {
   const [range, setRange] = useState("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [analysisMode, setAnalysisMode] = useState<"admin" | "revenue">("admin");
   const { toast } = useToast();
 
   const load = useCallback(async () => {
@@ -200,37 +201,95 @@ function DashboardTab() {
         </Card>
       </div>
 
-      {/* Source breakdown table */}
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm">Admins by Source — Breakdown</CardTitle></CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead><tr className="border-b text-muted-foreground text-xs">
-                <th className="text-left pb-2 pr-4">Source</th>
-                <th className="text-right pb-2 pr-4">Signups</th>
-                <th className="text-right pb-2 pr-4">Paying</th>
-                <th className="text-right pb-2">Revenue</th>
-              </tr></thead>
-              <tbody>
-                {(data.bySource || []).map((s: any) => (
-                  <tr key={s.source} className="border-b last:border-0">
-                    <td className="py-2 pr-4">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: SOURCE_COLORS[s.source] }} />
-                        <span className="font-medium">{SOURCE_LABELS[s.source]}</span>
+      {/* Combined Source Analysis */}
+      {(() => {
+        const sorted = [...(data.bySource || [])].sort((a: any, b: any) =>
+          analysisMode === "admin" ? b.signups - a.signups : b.revenue - a.revenue
+        );
+        return (
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <CardTitle className="text-sm">Source Analysis</CardTitle>
+                {/* Filter toggle */}
+                <div className="flex rounded-lg border overflow-hidden text-xs font-semibold">
+                  <button
+                    onClick={() => setAnalysisMode("admin")}
+                    className={`px-3 py-1.5 transition-colors ${analysisMode === "admin" ? "bg-blue-600 text-white" : "text-muted-foreground hover:bg-muted"}`}
+                  >
+                    Admin Analysis
+                  </button>
+                  <button
+                    onClick={() => setAnalysisMode("revenue")}
+                    className={`px-3 py-1.5 border-l transition-colors ${analysisMode === "revenue" ? "bg-green-600 text-white" : "text-muted-foreground hover:bg-muted"}`}
+                  >
+                    Revenue Analysis
+                  </button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {/* Column headers */}
+              <div className="grid grid-cols-2 border-b bg-muted/30">
+                <div className="grid grid-cols-2 border-r px-3 py-2">
+                  <span className="text-xs font-semibold text-blue-600">Source</span>
+                  <span className="text-xs font-semibold text-blue-600 text-right">Admins</span>
+                </div>
+                <div className="grid grid-cols-2 px-3 py-2">
+                  <span className="text-xs font-semibold text-green-600">Revenue</span>
+                  <span className="text-xs font-semibold text-green-600 text-right">Source</span>
+                </div>
+              </div>
+              {sorted.length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground text-sm">No data available</div>
+              ) : (
+                sorted.map((s: any, i: number) => {
+                  const color = SOURCE_COLORS[s.source] || "#6b7280";
+                  const label = SOURCE_LABELS[s.source] || s.source;
+                  const isTop = i === 0;
+                  return (
+                    <div
+                      key={s.source}
+                      className="grid grid-cols-2 border-b last:border-0 hover:bg-muted/20 transition-colors"
+                    >
+                      {/* LEFT: Admin by Source — Source | Count */}
+                      <div className="grid grid-cols-2 items-center border-r px-3 py-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
+                          <span className="text-sm font-medium truncate" style={{ color: isTop && analysisMode === "admin" ? color : undefined }}>
+                            {label}
+                          </span>
+                          {isTop && analysisMode === "admin" && (
+                            <span className="text-[9px] px-1 py-0.5 rounded font-bold shrink-0" style={{ background: color + "20", color }}>TOP</span>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <span className="text-sm font-bold" style={{ color: "#3b82f6" }}>{s.signups}</span>
+                        </div>
                       </div>
-                    </td>
-                    <td className="text-right py-2 pr-4 font-semibold">{s.signups}</td>
-                    <td className="text-right py-2 pr-4 text-green-600 font-semibold">{s.payingAdmins}</td>
-                    <td className="text-right py-2 font-semibold">{fmtRs(s.revenue)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+                      {/* RIGHT: Revenue by Source — Revenue | Source */}
+                      <div className="grid grid-cols-2 items-center px-3 py-3">
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm font-bold" style={{ color: "#16a34a" }}>{fmtRs(s.revenue)}</span>
+                          {isTop && analysisMode === "revenue" && (
+                            <span className="text-[9px] px-1 py-0.5 rounded font-bold shrink-0" style={{ background: "#16a34a20", color: "#16a34a" }}>TOP</span>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-end gap-1.5 min-w-0">
+                          <span className="text-sm font-medium truncate text-right" style={{ color: isTop && analysisMode === "revenue" ? color : undefined }}>
+                            {label}
+                          </span>
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Top Influencers */}
       {data.topInfluencers?.length > 0 && (
