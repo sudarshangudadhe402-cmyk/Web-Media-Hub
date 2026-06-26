@@ -196,8 +196,8 @@ function DashboardTab() {
                 <div className="py-8 text-center text-muted-foreground text-sm">No data available</div>
               ) : (
                 sorted.map((s: any, i: number) => {
-                  const color = SOURCE_COLORS[s.source] || "#6b7280";
-                  const label = SOURCE_LABELS[s.source] || s.source;
+                  const color = s.color || SOURCE_COLORS[s.source] || "#6b7280";
+                  const label = s.label || SOURCE_LABELS[s.source] || s.source;
                   const isTop = i === 0;
                   return (
                     <div
@@ -270,8 +270,8 @@ function DashboardTab() {
                 </div>
               </div>
               {sorted.map((s: any) => {
-                const color = SOURCE_COLORS[s.source] || "#6b7280";
-                const label = SOURCE_LABELS[s.source] || s.source;
+                const color = s.color || SOURCE_COLORS[s.source] || "#6b7280";
+                const label = s.label || SOURCE_LABELS[s.source] || s.source;
                 const monthly = bySourceMonthly[s.source] || [];
                 const values = monthly.map((m: any) => analysisMode === "admin" ? m.signups : m.revenue);
                 const last = values[values.length - 1] ?? 0;
