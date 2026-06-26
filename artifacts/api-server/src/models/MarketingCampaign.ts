@@ -8,6 +8,7 @@ export interface IMarketingCampaign extends Document {
   trackingLink: string;
   qrEnabled: boolean;
   isActive: boolean;
+  visitCount: number;
   createdAt: Date;
 }
 
@@ -20,6 +21,7 @@ const MarketingCampaignSchema = new Schema<IMarketingCampaign>(
     trackingLink: { type: String, required: true },
     qrEnabled: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
+    visitCount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

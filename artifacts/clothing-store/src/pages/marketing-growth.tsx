@@ -52,6 +52,7 @@ import {
   RefreshCw,
   Globe,
   Megaphone,
+  Eye,
 } from "lucide-react";
 
 type Tab = "friend" | "approved" | "rejected";
@@ -102,6 +103,7 @@ interface Campaign {
   qrEnabled: boolean;
   isActive: boolean;
   customerCount: number;
+  visitCount: number;
   createdAt: string;
 }
 
@@ -174,9 +176,21 @@ function CampaignCard({ campaign, onCopyLink, onDeactivate, onDelete }: {
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-1 bg-primary/5 rounded-lg px-2.5 py-1.5 shrink-0">
-              <Users className="w-3.5 h-3.5 text-primary" />
-              <span className="text-sm font-bold text-primary">{campaign.customerCount}</span>
+            <div className="flex items-center gap-2">
+              <div className="flex flex-col items-center bg-blue-50 rounded-lg px-2.5 py-1.5 shrink-0">
+                <div className="flex items-center gap-1">
+                  <Eye className="w-3 h-3 text-blue-500" />
+                  <span className="text-sm font-bold text-blue-600">{campaign.visitCount ?? 0}</span>
+                </div>
+                <span className="text-[9px] text-blue-400 font-medium leading-none mt-0.5">Visitors</span>
+              </div>
+              <div className="flex flex-col items-center bg-primary/5 rounded-lg px-2.5 py-1.5 shrink-0">
+                <div className="flex items-center gap-1">
+                  <Users className="w-3 h-3 text-primary" />
+                  <span className="text-sm font-bold text-primary">{campaign.customerCount}</span>
+                </div>
+                <span className="text-[9px] text-primary/60 font-medium leading-none mt-0.5">Accounts</span>
+              </div>
             </div>
           </div>
 

@@ -98,6 +98,14 @@ export default function PublicStore() {
     const campaign = sp.get("campaign");
     if (source || campaign) {
       localStorage.setItem(`wmh_tracking_${slug}`, JSON.stringify({ source: source ?? null, campaign: campaign ?? null }));
+      // Track the visit immediately — count every visitor who arrives via a campaign link
+      if (source && campaign && slug) {
+        fetch("/api/public/campaigns/track-visit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ storeSlug: slug, source, campaign }),
+        }).catch(() => {});
+      }
     }
   }, [slug]);
 

@@ -32,6 +32,7 @@ router.get("/campaigns", requireAuth, async (req: AuthRequest, res) => {
           qrEnabled: c.qrEnabled,
           isActive: c.isActive,
           customerCount,
+          visitCount: c.visitCount ?? 0,
           createdAt: c.createdAt.toISOString(),
         };
       })
@@ -39,6 +40,23 @@ router.get("/campaigns", requireAuth, async (req: AuthRequest, res) => {
     res.json(results);
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* ── Public: track a visit from a campaign link (no auth needed) ── */
+router.post("/public/campaigns/track-visit", async (req, res) => {
+  try {
+    const { storeSlug, source, campaign } = req.body as { storeSlug?: string; source?: string; campaign?: string };
+    if (!storeSlug || !source || !campaign) { res.json({ ok: false }); return; }
+    const store = await Store.findOne({ publicSlug: storeSlug });
+    if (!store) { res.json({ ok: false }); return; }
+    await MarketingCampaign.findOneAndUpdate(
+      { storeId: String(store._id), source, campaignSlug: campaign, isActive: true },
+      { $inc: { visitCount: 1 } }
+    );
+    res.json({ ok: true });
+  } catch {
+    res.json({ ok: false });
   }
 });
 
