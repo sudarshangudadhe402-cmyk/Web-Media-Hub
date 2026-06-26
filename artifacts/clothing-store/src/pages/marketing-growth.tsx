@@ -53,6 +53,7 @@ import {
   Globe,
   Megaphone,
   Eye,
+  X,
 } from "lucide-react";
 
 type Tab = "friend" | "approved" | "rejected";
@@ -143,19 +144,24 @@ function CampaignRow({ campaign, onClick }: { campaign: Campaign; onClick: () =>
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-3 px-4 py-3 bg-card border rounded-xl hover:bg-accent/40 active:bg-accent/60 transition-colors text-left"
+      className="w-full flex items-center gap-3 px-4 py-5 bg-card border rounded-xl hover:bg-accent/40 active:bg-accent/60 transition-colors text-left"
     >
       <span
-        className="w-2.5 h-2.5 rounded-full shrink-0"
+        className="w-3 h-3 rounded-full shrink-0"
         style={{ background: sourceColor(campaign.source) }}
       />
       <span
-        className="text-xs font-semibold px-2 py-0.5 rounded-full text-white shrink-0"
+        className="text-xs font-semibold px-2.5 py-1 rounded-full text-white shrink-0"
         style={{ background: sourceColor(campaign.source) }}
       >
         {src?.label ?? campaign.source}
       </span>
-      <span className="flex-1 text-sm font-medium truncate">{campaign.campaignName}</span>
+      <div className="flex-1 min-w-0">
+        <span className="text-sm font-semibold truncate block">{campaign.campaignName}</span>
+        <span className="text-xs text-muted-foreground mt-0.5 block">
+          {campaign.visitCount ?? 0} visitors · {campaign.customerCount} accounts
+        </span>
+      </div>
       {!campaign.isActive && (
         <Badge variant="secondary" className="text-[10px] shrink-0">Inactive</Badge>
       )}
@@ -327,6 +333,7 @@ export default function MarketingGrowth() {
   const { data: dashSummary } = useGetDashboardSummary();
 
   /* ── Campaign form state ── */
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [campaignName, setCampaignName] = useState("");
   const [campaignSource, setCampaignSource] = useState("instagram");
   const [customSourceText, setCustomSourceText] = useState("");
@@ -659,105 +666,144 @@ export default function MarketingGrowth() {
           </CardContent>
         </Card>
 
-        {/* Create Campaign Card */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <PlusCircle className="w-4 h-4 text-primary" />
-              Create New Campaign
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCreateCampaign} className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="campaignName">Campaign Name <span className="text-destructive">*</span></Label>
-                  <Input
-                    id="campaignName"
-                    placeholder='e.g. "Summer Sale", "Eid Offer 2026"'
-                    value={campaignName}
-                    onChange={(e) => setCampaignName(e.target.value)}
-                    required
-                  />
-                  {campaignName.trim() && (
-                    <p className="text-[11px] text-muted-foreground">Slug: <span className="font-mono text-primary">{slugify(campaignName)}</span></p>
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="source">Source Type <span className="text-destructive">*</span></Label>
-                  <Select value={campaignSource} onValueChange={(v) => { setCampaignSource(v); if (v !== "custom") setCustomSourceText(""); }}>
-                    <SelectTrigger id="source">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SOURCE_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          <span className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: opt.color }} />
-                            {opt.label}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {campaignSource === "custom" && (
-                    <input
-                      ref={customSourceRef}
-                      type="text"
-                      inputMode="text"
-                      enterKeyHint="done"
-                      placeholder='Type source name, e.g. "YouTube", "Pamphlet"'
-                      value={customSourceText}
-                      onChange={(e) => setCustomSourceText(e.target.value)}
-                      className="mt-2 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    />
-                  )}
-                  {campaignSource === "custom" && customSourceText.trim() && (
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "#0EA5E9" }} />
-                      <span className="text-[11px] text-muted-foreground">Source: <span className="font-semibold text-foreground">{customSourceText.trim()}</span></span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Preview tracking link */}
-              {storeSlug && campaignName.trim() && (campaignSource !== "custom" || customSourceText.trim()) && (
-                <div className="bg-muted rounded-lg px-3 py-2.5 space-y-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Preview Tracking Link</p>
-                  <p className="text-xs font-mono text-primary break-all">
-                    {buildTrackingLink(storeSlug, effectiveSource, slugify(campaignName))}
-                  </p>
-                </div>
-              )}
-
-              {/* QR Code toggle */}
-              <div className="flex items-center justify-between rounded-lg border px-4 py-3">
-                <div className="space-y-0.5">
-                  <Label className="text-sm font-medium flex items-center gap-1.5">
-                    <QrCode className="w-4 h-4" />
-                    Generate QR Code
-                  </Label>
-                  <p className="text-xs text-muted-foreground">Automatically create a scannable QR for this link</p>
-                </div>
-                <Switch checked={qrEnabled} onCheckedChange={setQrEnabled} />
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full sm:w-auto"
-                disabled={createCampaign.isPending || !campaignName.trim() || !storeSlug}
+        {/* Create Campaign — button to toggle form */}
+        {!showCreateForm ? (
+          <Button
+            className="w-full gap-2 py-6 text-base font-semibold"
+            onClick={() => setShowCreateForm(true)}
+          >
+            <PlusCircle className="w-5 h-5" />
+            Create New Campaign
+          </Button>
+        ) : (
+          <Card className="border-primary/40">
+            <CardHeader className="pb-3 flex flex-row items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <PlusCircle className="w-4 h-4 text-primary" />
+                Create New Campaign
+              </CardTitle>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCreateForm(false);
+                  setCampaignName("");
+                  setCampaignSource("instagram");
+                  setCustomSourceText("");
+                  setQrEnabled(false);
+                }}
+                className="p-1.5 rounded-full hover:bg-muted transition-colors text-muted-foreground"
               >
-                {createCampaign.isPending ? (
-                  <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Creating...</>
-                ) : (
-                  <><PlusCircle className="w-4 h-4 mr-2" />Create Campaign</>
+                <X className="w-4 h-4" />
+              </button>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={(e) => { handleCreateCampaign(e); setShowCreateForm(false); }} className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="campaignName">Campaign Name <span className="text-destructive">*</span></Label>
+                    <Input
+                      id="campaignName"
+                      placeholder='e.g. "Summer Sale", "Eid Offer 2026"'
+                      value={campaignName}
+                      onChange={(e) => setCampaignName(e.target.value)}
+                      required
+                      autoFocus
+                    />
+                    {campaignName.trim() && (
+                      <p className="text-[11px] text-muted-foreground">Slug: <span className="font-mono text-primary">{slugify(campaignName)}</span></p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="source">Source Type <span className="text-destructive">*</span></Label>
+                    <Select value={campaignSource} onValueChange={(v) => { setCampaignSource(v); if (v !== "custom") setCustomSourceText(""); }}>
+                      <SelectTrigger id="source">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SOURCE_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            <span className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full shrink-0" style={{ background: opt.color }} />
+                              {opt.label}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {campaignSource === "custom" && (
+                      <input
+                        ref={customSourceRef}
+                        type="text"
+                        inputMode="text"
+                        enterKeyHint="done"
+                        placeholder='Type source name, e.g. "YouTube", "Pamphlet"'
+                        value={customSourceText}
+                        onChange={(e) => setCustomSourceText(e.target.value)}
+                        className="mt-2 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      />
+                    )}
+                    {campaignSource === "custom" && customSourceText.trim() && (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "#0EA5E9" }} />
+                        <span className="text-[11px] text-muted-foreground">Source: <span className="font-semibold text-foreground">{customSourceText.trim()}</span></span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Preview tracking link */}
+                {storeSlug && campaignName.trim() && (campaignSource !== "custom" || customSourceText.trim()) && (
+                  <div className="bg-muted rounded-lg px-3 py-2.5 space-y-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Preview Tracking Link</p>
+                    <p className="text-xs font-mono text-primary break-all">
+                      {buildTrackingLink(storeSlug, effectiveSource, slugify(campaignName))}
+                    </p>
+                  </div>
                 )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+
+                {/* QR Code toggle */}
+                <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium flex items-center gap-1.5">
+                      <QrCode className="w-4 h-4" />
+                      Generate QR Code
+                    </Label>
+                    <p className="text-xs text-muted-foreground">Automatically create a scannable QR for this link</p>
+                  </div>
+                  <Switch checked={qrEnabled} onCheckedChange={setQrEnabled} />
+                </div>
+
+                <div className="flex gap-3">
+                  <Button
+                    type="submit"
+                    className="flex-1 sm:flex-none"
+                    disabled={createCampaign.isPending || !campaignName.trim() || !storeSlug}
+                  >
+                    {createCampaign.isPending ? (
+                      <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Creating...</>
+                    ) : (
+                      <><PlusCircle className="w-4 h-4 mr-2" />Create Campaign</>
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setShowCreateForm(false);
+                      setCampaignName("");
+                      setCampaignSource("instagram");
+                      setCustomSourceText("");
+                      setQrEnabled(false);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Campaign Dashboard */}
         <div className="space-y-4">
