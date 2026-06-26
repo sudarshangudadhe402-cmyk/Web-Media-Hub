@@ -72,6 +72,32 @@ function StatCard({ title, value, sub, icon: Icon, color }: { title: string; val
   );
 }
 
+/* ── Mini Sparkline SVG ── */
+function Sparkline({ values, color, width = 80, height = 32 }: { values: number[]; color: string; width?: number; height?: number }) {
+  if (!values || values.length < 2) {
+    return <svg width={width} height={height}><line x1={0} y1={height/2} x2={width} y2={height/2} stroke={color} strokeWidth={1.5} strokeOpacity={0.3} strokeDasharray="3 2" /></svg>;
+  }
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  const range = max - min || 1;
+  const pad = 3;
+  const pts = values.map((v, i) => {
+    const x = pad + (i / (values.length - 1)) * (width - pad * 2);
+    const y = pad + ((max - v) / range) * (height - pad * 2);
+    return `${x},${y}`;
+  });
+  const d = `M${pts.join(" L")}`;
+  const last = pts[pts.length - 1].split(",");
+  const trend = values[values.length - 1] - values[0];
+  const trendColor = trend > 0 ? "#16a34a" : trend < 0 ? "#ef4444" : color;
+  return (
+    <svg width={width} height={height} style={{ overflow: "visible" }}>
+      <path d={d} fill="none" stroke={trendColor} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={last[0]} cy={last[1]} r={2.5} fill={trendColor} />
+    </svg>
+  );
+}
+
 /* ── Date Filter Bar ── */
 function DateFilterBar({ range, setRange, from, setFrom, to, setTo }: any) {
   return (
@@ -268,6 +294,95 @@ function DashboardTab() {
                   );
                 })
               )}
+            </CardContent>
+          </Card>
+        );
+      })()}
+
+      {/* Monthly Growth Trend by Source */}
+      {(() => {
+        const bySourceMonthly: Record<string, { month: string; signups: number; revenue: number }[]> = data.bySourceMonthly || {};
+        const sources = (data.bySource || []).filter((s: any) => s.signups > 0 || s.revenue > 0);
+        if (sources.length === 0) return null;
+
+        const sorted = [...sources].sort((a: any, b: any) =>
+          analysisMode === "admin" ? b.signups - a.signups : b.revenue - a.revenue
+        );
+
+        const monthKeys: string[] = sorted.length > 0
+          ? (bySourceMonthly[sorted[0].source] || []).map((m: any) => m.month)
+          : [];
+
+        const shortMonth = (key: string) => {
+          const [y, m] = key.split("-");
+          return new Date(Number(y), Number(m) - 1, 1).toLocaleString("en", { month: "short" });
+        };
+
+        return (
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <CardTitle className="text-sm">Monthly Growth Trend</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Last 6 months — {analysisMode === "admin" ? "Admin signups" : "Revenue"} per source
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="w-3 h-0.5 bg-green-500 inline-block rounded" /> Growing
+                  <span className="w-3 h-0.5 bg-red-500 inline-block rounded ml-2" /> Declining
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {/* Month labels header */}
+              <div className="flex items-center border-b bg-muted/30 px-4 py-2">
+                <div className="w-32 text-xs font-semibold text-muted-foreground shrink-0">Source</div>
+                <div className="flex-1 flex justify-between px-2">
+                  {monthKeys.map(k => (
+                    <span key={k} className="text-[10px] text-muted-foreground">{shortMonth(k)}</span>
+                  ))}
+                </div>
+                <div className="w-16 text-right text-xs font-semibold text-muted-foreground shrink-0">
+                  {analysisMode === "admin" ? "Signups" : "Revenue"}
+                </div>
+              </div>
+              {sorted.map((s: any, i: number) => {
+                const color = SOURCE_COLORS[s.source] || "#6b7280";
+                const label = SOURCE_LABELS[s.source] || s.source;
+                const monthly = bySourceMonthly[s.source] || [];
+                const values = monthly.map((m: any) => analysisMode === "admin" ? m.signups : m.revenue);
+                const last = values[values.length - 1] ?? 0;
+                const prev = values[values.length - 2] ?? 0;
+                const trend = last - prev;
+                return (
+                  <div
+                    key={s.source}
+                    className="flex items-center border-b last:border-0 px-4 py-2.5 hover:bg-muted/20 transition-colors"
+                  >
+                    {/* Source name */}
+                    <div className="w-32 shrink-0 flex items-center gap-2 min-w-0">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
+                      <span className="text-xs font-medium truncate">{label}</span>
+                    </div>
+                    {/* Sparkline */}
+                    <div className="flex-1 flex items-center justify-center">
+                      <Sparkline values={values} color={color} width={160} height={28} />
+                    </div>
+                    {/* Current month value + trend arrow */}
+                    <div className="w-16 shrink-0 text-right">
+                      <div className="text-xs font-bold" style={{ color }}>
+                        {analysisMode === "admin" ? last : fmtRs(last)}
+                      </div>
+                      {trend !== 0 && (
+                        <div className={`text-[10px] font-semibold ${trend > 0 ? "text-green-600" : "text-red-500"}`}>
+                          {trend > 0 ? "▲" : "▼"} {analysisMode === "admin" ? Math.abs(trend) : fmtRs(Math.abs(trend))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </CardContent>
           </Card>
         );

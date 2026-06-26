@@ -131,12 +131,35 @@ router.get("/marketing/dashboard", requireSuperAdmin, async (req: AuthRequest, r
       });
     }
 
+    // Monthly by source — last 6 months, for mini sparkline charts
+    const last6Keys = Object.keys(monthlyMap).slice(-6);
+    const bySourceMonthly: Record<string, { month: string; signups: number; revenue: number }[]> = {};
+    for (const source of [...allKnownKeys, "__DELETED__"]) {
+      bySourceMonthly[source] = last6Keys.map(key => ({ month: key, signups: 0, revenue: 0 }));
+    }
+    for (const a of allAdmins) {
+      const d = new Date(a.createdAt);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+      if (!last6Keys.includes(key)) continue;
+      const src = allKnownKeys.includes(a.signup_source || "ORGANIC")
+        ? (a.signup_source || "ORGANIC")
+        : "__DELETED__";
+      if (bySourceMonthly[src]) {
+        const idx = bySourceMonthly[src].findIndex(m => m.month === key);
+        if (idx !== -1) {
+          bySourceMonthly[src][idx].signups++;
+          bySourceMonthly[src][idx].revenue += parsePlanPrice(a.planPrice);
+        }
+      }
+    }
+
     res.json({
       totalAdmins,
       totalPayingAdmins,
       totalRevenue,
       monthlyRevenue: monthlyRevenueValue,
       bySource,
+      bySourceMonthly,
       monthlySignups,
       monthlyRevenueChart: monthlyRevenue,
       topInfluencers: influencers.sort((a,b) => b.total_revenue - a.total_revenue).slice(0,5),
