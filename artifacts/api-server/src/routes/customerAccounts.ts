@@ -1,10 +1,17 @@
 import { Router } from "express";
+import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { CustomerAccount } from "../models/CustomerAccount";
 import { OtpCode } from "../models/OtpCode";
 import { Store } from "../models/Store";
 import { AuthRequest, requireAuth } from "../middlewares/auth";
 import { sendOtpEmail } from "../services/emailOtp";
+import { validate } from "../middlewares/validate";
+import {
+  CustomerSendOtpSchema,
+  CustomerVerifySignupSchema,
+  CustomerVerifySigninSchema,
+} from "../schemas/authSchemas";
 
 const router = Router();
 
@@ -24,7 +31,7 @@ function isValidEmail(email: string): boolean {
 }
 
 /* ── SEND OTP ── */
-router.post("/public/customer-account/send-otp", async (req, res) => {
+router.post("/public/customer-account/send-otp", validate(CustomerSendOtpSchema), async (req, res) => {
   try {
     const { storeSlug, email, mobileNumber, password, purpose } = req.body;
 
@@ -98,7 +105,7 @@ router.post("/public/customer-account/send-otp", async (req, res) => {
 });
 
 /* ── VERIFY OTP + SIGNUP ── */
-router.post("/public/customer-account/verify-signup", async (req, res) => {
+router.post("/public/customer-account/verify-signup", validate(CustomerVerifySignupSchema), async (req, res) => {
   try {
     const { storeSlug, email, mobileNumber, password, otp } = req.body;
 
@@ -118,13 +125,16 @@ router.post("/public/customer-account/verify-signup", async (req, res) => {
     const otpDoc = await OtpCode.findOne({
       email,
       storeId,
-      code: otp,
       purpose: "signup",
       used: false,
       expiresAt: { $gt: new Date() },
     });
 
-    if (!otpDoc) {
+    const otpValid = otpDoc &&
+      otpDoc.code.length === otp.length &&
+      crypto.timingSafeEqual(Buffer.from(otpDoc.code), Buffer.from(otp));
+
+    if (!otpValid) {
       res.status(400).json({ error: "Invalid or expired OTP. Please try again.", code: "invalid_otp" });
       return;
     }
@@ -154,7 +164,7 @@ router.post("/public/customer-account/verify-signup", async (req, res) => {
 });
 
 /* ── VERIFY OTP + SIGNIN ── */
-router.post("/public/customer-account/verify-signin", async (req, res) => {
+router.post("/public/customer-account/verify-signin", validate(CustomerVerifySigninSchema), async (req, res) => {
   try {
     const { storeSlug, email, mobileNumber, password, otp } = req.body;
 
@@ -174,13 +184,16 @@ router.post("/public/customer-account/verify-signin", async (req, res) => {
     const otpDoc = await OtpCode.findOne({
       email,
       storeId,
-      code: otp,
       purpose: "signin",
       used: false,
       expiresAt: { $gt: new Date() },
     });
 
-    if (!otpDoc) {
+    const otpValid = otpDoc &&
+      otpDoc.code.length === otp.length &&
+      crypto.timingSafeEqual(Buffer.from(otpDoc.code), Buffer.from(otp));
+
+    if (!otpValid) {
       res.status(400).json({ error: "Invalid or expired OTP. Please try again.", code: "invalid_otp" });
       return;
     }
