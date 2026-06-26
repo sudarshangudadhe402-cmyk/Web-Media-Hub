@@ -1,4 +1,5 @@
 import { Router } from "express";
+import crypto from "crypto";
 import { User } from "../models/User";
 import { Store } from "../models/Store";
 import { Product } from "../models/Product";
@@ -122,7 +123,10 @@ router.post("/admins/verify-creation-otp", requireSuperAdmin, async (req, res) =
     }).sort({ createdAt: -1 });
 
     if (!record) { res.status(400).json({ error: "OTP expired or not found. Please request a new one." }); return; }
-    if (record.code !== otp.trim()) { res.status(400).json({ error: "Incorrect OTP. Please try again." }); return; }
+    const otpMatch = crypto.timingSafeEqual(Buffer.from(record.code), Buffer.from(otp.trim().padEnd(record.code.length)));
+    if (!otpMatch || record.code.length !== otp.trim().length) {
+      res.status(400).json({ error: "Incorrect OTP. Please try again." }); return;
+    }
 
     record.used = true;
     await record.save();

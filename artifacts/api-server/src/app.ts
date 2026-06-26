@@ -3,6 +3,7 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { authRateLimiter } from "./middlewares/rateLimiter";
 
 const app: Express = express();
 
@@ -77,6 +78,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
+app.use("/api/auth", authRateLimiter);
 app.use("/api", router);
 
 // ─── Global error handler ─────────────────────────────────────────────────────

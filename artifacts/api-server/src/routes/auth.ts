@@ -6,6 +6,7 @@ import { signToken, requireAuth, AuthRequest } from "../middlewares/auth";
 import { requireDb } from "../middlewares/dbCheck";
 import { OtpCode } from "../models/OtpCode";
 import { sendOtpEmail } from "../services/emailOtp";
+import { authRateLimiter, loginStrictLimiter, otpRateLimiter } from "../middlewares/rateLimiter";
 
 const SUPER_ADMIN_ACCESS_CODE = process.env.SUPER_ADMIN_ACCESS_CODE || "WMH@2024";
 
@@ -79,7 +80,7 @@ function getLoginCapacity(planName: string, planPrice: string): number {
 
 const router = Router();
 
-router.post("/auth/login", requireDb, async (req, res) => {
+router.post("/auth/login", loginStrictLimiter, requireDb, async (req, res) => {
   try {
     const { username, email: emailId, password } = req.body;
     const identifier = (emailId || username || "").trim();
@@ -265,7 +266,7 @@ router.patch("/auth/change-password", requireDb, requireAuth, async (req: AuthRe
 });
 
 // ── Admin Forgot Password — Send OTP ─────────────────────────────────────────
-router.post("/auth/admin/forgot-password/send-otp", requireDb, async (req, res) => {
+router.post("/auth/admin/forgot-password/send-otp", otpRateLimiter, requireDb, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) { res.status(400).json({ error: "Email is required" }); return; }
@@ -301,7 +302,7 @@ router.post("/auth/admin/forgot-password/send-otp", requireDb, async (req, res) 
 });
 
 // ── Admin Forgot Password — Verify OTP & Reset Password ──────────────────────
-router.post("/auth/admin/forgot-password/reset", requireDb, async (req, res) => {
+router.post("/auth/admin/forgot-password/reset", authRateLimiter, requireDb, async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
     if (!email || !otp || !newPassword) {
@@ -320,7 +321,10 @@ router.post("/auth/admin/forgot-password/reset", requireDb, async (req, res) => 
     }).sort({ createdAt: -1 });
 
     if (!record) { res.status(400).json({ error: "OTP expired or not found. Please request a new one." }); return; }
-    if (record.code !== otp.trim()) { res.status(400).json({ error: "Incorrect OTP. Please try again." }); return; }
+    const otpMatch = crypto.timingSafeEqual(Buffer.from(record.code), Buffer.from(otp.trim().padEnd(record.code.length)));
+    if (!otpMatch || record.code.length !== otp.trim().length) {
+      res.status(400).json({ error: "Incorrect OTP. Please try again." }); return;
+    }
 
     const admin = await User.findOne({ email: email.trim().toLowerCase(), role: "admin" });
     if (!admin) { res.status(404).json({ error: "Admin not found" }); return; }
@@ -339,7 +343,7 @@ router.post("/auth/admin/forgot-password/reset", requireDb, async (req, res) => 
 });
 
 // ── Capacity Evict — Send OTP ─────────────────────────────────────────────────
-router.post("/auth/capacity-evict/send-otp", requireDb, async (req, res) => {
+router.post("/auth/capacity-evict/send-otp", otpRateLimiter, requireDb, async (req, res) => {
   try {
     const { identifier, password } = req.body;
     if (!identifier || !password) {
@@ -398,7 +402,7 @@ router.post("/auth/capacity-evict/send-otp", requireDb, async (req, res) => {
 });
 
 // ── Capacity Evict — Verify OTP + Evict Oldest Session ───────────────────────
-router.post("/auth/capacity-evict/verify", requireDb, async (req, res) => {
+router.post("/auth/capacity-evict/verify", loginStrictLimiter, requireDb, async (req, res) => {
   try {
     const { identifier, password, otp } = req.body;
     if (!identifier || !password || !otp) {
@@ -425,7 +429,10 @@ router.post("/auth/capacity-evict/verify", requireDb, async (req, res) => {
     }).sort({ createdAt: -1 });
 
     if (!record) { res.status(400).json({ error: "OTP expired or not found. Please request a new one." }); return; }
-    if (record.code !== otp.trim()) { res.status(400).json({ error: "Incorrect OTP. Please try again." }); return; }
+    const evictOtpMatch = crypto.timingSafeEqual(Buffer.from(record.code), Buffer.from(otp.trim().padEnd(record.code.length)));
+    if (!evictOtpMatch || record.code.length !== otp.trim().length) {
+      res.status(400).json({ error: "Incorrect OTP. Please try again." }); return;
+    }
 
     record.used = true;
     await record.save();
