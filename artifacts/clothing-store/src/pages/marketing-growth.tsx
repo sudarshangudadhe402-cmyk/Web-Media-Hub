@@ -1055,7 +1055,7 @@ export default function MarketingGrowth() {
                       <Gift className="w-5 h-5 text-green-600 shrink-0" />
                       <p className="font-semibold text-green-800 text-sm">+1000 Coins Earned 🎉</p>
                     </div>
-                    <p className="text-green-700 text-xs">Your reward code — share this with support to claim:</p>
+                    <p className="text-green-700 text-xs">Your reward code — Claim rewards on NexGenStudio.com</p>
                     <div className="flex items-center gap-2 bg-white border border-green-300 rounded-lg px-3 py-2">
                       <span className="font-mono font-extrabold text-green-700 text-lg tracking-widest flex-1">
                         {selectedApproved.rewardCode}
