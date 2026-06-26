@@ -83,7 +83,7 @@ router.post("/admins/send-creation-otp", requireSuperAdmin, async (req, res) => 
 
     const existing = await User.findOne({ email: email.trim().toLowerCase(), role: "admin" });
     if (existing) {
-      res.status(400).json({ error: "Email already exists — this email is already registered" }); return;
+      res.status(400).json({ error: "Unable to complete request. Please try again." }); return;
     }
 
     const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000);
@@ -122,7 +122,7 @@ router.post("/admins/verify-creation-otp", requireSuperAdmin, async (req, res) =
       expiresAt: { $gt: new Date() },
     }).sort({ createdAt: -1 });
 
-    if (!record) { res.status(400).json({ error: "OTP expired or not found. Please request a new one." }); return; }
+    if (!record) { res.status(400).json({ error: "Invalid or expired code. Please request a new one." }); return; }
     const otpMatch = crypto.timingSafeEqual(Buffer.from(record.code), Buffer.from(otp.trim().padEnd(record.code.length)));
     if (!otpMatch || record.code.length !== otp.trim().length) {
       res.status(400).json({ error: "Incorrect OTP. Please try again." }); return;
@@ -247,14 +247,14 @@ router.post("/admins", requireSuperAdmin, async (req, res) => {
 
     const existingEmail = await User.findOne({ email: email.trim(), role: "admin" });
     if (existingEmail) {
-      res.status(400).json({ error: "Email already exists — this email is already registered" });
+      res.status(400).json({ error: "An admin account with this email already exists." });
       return;
     }
 
     if (adminNumber && adminNumber.trim()) {
       const existingMobile = await User.findOne({ adminNumber: adminNumber.trim(), role: "admin" });
       if (existingMobile) {
-        res.status(400).json({ error: "Admin number already exists — this mobile number is already registered" });
+        res.status(400).json({ error: "An admin account with this mobile number already exists." });
         return;
       }
     }

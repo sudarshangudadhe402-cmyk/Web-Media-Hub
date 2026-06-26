@@ -66,18 +66,18 @@ router.post("/public/customer-account/send-otp", validate(CustomerSendOtpSchema)
     if (purpose === "signup") {
       const existing = await CustomerAccount.findOne({ storeId, mobileNumber });
       if (existing) {
-        res.status(409).json({ error: "This number already has an account. Please sign in instead.", code: "already_exists" });
+        res.status(409).json({ error: "Unable to process request. Please try again.", code: "already_exists" });
         return;
       }
     } else if (purpose === "signin") {
       const account = await CustomerAccount.findOne({ storeId, mobileNumber });
       if (!account) {
-        res.status(404).json({ error: "No account found with this number", code: "not_found" });
+        res.status(401).json({ error: "Incorrect email or password.", code: "not_found" });
         return;
       }
       const passwordMatch = await bcrypt.compare(password, account.password);
       if (!passwordMatch) {
-        res.status(401).json({ error: "Wrong password", code: "wrong_password" });
+        res.status(401).json({ error: "Incorrect email or password.", code: "wrong_password" });
         return;
       }
     }
@@ -141,7 +141,7 @@ router.post("/public/customer-account/verify-signup", validate(CustomerVerifySig
 
     const existing = await CustomerAccount.findOne({ storeId, mobileNumber });
     if (existing) {
-      res.status(409).json({ error: "Account already exists. Please sign in.", code: "already_exists" });
+      res.status(409).json({ error: "Unable to complete registration. Please try again.", code: "already_exists" });
       return;
     }
 

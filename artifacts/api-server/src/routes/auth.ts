@@ -122,7 +122,7 @@ router.post("/auth/login", loginStrictLimiter, validate(AdminLoginSchema), requi
       res
         .status(429)
         .set("Retry-After", String(Math.ceil(remainingMs / 1000)))
-        .json({ error: "Access temporarily restricted. Please try again later.", lockedUntil: record.lockedUntil });
+        .json({ error: "Incorrect email or password." });
       return;
     }
 
@@ -134,7 +134,7 @@ router.post("/auth/login", loginStrictLimiter, validate(AdminLoginSchema), requi
         res
           .status(429)
           .set("Retry-After", String(waitS))
-          .json({ error: "Access temporarily restricted. Please try again later.", retryAfterSeconds: waitS });
+          .json({ error: "Incorrect email or password.", retryAfterSeconds: waitS });
         return;
       }
     }
@@ -146,7 +146,7 @@ router.post("/auth/login", loginStrictLimiter, validate(AdminLoginSchema), requi
     if (!user) {
       // Still track failure to prevent username enumeration via timing
       recordFailure(attemptKey);
-      res.status(401).json({ error: "Invalid credentials." });
+      res.status(401).json({ error: "Incorrect email or password." });
       return;
     }
 
@@ -166,7 +166,7 @@ router.post("/auth/login", loginStrictLimiter, validate(AdminLoginSchema), requi
         .status(401)
         .set("Retry-After", retryAfterS ? String(retryAfterS) : "0")
         .json({
-          error: "Invalid credentials.",
+          error: "Incorrect email or password.",
           ...(retryAfterS ? { retryAfterSeconds: retryAfterS } : {}),
         });
       return;
@@ -186,7 +186,7 @@ router.post("/auth/login", loginStrictLimiter, validate(AdminLoginSchema), requi
           loginAttempts.set(attemptKey, saRec);
           sendLockoutEmail(user.email, user.username, new Date(saRec.lockedUntil!)).catch(() => {});
         }
-        res.status(401).json({ error: "Invalid credentials." });
+        res.status(401).json({ error: "Incorrect email or password." });
         return;
       }
     }
@@ -290,7 +290,7 @@ router.patch("/auth/change-password", requireDb, requireAuth, validate(ChangePas
     if (currentPassword) {
       const valid = await user.comparePassword(currentPassword);
       if (!valid) {
-        res.status(400).json({ error: "Current password is incorrect" });
+        res.status(400).json({ error: "Incorrect current password." });
         return;
       }
     }
@@ -322,7 +322,7 @@ router.post("/auth/admin/forgot-password/send-otp", otpRateLimiter, validate(For
     const admin = await User.findOne({ email: email.trim().toLowerCase(), role: "admin" });
     if (!admin) {
       // Don't reveal if email exists — same message for security
-      res.json({ message: "If this email is registered, an OTP will be sent." }); return;
+      res.json({ message: "If that email is registered, you'll receive a reset link." }); return;
     }
 
     // Rate limit: max 3 OTPs per email in 10 min
@@ -342,7 +342,7 @@ router.post("/auth/admin/forgot-password/send-otp", otpRateLimiter, validate(For
     await OtpCode.create({ email: email.trim().toLowerCase(), storeId: "admin", code, purpose: "admin-forgot-password", expiresAt });
     await sendOtpEmail(email.trim(), code, "Web Media Hub", "admin-forgot-password");
 
-    res.json({ message: "OTP sent successfully" });
+    res.json({ message: "If that email is registered, you'll receive a reset link." });
   } catch (err) {
     req.log.error({ err }, "Admin forgot password send OTP error");
     res.status(500).json({ error: "Failed to send OTP" });
@@ -368,14 +368,14 @@ router.post("/auth/admin/forgot-password/reset", authRateLimiter, validate(Forgo
       expiresAt: { $gt: new Date() },
     }).sort({ createdAt: -1 });
 
-    if (!record) { res.status(400).json({ error: "OTP expired or not found. Please request a new one." }); return; }
+    if (!record) { res.status(400).json({ error: "Invalid or expired code. Please request a new one." }); return; }
     const otpMatch = crypto.timingSafeEqual(Buffer.from(record.code), Buffer.from(otp.trim().padEnd(record.code.length)));
     if (!otpMatch || record.code.length !== otp.trim().length) {
       res.status(400).json({ error: "Incorrect OTP. Please try again." }); return;
     }
 
     const admin = await User.findOne({ email: email.trim().toLowerCase(), role: "admin" });
-    if (!admin) { res.status(404).json({ error: "Admin not found" }); return; }
+    if (!admin) { res.status(400).json({ error: "Invalid or expired code. Please request a new one." }); return; }
 
     admin.password = newPassword;
     await admin.save();
@@ -402,10 +402,10 @@ router.post("/auth/capacity-evict/send-otp", otpRateLimiter, validate(CapacityEv
       $or: [{ username: identifier.trim() }, { email: identifier.trim() }],
       role: "admin",
     });
-    if (!user) { res.status(401).json({ error: "Invalid credentials" }); return; }
+    if (!user) { res.status(401).json({ error: "Incorrect email or password." }); return; }
 
     const valid = await user.comparePassword(password);
-    if (!valid) { res.status(401).json({ error: "Invalid credentials" }); return; }
+    if (!valid) { res.status(401).json({ error: "Incorrect email or password." }); return; }
 
     if (!user.email) {
       res.status(400).json({ error: "No email address on file for this account" }); return;
@@ -461,10 +461,10 @@ router.post("/auth/capacity-evict/verify", loginStrictLimiter, validate(Capacity
       $or: [{ username: identifier.trim() }, { email: identifier.trim() }],
       role: "admin",
     });
-    if (!user) { res.status(401).json({ error: "Invalid credentials" }); return; }
+    if (!user) { res.status(401).json({ error: "Incorrect email or password." }); return; }
 
     const valid = await user.comparePassword(password);
-    if (!valid) { res.status(401).json({ error: "Invalid credentials" }); return; }
+    if (!valid) { res.status(401).json({ error: "Incorrect email or password." }); return; }
 
     if (!user.email) { res.status(400).json({ error: "No email on file" }); return; }
 
@@ -476,7 +476,7 @@ router.post("/auth/capacity-evict/verify", loginStrictLimiter, validate(Capacity
       expiresAt: { $gt: new Date() },
     }).sort({ createdAt: -1 });
 
-    if (!record) { res.status(400).json({ error: "OTP expired or not found. Please request a new one." }); return; }
+    if (!record) { res.status(400).json({ error: "Invalid or expired code. Please request a new one." }); return; }
     const evictOtpMatch = crypto.timingSafeEqual(Buffer.from(record.code), Buffer.from(otp.trim().padEnd(record.code.length)));
     if (!evictOtpMatch || record.code.length !== otp.trim().length) {
       res.status(400).json({ error: "Incorrect OTP. Please try again." }); return;

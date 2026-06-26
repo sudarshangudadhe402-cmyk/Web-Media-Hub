@@ -26,7 +26,7 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
 
     const user = await User.findById(decoded.id);
     if (!user) {
-      res.status(401).json({ error: "User not found" });
+      res.status(401).json({ error: "Authentication failed." });
       return;
     }
 

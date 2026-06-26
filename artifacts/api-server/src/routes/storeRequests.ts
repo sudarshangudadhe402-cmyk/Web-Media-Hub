@@ -100,7 +100,7 @@ router.post("/store-requests", requireAuth, async (req: any, res) => {
 
     const existingEmail = await User.findOne({ email: emailLower });
     if (existingEmail) {
-      res.status(400).json({ error: "Email already exists, please use a different email" });
+      res.status(400).json({ error: "Unable to complete request. Please try again." });
       return;
     }
 
@@ -115,7 +115,7 @@ router.post("/store-requests", requireAuth, async (req: any, res) => {
         ],
       });
       if (existingMobile) {
-        res.status(400).json({ error: "Mobile number already exists, please use a different WhatsApp number" });
+        res.status(400).json({ error: "Unable to complete request. Please try again." });
         return;
       }
     }
@@ -206,7 +206,7 @@ router.patch("/store-requests/:id/approve", requireSuperAdmin, async (req, res) 
 
     const existingUser = await User.findOne({ email: request.email });
     if (existingUser) {
-      res.status(400).json({ error: "Email already exists — account may have already been created" });
+      res.status(400).json({ error: "Unable to complete request. Please try again." });
       return;
     }
 

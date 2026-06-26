@@ -281,7 +281,7 @@ router.post("/public/loyalty-card/login", async (req, res) => {
 
     const pwMatch = await bcrypt.compare(password, cardMatch.password);
     if (!pwMatch) {
-      res.status(401).json({ error: "Wrong password please try current password", code: "wrong_password" });
+      res.status(401).json({ error: "Authentication failed.", code: "wrong_password" });
       return;
     }
 
