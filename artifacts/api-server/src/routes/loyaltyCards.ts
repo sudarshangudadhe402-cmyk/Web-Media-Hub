@@ -55,9 +55,10 @@ router.post("/public/loyalty-card/request", async (req, res) => {
 
     const storeId = String(store._id);
 
+    const escapedName = customerName.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const existingByName = await LoyaltyCard.findOne({
       storeId,
-      customerName: new RegExp(`^${customerName.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
+      customerName: { $regex: `^${escapedName}$`, $options: "i" },
       status: { $ne: "rejected" },
     });
     if (existingByName) {
@@ -218,9 +219,10 @@ router.post("/public/loyalty-card/verify", async (req, res) => {
 
     const storeId = String(store._id);
 
+    const escapedVerifyName = customerName.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const card = await LoyaltyCard.findOne({
       storeId,
-      customerName: new RegExp(`^${customerName.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
+      customerName: { $regex: `^${escapedVerifyName}$`, $options: "i" },
       mobileNumber,
       password,
     });
@@ -264,7 +266,7 @@ router.post("/public/loyalty-card/login", async (req, res) => {
       ? await LoyaltyCard.findOne({ storeId, mobileNumber: input })
       : await LoyaltyCard.findOne({
           storeId,
-          customerName: new RegExp(`^${input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
+          customerName: { $regex: `^${input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" },
         });
 
     if (!cardMatch) {
@@ -304,9 +306,10 @@ router.post("/public/loyalty-card/recover", async (req, res) => {
     const store = await Store.findOne({ publicSlug: storeSlug });
     if (!store) { res.status(404).json({ error: "Store not found" }); return; }
     const storeId = String(store._id);
+    const escapedRecoverName = customerName.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const card = await LoyaltyCard.findOne({
       storeId,
-      customerName: new RegExp(`^${customerName.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
+      customerName: { $regex: `^${escapedRecoverName}$`, $options: "i" },
       mobileNumber,
     });
     if (!card) {

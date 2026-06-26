@@ -101,6 +101,15 @@ const POLICIES = [
   },
 ];
 
+function escapeHtml(str: string): string {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function generateAgreementHTML(record: LegalRecord): string {
   const displayName = record.store_name || record.admin_name;
   const policyHTML = POLICIES.map((policy, index) => `
@@ -123,7 +132,7 @@ function generateAgreementHTML(record: LegalRecord): string {
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <title>Legal Agreement — ${displayName}</title>
+  <title>Legal Agreement — ${escapeHtml(displayName)}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Georgia', serif; color: #1a1a1a; background: #fff; padding: 48px 56px; max-width: 860px; margin: 0 auto; }
@@ -168,9 +177,9 @@ function generateAgreementHTML(record: LegalRecord): string {
 
   <div class="admin-info">
     <table>
-      ${record.store_name ? `<tr><td>Store Name</td><td>${record.store_name}</td></tr>` : ""}
-      <tr><td>Admin Email</td><td>${record.admin_email || record.admin_name}</td></tr>
-      <tr><td>Admin ID</td><td>${record.admin_id}</td></tr>
+      ${record.store_name ? `<tr><td>Store Name</td><td>${escapeHtml(record.store_name)}</td></tr>` : ""}
+      <tr><td>Admin Email</td><td>${escapeHtml(record.admin_email || record.admin_name)}</td></tr>
+      <tr><td>Admin ID</td><td>${escapeHtml(record.admin_id)}</td></tr>
       <tr><td>Agreement Status</td><td>${record.final_acceptance ? "✅ Completed" : "❌ Incomplete"}</td></tr>
     </table>
   </div>
@@ -195,15 +204,15 @@ function generateAgreementHTML(record: LegalRecord): string {
         </tr>
       </thead>
       <tbody>
-        <tr><td>Store Name</td><td>${record.store_name || "—"}</td></tr>
-        <tr><td>Admin Email</td><td>${record.admin_email || record.admin_name}</td></tr>
-        <tr><td>Admin ID</td><td>${record.admin_id}</td></tr>
-        <tr><td>Date of Acceptance</td><td>${record.accepted_date || "—"}</td></tr>
-        <tr><td>Time of Acceptance</td><td>${record.accepted_time || "—"}</td></tr>
-        <tr><td>Full Timestamp</td><td>${record.accepted_timestamp ? new Date(record.accepted_timestamp).toLocaleString("en-IN") : "—"}</td></tr>
-        <tr><td>Device Type</td><td>${record.device_type || "—"}</td></tr>
-        <tr><td>Browser</td><td>${record.browser_name || "—"}</td></tr>
-        <tr><td>IP Address</td><td>${record.ip_address || "—"}</td></tr>
+        <tr><td>Store Name</td><td>${escapeHtml(record.store_name || "—")}</td></tr>
+        <tr><td>Admin Email</td><td>${escapeHtml(record.admin_email || record.admin_name)}</td></tr>
+        <tr><td>Admin ID</td><td>${escapeHtml(record.admin_id)}</td></tr>
+        <tr><td>Date of Acceptance</td><td>${escapeHtml(record.accepted_date || "—")}</td></tr>
+        <tr><td>Time of Acceptance</td><td>${escapeHtml(record.accepted_time || "—")}</td></tr>
+        <tr><td>Full Timestamp</td><td>${record.accepted_timestamp ? escapeHtml(new Date(record.accepted_timestamp).toLocaleString("en-IN")) : "—"}</td></tr>
+        <tr><td>Device Type</td><td>${escapeHtml(record.device_type || "—")}</td></tr>
+        <tr><td>Browser</td><td>${escapeHtml(record.browser_name || "—")}</td></tr>
+        <tr><td>IP Address</td><td>${escapeHtml(record.ip_address || "—")}</td></tr>
         <tr><td>Terms & Conditions</td><td class="${record.terms_accepted ? "badge-yes" : "badge-no"}">${record.terms_accepted ? "Accepted" : "Not Accepted"}</td></tr>
         <tr><td>Privacy Policy</td><td class="${record.privacy_accepted ? "badge-yes" : "badge-no"}">${record.privacy_accepted ? "Accepted" : "Not Accepted"}</td></tr>
         <tr><td>Refund Policy</td><td class="${record.refund_accepted ? "badge-yes" : "badge-no"}">${record.refund_accepted ? "Accepted" : "Not Accepted"}</td></tr>

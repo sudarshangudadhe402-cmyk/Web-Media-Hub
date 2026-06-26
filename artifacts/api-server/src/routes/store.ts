@@ -54,7 +54,14 @@ router.post("/store", requireAuth, async (req: AuthRequest, res) => {
 
     let store = await getStoreForUser(userId);
     if (store) {
-      Object.assign(store, { name, address, whatsappNumber, openingTime, openDays, bannerImage, description, isLocked: true, ownerId: userId });
+      store.name = name;
+      store.address = address;
+      store.whatsappNumber = whatsappNumber;
+      store.openingTime = openingTime;
+      store.openDays = openDays;
+      store.bannerImage = bannerImage;
+      store.description = description;
+      store.isLocked = true;
       if (!store.publicSlug) store.publicSlug = slugify(name);
       await store.save();
     } else {

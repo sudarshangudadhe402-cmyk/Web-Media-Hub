@@ -1,5 +1,14 @@
 import nodemailer from "nodemailer";
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -18,14 +27,17 @@ export async function sendOtpEmail(
   let headingText = "";
   let bodyText = "";
 
+  const safeStoreName = escapeHtml(storeName);
+  const safeOtp = escapeHtml(otp);
+
   if (purpose === "signup") {
     subject = `${otp} — Your OTP to create account on ${storeName}`;
     headingText = "Welcome! Verify your email";
-    bodyText = `Use the OTP below to <strong>create your account</strong> on <strong>${storeName}</strong>. This code is valid for <strong>10 minutes</strong>.`;
+    bodyText = `Use the OTP below to <strong>create your account</strong> on <strong>${safeStoreName}</strong>. This code is valid for <strong>10 minutes</strong>.`;
   } else if (purpose === "signin") {
     subject = `${otp} — Your OTP to sign in to ${storeName}`;
     headingText = "Sign in verification";
-    bodyText = `Use the OTP below to <strong>sign in</strong> to <strong>${storeName}</strong>. This code is valid for <strong>10 minutes</strong>.`;
+    bodyText = `Use the OTP below to <strong>sign in</strong> to <strong>${safeStoreName}</strong>. This code is valid for <strong>10 minutes</strong>.`;
   } else if (purpose === "admin-creation") {
     subject = `${otp} — Verify admin email for Web Media Hub`;
     headingText = "Admin Account Email Verification";
@@ -52,7 +64,7 @@ export async function sendOtpEmail(
         <p style="font-size:15px;color:#111;font-weight:600;margin:0 0 8px;">${headingText}</p>
         <p style="font-size:13px;color:#6b7280;margin:0 0 28px;">${bodyText}</p>
         <div style="background:#f9fafb;border:2px dashed #e5e7eb;border-radius:12px;padding:20px;text-align:center;margin-bottom:24px;">
-          <p style="font-size:36px;font-weight:900;letter-spacing:10px;color:#000;margin:0;font-family:monospace;">${otp}</p>
+          <p style="font-size:36px;font-weight:900;letter-spacing:10px;color:#000;margin:0;font-family:monospace;">${safeOtp}</p>
         </div>
         <p style="font-size:12px;color:#9ca3af;margin:0;">If you didn't request this OTP, you can safely ignore this email.</p>
       </div>
