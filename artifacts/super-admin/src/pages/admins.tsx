@@ -4,7 +4,7 @@ import {
   useDeleteAdmin,
   getListAdminsQueryKey,
 } from "@workspace/api-client-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +33,7 @@ import {
   RefreshCw,
   AlertTriangle,
   CheckCircle2,
+  TrendingUp,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -92,6 +93,111 @@ function SubscriptionBadge({ endDate, planPeriod }: { endDate: string | null | u
     <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: "rgba(34,197,94,0.12)", color: "#16a34a" }}>
       {days}d left
     </span>
+  );
+}
+
+const SOURCE_COLORS: Record<string, { bg: string; text: string; label: string }> = {
+  ORGANIC:    { bg: "rgba(34,197,94,0.12)",  text: "#16a34a", label: "Organic" },
+  REFERRAL:   { bg: "rgba(59,130,246,0.12)", text: "#2563eb", label: "Referral" },
+  AMBASSADOR: { bg: "rgba(168,85,247,0.12)", text: "#9333ea", label: "Ambassador" },
+  INFLUENCER: { bg: "rgba(249,115,22,0.12)", text: "#ea580c", label: "Influencer" },
+  CAMPAIGN:   { bg: "rgba(236,72,153,0.12)", text: "#db2777", label: "Campaign" },
+  UTM:        { bg: "rgba(234,179,8,0.12)",  text: "#ca8a04", label: "UTM" },
+};
+
+function getSourceStyle(source: string) {
+  const key = source.toUpperCase();
+  return SOURCE_COLORS[key] ?? { bg: "rgba(107,114,128,0.12)", text: "#6b7280", label: source };
+}
+
+function SourceBreakdownTable() {
+  const { data, isLoading } = useQuery<{
+    total: number;
+    breakdown: { source: string; count: number; active: number; inactive: number; percentage: number }[];
+  }>({
+    queryKey: ["admins-source-breakdown"],
+    queryFn: async () => {
+      const token = sessionStorage.getItem(TOKEN_KEY);
+      const res = await fetch("/api/admins/source-breakdown", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
+
+  return (
+    <Card className="border shadow-sm">
+      <CardContent className="p-0">
+        <div className="flex items-center gap-2 px-4 py-3 border-b bg-muted/40">
+          <TrendingUp className="w-4 h-4 text-primary" />
+          <span className="font-semibold text-sm">Source-wise Admin Count</span>
+          {data && (
+            <Badge variant="outline" className="ml-auto text-xs">Total: {data.total}</Badge>
+          )}
+        </div>
+
+        {isLoading ? (
+          <div className="p-4 space-y-2">
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full rounded-lg" />)}
+          </div>
+        ) : !data || data.breakdown.length === 0 ? (
+          <div className="py-8 text-center text-muted-foreground text-sm">No data available</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/20">
+                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">Source</th>
+                  <th className="text-center px-4 py-2 font-medium text-muted-foreground">Total</th>
+                  <th className="text-center px-4 py-2 font-medium text-muted-foreground">Active</th>
+                  <th className="text-center px-4 py-2 font-medium text-muted-foreground">Inactive</th>
+                  <th className="text-right px-4 py-2 font-medium text-muted-foreground">Share</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.breakdown.map((row) => {
+                  const style = getSourceStyle(row.source);
+                  return (
+                    <tr key={row.source} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-3">
+                        <span
+                          className="px-2.5 py-1 rounded-full text-xs font-bold"
+                          style={{ background: style.bg, color: style.text }}
+                        >
+                          {style.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center font-bold">{row.count}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="text-green-600 font-semibold">{row.active}</span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="text-red-500 font-semibold">{row.inactive}</span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className="h-full rounded-full"
+                              style={{ width: `${row.percentage}%`, background: style.text }}
+                            />
+                          </div>
+                          <span className="text-xs font-semibold w-8 text-right" style={{ color: style.text }}>
+                            {row.percentage}%
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -279,6 +385,9 @@ export default function Admins() {
         <h1 className="text-2xl font-bold tracking-tight">Admin History</h1>
         <p className="text-muted-foreground text-sm mt-1">All admin accounts created so far</p>
       </div>
+
+      {/* Source Breakdown Table */}
+      <SourceBreakdownTable />
 
       {/* Store name search */}
       <div className="relative">

@@ -138,6 +138,40 @@ router.post("/admins/verify-creation-otp", requireSuperAdmin, async (req, res) =
   }
 });
 
+// ── Source breakdown: how many admins came from each signup_source ────────────
+router.get("/admins/source-breakdown", requireSuperAdmin, async (req, res) => {
+  try {
+    const breakdown = await User.aggregate([
+      { $match: { role: "admin" } },
+      {
+        $group: {
+          _id: { $ifNull: [{ $trim: { input: "$signup_source" } }, "ORGANIC"] },
+          count: { $sum: 1 },
+          active: { $sum: { $cond: [{ $eq: ["$isActive", true] }, 1, 0] } },
+          inactive: { $sum: { $cond: [{ $ne: ["$isActive", true] }, 1, 0] } },
+        },
+      },
+      { $sort: { count: -1 } },
+    ]);
+
+    const total = breakdown.reduce((s: number, r: any) => s + r.count, 0);
+
+    res.json({
+      total,
+      breakdown: breakdown.map((r: any) => ({
+        source: r._id || "ORGANIC",
+        count: r.count,
+        active: r.active,
+        inactive: r.inactive,
+        percentage: total > 0 ? Math.round((r.count / total) * 100) : 0,
+      })),
+    });
+  } catch (err) {
+    req.log.error({ err }, "Source breakdown error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ── All-admins stats overview ─────────────────────────────────────────────────
 router.get("/admins/stats-overview", requireSuperAdmin, async (req, res) => {
   try {
