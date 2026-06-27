@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams } from "wouter";
 import {
-  Users, TrendingUp, DollarSign, Award, MapPin, Calendar,
-  CheckCircle, XCircle, Clock, Tag, Star, Handshake,
+  Users, MapPin, Calendar,
+  XCircle, Clock, Tag, Star, Handshake,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -34,7 +34,6 @@ interface SignupRecord {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmt(n: number | null | undefined) { return (n ?? 0).toLocaleString("en-IN"); }
-function fmtRs(n: number | null | undefined) { return `₹${fmt(n)}`; }
 
 function fmtDate(iso: string | null) {
   if (!iso) return "—";
@@ -130,9 +129,6 @@ export default function PartnershipPage() {
 
   const { member, signups } = data;
   const gradientClass = typeBadgeColor(member.type);
-  const commissionEarned = member.commission_percentage && member.total_revenue
-    ? (member.total_revenue * member.commission_percentage) / 100
-    : null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
@@ -174,12 +170,6 @@ export default function PartnershipPage() {
                   <Tag className="w-3 h-3" />
                   {member.code}
                 </span>
-                {member.commission_percentage != null && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-white/20 backdrop-blur-sm border border-white/30 rounded-full text-white text-xs font-semibold">
-                    <Award className="w-3 h-3" />
-                    {member.commission_percentage}% Commission
-                  </span>
-                )}
               </div>
             </div>
           </div>
@@ -190,7 +180,7 @@ export default function PartnershipPage() {
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
 
         {/* ── Stats row ──────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <StatCard
             icon={Users}
             label="Total Signups"
@@ -198,46 +188,12 @@ export default function PartnershipPage() {
             color="bg-blue-50 text-blue-600"
           />
           <StatCard
-            icon={CheckCircle}
-            label="Paying Admins"
-            value={fmt(member.total_paid_admins)}
-            color="bg-green-50 text-green-600"
+            icon={Calendar}
+            label="Partner Since"
+            value={fmtDate(member.joinedAt)}
+            color="bg-amber-50 text-amber-600"
           />
-          {member.total_revenue != null ? (
-            <StatCard
-              icon={DollarSign}
-              label="Revenue Generated"
-              value={fmtRs(member.total_revenue)}
-              color="bg-purple-50 text-purple-600"
-            />
-          ) : (
-            <StatCard
-              icon={TrendingUp}
-              label="Partner Since"
-              value={fmtDate(member.joinedAt)}
-              color="bg-amber-50 text-amber-600"
-            />
-          )}
         </div>
-
-        {/* Commission earned card */}
-        {commissionEarned != null && (
-          <div className="rounded-2xl bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 p-5 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 bg-green-100 rounded-xl flex items-center justify-center">
-                <Award className="w-5 h-5 text-green-700" />
-              </div>
-              <div>
-                <p className="text-xs text-green-700 font-semibold uppercase tracking-wide">Your Commission Earned</p>
-                <p className="text-2xl font-black text-green-800">{fmtRs(commissionEarned)}</p>
-              </div>
-            </div>
-            <div className="text-right text-xs text-green-600">
-              <p className="font-medium">{member.commission_percentage}% of</p>
-              <p className="font-bold">{fmtRs(member.total_revenue)}</p>
-            </div>
-          </div>
-        )}
 
         {/* ── My code - signups table ─────────────────────────────────────── */}
         <div>
