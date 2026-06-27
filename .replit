@@ -11,6 +11,27 @@ env = { "CI" = "true" }
 [workflows]
 runButton = "Project"
 
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Super Admin"
+
+[[workflows.workflow]]
+name = "Super Admin"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=20029 BASE_PATH=/super-admin/ pnpm --filter @workspace/super-admin run dev"
+waitForPort = 20029
+
 [agent]
 stack = "PNPM_WORKSPACE"
 expertMode = true
