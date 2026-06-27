@@ -212,20 +212,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-56 p-0 border-r border-sidebar-border" style={{ background: "hsl(var(--sidebar))", color: "hsl(var(--sidebar-foreground))" }}>
-                <div className="relative h-[60px] flex items-center gap-3 px-4 border-b overflow-hidden" style={{ borderColor: "hsl(var(--sidebar-border))" }}>
-                  <div className="absolute inset-0 opacity-20" style={{ background: "linear-gradient(135deg, hsl(var(--sidebar-primary)) 0%, transparent 60%)" }} />
-                  <div className="relative z-10 flex items-center gap-2.5 min-w-0">
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 font-bold text-xs" style={{ background: "hsl(var(--sidebar-primary) / 0.18)", border: "1px solid hsl(var(--sidebar-primary) / 0.3)", color: "hsl(var(--sidebar-primary))" }}>
-                      {storeInitial}
-                    </div>
-                    <p className="font-bold text-sm truncate" style={{ color: "hsl(var(--sidebar-foreground))" }}>{storeName}</p>
+              <SheetContent side="left" className="w-64 p-0 border-r border-border" style={{ background: "hsl(var(--card))", color: "hsl(var(--foreground))" }}>
+                <div className="h-[60px] flex items-center gap-3 px-4 border-b border-border">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 font-bold text-xs" style={{ background: "hsl(var(--primary) / 0.12)", border: "1px solid hsl(var(--primary) / 0.25)", color: "hsl(var(--primary))" }}>
+                    {storeInitial}
                   </div>
+                  <p className="font-bold text-sm truncate" style={{ color: "hsl(var(--foreground))" }}>{storeName}</p>
                 </div>
                 <nav className="px-2 py-3 space-y-0.5">
                   <NavLinks light />
                 </nav>
-                <div className="absolute bottom-0 left-0 right-0 px-2 py-3 border-t" style={{ borderColor: "hsl(var(--sidebar-border))" }}>
+                <div className="absolute bottom-0 left-0 right-0 px-2 py-3 border-t border-border">
                   <Button
                     variant="ghost"
                     className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-muted text-sm h-9"
