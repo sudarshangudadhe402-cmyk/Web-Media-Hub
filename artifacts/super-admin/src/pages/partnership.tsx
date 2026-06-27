@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "wouter";
 import {
   Users, MapPin, Calendar,
-  XCircle, Clock, Tag, Star, Handshake,
+  XCircle, Clock, Tag, Star, Handshake, TrendingUp, IndianRupee, Percent,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -73,6 +73,22 @@ function StatCard({ icon: Icon, label, value, color }: { icon: any; label: strin
       <div>
         <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">{label}</p>
         <p className="text-xl font-bold text-gray-900 mt-0.5">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+// ── Commission Earned Card ─────────────────────────────────────────────────────
+function CommissionEarnedCard({ revenue, commission }: { revenue: number; commission: number }) {
+  const earned = Math.round((revenue * commission) / 100);
+  return (
+    <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border border-green-200 shadow-sm p-5 flex items-center gap-4">
+      <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
+        <IndianRupee className="w-6 h-6 text-green-600" />
+      </div>
+      <div>
+        <p className="text-xs text-green-700 font-medium uppercase tracking-wide">Commission Earned</p>
+        <p className="text-xl font-bold text-green-800 mt-0.5">₹{earned.toLocaleString("en-IN")}</p>
       </div>
     </div>
   );
@@ -161,6 +177,7 @@ export default function PartnershipPage() {
                   <span className="text-white/80 text-sm">{member.city}</span>
                 </div>
               )}
+              {/* Only type label + code in banner — commission badge is shown below */}
               <div className="flex flex-wrap items-center gap-2 mt-2">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-sm border border-white/30 rounded-full text-white text-xs font-semibold">
                   <Star className="w-3 h-3" />
@@ -179,6 +196,22 @@ export default function PartnershipPage() {
       {/* ── Content ────────────────────────────────────────────────────────── */}
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
 
+        {/* ── Commission Badge ────────────────────────────────────────────── */}
+        {member.commission_percentage != null && (
+          <div className="flex items-center gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
+            <div className="w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+              <Percent className="w-5 h-5 text-indigo-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Commission Rate</p>
+              <p className="text-lg font-black text-gray-900 mt-0.5">{member.commission_percentage}% per sale</p>
+            </div>
+            <span className="px-3 py-1.5 bg-indigo-100 text-indigo-700 text-sm font-bold rounded-full">
+              {member.commission_percentage}%
+            </span>
+          </div>
+        )}
+
         {/* ── Stats row ──────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-4">
           <StatCard
@@ -193,6 +226,20 @@ export default function PartnershipPage() {
             value={fmtDate(member.joinedAt)}
             color="bg-amber-50 text-amber-600"
           />
+          {member.total_revenue != null && (
+            <StatCard
+              icon={TrendingUp}
+              label="Revenue Generated"
+              value={`₹${fmt(member.total_revenue)}`}
+              color="bg-purple-50 text-purple-600"
+            />
+          )}
+          {member.total_revenue != null && member.commission_percentage != null && (
+            <CommissionEarnedCard
+              revenue={member.total_revenue}
+              commission={member.commission_percentage}
+            />
+          )}
         </div>
 
         {/* ── My code - signups table ─────────────────────────────────────── */}
