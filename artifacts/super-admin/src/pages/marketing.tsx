@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, Legend,
 } from "recharts";
 import {
   TrendingUp, Users, DollarSign, Activity, Plus, Trash2, Edit2,
-  Download, Search, ChevronLeft, ChevronRight, X, Check, RefreshCw, Link2,
+  Download, Search, ChevronLeft, ChevronRight, X, Check, RefreshCw, Link2, QrCode,
 } from "lucide-react";
 
 function partnerLink(type: "influencer" | "ambassador" | "referral", code: string) {
@@ -26,6 +27,85 @@ function copyLink(type: "influencer" | "ambassador" | "referral", code: string, 
   }).catch(() => {
     toast({ title: "Link", description: url });
   });
+}
+
+/* ── QR Code Dialog ── */
+const TYPE_LABELS: Record<string, string> = { influencer: "Influencer", ambassador: "Ambassador", referral: "Referral Partner" };
+const TYPE_COLORS: Record<string, string> = { influencer: "from-cyan-500 to-blue-600", ambassador: "from-violet-500 to-purple-700", referral: "from-amber-500 to-orange-600" };
+
+function QRDialog({ open, onClose, type, code, name }: { open: boolean; onClose: () => void; type: string; code: string; name: string }) {
+  const { toast } = useToast();
+  const url = partnerLink(type as any, code);
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=16&data=${encodeURIComponent(url)}`;
+
+  function handleCopy() {
+    navigator.clipboard.writeText(url).then(() => toast({ title: "Link copied!" })).catch(() => {});
+  }
+
+  function handleDownload() {
+    const a = document.createElement("a");
+    a.href = `https://api.qrserver.com/v1/create-qr-code/?size=512x512&margin=20&data=${encodeURIComponent(url)}`;
+    a.download = `wmh-partnership-${code}.png`;
+    a.target = "_blank";
+    a.click();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-xs">
+        <DialogHeader>
+          <DialogTitle className="text-center">
+            <span className={`inline-block text-transparent bg-clip-text bg-gradient-to-r ${TYPE_COLORS[type] || "from-gray-600 to-gray-800"} font-black text-lg`}>
+              Partnership QR
+            </span>
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="flex flex-col items-center gap-4 py-1">
+          {/* Partner info */}
+          <div className="text-center">
+            <p className="font-bold text-gray-900 text-base">{name}</p>
+            <p className="text-xs text-muted-foreground">{TYPE_LABELS[type] || type}</p>
+          </div>
+
+          {/* QR Code */}
+          <div className="rounded-2xl border-2 border-gray-100 shadow-sm bg-white p-2 overflow-hidden">
+            <img
+              src={qrUrl}
+              alt={`QR code for ${code}`}
+              width={220}
+              height={220}
+              className="block rounded-lg"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = `https://chart.googleapis.com/chart?chs=220x220&cht=qr&chl=${encodeURIComponent(url)}`;
+              }}
+            />
+          </div>
+
+          {/* Code badge */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-full border text-sm font-mono font-bold text-gray-700">
+            <QrCode className="w-3.5 h-3.5 text-gray-500" />
+            {code}
+          </div>
+
+          {/* URL (truncated) */}
+          <p className="text-[10px] text-muted-foreground text-center break-all leading-relaxed px-1 max-h-10 overflow-hidden" title={url}>
+            {url}
+          </p>
+
+          {/* Action buttons */}
+          <div className="flex gap-2 w-full">
+            <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={handleCopy}>
+              <Link2 className="w-3.5 h-3.5" /> Copy Link
+            </Button>
+            <Button size="sm" className="flex-1 gap-1.5 bg-gradient-to-r from-gray-800 to-gray-900 text-white hover:from-gray-700" onClick={handleDownload}>
+              <Download className="w-3.5 h-3.5" /> Save QR
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 const BASE = "/api";
@@ -447,6 +527,7 @@ function InfluencersTab() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ name: "", coupon_code: "", commission_percentage: "" });
+  const [qrTarget, setQrTarget] = useState<{ code: string; name: string } | null>(null);
   const { toast } = useToast();
   const PAGE_SIZE = 10;
 
@@ -542,6 +623,7 @@ function InfluencersTab() {
                       <td className="p-3 text-right text-purple-600 font-semibold">{fmtRs(inf.total_revenue * inf.commission_percentage / 100)}</td>
                       <td className="p-3 text-right">
                         <div className="flex gap-1 justify-end">
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50" title="Show QR code" onClick={() => setQrTarget({ code: inf.coupon_code, name: inf.name })}><QrCode className="w-3.5 h-3.5" /></Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7 text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50" title="Copy partnership link" onClick={() => copyLink("influencer", inf.coupon_code, toast)}><Link2 className="w-3.5 h-3.5" /></Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditing(inf); setForm({ name: inf.name, coupon_code: inf.coupon_code, commission_percentage: String(inf.commission_percentage) }); setShowForm(true); }}><Edit2 className="w-3.5 h-3.5" /></Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => del(inf._id)}><Trash2 className="w-3.5 h-3.5" /></Button>
@@ -563,6 +645,8 @@ function InfluencersTab() {
           <Button size="sm" variant="outline" disabled={page===totalPages} onClick={() => setPage(p=>p+1)}><ChevronRight className="w-4 h-4" /></Button>
         </div>
       )}
+
+      {qrTarget && <QRDialog open={true} onClose={() => setQrTarget(null)} type="influencer" code={qrTarget.code} name={qrTarget.name} />}
     </div>
   );
 }
@@ -576,6 +660,7 @@ function AmbassadorsTab() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ name: "", city: "", referral_code: "", commission_percentage: "" });
+  const [qrTarget, setQrTarget] = useState<{ code: string; name: string } | null>(null);
   const { toast } = useToast();
   const PAGE_SIZE = 10;
 
@@ -673,6 +758,7 @@ function AmbassadorsTab() {
                       <td className="p-3 text-right text-purple-600 font-semibold">{fmtRs(amb.total_revenue * amb.commission_percentage / 100)}</td>
                       <td className="p-3 text-right">
                         <div className="flex gap-1 justify-end">
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-violet-600 hover:text-violet-700 hover:bg-violet-50" title="Show QR code" onClick={() => setQrTarget({ code: amb.referral_code, name: amb.name })}><QrCode className="w-3.5 h-3.5" /></Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7 text-violet-600 hover:text-violet-700 hover:bg-violet-50" title="Copy partnership link" onClick={() => copyLink("ambassador", amb.referral_code, toast)}><Link2 className="w-3.5 h-3.5" /></Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditing(amb); setForm({ name: amb.name, city: amb.city||"", referral_code: amb.referral_code, commission_percentage: String(amb.commission_percentage) }); setShowForm(true); }}><Edit2 className="w-3.5 h-3.5" /></Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => del(amb._id)}><Trash2 className="w-3.5 h-3.5" /></Button>
@@ -694,6 +780,8 @@ function AmbassadorsTab() {
           <Button size="sm" variant="outline" disabled={page===totalPages} onClick={() => setPage(p=>p+1)}><ChevronRight className="w-4 h-4" /></Button>
         </div>
       )}
+
+      {qrTarget && <QRDialog open={true} onClose={() => setQrTarget(null)} type="ambassador" code={qrTarget.code} name={qrTarget.name} />}
     </div>
   );
 }
@@ -704,6 +792,7 @@ function ReferralTab() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [qrTarget, setQrTarget] = useState<{ code: string; name: string } | null>(null);
   const { toast } = useToast();
   const PAGE_SIZE = 10;
 
@@ -763,6 +852,7 @@ function ReferralTab() {
                       <td className="p-3 text-right text-muted-foreground">{new Date(rc.createdAt).toLocaleDateString()}</td>
                       <td className="p-3 text-right">
                         <div className="flex gap-1 justify-end">
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-amber-600 hover:text-amber-700 hover:bg-amber-50" title="Show QR code" onClick={() => setQrTarget({ code: rc.referral_code, name: rc.owner_admin_id?.username || rc.referral_code })}><QrCode className="w-3.5 h-3.5" /></Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7 text-amber-600 hover:text-amber-700 hover:bg-amber-50" title="Copy partnership link" onClick={() => copyLink("referral", rc.referral_code, toast)}><Link2 className="w-3.5 h-3.5" /></Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => del(rc._id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                         </div>
@@ -783,6 +873,8 @@ function ReferralTab() {
           <Button size="sm" variant="outline" disabled={page===totalPages} onClick={() => setPage(p=>p+1)}><ChevronRight className="w-4 h-4" /></Button>
         </div>
       )}
+
+      {qrTarget && <QRDialog open={true} onClose={() => setQrTarget(null)} type="referral" code={qrTarget.code} name={qrTarget.name} />}
     </div>
   );
 }
