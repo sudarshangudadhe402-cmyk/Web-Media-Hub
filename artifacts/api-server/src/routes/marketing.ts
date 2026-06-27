@@ -43,9 +43,12 @@ const SOURCE_COLORS: Record<string, string> = {
   DIRECT: "#6b7280",
 };
 
-function parsePlanPrice(priceStr: string): number {
-  if (!priceStr) return 0;
-  const n = parseFloat(priceStr.replace(/[^\d.]/g, ""));
+function parsePlanPrice(priceStr: any): number {
+  if (priceStr === undefined || priceStr === null || priceStr === "") return 0;
+  if (typeof priceStr === "number") return isNaN(priceStr) ? 0 : priceStr;
+  const cleaned = String(priceStr).replace(/[^\d.]/g, "");
+  if (!cleaned) return 0;
+  const n = parseFloat(cleaned);
   return isNaN(n) ? 0 : n;
 }
 

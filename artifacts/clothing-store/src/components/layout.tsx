@@ -212,7 +212,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-56 p-0 border-r border-sidebar-border" style={{ background: "hsl(var(--sidebar))" }}>
+              <SheetContent side="left" className="w-56 p-0 border-r border-sidebar-border" style={{ background: "hsl(var(--sidebar))", color: "hsl(var(--sidebar-foreground))" }}>
                 <div className="relative h-[60px] flex items-center gap-3 px-4 border-b overflow-hidden" style={{ borderColor: "hsl(var(--sidebar-border))" }}>
                   <div className="absolute inset-0 opacity-20" style={{ background: "linear-gradient(135deg, hsl(var(--sidebar-primary)) 0%, transparent 60%)" }} />
                   <div className="relative z-10 flex items-center gap-2.5 min-w-0">

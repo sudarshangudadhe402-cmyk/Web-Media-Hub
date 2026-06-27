@@ -138,6 +138,7 @@ function DashboardTab() {
       const params = new URLSearchParams({ range });
       if (range === "custom" && from && to) { params.set("from", from); params.set("to", to); }
       const r = await fetch(`${BASE}/marketing/dashboard?${params}`, { headers: authHeaders() });
+      if (!r.ok) throw new Error("Server error");
       setData(await r.json());
     } catch { toast({ title: "Failed to load dashboard", variant: "destructive" }); }
     finally { setLoading(false); }
