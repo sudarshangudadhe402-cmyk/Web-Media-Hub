@@ -10,8 +10,23 @@ import {
 } from "recharts";
 import {
   TrendingUp, Users, DollarSign, Activity, Plus, Trash2, Edit2,
-  Download, Search, ChevronLeft, ChevronRight, X, Check, RefreshCw,
+  Download, Search, ChevronLeft, ChevronRight, X, Check, RefreshCw, Link2,
 } from "lucide-react";
+
+function partnerLink(type: "influencer" | "ambassador" | "referral", code: string) {
+  const origin = window.location.origin;
+  const base = (import.meta.env.BASE_URL || "/super-admin").replace(/\/$/, "");
+  return `${origin}${base}/partnership/${type}/${code}`;
+}
+
+function copyLink(type: "influencer" | "ambassador" | "referral", code: string, toast: any) {
+  const url = partnerLink(type, code);
+  navigator.clipboard.writeText(url).then(() => {
+    toast({ title: "Link copied!", description: `Partnership link for ${code} copied.` });
+  }).catch(() => {
+    toast({ title: "Link", description: url });
+  });
+}
 
 const BASE = "/api";
 function token() { return sessionStorage.getItem("wmh_super_token") || ""; }
@@ -527,6 +542,7 @@ function InfluencersTab() {
                       <td className="p-3 text-right text-purple-600 font-semibold">{fmtRs(inf.total_revenue * inf.commission_percentage / 100)}</td>
                       <td className="p-3 text-right">
                         <div className="flex gap-1 justify-end">
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50" title="Copy partnership link" onClick={() => copyLink("influencer", inf.coupon_code, toast)}><Link2 className="w-3.5 h-3.5" /></Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditing(inf); setForm({ name: inf.name, coupon_code: inf.coupon_code, commission_percentage: String(inf.commission_percentage) }); setShowForm(true); }}><Edit2 className="w-3.5 h-3.5" /></Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => del(inf._id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                         </div>
@@ -657,6 +673,7 @@ function AmbassadorsTab() {
                       <td className="p-3 text-right text-purple-600 font-semibold">{fmtRs(amb.total_revenue * amb.commission_percentage / 100)}</td>
                       <td className="p-3 text-right">
                         <div className="flex gap-1 justify-end">
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-violet-600 hover:text-violet-700 hover:bg-violet-50" title="Copy partnership link" onClick={() => copyLink("ambassador", amb.referral_code, toast)}><Link2 className="w-3.5 h-3.5" /></Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditing(amb); setForm({ name: amb.name, city: amb.city||"", referral_code: amb.referral_code, commission_percentage: String(amb.commission_percentage) }); setShowForm(true); }}><Edit2 className="w-3.5 h-3.5" /></Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => del(amb._id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                         </div>
@@ -745,7 +762,10 @@ function ReferralTab() {
                       <td className="p-3 text-right text-green-600 font-semibold">{rc.total_paid_admins}</td>
                       <td className="p-3 text-right text-muted-foreground">{new Date(rc.createdAt).toLocaleDateString()}</td>
                       <td className="p-3 text-right">
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => del(rc._id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                        <div className="flex gap-1 justify-end">
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-amber-600 hover:text-amber-700 hover:bg-amber-50" title="Copy partnership link" onClick={() => copyLink("referral", rc.referral_code, toast)}><Link2 className="w-3.5 h-3.5" /></Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => del(rc._id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                        </div>
                       </td>
                     </tr>
                   ))}

@@ -318,6 +318,110 @@ router.post("/public/reviews/:id/like", ipRateLimit(20, 60_000), async (req, res
   }
 });
 
+// ── Partner profile (public — no auth, used by partnership page) ──────────────
+import { Influencer } from "../models/Influencer";
+import { Ambassador } from "../models/Ambassador";
+import { ReferralCode } from "../models/ReferralCode";
+import { User } from "../models/User";
+
+router.get(
+  "/public/partner/:type/:code",
+  ipRateLimit(60, 60_000),
+  async (req: Request, res: Response) => {
+    const type = req.params.type.toLowerCase();
+    const code = req.params.code.toUpperCase();
+
+    if (!["influencer", "ambassador", "referral"].includes(type)) {
+      res.status(400).json({ error: "Invalid partner type" });
+      return;
+    }
+
+    try {
+      let member: any = null;
+      let signupSource = "";
+
+      if (type === "influencer") {
+        const inf = await Influencer.findOne({ coupon_code: code }).lean();
+        if (!inf) { res.status(404).json({ error: "Partner not found" }); return; }
+        member = {
+          type: "influencer",
+          name: inf.name,
+          code: inf.coupon_code,
+          commission_percentage: inf.commission_percentage,
+          total_signups: inf.total_signups,
+          total_paid_admins: inf.total_paid_admins,
+          total_revenue: inf.total_revenue,
+          joinedAt: (inf as any).createdAt,
+        };
+        signupSource = "INFLUENCER";
+      } else if (type === "ambassador") {
+        const amb = await Ambassador.findOne({ referral_code: code }).lean();
+        if (!amb) { res.status(404).json({ error: "Partner not found" }); return; }
+        member = {
+          type: "ambassador",
+          name: amb.name,
+          city: amb.city,
+          code: amb.referral_code,
+          commission_percentage: amb.commission_percentage,
+          total_signups: amb.total_signups,
+          total_paid_admins: amb.total_paid_admins,
+          total_revenue: amb.total_revenue,
+          joinedAt: (amb as any).createdAt,
+        };
+        signupSource = "AMBASSADOR";
+      } else {
+        const rc = await ReferralCode.findOne({ referral_code: code })
+          .populate<{ owner_admin_id: any }>("owner_admin_id", "username email adminNumber planName planBadge")
+          .lean();
+        if (!rc) { res.status(404).json({ error: "Partner not found" }); return; }
+        const owner = (rc as any).owner_admin_id;
+        member = {
+          type: "referral",
+          name: owner?.username || "Admin",
+          email: owner?.email || "",
+          code: rc.referral_code,
+          commission_percentage: null,
+          total_signups: rc.total_signups,
+          total_paid_admins: rc.total_paid_admins,
+          total_revenue: null,
+          joinedAt: (rc as any).createdAt,
+          owner_plan: owner?.planName || "",
+        };
+        signupSource = "REFERRAL";
+      }
+
+      // Fetch admins who signed up via this code
+      const signups = await User.find(
+        { signup_source: signupSource, coupon_code: code, role: "admin" },
+        {
+          email: 1, adminNumber: 1, planName: 1, planPrice: 1, planBadge: 1,
+          subscriptionStartDate: 1, subscriptionEndDate: 1, createdAt: 1, isActive: 1,
+        }
+      )
+        .sort({ createdAt: -1 })
+        .limit(200)
+        .lean();
+
+      res.json({
+        member,
+        signups: signups.map((u: any) => ({
+          email: u.email || "",
+          adminNumber: u.adminNumber || "",
+          planName: u.planName || "—",
+          planPrice: u.planPrice || "—",
+          planBadge: u.planBadge || "",
+          isActive: u.isActive,
+          subscriptionStartDate: u.subscriptionStartDate ? new Date(u.subscriptionStartDate).toISOString() : null,
+          subscriptionEndDate: u.subscriptionEndDate ? new Date(u.subscriptionEndDate).toISOString() : null,
+          signedUpAt: new Date(u.createdAt).toISOString(),
+        })),
+      });
+    } catch (err) {
+      (req as any).log?.error({ err }, "Partner profile error");
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default router;

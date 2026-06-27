@@ -11,6 +11,7 @@ import LegalLog from "@/pages/legal-log";
 import Revenue from "@/pages/revenue";
 import PricingConfig from "@/pages/pricing-config";
 import MarketingAnalytics from "@/pages/marketing";
+import PartnershipPage from "@/pages/partnership";
 import Layout from "@/components/layout";
 import NotFound from "@/pages/not-found";
 
@@ -78,6 +79,7 @@ function Router() {
           <MarketingAnalytics />
         </ProtectedRoute>
       </Route>
+      <Route path="/partnership/:type/:code" component={PartnershipPage} />
       <Route component={NotFound} />
     </Switch>
   );
