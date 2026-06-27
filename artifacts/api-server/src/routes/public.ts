@@ -318,11 +318,61 @@ router.post("/public/reviews/:id/like", ipRateLimit(20, 60_000), async (req, res
   }
 });
 
-// ── Partner profile (public — no auth, used by partnership page) ──────────────
+// ── Partner code validation (public — no auth) ────────────────────────────────
 import { Influencer } from "../models/Influencer";
 import { Ambassador } from "../models/Ambassador";
 import { ReferralCode } from "../models/ReferralCode";
 import { User } from "../models/User";
+
+router.get(
+  "/public/validate-partner-code",
+  ipRateLimit(30, 60_000),
+  async (req: Request, res: Response) => {
+    const code = String(req.query.code || "").toUpperCase().trim();
+    if (!code) { res.status(400).json({ error: "code required" }); return; }
+
+    try {
+      const inf = await Influencer.findOne({ coupon_code: code }).lean();
+      if (inf) {
+        res.json({
+          valid: true, type: "influencer", name: inf.name, code: inf.coupon_code,
+          discount_percentage: (inf as any).customer_discount_percentage ?? 0,
+          commission_percentage: inf.commission_percentage,
+        });
+        return;
+      }
+
+      const amb = await Ambassador.findOne({ referral_code: code }).lean();
+      if (amb) {
+        res.json({
+          valid: true, type: "ambassador", name: amb.name, city: amb.city, code: amb.referral_code,
+          discount_percentage: (amb as any).customer_discount_percentage ?? 0,
+          commission_percentage: amb.commission_percentage,
+        });
+        return;
+      }
+
+      const rc = await ReferralCode.findOne({ referral_code: code })
+        .populate<{ owner_admin_id: any }>("owner_admin_id", "username")
+        .lean();
+      if (rc) {
+        const owner = (rc as any).owner_admin_id;
+        res.json({
+          valid: true, type: "referral", name: owner?.username || "Admin", code: rc.referral_code,
+          discount_percentage: (rc as any).customer_discount_percentage ?? 0,
+          commission_percentage: (rc as any).commission_percentage ?? 0,
+        });
+        return;
+      }
+
+      res.json({ valid: false });
+    } catch (err) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+// ── Partner profile (public — no auth, used by partnership page) ──────────────
 
 router.get(
   "/public/partner/:type/:code",

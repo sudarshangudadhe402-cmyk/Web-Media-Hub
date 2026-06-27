@@ -65,11 +65,14 @@ export interface AdminInput {
   email: string;
   password: string;
   adminNumber?: string;
+  planKey?: string;
   planName?: string;
   planPrice?: string;
   planPeriod?: string;
   planBadge?: string;
   planColor?: string;
+  couponCode?: string;
+  partnerCode?: string;
 }
 
 export type StoreRequestItemStatus = typeof StoreRequestItemStatus[keyof typeof StoreRequestItemStatus];

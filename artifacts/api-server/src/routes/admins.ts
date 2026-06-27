@@ -7,6 +7,9 @@ import { requireSuperAdmin } from "../middlewares/auth";
 import { OtpCode } from "../models/OtpCode";
 import { sendOtpEmail } from "../services/emailOtp";
 import { PricingSettings } from "../models/PricingSettings";
+import { Influencer } from "../models/Influencer";
+import { Ambassador } from "../models/Ambassador";
+import { ReferralCode } from "../models/ReferralCode";
 import { DEFAULT_PRICING_CONFIG } from "./settings";
 
 const router = Router();
@@ -68,6 +71,52 @@ async function incrementCouponUsed(planKey: string, couponCode: string) {
   } catch {
     // Non-critical
   }
+}
+
+// ── Partner code helpers ──────────────────────────────────────────────────────
+function parsePlanPrice(priceStr: any): number {
+  if (!priceStr) return 0;
+  const cleaned = String(priceStr).replace(/[^\d.]/g, "");
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? 0 : n;
+}
+
+function applyDiscount(priceStr: string, discountPct: number): string {
+  if (!discountPct) return priceStr;
+  const numeric = parsePlanPrice(priceStr);
+  if (!numeric) return priceStr;
+  const discounted = Math.round(numeric * (1 - discountPct / 100));
+  return `₹${discounted.toLocaleString("en-IN")}`;
+}
+
+interface PartnerInfo {
+  type: "INFLUENCER" | "AMBASSADOR" | "REFERRAL";
+  discount_percentage: number;
+}
+
+async function lookupPartnerCode(code: string): Promise<PartnerInfo | null> {
+  const upper = code.toUpperCase();
+  const inf = await Influencer.findOne({ coupon_code: upper }).select("customer_discount_percentage").lean();
+  if (inf) return { type: "INFLUENCER", discount_percentage: (inf as any).customer_discount_percentage ?? 0 };
+
+  const amb = await Ambassador.findOne({ referral_code: upper }).select("customer_discount_percentage").lean();
+  if (amb) return { type: "AMBASSADOR", discount_percentage: (amb as any).customer_discount_percentage ?? 0 };
+
+  const rc = await ReferralCode.findOne({ referral_code: upper }).select("customer_discount_percentage").lean();
+  if (rc) return { type: "REFERRAL", discount_percentage: (rc as any).customer_discount_percentage ?? 0 };
+
+  return null;
+}
+
+async function trackPartnerSignup(code: string, type: string, planPrice: string) {
+  const upper = code.toUpperCase();
+  const amount = parsePlanPrice(planPrice);
+  const isPaid = amount > 0;
+  const inc = { $inc: { total_signups: 1, ...(isPaid ? { total_paid_admins: 1, total_revenue: amount } : {}) } };
+
+  if (type === "INFLUENCER") await Influencer.findOneAndUpdate({ coupon_code: upper }, inc);
+  else if (type === "AMBASSADOR") await Ambassador.findOneAndUpdate({ referral_code: upper }, inc);
+  else if (type === "REFERRAL") await ReferralCode.findOneAndUpdate({ referral_code: upper }, inc);
 }
 
 // ── Send OTP to verify admin email before creation ──────────────────────────
@@ -267,7 +316,13 @@ router.get("/admins", requireSuperAdmin, async (req, res) => {
 
 router.post("/admins", requireSuperAdmin, async (req, res) => {
   try {
-    const { email, password, adminNumber, planKey, planName, planPrice, planPeriod, planBadge, planColor, couponCode } = req.body;
+    const {
+      email, password, adminNumber,
+      planKey, planName, planPeriod, planBadge, planColor,
+      couponCode, partnerCode,
+    } = req.body;
+    let planPrice: string = req.body.planPrice ?? "";
+
     if (!email || !password) {
       res.status(400).json({ error: "Email and password are required" });
       return;
@@ -297,6 +352,23 @@ router.post("/admins", requireSuperAdmin, async (req, res) => {
     const planCfg = planKey ? (pricingPlans as any)[planKey] : null;
     const subscriptionDays: number | null = planCfg?.subscriptionDays ?? null;
 
+    // ── Partner code: look up, apply discount, set signup source ──────────────
+    let signupSource = "ORGANIC";
+    let storedCouponCode = "";
+    let partnerType = "";
+
+    if (partnerCode && partnerCode.trim()) {
+      const partner = await lookupPartnerCode(partnerCode.trim());
+      if (partner) {
+        partnerType = partner.type;
+        signupSource = partner.type;
+        storedCouponCode = partnerCode.trim().toUpperCase();
+        if (partner.discount_percentage > 0 && planPrice) {
+          planPrice = applyDiscount(planPrice, partner.discount_percentage);
+        }
+      }
+    }
+
     const autoUsername = `admin_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
     const { start, end } = calcSubscriptionDates(subscriptionDays, planPeriod ?? "");
 
@@ -309,16 +381,24 @@ router.post("/admins", requireSuperAdmin, async (req, res) => {
       isActive: true,
       planKey: planKey ?? "",
       planName: planName ?? "",
-      planPrice: planPrice ?? "",
+      planPrice,
       planPeriod: planPeriod ?? "",
       planBadge: planBadge ?? "",
       planColor: planColor ?? "",
       subscriptionStartDate: start,
       subscriptionEndDate: end,
+      signup_source: signupSource,
+      coupon_code: storedCouponCode,
     });
 
-    if (couponCode && planKey) {
+    // Increment pricing coupon usage (non-partner coupons)
+    if (couponCode && planKey && !partnerType) {
       await incrementCouponUsed(planKey, couponCode);
+    }
+
+    // Track partner signup stats
+    if (partnerType && storedCouponCode) {
+      try { await trackPartnerSignup(storedCouponCode, partnerType, planPrice); } catch { /* non-critical */ }
     }
 
     res.status(201).json({

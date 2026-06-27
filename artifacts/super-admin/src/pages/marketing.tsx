@@ -526,7 +526,7 @@ function InfluencersTab() {
   const [page, setPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ name: "", coupon_code: "", commission_percentage: "" });
+  const [form, setForm] = useState({ name: "", coupon_code: "", commission_percentage: "", customer_discount_percentage: "" });
   const [qrTarget, setQrTarget] = useState<{ code: string; name: string } | null>(null);
   const { toast } = useToast();
   const PAGE_SIZE = 10;
@@ -551,10 +551,10 @@ function InfluencersTab() {
     try {
       const url = editing ? `${BASE}/marketing/influencers/${editing._id}` : `${BASE}/marketing/influencers`;
       const method = editing ? "PUT" : "POST";
-      const r = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify({ ...form, commission_percentage: parseFloat(form.commission_percentage) || 0 }) });
+      const r = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify({ ...form, commission_percentage: parseFloat(form.commission_percentage) || 0, customer_discount_percentage: parseFloat(form.customer_discount_percentage) || 0 }) });
       if (!r.ok) { const e = await r.json(); toast({ title: e.error || "Failed", variant: "destructive" }); return; }
       toast({ title: editing ? "Updated" : "Created" });
-      setShowForm(false); setEditing(null); setForm({ name: "", coupon_code: "", commission_percentage: "" });
+      setShowForm(false); setEditing(null); setForm({ name: "", coupon_code: "", commission_percentage: "", customer_discount_percentage: "" });
       load();
     } catch { toast({ title: "Failed", variant: "destructive" }); }
   }
@@ -573,7 +573,7 @@ function InfluencersTab() {
         <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Search..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="pl-9 h-9 w-52" /></div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={exportCSV}><Download className="w-4 h-4 mr-1" />CSV</Button>
-          <Button size="sm" onClick={() => { setEditing(null); setForm({ name: "", coupon_code: "", commission_percentage: "" }); setShowForm(true); }}><Plus className="w-4 h-4 mr-1" />Add Influencer</Button>
+          <Button size="sm" onClick={() => { setEditing(null); setForm({ name: "", coupon_code: "", commission_percentage: "", customer_discount_percentage: "" }); setShowForm(true); }}><Plus className="w-4 h-4 mr-1" />Add Influencer</Button>
         </div>
       </div>
 
@@ -581,10 +581,11 @@ function InfluencersTab() {
       {showForm && (
         <Card className="border-primary/30">
           <CardContent className="pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <div><label className="text-xs font-medium mb-1 block">Name *</label><Input value={form.name} onChange={e => setForm(p => ({...p, name: e.target.value}))} placeholder="Influencer name" /></div>
               <div><label className="text-xs font-medium mb-1 block">Coupon Code *</label><Input value={form.coupon_code} onChange={e => setForm(p => ({...p, coupon_code: e.target.value.toUpperCase()}))} placeholder="CODE123" /></div>
-              <div><label className="text-xs font-medium mb-1 block">Commission %</label><Input type="number" value={form.commission_percentage} onChange={e => setForm(p => ({...p, commission_percentage: e.target.value}))} placeholder="10" min="0" max="100" /></div>
+              <div><label className="text-xs font-medium mb-1 block">Commission % <span className="text-muted-foreground">(partner earns)</span></label><Input type="number" value={form.commission_percentage} onChange={e => setForm(p => ({...p, commission_percentage: e.target.value}))} placeholder="10" min="0" max="100" /></div>
+              <div><label className="text-xs font-medium mb-1 block">Customer Discount % <span className="text-muted-foreground">(buyer gets)</span></label><Input type="number" value={form.customer_discount_percentage} onChange={e => setForm(p => ({...p, customer_discount_percentage: e.target.value}))} placeholder="5" min="0" max="100" /></div>
             </div>
             <div className="flex gap-2 mt-3">
               <Button size="sm" onClick={save}><Check className="w-4 h-4 mr-1" />{editing ? "Update" : "Create"}</Button>
@@ -603,6 +604,7 @@ function InfluencersTab() {
                   <th className="text-left p-3 font-medium">Name</th>
                   <th className="text-left p-3 font-medium">Coupon Code</th>
                   <th className="text-right p-3 font-medium">Commission</th>
+                  <th className="text-right p-3 font-medium">Cust. Discount</th>
                   <th className="text-right p-3 font-medium">Signups</th>
                   <th className="text-right p-3 font-medium">Paying</th>
                   <th className="text-right p-3 font-medium">Revenue</th>
@@ -611,12 +613,13 @@ function InfluencersTab() {
                 </tr></thead>
                 <tbody>
                   {paged.length === 0 ? (
-                    <tr><td colSpan={8} className="text-center py-10 text-muted-foreground">No influencers found</td></tr>
+                    <tr><td colSpan={9} className="text-center py-10 text-muted-foreground">No influencers found</td></tr>
                   ) : paged.map((inf) => (
                     <tr key={inf._id} className="border-b last:border-0 hover:bg-muted/20">
                       <td className="p-3 font-medium">{inf.name}</td>
                       <td className="p-3"><Badge variant="outline">{inf.coupon_code}</Badge></td>
                       <td className="p-3 text-right">{inf.commission_percentage}%</td>
+                      <td className="p-3 text-right text-blue-600 font-semibold">{inf.customer_discount_percentage ?? 0}%</td>
                       <td className="p-3 text-right font-semibold">{inf.total_signups}</td>
                       <td className="p-3 text-right text-green-600 font-semibold">{inf.total_paid_admins}</td>
                       <td className="p-3 text-right font-semibold">{fmtRs(inf.total_revenue)}</td>
@@ -625,7 +628,7 @@ function InfluencersTab() {
                         <div className="flex gap-1 justify-end">
                           <Button size="icon" variant="ghost" className="h-7 w-7 text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50" title="Show QR code" onClick={() => setQrTarget({ code: inf.coupon_code, name: inf.name })}><QrCode className="w-3.5 h-3.5" /></Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7 text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50" title="Copy partnership link" onClick={() => copyLink("influencer", inf.coupon_code, toast)}><Link2 className="w-3.5 h-3.5" /></Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditing(inf); setForm({ name: inf.name, coupon_code: inf.coupon_code, commission_percentage: String(inf.commission_percentage) }); setShowForm(true); }}><Edit2 className="w-3.5 h-3.5" /></Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditing(inf); setForm({ name: inf.name, coupon_code: inf.coupon_code, commission_percentage: String(inf.commission_percentage), customer_discount_percentage: String(inf.customer_discount_percentage ?? 0) }); setShowForm(true); }}><Edit2 className="w-3.5 h-3.5" /></Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => del(inf._id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                         </div>
                       </td>
@@ -659,7 +662,7 @@ function AmbassadorsTab() {
   const [page, setPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ name: "", city: "", referral_code: "", commission_percentage: "" });
+  const [form, setForm] = useState({ name: "", city: "", referral_code: "", commission_percentage: "", customer_discount_percentage: "" });
   const [qrTarget, setQrTarget] = useState<{ code: string; name: string } | null>(null);
   const { toast } = useToast();
   const PAGE_SIZE = 10;
@@ -684,10 +687,10 @@ function AmbassadorsTab() {
     try {
       const url = editing ? `${BASE}/marketing/ambassadors/${editing._id}` : `${BASE}/marketing/ambassadors`;
       const method = editing ? "PUT" : "POST";
-      const r = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify({ ...form, commission_percentage: parseFloat(form.commission_percentage) || 0 }) });
+      const r = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify({ ...form, commission_percentage: parseFloat(form.commission_percentage) || 0, customer_discount_percentage: parseFloat(form.customer_discount_percentage) || 0 }) });
       if (!r.ok) { const e = await r.json(); toast({ title: e.error || "Failed", variant: "destructive" }); return; }
       toast({ title: editing ? "Updated" : "Created" });
-      setShowForm(false); setEditing(null); setForm({ name: "", city: "", referral_code: "", commission_percentage: "" });
+      setShowForm(false); setEditing(null); setForm({ name: "", city: "", referral_code: "", commission_percentage: "", customer_discount_percentage: "" });
       load();
     } catch { toast({ title: "Failed", variant: "destructive" }); }
   }
@@ -706,18 +709,19 @@ function AmbassadorsTab() {
         <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Search..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="pl-9 h-9 w-52" /></div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={exportCSV}><Download className="w-4 h-4 mr-1" />CSV</Button>
-          <Button size="sm" onClick={() => { setEditing(null); setForm({ name: "", city: "", referral_code: "", commission_percentage: "" }); setShowForm(true); }}><Plus className="w-4 h-4 mr-1" />Add Ambassador</Button>
+          <Button size="sm" onClick={() => { setEditing(null); setForm({ name: "", city: "", referral_code: "", commission_percentage: "", customer_discount_percentage: "" }); setShowForm(true); }}><Plus className="w-4 h-4 mr-1" />Add Ambassador</Button>
         </div>
       </div>
 
       {showForm && (
         <Card className="border-primary/30">
           <CardContent className="pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
               <div><label className="text-xs font-medium mb-1 block">Name *</label><Input value={form.name} onChange={e => setForm(p=>({...p,name:e.target.value}))} placeholder="Ambassador name" /></div>
               <div><label className="text-xs font-medium mb-1 block">City</label><Input value={form.city} onChange={e => setForm(p=>({...p,city:e.target.value}))} placeholder="City" /></div>
               <div><label className="text-xs font-medium mb-1 block">Referral Code *</label><Input value={form.referral_code} onChange={e => setForm(p=>({...p,referral_code:e.target.value.toUpperCase()}))} placeholder="REF123" /></div>
-              <div><label className="text-xs font-medium mb-1 block">Commission %</label><Input type="number" value={form.commission_percentage} onChange={e => setForm(p=>({...p,commission_percentage:e.target.value}))} placeholder="10" min="0" max="100" /></div>
+              <div><label className="text-xs font-medium mb-1 block">Commission % <span className="text-muted-foreground">(partner earns)</span></label><Input type="number" value={form.commission_percentage} onChange={e => setForm(p=>({...p,commission_percentage:e.target.value}))} placeholder="10" min="0" max="100" /></div>
+              <div><label className="text-xs font-medium mb-1 block">Cust. Discount % <span className="text-muted-foreground">(buyer gets)</span></label><Input type="number" value={form.customer_discount_percentage} onChange={e => setForm(p=>({...p,customer_discount_percentage:e.target.value}))} placeholder="5" min="0" max="100" /></div>
             </div>
             <div className="flex gap-2 mt-3">
               <Button size="sm" onClick={save}><Check className="w-4 h-4 mr-1" />{editing ? "Update" : "Create"}</Button>
@@ -737,6 +741,7 @@ function AmbassadorsTab() {
                   <th className="text-left p-3 font-medium">City</th>
                   <th className="text-left p-3 font-medium">Code</th>
                   <th className="text-right p-3 font-medium">Commission</th>
+                  <th className="text-right p-3 font-medium">Cust. Discount</th>
                   <th className="text-right p-3 font-medium">Signups</th>
                   <th className="text-right p-3 font-medium">Paying</th>
                   <th className="text-right p-3 font-medium">Revenue</th>
@@ -745,13 +750,14 @@ function AmbassadorsTab() {
                 </tr></thead>
                 <tbody>
                   {paged.length === 0 ? (
-                    <tr><td colSpan={9} className="text-center py-10 text-muted-foreground">No ambassadors found</td></tr>
+                    <tr><td colSpan={10} className="text-center py-10 text-muted-foreground">No ambassadors found</td></tr>
                   ) : paged.map((amb) => (
                     <tr key={amb._id} className="border-b last:border-0 hover:bg-muted/20">
                       <td className="p-3 font-medium">{amb.name}</td>
                       <td className="p-3 text-muted-foreground">{amb.city || "—"}</td>
                       <td className="p-3"><Badge variant="outline">{amb.referral_code}</Badge></td>
                       <td className="p-3 text-right">{amb.commission_percentage}%</td>
+                      <td className="p-3 text-right text-blue-600 font-semibold">{amb.customer_discount_percentage ?? 0}%</td>
                       <td className="p-3 text-right font-semibold">{amb.total_signups}</td>
                       <td className="p-3 text-right text-green-600 font-semibold">{amb.total_paid_admins}</td>
                       <td className="p-3 text-right font-semibold">{fmtRs(amb.total_revenue)}</td>
@@ -760,7 +766,7 @@ function AmbassadorsTab() {
                         <div className="flex gap-1 justify-end">
                           <Button size="icon" variant="ghost" className="h-7 w-7 text-violet-600 hover:text-violet-700 hover:bg-violet-50" title="Show QR code" onClick={() => setQrTarget({ code: amb.referral_code, name: amb.name })}><QrCode className="w-3.5 h-3.5" /></Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7 text-violet-600 hover:text-violet-700 hover:bg-violet-50" title="Copy partnership link" onClick={() => copyLink("ambassador", amb.referral_code, toast)}><Link2 className="w-3.5 h-3.5" /></Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditing(amb); setForm({ name: amb.name, city: amb.city||"", referral_code: amb.referral_code, commission_percentage: String(amb.commission_percentage) }); setShowForm(true); }}><Edit2 className="w-3.5 h-3.5" /></Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditing(amb); setForm({ name: amb.name, city: amb.city||"", referral_code: amb.referral_code, commission_percentage: String(amb.commission_percentage), customer_discount_percentage: String(amb.customer_discount_percentage ?? 0) }); setShowForm(true); }}><Edit2 className="w-3.5 h-3.5" /></Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => del(amb._id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                         </div>
                       </td>
