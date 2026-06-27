@@ -11,6 +11,7 @@ interface MemberProfile {
   name: string;
   code: string;
   commission_percentage: number | null;
+  customer_discount_percentage: number | null;
   total_signups: number;
   total_paid_admins: number;
   total_revenue: number | null;
@@ -196,21 +197,40 @@ export default function PartnershipPage() {
       {/* ── Content ────────────────────────────────────────────────────────── */}
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
 
-        {/* ── Commission Badge ────────────────────────────────────────────── */}
-        {member.commission_percentage != null && (
-          <div className="flex items-center gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
-            <div className="w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
-              <Percent className="w-5 h-5 text-indigo-600" />
+        {/* ── Commission + Customer Discount Badges ───────────────────────── */}
+        <div className="space-y-3">
+          {member.commission_percentage != null && member.commission_percentage > 0 && (
+            <div className="flex items-center gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
+              <div className="w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+                <Percent className="w-5 h-5 text-indigo-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Your Commission Rate</p>
+                <p className="text-lg font-black text-gray-900 mt-0.5">{member.commission_percentage}% per sale</p>
+                <p className="text-xs text-gray-400 mt-0.5">You earn this on every paying admin you bring in</p>
+              </div>
+              <span className="px-3 py-1.5 bg-indigo-100 text-indigo-700 text-sm font-bold rounded-full">
+                {member.commission_percentage}%
+              </span>
             </div>
-            <div className="flex-1">
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Commission Rate</p>
-              <p className="text-lg font-black text-gray-900 mt-0.5">{member.commission_percentage}% per sale</p>
+          )}
+
+          {(member.customer_discount_percentage ?? 0) > 0 && (
+            <div className="flex items-center gap-3 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl border border-blue-100 shadow-sm px-5 py-4">
+              <div className="w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+                <Tag className="w-5 h-5 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs text-blue-600 font-medium uppercase tracking-wide">Customer Discount</p>
+                <p className="text-lg font-black text-gray-900 mt-0.5">{member.customer_discount_percentage}% off for your referrals</p>
+                <p className="text-xs text-blue-500 mt-0.5">Anyone who uses your code <span className="font-mono font-bold">{member.code}</span> gets this discount</p>
+              </div>
+              <span className="px-3 py-1.5 bg-blue-100 text-blue-700 text-sm font-bold rounded-full">
+                {member.customer_discount_percentage}% OFF
+              </span>
             </div>
-            <span className="px-3 py-1.5 bg-indigo-100 text-indigo-700 text-sm font-bold rounded-full">
-              {member.commission_percentage}%
-            </span>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* ── Stats row ──────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-4">
