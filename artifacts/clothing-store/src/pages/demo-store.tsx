@@ -130,8 +130,8 @@ function BlockPopup({ onClose }: { onClose: () => void }) {
         className="bg-white rounded-2xl p-7 max-w-sm w-full shadow-2xl text-center space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto" style={{ background: "linear-gradient(135deg,#f3ebff,#e8d5ff)" }}>
-          <Lock className="w-8 h-8" style={{ color: "#7B4FA6" }} />
+        <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto" style={{ background: "linear-gradient(135deg,#FEF3C7,#FDE68A)" }}>
+          <Lock className="w-8 h-8" style={{ color: "#D97706" }} />
         </div>
         <div>
           <h3 className="text-lg font-bold text-gray-900 mb-1">Demo Store</h3>
@@ -142,7 +142,7 @@ function BlockPopup({ onClose }: { onClose: () => void }) {
         <div className="flex gap-3 pt-1">
           <Button variant="outline" className="flex-1" onClick={onClose}>Close</Button>
           <Link href="/create-store">
-            <Button className="flex-1 text-white" style={{ background: "#7B4FA6" }}>Create My Store</Button>
+            <Button className="flex-1 text-white" style={{ background: "#D97706" }}>Create My Store</Button>
           </Link>
         </div>
       </motion.div>
@@ -171,7 +171,7 @@ function LockedPage({ title, icon: Icon }: { title: string; icon: React.ElementT
         </p>
       </div>
       <Link href="/create-store">
-        <Button className="gap-2 text-white mt-2" style={{ background: "#7B4FA6" }}>
+        <Button className="gap-2 text-white mt-2" style={{ background: "#D97706" }}>
           Create My Store <ChevronRight className="w-4 h-4" />
         </Button>
       </Link>
@@ -778,7 +778,7 @@ export default function DemoStore() {
             <strong>Demo Store Only</strong> — This is only a demo store, no information will be changed here 🙏
           </p>
           <Link href="/create-store">
-            <button className="text-xs font-bold whitespace-nowrap flex items-center gap-0.5 shrink-0" style={{ color: "#7B4FA6" }}>
+            <button className="text-xs font-bold whitespace-nowrap flex items-center gap-0.5 shrink-0" style={{ color: "#D97706" }}>
               Create Your Store <ChevronRight className="w-3 h-3" />
             </button>
           </Link>
@@ -792,7 +792,7 @@ export default function DemoStore() {
             <p className="font-semibold text-sm truncate">{DEMO_SUMMARY.storeName}</p>
             <p className="text-xs text-muted-foreground">Demo Store</p>
           </div>
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full shrink-0" style={{ background: "#F3EBFF", color: "#7B4FA6", border: "1px solid #D4ADFF" }}>
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full shrink-0" style={{ background: "#FEF3C7", color: "#D97706", border: "1px solid #FCD34D" }}>
             Demo Mode
           </span>
         </header>

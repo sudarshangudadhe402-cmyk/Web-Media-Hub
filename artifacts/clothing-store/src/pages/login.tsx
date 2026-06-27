@@ -372,8 +372,8 @@ export default function Login() {
               >
                 Your Store.<br />
                 Your Style.<br />
-                <span style={{ color: "#7B4FA6" }}>Limitless</span><br />
-                <span style={{ color: "#7B4FA6" }}>Possibilities.</span>
+                <span style={{ color: "#D97706" }}>Limitless</span><br />
+                <span style={{ color: "#D97706" }}>Possibilities.</span>
               </h1>
             </motion.div>
 
@@ -440,14 +440,14 @@ export default function Login() {
                   <div className="w-2 h-2 rounded-full bg-red-400" />
                   <div className="w-2 h-2 rounded-full bg-yellow-400" />
                   <div className="w-2 h-2 rounded-full bg-green-400" />
-                  <span className="text-[9px] ml-2 font-semibold" style={{ color: "#7B4FA6" }}>Web Media Hub</span>
+                  <span className="text-[9px] ml-2 font-semibold" style={{ color: "#D97706" }}>Web Media Hub</span>
                 </div>
                 <div className="flex" style={{ height: "150px" }}>
                   {/* Sidebar */}
                   <div className="flex flex-col gap-1.5 px-2 py-3 shrink-0" style={{ width: "70px", background: "#1C1C2E" }}>
-                    <div className="text-[7px] font-bold mb-1" style={{ color: "#7B4FA6" }}>MENU</div>
+                    <div className="text-[7px] font-bold mb-1" style={{ color: "#D97706" }}>MENU</div>
                     {["Dashboard","Products","Orders","Customers","Settings"].map((item) => (
-                      <div key={item} className="text-[7px] py-1 px-1.5 rounded" style={{ color: item === "Dashboard" ? "#FFFFFF" : "#9CA3AF", background: item === "Dashboard" ? "#7B4FA6" : "transparent" }}>
+                      <div key={item} className="text-[7px] py-1 px-1.5 rounded" style={{ color: item === "Dashboard" ? "#FFFFFF" : "#9CA3AF", background: item === "Dashboard" ? "#D97706" : "transparent" }}>
                         {item}
                       </div>
                     ))}
@@ -456,7 +456,7 @@ export default function Login() {
                   <div className="flex-1 p-3">
                     <p className="text-[10px] font-bold mb-2" style={{ color: "#111" }}>Dashboard</p>
                     <div className="grid grid-cols-3 gap-1.5 mb-3">
-                      {[["₹2.4L","Sales","#7B4FA6"],["1,284","Orders","#2563EB"],["3,920","Users","#16A34A"]].map(([v, l, c]) => (
+                      {[["₹2.4L","Sales","#D97706"],["1,284","Orders","#2563EB"],["3,920","Users","#16A34A"]].map(([v, l, c]) => (
                         <div key={l} className="rounded p-1.5" style={{ background: `${c}12` }}>
                           <p className="text-[9px] font-bold" style={{ color: c as string }}>{v}</p>
                           <p className="text-[7px]" style={{ color: "#888" }}>{l}</p>
@@ -522,9 +522,9 @@ export default function Login() {
             >
               <div
                 className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: "rgba(123,79,166,0.10)", border: "1.5px solid rgba(123,79,166,0.2)" }}
+                style={{ background: "rgba(217,119,6,0.10)", border: "1.5px solid rgba(217,119,6,0.2)" }}
               >
-                <Layers className="w-5 h-5" style={{ color: "#7B4FA6" }} />
+                <Layers className="w-5 h-5" style={{ color: "#D97706" }} />
               </div>
               <div className="flex-1">
                 <p className="font-bold text-sm" style={{ color: "#111111" }}>Virtual Try-On</p>
@@ -566,7 +566,7 @@ export default function Login() {
               transition={{ duration: 0.4 }}
               className="flex justify-center mb-5"
             >
-              <HangerSVG size={38} color="#7B4FA6" strokeWidth={1.5} />
+              <HangerSVG size={38} color="#D97706" strokeWidth={1.5} />
             </motion.div>
 
             {/* Welcome heading */}
@@ -639,7 +639,7 @@ export default function Login() {
                       color: "#111111",
                       background: "#FAFAF9",
                     }}
-                    onFocus={(e) => { e.target.style.borderColor = "#7B4FA6"; e.target.style.background = "#FFF"; }}
+                    onFocus={(e) => { e.target.style.borderColor = "#D97706"; e.target.style.background = "#FFF"; }}
                     onBlur={(e) => { e.target.style.borderColor = "#E5E0DA"; e.target.style.background = "#FAFAF9"; }}
                   />
                 </div>
@@ -673,7 +673,7 @@ export default function Login() {
                       color: "#111111",
                       background: "#FAFAF9",
                     }}
-                    onFocus={(e) => { e.target.style.borderColor = "#7B4FA6"; e.target.style.background = "#FFF"; }}
+                    onFocus={(e) => { e.target.style.borderColor = "#D97706"; e.target.style.background = "#FFF"; }}
                     onBlur={(e) => { e.target.style.borderColor = "#E5E0DA"; e.target.style.background = "#FAFAF9"; }}
                   />
                   <button
@@ -694,7 +694,7 @@ export default function Login() {
                   <button
                     type="button"
                     className="text-xs font-medium hover:underline"
-                    style={{ color: "#B05EB0" }}
+                    style={{ color: "#D97706" }}
                     onClick={() => { setForgotOpen(true); setForgotStep("email"); setForgotError(""); }}
                   >
                     Forgot Password?
@@ -709,7 +709,7 @@ export default function Login() {
                   id="rememberMe"
                   {...form.register("rememberMe")}
                   className="w-4 h-4 rounded"
-                  style={{ accentColor: "#7B4FA6", cursor: "pointer" }}
+                  style={{ accentColor: "#D97706", cursor: "pointer" }}
                 />
                 <label htmlFor="rememberMe" className="text-sm cursor-pointer" style={{ color: "#444444" }}>
                   Remember me
@@ -726,7 +726,7 @@ export default function Login() {
                 style={{
                   height: "54px",
                   borderRadius: "10px",
-                  background: isCurrentlyLocked ? "#999" : "#3D1547",
+                  background: isCurrentlyLocked ? "#999" : "#92400E",
                   paddingLeft: "20px",
                   paddingRight: "20px",
                   fontSize: "15px",
@@ -761,7 +761,7 @@ export default function Login() {
                   border: "1.5px solid #D5C8E0",
                   paddingLeft: "20px",
                   paddingRight: "20px",
-                  color: "#3D1547",
+                  color: "#92400E",
                   fontSize: "15px",
                 }}
               >
@@ -786,7 +786,7 @@ export default function Login() {
                   border: "1.5px dashed #C4A0E0",
                   paddingLeft: "18px",
                   paddingRight: "18px",
-                  color: "#7B4FA6",
+                  color: "#D97706",
                   fontSize: "14px",
                   fontWeight: 600,
                 }}
@@ -804,7 +804,7 @@ export default function Login() {
                   className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
                   style={{ background: "#F3EDF8" }}
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7B4FA6" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
                     <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
                     <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
@@ -931,7 +931,7 @@ export default function Login() {
                           paddingLeft: "40px", paddingRight: "14px", fontSize: "14px",
                           color: "#111", background: "#FAFAF9",
                         }}
-                        onFocus={(e) => { e.target.style.borderColor = "#7B4FA6"; e.target.style.background = "#FFF"; }}
+                        onFocus={(e) => { e.target.style.borderColor = "#D97706"; e.target.style.background = "#FFF"; }}
                         onBlur={(e) => { e.target.style.borderColor = "#E5E0DA"; e.target.style.background = "#FAFAF9"; }}
                       />
                     </div>
@@ -940,7 +940,7 @@ export default function Login() {
                       type="submit"
                       disabled={forgotLoading}
                       className="w-full flex items-center justify-center gap-2 font-semibold text-white disabled:opacity-50"
-                      style={{ height: "48px", borderRadius: "10px", background: "#3D1547", fontSize: "14px" }}
+                      style={{ height: "48px", borderRadius: "10px", background: "#92400E", fontSize: "14px" }}
                     >
                       {forgotLoading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Sending...</> : <><Mail className="w-4 h-4" /> Send OTP</>}
                     </button>
@@ -967,14 +967,14 @@ export default function Login() {
                         height: "56px", borderRadius: "10px", border: "1.5px solid #E5E0DA",
                         fontSize: "22px", letterSpacing: "0.5em", color: "#111", background: "#FAFAF9",
                       }}
-                      onFocus={(e) => { e.target.style.borderColor = "#7B4FA6"; e.target.style.background = "#FFF"; }}
+                      onFocus={(e) => { e.target.style.borderColor = "#D97706"; e.target.style.background = "#FFF"; }}
                       onBlur={(e) => { e.target.style.borderColor = "#E5E0DA"; e.target.style.background = "#FAFAF9"; }}
                     />
                     {forgotError && <p className="text-xs font-medium" style={{ color: "#DC2626" }}>{forgotError}</p>}
                     <div className="text-center text-xs" style={{ color: "#888" }}>
                       {forgotResend > 0
                         ? <span>Resend OTP in {forgotResend}s</span>
-                        : <button type="button" onClick={handleForgotResend} disabled={forgotLoading} className="font-medium underline underline-offset-2" style={{ color: "#7B4FA6" }}>Resend OTP</button>
+                        : <button type="button" onClick={handleForgotResend} disabled={forgotLoading} className="font-medium underline underline-offset-2" style={{ color: "#D97706" }}>Resend OTP</button>
                       }
                     </div>
                     <div className="flex gap-3">
@@ -990,7 +990,7 @@ export default function Login() {
                         type="submit"
                         disabled={forgotLoading || forgotOtp.length !== 6}
                         className="flex-1 font-semibold text-white disabled:opacity-50"
-                        style={{ height: "46px", borderRadius: "10px", background: "#3D1547", fontSize: "14px" }}
+                        style={{ height: "46px", borderRadius: "10px", background: "#92400E", fontSize: "14px" }}
                       >
                         Verify OTP
                       </button>
@@ -1017,7 +1017,7 @@ export default function Login() {
                           paddingLeft: "40px", paddingRight: "40px", fontSize: "14px",
                           color: "#111", background: "#FAFAF9",
                         }}
-                        onFocus={(e) => { e.target.style.borderColor = "#7B4FA6"; e.target.style.background = "#FFF"; }}
+                        onFocus={(e) => { e.target.style.borderColor = "#D97706"; e.target.style.background = "#FFF"; }}
                         onBlur={(e) => { e.target.style.borderColor = "#E5E0DA"; e.target.style.background = "#FAFAF9"; }}
                       />
                       <button
@@ -1045,7 +1045,7 @@ export default function Login() {
                         type="submit"
                         disabled={forgotLoading || forgotNewPassword.length < 4}
                         className="flex-1 font-semibold text-white disabled:opacity-50"
-                        style={{ height: "46px", borderRadius: "10px", background: "#3D1547", fontSize: "14px" }}
+                        style={{ height: "46px", borderRadius: "10px", background: "#92400E", fontSize: "14px" }}
                       >
                         {forgotLoading ? <span className="flex items-center justify-center gap-2"><RefreshCw className="w-4 h-4 animate-spin" />Saving...</span> : "Reset Password"}
                       </button>
@@ -1069,7 +1069,7 @@ export default function Login() {
                       type="button"
                       onClick={resetForgot}
                       className="w-full font-semibold text-white"
-                      style={{ height: "48px", borderRadius: "10px", background: "#3D1547", fontSize: "14px" }}
+                      style={{ height: "48px", borderRadius: "10px", background: "#92400E", fontSize: "14px" }}
                     >
                       Go to Login
                     </button>

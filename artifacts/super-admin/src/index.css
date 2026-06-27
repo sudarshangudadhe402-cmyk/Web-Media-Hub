@@ -65,46 +65,46 @@
   --badge-outline: rgba(0,0,0, .05);
   --opaque-button-border-intensity: -8;
 
-  /* Luxora — cream background, black text, gold primary */
-  --background: 55 40% 97%;
-  --foreground: 0 0% 8%;
-  --border: 40 18% 86%;
+  /* Obsidian Gold — cool pearl background, deep slate, amber gold primary */
+  --background: 220 22% 97%;
+  --foreground: 222 30% 9%;
+  --border: 220 16% 88%;
   --card: 0 0% 100%;
-  --card-foreground: 0 0% 8%;
-  --card-border: 40 18% 86%;
+  --card-foreground: 222 30% 9%;
+  --card-border: 220 16% 90%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 8%;
-  --popover-border: 40 18% 86%;
+  --popover-foreground: 222 30% 9%;
+  --popover-border: 220 16% 90%;
 
-  --primary: 25 45% 28%;
-  --primary-foreground: 40 30% 92%;
-  --secondary: 30 12% 93%;
-  --secondary-foreground: 0 0% 12%;
-  --muted: 30 10% 93%;
-  --muted-foreground: 30 6% 46%;
-  --accent: 25 45% 28%;
-  --accent-foreground: 40 30% 92%;
+  --primary: 38 92% 44%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 16% 93%;
+  --secondary-foreground: 222 20% 16%;
+  --muted: 220 16% 94%;
+  --muted-foreground: 220 8% 50%;
+  --accent: 38 92% 44%;
+  --accent-foreground: 0 0% 100%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 98%;
 
-  --input: 30 12% 84%;
-  --ring: 25 45% 28%;
+  --input: 220 16% 87%;
+  --ring: 38 92% 44%;
 
-  /* Sidebar — near-black with dark bronze accents */
-  --sidebar: 0 0% 8%;
-  --sidebar-foreground: 30 20% 85%;
-  --sidebar-border: 0 0% 14%;
-  --sidebar-primary: 25 45% 28%;
-  --sidebar-primary-foreground: 40 30% 92%;
-  --sidebar-accent: 0 0% 13%;
-  --sidebar-accent-foreground: 30 20% 85%;
-  --sidebar-ring: 25 45% 28%;
+  /* Sidebar — deep cool navy-charcoal */
+  --sidebar: 228 32% 8%;
+  --sidebar-foreground: 220 20% 76%;
+  --sidebar-border: 228 22% 14%;
+  --sidebar-primary: 38 92% 44%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 228 22% 13%;
+  --sidebar-accent-foreground: 220 20% 82%;
+  --sidebar-ring: 38 92% 44%;
 
-  --app-font-sans: 'Poppins', sans-serif;
+  --app-font-sans: 'Inter', sans-serif;
   --app-font-serif: 'Playfair Display', Georgia, serif;
   --app-font-mono: Menlo, monospace;
-  --radius: 0.375rem;
+  --radius: 0.5rem;
 
   --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
@@ -113,6 +113,13 @@
   --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Shadow system */
+  --shadow-xs: 0 1px 2px 0 rgba(14, 20, 48, 0.04);
+  --shadow-sm: 0 1px 3px 0 rgba(14, 20, 48, 0.06), 0 1px 2px -1px rgba(14, 20, 48, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(14, 20, 48, 0.08), 0 2px 4px -2px rgba(14, 20, 48, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(14, 20, 48, 0.1), 0 4px 6px -4px rgba(14, 20, 48, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(14, 20, 48, 0.12), 0 8px 10px -6px rgba(14, 20, 48, 0.06);
 }
 
 .dark {
@@ -120,39 +127,45 @@
   --badge-outline: rgba(255,255,255, .05);
   --opaque-button-border-intensity: 9;
 
-  --background: 0 0% 7%;
-  --foreground: 40 30% 90%;
-  --border: 0 0% 16%;
-  --card: 0 0% 10%;
-  --card-foreground: 40 30% 90%;
-  --card-border: 0 0% 16%;
+  --background: 228 30% 6%;
+  --foreground: 220 20% 90%;
+  --border: 228 20% 16%;
+  --card: 228 26% 9%;
+  --card-foreground: 220 20% 90%;
+  --card-border: 228 20% 16%;
 
-  --popover: 0 0% 10%;
-  --popover-foreground: 40 30% 90%;
-  --popover-border: 0 0% 16%;
+  --popover: 228 26% 9%;
+  --popover-foreground: 220 20% 90%;
+  --popover-border: 228 20% 16%;
 
-  --primary: 25 40% 40%;
-  --primary-foreground: 30 20% 92%;
-  --secondary: 0 0% 14%;
-  --secondary-foreground: 30 20% 88%;
-  --muted: 0 0% 14%;
-  --muted-foreground: 30 6% 55%;
-  --accent: 25 40% 40%;
-  --accent-foreground: 30 20% 92%;
+  --primary: 38 88% 50%;
+  --primary-foreground: 222 30% 6%;
+  --secondary: 228 20% 14%;
+  --secondary-foreground: 220 16% 84%;
+  --muted: 228 20% 14%;
+  --muted-foreground: 220 8% 58%;
+  --accent: 38 88% 50%;
+  --accent-foreground: 222 30% 6%;
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 0 0% 98%;
 
-  --input: 0 0% 16%;
-  --ring: 25 40% 40%;
+  --input: 228 20% 16%;
+  --ring: 38 88% 50%;
 
-  --sidebar: 0 0% 5%;
-  --sidebar-foreground: 30 20% 88%;
-  --sidebar-border: 0 0% 11%;
-  --sidebar-primary: 25 40% 40%;
-  --sidebar-primary-foreground: 30 20% 92%;
-  --sidebar-accent: 0 0% 11%;
-  --sidebar-accent-foreground: 30 20% 88%;
-  --sidebar-ring: 25 40% 40%;
+  --sidebar: 228 32% 5%;
+  --sidebar-foreground: 220 20% 80%;
+  --sidebar-border: 228 22% 11%;
+  --sidebar-primary: 38 88% 50%;
+  --sidebar-primary-foreground: 222 30% 6%;
+  --sidebar-accent: 228 22% 11%;
+  --sidebar-accent-foreground: 220 20% 82%;
+  --sidebar-ring: 38 88% 50%;
+
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.24), 0 1px 2px -1px rgba(0, 0, 0, 0.16);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.28), 0 2px 4px -2px rgba(0, 0, 0, 0.16);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.32), 0 4px 6px -4px rgba(0, 0, 0, 0.2);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.36), 0 8px 10px -6px rgba(0, 0, 0, 0.24);
 }
 
 @layer base {
@@ -161,6 +174,25 @@
   }
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.01em;
+  }
+
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.35);
   }
 }
 
@@ -170,6 +202,13 @@
   }
 }
 
+/* Premium card elevation */
+.card, [data-slot="card"] {
+  box-shadow: var(--shadow-sm) !important;
+  transition: box-shadow 0.2s ease;
+}
+
+/* Particle animation */
 .particles {
   position: absolute;
   top: 0; left: 0;
