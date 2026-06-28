@@ -673,6 +673,22 @@ export default function PartnershipPage() {
               ) : (
                 /* ── Idle: Amount Input ───────────────────────────────────── */
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+
+                  {/* Locked verified email */}
+                  <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+                    <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center shrink-0">
+                      <Shield className="w-4 h-4 text-green-700" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Verified Email (OTP will be sent here)</p>
+                      <p className="text-sm font-bold text-gray-900 truncate">{verifiedEmail}</p>
+                    </div>
+                    <span className="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-1 rounded-full shrink-0 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Locked
+                    </span>
+                  </div>
+
                   <div>
                     <label className="text-xs font-semibold text-gray-700 mb-2 block uppercase tracking-wide">Withdraw Amount</label>
                     <div className="flex gap-2">
