@@ -583,7 +583,7 @@ function InfluencersTab() {
           <CardContent className="pt-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
               <div><label className="text-xs font-medium mb-1 block">Name *</label><Input value={form.name} onChange={e => setForm(p => ({...p, name: e.target.value}))} placeholder="Influencer name" /></div>
-              <div><label className="text-xs font-medium mb-1 block">Email *</label><Input type="email" value={form.email} onChange={e => setForm(p => ({...p, email: e.target.value}))} placeholder="partner@email.com" /></div>
+              <div><label className="text-xs font-medium mb-1 block">Email <span className="text-muted-foreground font-normal">(optional — partner registers on 1st login)</span></label><Input type="email" value={form.email} onChange={e => setForm(p => ({...p, email: e.target.value}))} placeholder="partner@email.com" /></div>
               <div><label className="text-xs font-medium mb-1 block">Coupon Code *</label><Input value={form.coupon_code} onChange={e => setForm(p => ({...p, coupon_code: e.target.value.toUpperCase()}))} placeholder="CODE123" /></div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -725,7 +725,7 @@ function AmbassadorsTab() {
           <CardContent className="pt-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
               <div><label className="text-xs font-medium mb-1 block">Name *</label><Input value={form.name} onChange={e => setForm(p=>({...p,name:e.target.value}))} placeholder="Ambassador name" /></div>
-              <div><label className="text-xs font-medium mb-1 block">Email *</label><Input type="email" value={form.email} onChange={e => setForm(p=>({...p,email:e.target.value}))} placeholder="partner@email.com" /></div>
+              <div><label className="text-xs font-medium mb-1 block">Email <span className="text-muted-foreground font-normal">(optional — partner registers on 1st login)</span></label><Input type="email" value={form.email} onChange={e => setForm(p=>({...p,email:e.target.value}))} placeholder="partner@email.com" /></div>
               <div><label className="text-xs font-medium mb-1 block">City</label><Input value={form.city} onChange={e => setForm(p=>({...p,city:e.target.value}))} placeholder="City" /></div>
               <div><label className="text-xs font-medium mb-1 block">Referral Code *</label><Input value={form.referral_code} onChange={e => setForm(p=>({...p,referral_code:e.target.value.toUpperCase()}))} placeholder="REF123" /></div>
             </div>

@@ -442,7 +442,16 @@ router.post(
         res.status(400).json({ error: "Invalid type" }); return;
       }
 
-      if (!partnerEmail) { res.status(400).json({ error: "No email registered for this partner. Contact admin." }); return; }
+      // First-time registration: if no email stored, save the provided email
+      if (!partnerEmail) {
+        if (t === "influencer") {
+          await Influencer.updateOne({ coupon_code: c }, { email: e });
+        } else if (t === "ambassador") {
+          await Ambassador.updateOne({ referral_code: c }, { email: e });
+        }
+        partnerEmail = e;
+      }
+
       if (partnerEmail !== e) { res.status(400).json({ error: "Email does not match our records for this partner code" }); return; }
 
       // Invalidate old OTPs for this partner
@@ -735,8 +744,7 @@ router.post(
     try {
       const partner = await findPartnerForWithdrawal(t, c);
       if (!partner) { res.status(404).json({ error: "Partner not found" }); return; }
-      if (!partner.email) { res.status(400).json({ error: "No email registered. Contact admin." }); return; }
-      if (partner.email !== e) { res.status(403).json({ error: "Email does not match our records" }); return; }
+      if (partner.email && partner.email !== e) { res.status(403).json({ error: "Email does not match our records" }); return; }
       if (amt > partner.withdrawable_balance) {
         res.status(400).json({ error: "Amount exceeds withdrawable balance" }); return;
       }
