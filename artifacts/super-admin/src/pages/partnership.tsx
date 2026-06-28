@@ -328,7 +328,7 @@ export default function PartnershipPage() {
                 <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-3 mb-4">
                   <span className="text-amber-500 text-base leading-none mt-0.5">🔒</span>
                   <p className="text-xs text-amber-800 leading-relaxed">
-                    <strong>Email yaad rakhein</strong> — yahi email withdrawal ke time bhi verify hogi. Bina is email ke aap payment request nahi kar sakte.
+                    <strong>Keep your email safe</strong> — this same email will be required to verify your identity when you request a withdrawal. Without access to this email, you will not be able to process payments.
                   </p>
                 </div>
                 <div className="space-y-3">
