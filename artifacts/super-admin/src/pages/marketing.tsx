@@ -526,7 +526,7 @@ function InfluencersTab() {
   const [page, setPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ name: "", coupon_code: "", commission_percentage: "", customer_discount_percentage: "" });
+  const [form, setForm] = useState({ name: "", email: "", coupon_code: "", commission_percentage: "", customer_discount_percentage: "" });
   const [qrTarget, setQrTarget] = useState<{ code: string; name: string } | null>(null);
   const { toast } = useToast();
   const PAGE_SIZE = 10;
@@ -554,7 +554,7 @@ function InfluencersTab() {
       const r = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify({ ...form, commission_percentage: parseFloat(form.commission_percentage) || 0, customer_discount_percentage: parseFloat(form.customer_discount_percentage) || 0 }) });
       if (!r.ok) { const e = await r.json(); toast({ title: e.error || "Failed", variant: "destructive" }); return; }
       toast({ title: editing ? "Updated" : "Created" });
-      setShowForm(false); setEditing(null); setForm({ name: "", coupon_code: "", commission_percentage: "", customer_discount_percentage: "" });
+      setShowForm(false); setEditing(null); setForm({ name: "", email: "", coupon_code: "", commission_percentage: "", customer_discount_percentage: "" });
       load();
     } catch { toast({ title: "Failed", variant: "destructive" }); }
   }
@@ -573,7 +573,7 @@ function InfluencersTab() {
         <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Search..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="pl-9 h-9 w-52" /></div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={exportCSV}><Download className="w-4 h-4 mr-1" />CSV</Button>
-          <Button size="sm" onClick={() => { setEditing(null); setForm({ name: "", coupon_code: "", commission_percentage: "", customer_discount_percentage: "" }); setShowForm(true); }}><Plus className="w-4 h-4 mr-1" />Add Influencer</Button>
+          <Button size="sm" onClick={() => { setEditing(null); setForm({ name: "", email: "", coupon_code: "", commission_percentage: "", customer_discount_percentage: "" }); setShowForm(true); }}><Plus className="w-4 h-4 mr-1" />Add Influencer</Button>
         </div>
       </div>
 
@@ -581,9 +581,12 @@ function InfluencersTab() {
       {showForm && (
         <Card className="border-primary/30">
           <CardContent className="pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
               <div><label className="text-xs font-medium mb-1 block">Name *</label><Input value={form.name} onChange={e => setForm(p => ({...p, name: e.target.value}))} placeholder="Influencer name" /></div>
+              <div><label className="text-xs font-medium mb-1 block">Email *</label><Input type="email" value={form.email} onChange={e => setForm(p => ({...p, email: e.target.value}))} placeholder="partner@email.com" /></div>
               <div><label className="text-xs font-medium mb-1 block">Coupon Code *</label><Input value={form.coupon_code} onChange={e => setForm(p => ({...p, coupon_code: e.target.value.toUpperCase()}))} placeholder="CODE123" /></div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div><label className="text-xs font-medium mb-1 block">Commission % <span className="text-muted-foreground">(partner earns)</span></label><Input type="number" value={form.commission_percentage} onChange={e => setForm(p => ({...p, commission_percentage: e.target.value}))} placeholder="10" min="0" max="100" /></div>
               <div><label className="text-xs font-medium mb-1 block">Customer Discount % <span className="text-muted-foreground">(buyer gets)</span></label><Input type="number" value={form.customer_discount_percentage} onChange={e => setForm(p => ({...p, customer_discount_percentage: e.target.value}))} placeholder="5" min="0" max="100" /></div>
             </div>
@@ -617,7 +620,7 @@ function InfluencersTab() {
                     <tr><td colSpan={10} className="text-center py-10 text-muted-foreground">No influencers found</td></tr>
                   ) : paged.map((inf) => (
                     <tr key={inf._id} className="border-b last:border-0 hover:bg-muted/20">
-                      <td className="p-3 font-medium">{inf.name}</td>
+                      <td className="p-3"><p className="font-medium">{inf.name}</p>{inf.email && <p className="text-xs text-gray-400">{inf.email}</p>}</td>
                       <td className="p-3"><Badge variant="outline" className="font-mono">{inf.coupon_code}</Badge></td>
                       <td className="p-3 text-right font-semibold text-indigo-600">{inf.commission_percentage}%</td>
                       <td className="p-3 text-right font-semibold text-blue-600">{inf.customer_discount_percentage ?? 0}%</td>
@@ -632,7 +635,7 @@ function InfluencersTab() {
                       </td>
                       <td className="p-3 text-center">
                         <div className="flex gap-1 justify-center">
-                          <Button size="icon" variant="ghost" className="h-7 w-7" title="Edit" onClick={() => { setEditing(inf); setForm({ name: inf.name, coupon_code: inf.coupon_code, commission_percentage: String(inf.commission_percentage), customer_discount_percentage: String(inf.customer_discount_percentage ?? 0) }); setShowForm(true); }}><Edit2 className="w-3.5 h-3.5" /></Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" title="Edit" onClick={() => { setEditing(inf); setForm({ name: inf.name, email: inf.email || "", coupon_code: inf.coupon_code, commission_percentage: String(inf.commission_percentage), customer_discount_percentage: String(inf.customer_discount_percentage ?? 0) }); setShowForm(true); }}><Edit2 className="w-3.5 h-3.5" /></Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" title="Delete" onClick={() => del(inf._id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                         </div>
                       </td>
@@ -666,7 +669,7 @@ function AmbassadorsTab() {
   const [page, setPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ name: "", city: "", referral_code: "", commission_percentage: "", customer_discount_percentage: "" });
+  const [form, setForm] = useState({ name: "", email: "", city: "", referral_code: "", commission_percentage: "", customer_discount_percentage: "" });
   const [qrTarget, setQrTarget] = useState<{ code: string; name: string } | null>(null);
   const { toast } = useToast();
   const PAGE_SIZE = 10;
@@ -694,7 +697,7 @@ function AmbassadorsTab() {
       const r = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify({ ...form, commission_percentage: parseFloat(form.commission_percentage) || 0, customer_discount_percentage: parseFloat(form.customer_discount_percentage) || 0 }) });
       if (!r.ok) { const e = await r.json(); toast({ title: e.error || "Failed", variant: "destructive" }); return; }
       toast({ title: editing ? "Updated" : "Created" });
-      setShowForm(false); setEditing(null); setForm({ name: "", city: "", referral_code: "", commission_percentage: "", customer_discount_percentage: "" });
+      setShowForm(false); setEditing(null); setForm({ name: "", email: "", city: "", referral_code: "", commission_percentage: "", customer_discount_percentage: "" });
       load();
     } catch { toast({ title: "Failed", variant: "destructive" }); }
   }
@@ -713,17 +716,20 @@ function AmbassadorsTab() {
         <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Search..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="pl-9 h-9 w-52" /></div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={exportCSV}><Download className="w-4 h-4 mr-1" />CSV</Button>
-          <Button size="sm" onClick={() => { setEditing(null); setForm({ name: "", city: "", referral_code: "", commission_percentage: "", customer_discount_percentage: "" }); setShowForm(true); }}><Plus className="w-4 h-4 mr-1" />Add Ambassador</Button>
+          <Button size="sm" onClick={() => { setEditing(null); setForm({ name: "", email: "", city: "", referral_code: "", commission_percentage: "", customer_discount_percentage: "" }); setShowForm(true); }}><Plus className="w-4 h-4 mr-1" />Add Ambassador</Button>
         </div>
       </div>
 
       {showForm && (
         <Card className="border-primary/30">
           <CardContent className="pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
               <div><label className="text-xs font-medium mb-1 block">Name *</label><Input value={form.name} onChange={e => setForm(p=>({...p,name:e.target.value}))} placeholder="Ambassador name" /></div>
+              <div><label className="text-xs font-medium mb-1 block">Email *</label><Input type="email" value={form.email} onChange={e => setForm(p=>({...p,email:e.target.value}))} placeholder="partner@email.com" /></div>
               <div><label className="text-xs font-medium mb-1 block">City</label><Input value={form.city} onChange={e => setForm(p=>({...p,city:e.target.value}))} placeholder="City" /></div>
               <div><label className="text-xs font-medium mb-1 block">Referral Code *</label><Input value={form.referral_code} onChange={e => setForm(p=>({...p,referral_code:e.target.value.toUpperCase()}))} placeholder="REF123" /></div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div><label className="text-xs font-medium mb-1 block">Commission % <span className="text-muted-foreground">(partner earns)</span></label><Input type="number" value={form.commission_percentage} onChange={e => setForm(p=>({...p,commission_percentage:e.target.value}))} placeholder="10" min="0" max="100" /></div>
               <div><label className="text-xs font-medium mb-1 block">Cust. Discount % <span className="text-muted-foreground">(buyer gets)</span></label><Input type="number" value={form.customer_discount_percentage} onChange={e => setForm(p=>({...p,customer_discount_percentage:e.target.value}))} placeholder="5" min="0" max="100" /></div>
             </div>
@@ -757,7 +763,7 @@ function AmbassadorsTab() {
                     <tr><td colSpan={10} className="text-center py-10 text-muted-foreground">No ambassadors found</td></tr>
                   ) : paged.map((amb) => (
                     <tr key={amb._id} className="border-b last:border-0 hover:bg-muted/20">
-                      <td className="p-3 font-medium">{amb.name}</td>
+                      <td className="p-3"><p className="font-medium">{amb.name}</p>{amb.email && <p className="text-xs text-gray-400">{amb.email}</p>}</td>
                       <td className="p-3"><Badge variant="outline" className="font-mono">{amb.referral_code}</Badge></td>
                       <td className="p-3 text-right font-semibold text-indigo-600">{amb.commission_percentage}%</td>
                       <td className="p-3 text-right font-semibold text-blue-600">{amb.customer_discount_percentage ?? 0}%</td>
@@ -772,7 +778,7 @@ function AmbassadorsTab() {
                       </td>
                       <td className="p-3 text-center">
                         <div className="flex gap-1 justify-center">
-                          <Button size="icon" variant="ghost" className="h-7 w-7" title="Edit" onClick={() => { setEditing(amb); setForm({ name: amb.name, city: amb.city||"", referral_code: amb.referral_code, commission_percentage: String(amb.commission_percentage), customer_discount_percentage: String(amb.customer_discount_percentage ?? 0) }); setShowForm(true); }}><Edit2 className="w-3.5 h-3.5" /></Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" title="Edit" onClick={() => { setEditing(amb); setForm({ name: amb.name, email: amb.email || "", city: amb.city||"", referral_code: amb.referral_code, commission_percentage: String(amb.commission_percentage), customer_discount_percentage: String(amb.customer_discount_percentage ?? 0) }); setShowForm(true); }}><Edit2 className="w-3.5 h-3.5" /></Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" title="Delete" onClick={() => del(amb._id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                         </div>
                       </td>

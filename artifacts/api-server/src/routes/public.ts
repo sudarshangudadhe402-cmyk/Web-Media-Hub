@@ -323,6 +323,8 @@ import { Influencer } from "../models/Influencer";
 import { Ambassador } from "../models/Ambassador";
 import { ReferralCode } from "../models/ReferralCode";
 import { User } from "../models/User";
+import { OtpCode } from "../models/OtpCode";
+import { sendPartnerVerificationEmail } from "../services/emailOtp";
 
 router.get(
   "/public/validate-partner-code",
@@ -372,6 +374,98 @@ router.get(
   }
 );
 
+// ── Partner OTP: send ─────────────────────────────────────────────────────────
+router.post(
+  "/public/partner/send-otp",
+  ipRateLimit(10, 60_000),
+  async (req: Request, res: Response) => {
+    const { type, code, email } = req.body as { type?: string; code?: string; email?: string };
+    if (!type || !code || !email) { res.status(400).json({ error: "type, code and email required" }); return; }
+    const t = type.toLowerCase();
+    const c = code.toUpperCase().trim();
+    const e = email.toLowerCase().trim();
+
+    try {
+      let partnerEmail = "";
+      let partnerName = "";
+
+      if (t === "influencer") {
+        const inf = await Influencer.findOne({ coupon_code: c }).lean();
+        if (!inf) { res.status(404).json({ error: "Partner not found" }); return; }
+        partnerEmail = (inf as any).email || "";
+        partnerName = inf.name;
+      } else if (t === "ambassador") {
+        const amb = await Ambassador.findOne({ referral_code: c }).lean();
+        if (!amb) { res.status(404).json({ error: "Partner not found" }); return; }
+        partnerEmail = (amb as any).email || "";
+        partnerName = amb.name;
+      } else if (t === "referral") {
+        const rc = await ReferralCode.findOne({ referral_code: c }).populate<{ owner_admin_id: any }>("owner_admin_id", "email username").lean();
+        if (!rc) { res.status(404).json({ error: "Partner not found" }); return; }
+        partnerEmail = rc.owner_admin_id?.email || "";
+        partnerName = rc.owner_admin_id?.username || "Partner";
+      } else {
+        res.status(400).json({ error: "Invalid type" }); return;
+      }
+
+      if (!partnerEmail) { res.status(400).json({ error: "No email registered for this partner. Contact admin." }); return; }
+      if (partnerEmail !== e) { res.status(400).json({ error: "Email does not match our records for this partner code" }); return; }
+
+      // Invalidate old OTPs for this partner
+      await OtpCode.updateMany(
+        { email: e, storeId: c, purpose: "partner-verification", used: false },
+        { used: true }
+      );
+
+      // Generate new OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      await OtpCode.create({
+        email: e,
+        storeId: c,
+        code: otp,
+        purpose: "partner-verification",
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      });
+
+      await sendPartnerVerificationEmail(e, otp, partnerName);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Partner send-otp error:", err);
+      res.status(500).json({ error: "Failed to send OTP" });
+    }
+  }
+);
+
+// ── Partner OTP: verify ────────────────────────────────────────────────────────
+router.post(
+  "/public/partner/verify-otp",
+  ipRateLimit(20, 60_000),
+  async (req: Request, res: Response) => {
+    const { type: _t, code, email, otp } = req.body as { type?: string; code?: string; email?: string; otp?: string };
+    if (!code || !email || !otp) { res.status(400).json({ error: "code, email and otp required" }); return; }
+    const c = code.toUpperCase().trim();
+    const e = email.toLowerCase().trim();
+
+    try {
+      const record = await OtpCode.findOne({
+        email: e,
+        storeId: c,
+        code: otp.trim(),
+        purpose: "partner-verification",
+        used: false,
+        expiresAt: { $gt: new Date() },
+      });
+
+      if (!record) { res.status(400).json({ error: "Invalid or expired OTP" }); return; }
+      record.used = true;
+      await record.save();
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: "Verification failed" });
+    }
+  }
+);
+
 // ── Partner profile (public — no auth, used by partnership page) ──────────────
 
 router.get(
@@ -396,6 +490,7 @@ router.get(
         member = {
           type: "influencer",
           name: inf.name,
+          email: (inf as any).email || "",
           code: inf.coupon_code,
           commission_percentage: inf.commission_percentage,
           customer_discount_percentage: (inf as any).customer_discount_percentage ?? 0,
@@ -411,6 +506,7 @@ router.get(
         member = {
           type: "ambassador",
           name: amb.name,
+          email: (amb as any).email || "",
           city: amb.city,
           code: amb.referral_code,
           commission_percentage: amb.commission_percentage,

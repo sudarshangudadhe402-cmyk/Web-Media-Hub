@@ -100,13 +100,26 @@ export default function PartnershipPage() {
   const params = useParams<{ type: string; code: string }>();
   const type = params.type ?? "";
   const code = params.code ?? "";
+  const VERIFY_KEY = `partner_verified_${type}_${code}`;
 
+  // ── Verification state ─────────────────────────────────────────────────────
+  const [verified, setVerified] = useState(() => {
+    try { return !!localStorage.getItem(`partner_verified_${type}_${code}`); } catch { return false; }
+  });
+  const [verifyStep, setVerifyStep] = useState<"email" | "otp">("email");
+  const [inputEmail, setInputEmail] = useState("");
+  const [inputOtp, setInputOtp] = useState("");
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [verifyError, setVerifyError] = useState("");
+
+  // ── Data state ─────────────────────────────────────────────────────────────
   const [data, setData] = useState<{ member: MemberProfile; signups: SignupRecord[] } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch only when verified
   useEffect(() => {
-    if (!type || !code) return;
+    if (!verified || !type || !code) return;
     setLoading(true);
     fetch(`/api/public/partner/${encodeURIComponent(type)}/${encodeURIComponent(code)}`)
       .then((r) => {
@@ -115,7 +128,139 @@ export default function PartnershipPage() {
       })
       .then((d) => { setData(d); setLoading(false); })
       .catch((e) => { setError(e.message); setLoading(false); });
-  }, [type, code]);
+  }, [verified, type, code]);
+
+  // ── OTP helpers ────────────────────────────────────────────────────────────
+  async function sendOtp() {
+    if (!inputEmail.trim()) { setVerifyError("Please enter your email address."); return; }
+    setVerifyLoading(true); setVerifyError("");
+    try {
+      const r = await fetch("/api/public/partner/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, code, email: inputEmail.trim().toLowerCase() }),
+      });
+      const d = await r.json();
+      if (!r.ok) { setVerifyError(d.error || "Failed to send OTP"); return; }
+      setVerifyStep("otp");
+    } catch { setVerifyError("Network error. Please try again."); }
+    finally { setVerifyLoading(false); }
+  }
+
+  async function verifyOtp() {
+    if (!inputOtp.trim()) { setVerifyError("Please enter the OTP."); return; }
+    setVerifyLoading(true); setVerifyError("");
+    try {
+      const r = await fetch("/api/public/partner/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, code, email: inputEmail.trim().toLowerCase(), otp: inputOtp.trim() }),
+      });
+      const d = await r.json();
+      if (!r.ok) { setVerifyError(d.error || "Invalid OTP. Please try again."); return; }
+      try { localStorage.setItem(VERIFY_KEY, "1"); } catch { /* ignore */ }
+      setVerified(true);
+    } catch { setVerifyError("Network error. Please try again."); }
+    finally { setVerifyLoading(false); }
+  }
+
+  // ── Verification Screen ────────────────────────────────────────────────────
+  if (!verified) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-sm">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <Handshake className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-2xl font-black text-gray-900 mb-1">Partnership Portal</h1>
+            <p className="text-gray-500 text-sm">Web Media Hub</p>
+          </div>
+
+          {/* Card */}
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
+            {verifyStep === "email" ? (
+              <>
+                <h2 className="font-bold text-gray-900 mb-1">Verify your identity</h2>
+                <p className="text-sm text-gray-500 mb-5">Enter the email address registered with your partner account to receive a one-time code.</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-semibold text-gray-700 mb-1.5 block uppercase tracking-wide">Email address</label>
+                    <input
+                      type="email"
+                      value={inputEmail}
+                      onChange={e => setInputEmail(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && sendOtp()}
+                      placeholder="you@example.com"
+                      className="w-full h-11 px-4 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                      autoFocus
+                    />
+                  </div>
+                  {verifyError && (
+                    <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+                      <XCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                      <p className="text-sm text-red-600">{verifyError}</p>
+                    </div>
+                  )}
+                  <button
+                    onClick={sendOtp}
+                    disabled={verifyLoading}
+                    className="w-full h-11 bg-slate-900 text-white rounded-xl font-semibold text-sm hover:bg-slate-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {verifyLoading ? "Sending…" : "Send OTP →"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="font-bold text-gray-900 mb-1">Enter your OTP</h2>
+                <p className="text-sm text-gray-500 mb-1">A 6-digit code was sent to</p>
+                <p className="text-sm font-semibold text-gray-800 mb-5">{inputEmail}</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-semibold text-gray-700 mb-1.5 block uppercase tracking-wide">One-time code</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={inputOtp}
+                      onChange={e => setInputOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      onKeyDown={e => e.key === "Enter" && verifyOtp()}
+                      placeholder="000000"
+                      maxLength={6}
+                      className="w-full h-14 px-4 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-2xl font-mono tracking-[0.4em] text-center"
+                      autoFocus
+                    />
+                  </div>
+                  {verifyError && (
+                    <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+                      <XCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                      <p className="text-sm text-red-600">{verifyError}</p>
+                    </div>
+                  )}
+                  <button
+                    onClick={verifyOtp}
+                    disabled={verifyLoading || inputOtp.length < 6}
+                    className="w-full h-11 bg-slate-900 text-white rounded-xl font-semibold text-sm hover:bg-slate-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {verifyLoading ? "Verifying…" : "Verify & Enter →"}
+                  </button>
+                  <button
+                    onClick={() => { setVerifyStep("email"); setInputOtp(""); setVerifyError(""); }}
+                    className="w-full text-xs text-gray-400 hover:text-gray-600 py-1"
+                  >
+                    ← Change email
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          <p className="text-center text-xs text-gray-400 mt-6">The code expires in 10 minutes. Code: <span className="font-mono font-bold text-gray-600 uppercase">{code}</span></p>
+        </div>
+      </div>
+    );
+  }
 
   // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) {
@@ -172,6 +317,7 @@ export default function PartnershipPage() {
             </div>
             <div className="flex-1 min-w-0">
               <h1 className="text-white text-2xl font-black truncate">{member.name}</h1>
+              {member.email && <p className="text-white/70 text-xs mt-0.5">{member.email}</p>}
               {member.city && (
                 <div className="flex items-center gap-1 mt-0.5">
                   <MapPin className="w-3.5 h-3.5 text-white/70" />

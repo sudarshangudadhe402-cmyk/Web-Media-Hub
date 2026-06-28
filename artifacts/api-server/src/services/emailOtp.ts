@@ -64,6 +64,41 @@ export async function sendLockoutEmail(
   });
 }
 
+export async function sendPartnerVerificationEmail(
+  toEmail: string,
+  otp: string,
+  partnerName: string
+) {
+  const safeName = escapeHtml(partnerName);
+  const safeOtp = escapeHtml(otp);
+  const html = `
+    <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:480px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
+      <div style="background:#000;padding:24px 28px;">
+        <p style="color:#fff;font-size:11px;letter-spacing:2px;font-weight:700;margin:0;text-transform:uppercase;">Web Media Hub</p>
+        <p style="color:rgba(255,255,255,0.5);font-size:11px;margin:4px 0 0;">Partnership Portal</p>
+      </div>
+      <div style="padding:32px 28px;">
+        <p style="font-size:15px;color:#111;font-weight:600;margin:0 0 8px;">Verify your identity, ${safeName}</p>
+        <p style="font-size:13px;color:#6b7280;margin:0 0 28px;">Use the OTP below to access your <strong>Partnership Portal</strong>. This code is valid for <strong>10 minutes</strong>.</p>
+        <div style="background:#f9fafb;border:2px dashed #e5e7eb;border-radius:12px;padding:20px;text-align:center;margin-bottom:24px;">
+          <p style="font-size:36px;font-weight:900;letter-spacing:10px;color:#000;margin:0;font-family:monospace;">${safeOtp}</p>
+        </div>
+        <p style="font-size:12px;color:#9ca3af;margin:0;">If you didn't request this, you can safely ignore this email.</p>
+      </div>
+      <div style="background:#f9fafb;padding:16px 28px;border-top:1px solid #f3f4f6;">
+        <p style="font-size:11px;color:#d1d5db;margin:0;text-align:center;">Powered by <strong style="color:#9ca3af;">Web Media Hub</strong></p>
+      </div>
+    </div>
+  `;
+  await transporter.sendMail({
+    from: `"Web Media Hub" <${process.env.GMAIL_USER}>`,
+    to: toEmail,
+    subject: `${otp} — Verify your Web Media Hub Partnership Portal access`,
+    html,
+    text: `Your OTP is: ${otp}\n\nThis code is valid for 10 minutes.\n\nWeb Media Hub Partnership Portal`,
+  });
+}
+
 export async function sendOtpEmail(
   toEmail: string,
   otp: string,

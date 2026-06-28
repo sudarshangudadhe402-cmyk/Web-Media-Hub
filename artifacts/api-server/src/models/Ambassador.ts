@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IAmbassador extends Document {
   name: string;
+  email: string;
   city: string;
   referral_code: string;
   commission_percentage: number;
@@ -16,6 +17,7 @@ export interface IAmbassador extends Document {
 const AmbassadorSchema = new Schema<IAmbassador>(
   {
     name: { type: String, required: true, trim: true },
+    email: { type: String, default: "", trim: true, lowercase: true },
     city: { type: String, default: "", trim: true },
     referral_code: { type: String, required: true, unique: true, trim: true, uppercase: true },
     commission_percentage: { type: Number, default: 0, min: 0, max: 100 },

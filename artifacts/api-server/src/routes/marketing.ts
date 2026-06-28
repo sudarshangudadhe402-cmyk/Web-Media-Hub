@@ -211,9 +211,9 @@ router.get("/marketing/influencers", requireSuperAdmin, async (_req, res: Respon
 
 router.post("/marketing/influencers", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { name, coupon_code, commission_percentage, customer_discount_percentage } = req.body;
+    const { name, email, coupon_code, commission_percentage, customer_discount_percentage } = req.body;
     if (!name || !coupon_code) { res.status(400).json({ error: "name and coupon_code required" }); return; }
-    const inf = await Influencer.create({ name, coupon_code: coupon_code.toUpperCase(), commission_percentage: commission_percentage ?? 0, customer_discount_percentage: customer_discount_percentage ?? 0 });
+    const inf = await Influencer.create({ name, email: email ?? "", coupon_code: coupon_code.toUpperCase(), commission_percentage: commission_percentage ?? 0, customer_discount_percentage: customer_discount_percentage ?? 0 });
     res.status(201).json(inf);
   } catch (err: any) {
     if (err.code === 11000) { res.status(409).json({ error: "Coupon code already exists" }); return; }
@@ -223,10 +223,10 @@ router.post("/marketing/influencers", requireSuperAdmin, async (req: AuthRequest
 
 router.put("/marketing/influencers/:id", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { name, coupon_code, commission_percentage, customer_discount_percentage } = req.body;
+    const { name, email, coupon_code, commission_percentage, customer_discount_percentage } = req.body;
     const inf = await Influencer.findByIdAndUpdate(
       req.params.id,
-      { name, coupon_code: coupon_code?.toUpperCase(), commission_percentage, customer_discount_percentage },
+      { name, email: email ?? "", coupon_code: coupon_code?.toUpperCase(), commission_percentage, customer_discount_percentage },
       { new: true }
     );
     if (!inf) { res.status(404).json({ error: "Not found" }); return; }
@@ -251,9 +251,9 @@ router.get("/marketing/ambassadors", requireSuperAdmin, async (_req, res: Respon
 
 router.post("/marketing/ambassadors", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { name, city, referral_code, commission_percentage, customer_discount_percentage } = req.body;
+    const { name, email, city, referral_code, commission_percentage, customer_discount_percentage } = req.body;
     if (!name || !referral_code) { res.status(400).json({ error: "name and referral_code required" }); return; }
-    const amb = await Ambassador.create({ name, city: city ?? "", referral_code: referral_code.toUpperCase(), commission_percentage: commission_percentage ?? 0, customer_discount_percentage: customer_discount_percentage ?? 0 });
+    const amb = await Ambassador.create({ name, email: email ?? "", city: city ?? "", referral_code: referral_code.toUpperCase(), commission_percentage: commission_percentage ?? 0, customer_discount_percentage: customer_discount_percentage ?? 0 });
     res.status(201).json(amb);
   } catch (err: any) {
     if (err.code === 11000) { res.status(409).json({ error: "Referral code already exists" }); return; }
@@ -263,10 +263,10 @@ router.post("/marketing/ambassadors", requireSuperAdmin, async (req: AuthRequest
 
 router.put("/marketing/ambassadors/:id", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { name, city, referral_code, commission_percentage, customer_discount_percentage } = req.body;
+    const { name, email, city, referral_code, commission_percentage, customer_discount_percentage } = req.body;
     const amb = await Ambassador.findByIdAndUpdate(
       req.params.id,
-      { name, city, referral_code: referral_code?.toUpperCase(), commission_percentage, customer_discount_percentage },
+      { name, email: email ?? "", city, referral_code: referral_code?.toUpperCase(), commission_percentage, customer_discount_percentage },
       { new: true }
     );
     if (!amb) { res.status(404).json({ error: "Not found" }); return; }

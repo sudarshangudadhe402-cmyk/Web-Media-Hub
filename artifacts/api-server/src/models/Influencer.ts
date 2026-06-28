@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IInfluencer extends Document {
   name: string;
+  email: string;
   coupon_code: string;
   commission_percentage: number;
   customer_discount_percentage: number;
@@ -15,6 +16,7 @@ export interface IInfluencer extends Document {
 const InfluencerSchema = new Schema<IInfluencer>(
   {
     name: { type: String, required: true, trim: true },
+    email: { type: String, default: "", trim: true, lowercase: true },
     coupon_code: { type: String, required: true, unique: true, trim: true, uppercase: true },
     commission_percentage: { type: Number, default: 0, min: 0, max: 100 },
     customer_discount_percentage: { type: Number, default: 0, min: 0, max: 100 },
