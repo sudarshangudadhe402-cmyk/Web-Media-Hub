@@ -93,6 +93,20 @@ async function buildSourceLookup() {
   return { customMap, allKnownKeys, labelFor, colorFor };
 }
 
+/* ── PARTNER COUNTS (live) ── */
+router.get("/marketing/partner-counts", requireSuperAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const [influencer, ambassador, referral] = await Promise.all([
+      Influencer.countDocuments(),
+      Ambassador.countDocuments(),
+      ReferralCode.countDocuments(),
+    ]);
+    res.json({ influencer, ambassador, referral });
+  } catch (err) {
+    res.status(500).json({ error: "Failed" });
+  }
+});
+
 /* ── DASHBOARD ── */
 router.get("/marketing/dashboard", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {

@@ -114,11 +114,11 @@ function authHeaders() { return { "Content-Type": "application/json", Authorizat
 
 const SOURCES = ["ORGANIC","GOOGLE_AD","FACEBOOK_AD","INSTAGRAM_AD","YOUTUBE","REFERRAL","AMBASSADOR","INFLUENCER","AFFILIATE","WHATSAPP","DIRECT"];
 
-// Auto-tracked by system (UTM params / coupon codes / referral codes) — non-deletable, toggleable
-const AUTO_SOURCES = ["GOOGLE_AD","FACEBOOK_AD","INSTAGRAM_AD","YOUTUBE","REFERRAL","AMBASSADOR","INFLUENCER","AFFILIATE"];
+// Non-deletable: 3 fixed partner types (show live count)
+const NON_DELETABLE_KEYS = ["INFLUENCER","AMBASSADOR","REFERRAL"] as const;
 
-// Admin manually selects these when signup can't be auto-detected — in deletable section
-const MANUAL_BUILTIN_SOURCES = ["ORGANIC","WHATSAPP","DIRECT"];
+// Deletable builtin sources — shown in deletable section with tracking link
+const DELETABLE_BUILTIN_KEYS = ["GOOGLE_AD","FACEBOOK_AD","INSTAGRAM_AD","YOUTUBE","AFFILIATE","ORGANIC","WHATSAPP","DIRECT"];
 
 const SOURCE_COLORS: Record<string, string> = {
   ORGANIC:"#22c55e", GOOGLE_AD:"#3b82f6", FACEBOOK_AD:"#6366f1", INSTAGRAM_AD:"#ec4899",
@@ -961,80 +961,74 @@ function ToggleSwitch({ checked, onChange, disabled }: { checked: boolean; onCha
   );
 }
 
-function SourcesTab() {
-  const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [range, setRange] = useState("all");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+function trackingLink(key: string) {
+  return `${window.location.origin}/?utm_source=${key.toLowerCase()}`;
+}
 
+function CopyLinkButton({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+  function copy() {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    });
+  }
+  return (
+    <button
+      onClick={copy}
+      title="Copy link"
+      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors border border-border rounded px-2 py-1 bg-muted/30 hover:bg-muted/60 shrink-0"
+    >
+      {copied ? <Check className="w-3 h-3 text-green-500" /> : <Link2 className="w-3 h-3" />}
+      {copied ? "Copied" : "Copy"}
+    </button>
+  );
+}
+
+function SourcesTab() {
   const [customSources, setCustomSources] = useState<any[]>([]);
   const [csLoading, setCsLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newLabel, setNewLabel] = useState("");
   const [newColor, setNewColor] = useState("#6b7280");
   const [saving, setSaving] = useState(false);
-
-  // builtin active/inactive map: key → isActive (default true)
-  const [builtinSettings, setBuiltinSettings] = useState<Record<string, boolean>>({});
-  const [togglingKey, setTogglingKey] = useState<string | null>(null);
+  const [partnerCounts, setPartnerCounts] = useState<{ influencer: number; ambassador: number; referral: number }>({ influencer: 0, ambassador: 0, referral: 0 });
 
   const { toast } = useToast();
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ range });
-      if (range === "custom" && from && to) { params.set("from", from); params.set("to", to); }
-      const r = await fetch(`${BASE}/marketing/sources?${params}`, { headers: authHeaders() });
-      const d = await r.json();
-      setData(Array.isArray(d) ? d : []);
-    } catch { toast({ title: "Failed", variant: "destructive" }); }
-    finally { setLoading(false); }
-  }, [range, from, to]);
-
-  const loadCustom = async () => {
+  const loadCustom = useCallback(async () => {
     setCsLoading(true);
     try {
-      const [cr, br] = await Promise.all([
-        fetch(`${BASE}/marketing/sources/config`, { headers: authHeaders() }),
-        fetch(`${BASE}/marketing/sources/builtin`, { headers: authHeaders() }),
-      ]);
-      const cd = await cr.json();
-      const bd = await br.json();
+      const r = await fetch(`${BASE}/marketing/sources/config`, { headers: authHeaders() });
+      const cd = await r.json();
       setCustomSources(Array.isArray(cd) ? cd : []);
-      if (bd && typeof bd === "object") setBuiltinSettings(bd);
     } catch { }
     finally { setCsLoading(false); }
-  };
+  }, []);
 
-  useEffect(() => { load(); }, [load]);
-  useEffect(() => { loadCustom(); }, []);
-
-  async function toggleBuiltin(key: string) {
-    const current = builtinSettings[key] !== false; // default true
-    setTogglingKey(key);
+  const loadCounts = useCallback(async () => {
     try {
-      const r = await fetch(`${BASE}/marketing/sources/builtin/${key}`, {
-        method: "PATCH",
-        headers: authHeaders(),
-        body: JSON.stringify({ isActive: !current }),
-      });
-      if (!r.ok) { toast({ title: "Failed to update", variant: "destructive" }); return; }
-      setBuiltinSettings(prev => ({ ...prev, [key]: !current }));
-      toast({ title: `${SOURCE_LABELS[key]} ${!current ? "activated" : "deactivated"}` });
-    } catch { toast({ title: "Failed", variant: "destructive" }); }
-    finally { setTogglingKey(null); }
-  }
+      const r = await fetch(`${BASE}/marketing/partner-counts`, { headers: authHeaders() });
+      if (r.ok) { const d = await r.json(); setPartnerCounts(d); }
+    } catch { }
+  }, []);
+
+  useEffect(() => {
+    loadCustom();
+    loadCounts();
+    const interval = setInterval(loadCounts, 10000);
+    return () => clearInterval(interval);
+  }, [loadCustom, loadCounts]);
 
   async function addSource() {
     if (!newLabel.trim()) { toast({ title: "Label is required", variant: "destructive" }); return; }
     setSaving(true);
     try {
+      const key = newLabel.trim().toUpperCase().replace(/\s+/g, "_");
       const r = await fetch(`${BASE}/marketing/sources/config`, {
         method: "POST",
         headers: authHeaders(),
-        body: JSON.stringify({ key: newLabel.trim().toUpperCase().replace(/\s+/g, "_"), label: newLabel.trim(), color: newColor }),
+        body: JSON.stringify({ key, label: newLabel.trim(), color: newColor }),
       });
       if (!r.ok) { const e = await r.json(); toast({ title: e.error || "Failed", variant: "destructive" }); return; }
       toast({ title: "Source added" });
@@ -1045,18 +1039,19 @@ function SourcesTab() {
   }
 
   async function deleteSource(id: string) {
-    if (!confirm("Delete this custom source?")) return;
+    if (!confirm("Delete this source?")) return;
     await fetch(`${BASE}/marketing/sources/config/${id}`, { method: "DELETE", headers: authHeaders() });
     loadCustom();
   }
 
+  const NON_DELETABLE_INFO: { key: typeof NON_DELETABLE_KEYS[number]; label: string; count: number }[] = [
+    { key: "INFLUENCER", label: "Influencer", count: partnerCounts.influencer },
+    { key: "AMBASSADOR", label: "Ambassador", count: partnerCounts.ambassador },
+    { key: "REFERRAL",   label: "Referral",   count: partnerCounts.referral  },
+  ];
+
   return (
     <div className="space-y-4">
-      <DateFilterBar range={range} setRange={setRange} from={from} setFrom={setFrom} to={to} setTo={setTo} />
-
-      {loading && <div className="flex justify-center py-10"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}
-
-      {/* ── Sources Management ── */}
       <Card>
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
@@ -1065,11 +1060,36 @@ function SourcesTab() {
               <Plus className="w-4 h-4 mr-1" />{showAddForm ? "Cancel" : "Add Source"}
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">Trackable sources auto-detected via UTM/coupon — toggle Active/Inactive. Manual sources shown to admins for self-selection.</p>
         </CardHeader>
-        <CardContent className="space-y-0 p-0 pt-0">
+        <CardContent className="p-0">
 
-          {/* Add form — sits above the list */}
+          {/* ── NON DELETABLE SECTION ── */}
+          <div className="px-4 py-2 bg-muted/30 border-y border-border">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-foreground">Non Deletable</p>
+          </div>
+          <div className="divide-y divide-border">
+            {NON_DELETABLE_INFO.map(({ key, label, count }) => (
+              <div key={key} className="flex items-center justify-between px-4 py-3 hover:bg-muted/10">
+                <div className="flex items-center gap-3">
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: SOURCE_COLORS[key] }} />
+                  <p className="text-sm font-medium">{label}</p>
+                </div>
+                <Badge variant="secondary" className="text-xs font-semibold tabular-nums min-w-[2rem] justify-center">
+                  {count}
+                </Badge>
+              </div>
+            ))}
+          </div>
+
+          {/* ── DIVIDER ── */}
+          <div className="border-t-2 border-border" />
+
+          {/* ── DELETABLE SOURCE SECTION ── */}
+          <div className="px-4 py-2 bg-muted/30 border-y border-border">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-foreground">Deletable Source</p>
+          </div>
+
+          {/* Add form */}
           {showAddForm && (
             <div className="flex flex-wrap gap-3 items-end p-4 border-b border-border bg-muted/20">
               <div className="flex-1 min-w-[160px]">
@@ -1083,101 +1103,63 @@ function SourcesTab() {
                   <span className="text-xs text-muted-foreground font-mono">{newColor}</span>
                 </div>
               </div>
+              {newLabel.trim() && (
+                <div className="flex-1 min-w-[200px]">
+                  <label className="text-xs font-medium mb-1 block text-muted-foreground">Auto-generated link</label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground font-mono truncate">{trackingLink(newLabel.trim().toUpperCase().replace(/\s+/g,"_"))}</span>
+                  </div>
+                </div>
+              )}
               <Button size="sm" onClick={addSource} disabled={saving}>
                 <Check className="w-4 h-4 mr-1" />{saving ? "Saving..." : "Add"}
               </Button>
             </div>
           )}
 
-          {/* ── Section: Auto-Trackable (non-deletable, toggleable) ── */}
-          <div className="px-4 py-2 bg-muted/30 border-b border-border">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Direct Trackable Sources — Non-deletable</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Auto-detected via UTM params, coupon codes, or referral links</p>
-          </div>
-
+          {/* Builtin deletable sources */}
           <div className="divide-y divide-border">
-            {AUTO_SOURCES.map(key => {
-              const isActive = builtinSettings[key] !== false;
+            {DELETABLE_BUILTIN_KEYS.map(key => {
+              const url = trackingLink(key);
               return (
-                <div key={key} className={`flex items-center justify-between px-4 py-3 transition-colors ${isActive ? "hover:bg-muted/10" : "opacity-50 hover:bg-muted/10"}`}>
-                  <div className="flex items-center gap-3">
+                <div key={key} className="flex items-center justify-between px-4 py-3 hover:bg-muted/10 gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: SOURCE_COLORS[key] }} />
-                    <div>
-                      <p className="text-sm font-medium">{SOURCE_LABELS[key]}</p>
-                      <p className="text-xs text-muted-foreground font-mono">{key}</p>
-                    </div>
+                    <p className="text-sm font-medium">{SOURCE_LABELS[key]}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-medium ${isActive ? "text-green-600" : "text-muted-foreground"}`}>
-                      {isActive ? "Active" : "Inactive"}
-                    </span>
-                    <ToggleSwitch
-                      checked={isActive}
-                      onChange={() => toggleBuiltin(key)}
-                      disabled={togglingKey === key}
-                    />
+                  <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
+                    <span className="text-xs text-muted-foreground font-mono truncate hidden sm:block max-w-[260px]">{url}</span>
+                    <CopyLinkButton url={url} />
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* ── Divider ── */}
-          <div className="border-t-2 border-border">
-            <div className="px-4 py-2 bg-muted/30 border-b border-border">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Manual Selection Sources — Deletable</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Admin manually chooses these when signup can't be auto-tracked</p>
-            </div>
-          </div>
-
-          {/* Manual built-in sources (ORGANIC, WHATSAPP, DIRECT) — toggleable, no delete */}
-          <div className="divide-y divide-border">
-            {MANUAL_BUILTIN_SOURCES.map(key => {
-              const isActive = builtinSettings[key] !== false;
-              return (
-                <div key={key} className={`flex items-center justify-between px-4 py-3 transition-colors ${isActive ? "hover:bg-muted/10" : "opacity-50 hover:bg-muted/10"}`}>
-                  <div className="flex items-center gap-3">
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: SOURCE_COLORS[key] }} />
-                    <div>
-                      <p className="text-sm font-medium">{SOURCE_LABELS[key]}</p>
-                      <p className="text-xs text-muted-foreground font-mono">{key}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-medium ${isActive ? "text-green-600" : "text-muted-foreground"}`}>
-                      {isActive ? "Active" : "Inactive"}
-                    </span>
-                    <ToggleSwitch
-                      checked={isActive}
-                      onChange={() => toggleBuiltin(key)}
-                      disabled={togglingKey === key}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Custom sources — toggleable + deletable */}
+          {/* Custom sources */}
           <div className="divide-y divide-border">
             {csLoading ? (
               <div className="flex justify-center py-5"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
             ) : customSources.length === 0 ? (
-              <div className="px-4 py-4 text-center text-xs text-muted-foreground">No custom sources yet — click "Add Source" above to add one.</div>
-            ) : customSources.map(src => (
-              <div key={src._id} className="flex items-center justify-between px-4 py-3 hover:bg-muted/10">
-                <div className="flex items-center gap-3">
-                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: src.color }} />
-                  <div>
+              <div className="px-4 py-4 text-center text-xs text-muted-foreground">No custom sources yet — click "Add Source" to add one.</div>
+            ) : customSources.map(src => {
+              const url = trackingLink(src.key);
+              return (
+                <div key={src._id} className="flex items-center justify-between px-4 py-3 hover:bg-muted/10 gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: src.color }} />
                     <p className="text-sm font-medium">{src.label}</p>
-                    <p className="text-xs text-muted-foreground font-mono">{src.key}</p>
+                  </div>
+                  <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
+                    <span className="text-xs text-muted-foreground font-mono truncate hidden sm:block max-w-[220px]">{url}</span>
+                    <CopyLinkButton url={url} />
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive shrink-0" onClick={() => deleteSource(src._id)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
                   </div>
                 </div>
-                <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => deleteSource(src._id)}>
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
         </CardContent>
