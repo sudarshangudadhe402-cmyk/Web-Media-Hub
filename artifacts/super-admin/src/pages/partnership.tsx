@@ -4,7 +4,8 @@ import {
   Users, MapPin, Calendar, XCircle, Tag, Star, Handshake,
   TrendingUp, Percent, IndianRupee, Wallet, Shield, Pencil,
   CheckCircle2, AlertCircle, Clock, RefreshCw,
-  Send, X, Banknote,
+  Send, X, Banknote, ArrowUpRight, ArrowDownLeft, RotateCcw,
+  History, Zap, Award, Timer,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -50,6 +51,28 @@ interface WithdrawalData {
   history: WithdrawalRecord[];
 }
 
+type WalletTxType = "credit" | "debit" | "withdrawal_request" | "withdrawal_success" | "withdrawal_failed" | "adjustment";
+type WalletTxStatus = "completed" | "pending" | "failed";
+
+interface WalletTransaction {
+  transaction_id: string;
+  amount: number;
+  type: WalletTxType;
+  status: WalletTxStatus;
+  description: string;
+  reference_id: string | null;
+  created_at: string;
+}
+
+interface WalletData {
+  wallet_balance: number;
+  lifetime_earnings: number;
+  pending_withdrawal: number;
+  total_withdrawn: number;
+  last_updated: string | null;
+  transactions: WalletTransaction[];
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmt(n: number | null | undefined) { return (n ?? 0).toLocaleString("en-IN"); }
 function fmtRs(n: number) { return `₹${n.toLocaleString("en-IN")}`; }
@@ -78,6 +101,41 @@ function subscriptionStatus(end: string | null): "active" | "expired" | "lifetim
 
 function validateUpi(upi: string) {
   return /^[a-zA-Z0-9._-]+@[a-zA-Z0-9]+$/.test(upi.trim());
+}
+
+// ── Wallet Transaction type config ────────────────────────────────────────────
+function txTypeConfig(type: WalletTxType): { Icon: any; label: string; bg: string; color: string } {
+  switch (type) {
+    case "credit":
+      return { Icon: ArrowDownLeft, label: "Commission Credit", bg: "bg-green-100", color: "text-green-600" };
+    case "debit":
+      return { Icon: ArrowUpRight, label: "Debit", bg: "bg-red-100", color: "text-red-500" };
+    case "withdrawal_request":
+      return { Icon: Timer, label: "Withdrawal Requested", bg: "bg-orange-100", color: "text-orange-500" };
+    case "withdrawal_success":
+      return { Icon: CheckCircle2, label: "Withdrawal Paid", bg: "bg-green-100", color: "text-green-600" };
+    case "withdrawal_failed":
+      return { Icon: RotateCcw, label: "Withdrawal Failed — Refunded", bg: "bg-rose-100", color: "text-rose-500" };
+    case "adjustment":
+      return { Icon: Zap, label: "Manual Adjustment", bg: "bg-violet-100", color: "text-violet-600" };
+    default:
+      return { Icon: History, label: "Transaction", bg: "bg-gray-100", color: "text-gray-500" };
+  }
+}
+
+// ── Wallet Tx Status Badge ────────────────────────────────────────────────────
+function TxStatusBadge({ status }: { status: WalletTxStatus }) {
+  const map: Record<WalletTxStatus, { cls: string; label: string }> = {
+    completed: { cls: "bg-green-100 text-green-700", label: "Done" },
+    pending:   { cls: "bg-amber-100 text-amber-700", label: "Pending" },
+    failed:    { cls: "bg-red-100 text-red-600",     label: "Failed" },
+  };
+  const { cls, label } = map[status] ?? map.pending;
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${cls}`}>
+      {label}
+    </span>
+  );
 }
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
@@ -151,6 +209,10 @@ export default function PartnershipPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ── Wallet data ────────────────────────────────────────────────────────────
+  const [walletData, setWalletData] = useState<WalletData | null>(null);
+  const [walletLoading, setWalletLoading] = useState(false);
+
   // ── Withdrawal data ────────────────────────────────────────────────────────
   const [wdData, setWdData] = useState<WithdrawalData | null>(null);
   const [wdLoading, setWdLoading] = useState(false);
@@ -185,6 +247,16 @@ export default function PartnershipPage() {
       .catch(e => { setError(e.message); setLoading(false); });
   }, [verified, type, code]);
 
+  // Fetch wallet data when verified
+  useEffect(() => {
+    if (!verified || !type || !code) return;
+    setWalletLoading(true);
+    fetch(`/api/public/partner/${encodeURIComponent(type)}/${encodeURIComponent(code)}/wallet`)
+      .then(r => r.json())
+      .then(d => { setWalletData(d); setWalletLoading(false); })
+      .catch(() => setWalletLoading(false));
+  }, [verified, type, code]);
+
   // Fetch withdrawal data when verified
   useEffect(() => {
     if (!verified || !type || !code) return;
@@ -194,6 +266,16 @@ export default function PartnershipPage() {
       .then(d => { setWdData(d); setWdLoading(false); })
       .catch(() => setWdLoading(false));
   }, [verified, type, code]);
+
+  // Refresh wallet data
+  async function refreshWalletData() {
+    setWalletLoading(true);
+    try {
+      const r = await fetch(`/api/public/partner/${encodeURIComponent(type)}/${encodeURIComponent(code)}/wallet`);
+      if (r.ok) setWalletData(await r.json());
+    } catch { /* ignore */ }
+    finally { setWalletLoading(false); }
+  }
 
   // ── OTP helpers (login) ────────────────────────────────────────────────────
   async function sendOtp() {
@@ -506,6 +588,178 @@ export default function PartnershipPage() {
           <StatCard icon={Users} label="Total Signups" value={fmt(member.total_signups)} color="bg-blue-50 text-blue-600" />
           {member.total_revenue != null && (
             <StatCard icon={TrendingUp} label="Revenue Generated" value={`₹${fmt(member.total_revenue)}`} color="bg-purple-50 text-purple-600" />
+          )}
+        </div>
+
+        {/* ── Internal Wallet Module ──────────────────────────────────── */}
+        <div className="space-y-4">
+          {/* Section Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-purple-700 rounded-lg flex items-center justify-center shadow-sm">
+                <Wallet className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-gray-900 leading-none">Internal Wallet</h2>
+                <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide mt-0.5">Earnings Ledger</p>
+              </div>
+            </div>
+            <button
+              onClick={refreshWalletData}
+              disabled={walletLoading}
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl px-3 py-2 transition-all font-medium disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${walletLoading ? "animate-spin" : ""}`} />
+              Refresh
+            </button>
+          </div>
+
+          {walletLoading && !walletData ? (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 flex justify-center">
+              <div className="w-8 h-8 border-4 border-violet-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : (
+            <>
+              {/* ── Premium Wallet Card ───────────────────────────────── */}
+              <div className="relative overflow-hidden rounded-2xl shadow-xl">
+                <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
+                <div className="absolute -top-8 -right-8 w-48 h-48 bg-violet-600/20 rounded-full blur-3xl" />
+                <div className="absolute -bottom-8 -left-8 w-40 h-40 bg-blue-600/15 rounded-full blur-3xl" />
+
+                <div className="relative z-10 p-6">
+                  {/* Card Header */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 bg-white/10 border border-white/20 rounded-xl flex items-center justify-center">
+                        <Wallet className="w-4 h-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-white font-bold text-sm leading-none">Internal Wallet</p>
+                        <p className="text-white/50 text-[10px] font-medium uppercase tracking-widest mt-0.5">Earnings Only · No Real Money</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-white/10 border border-white/20 rounded-full px-3 py-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                      <span className="text-white/70 text-[10px] font-bold uppercase tracking-wide">Live</span>
+                    </div>
+                  </div>
+
+                  {/* Main Balance */}
+                  <div className="mb-6">
+                    <p className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-1.5">Wallet Balance</p>
+                    <div className="flex items-end gap-1">
+                      <span className="text-white/70 text-2xl font-bold leading-none mb-1">₹</span>
+                      <span className="text-white text-5xl font-black leading-none tracking-tight">
+                        {(walletData?.wallet_balance ?? 0).toLocaleString("en-IN")}
+                      </span>
+                    </div>
+                    <p className="text-white/40 text-xs mt-1.5">Available for withdrawal</p>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="h-px bg-white/10 mb-5" />
+
+                  {/* 3 Stats Row */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="rounded-xl p-3 space-y-1.5" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                      <div className="flex items-center gap-1.5">
+                        <Award className="w-3.5 h-3.5 text-amber-400" />
+                        <span className="text-white/50 text-[9px] font-bold uppercase tracking-wide">Lifetime</span>
+                      </div>
+                      <p className="text-white text-sm font-black leading-none">
+                        ₹{(walletData?.lifetime_earnings ?? 0).toLocaleString("en-IN")}
+                      </p>
+                      <p className="text-white/35 text-[9px]">Total earned</p>
+                    </div>
+
+                    <div className="rounded-xl p-3 space-y-1.5" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                      <div className="flex items-center gap-1.5">
+                        <ArrowUpRight className="w-3.5 h-3.5 text-green-400" />
+                        <span className="text-white/50 text-[9px] font-bold uppercase tracking-wide">Withdrawn</span>
+                      </div>
+                      <p className="text-white text-sm font-black leading-none">
+                        ₹{(walletData?.total_withdrawn ?? 0).toLocaleString("en-IN")}
+                      </p>
+                      <p className="text-white/35 text-[9px]">Successfully paid</p>
+                    </div>
+
+                    <div className="rounded-xl p-3 space-y-1.5" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                      <div className="flex items-center gap-1.5">
+                        <Timer className="w-3.5 h-3.5 text-orange-400" />
+                        <span className="text-white/50 text-[9px] font-bold uppercase tracking-wide">Pending</span>
+                      </div>
+                      <p className="text-white text-sm font-black leading-none">
+                        ₹{(walletData?.pending_withdrawal ?? 0).toLocaleString("en-IN")}
+                      </p>
+                      <p className="text-white/35 text-[9px]">Processing</p>
+                    </div>
+                  </div>
+
+                  {walletData?.last_updated && (
+                    <p className="text-white/25 text-[9px] mt-4 text-right font-medium">
+                      Updated {new Date(walletData.last_updated).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* ── Wallet Transaction Ledger ─────────────────────────── */}
+              {walletData && walletData.transactions.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <History className="w-4 h-4 text-gray-500" />
+                    <h3 className="text-sm font-bold text-gray-900">Transaction Ledger</h3>
+                    <span className="text-[10px] bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-bold">{walletData.transactions.length}</span>
+                  </div>
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div className="hidden sm:grid grid-cols-[40px_1fr_90px_100px_90px] gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-wide">
+                      <span>Type</span>
+                      <span>Description</span>
+                      <span className="text-right">Amount</span>
+                      <span>Date</span>
+                      <span>Status</span>
+                    </div>
+                    {walletData.transactions.map((tx, i) => {
+                      const cfg = txTypeConfig(tx.type);
+                      const isCredit = tx.type === "credit" || tx.type === "adjustment" || tx.type === "withdrawal_failed";
+                      return (
+                        <div
+                          key={tx.transaction_id}
+                          className={`flex flex-col sm:grid sm:grid-cols-[40px_1fr_90px_100px_90px] gap-1 sm:gap-2 px-4 py-3.5 sm:items-center border-b border-gray-50 last:border-0 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/40"}`}
+                        >
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${cfg.bg}`}>
+                            <cfg.Icon className={`w-4 h-4 ${cfg.color}`} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-gray-800 truncate">{cfg.label}</p>
+                            <p className="text-[10px] text-gray-400 truncate mt-0.5">{tx.description || tx.transaction_id}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className={`text-sm font-black ${isCredit ? "text-green-600" : "text-red-500"}`}>
+                              {isCredit ? "+" : "-"}₹{tx.amount.toLocaleString("en-IN")}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-gray-400 font-medium">
+                            {new Date(tx.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                          </span>
+                          <TxStatusBadge status={tx.status} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {walletData && walletData.transactions.length === 0 && (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
+                  <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <History className="w-6 h-6 text-gray-300" />
+                  </div>
+                  <p className="text-gray-400 text-sm font-medium">No transactions yet</p>
+                  <p className="text-gray-300 text-xs mt-1">Transactions will appear here as commissions are credited.</p>
+                </div>
+              )}
+            </>
           )}
         </div>
 

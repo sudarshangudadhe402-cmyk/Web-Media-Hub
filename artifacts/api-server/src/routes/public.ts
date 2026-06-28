@@ -326,6 +326,8 @@ import { ReferralCode } from "../models/ReferralCode";
 import { User } from "../models/User";
 import { OtpCode } from "../models/OtpCode";
 import { Withdrawal } from "../models/Withdrawal";
+import { Wallet } from "../models/Wallet";
+import { WalletTransaction } from "../models/WalletTransaction";
 import { sendPartnerVerificationEmail, sendWithdrawalOtpEmail } from "../services/emailOtp";
 
 // ── Withdrawal session tokens (in-memory, 5-min TTL) ─────────────────────────
@@ -599,6 +601,43 @@ router.get(
       });
     } catch (err) {
       (req as any).log?.error({ err }, "Partner profile error");
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Wallet: get full wallet data + transaction ledger ─────────────────────────
+router.get(
+  "/public/partner/:type/:code/wallet",
+  ipRateLimit(30, 60_000),
+  async (req: Request, res: Response) => {
+    const type = req.params.type.toLowerCase();
+    const code = req.params.code.toUpperCase();
+    if (!["influencer", "ambassador", "referral"].includes(type)) {
+      res.status(400).json({ error: "Invalid partner type" }); return;
+    }
+    try {
+      const wallet = await Wallet.findOne({ partnerType: type, partnerCode: code }).lean();
+      const transactions = await WalletTransaction.find({ partner_type: type, partner_code: code })
+        .sort({ created_at: -1 }).limit(100).lean();
+      res.json({
+        wallet_balance: wallet?.wallet_balance ?? 0,
+        lifetime_earnings: wallet?.lifetime_earnings ?? 0,
+        pending_withdrawal: wallet?.pending_withdrawal ?? 0,
+        total_withdrawn: wallet?.total_withdrawn ?? 0,
+        last_updated: wallet?.last_updated ? new Date(wallet.last_updated).toISOString() : null,
+        transactions: transactions.map(tx => ({
+          transaction_id: tx.transaction_id,
+          amount: tx.amount,
+          type: tx.type,
+          status: tx.status,
+          description: tx.description,
+          reference_id: tx.reference_id ?? null,
+          created_at: new Date(tx.created_at).toISOString(),
+        })),
+      });
+    } catch (err) {
       res.status(500).json({ error: "Internal server error" });
     }
   }
