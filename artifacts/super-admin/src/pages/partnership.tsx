@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "wouter";
 import {
   Users, MapPin, Calendar,
-  XCircle, Clock, Tag, Star, Handshake, TrendingUp, IndianRupee, Percent,
+  XCircle, Tag, Star, Handshake, TrendingUp, Percent,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -178,7 +178,6 @@ export default function PartnershipPage() {
                   <span className="text-white/80 text-sm">{member.city}</span>
                 </div>
               )}
-              {/* Only type label + code in banner — commission badge is shown below */}
               <div className="flex flex-wrap items-center gap-2 mt-2">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-sm border border-white/30 rounded-full text-white text-xs font-semibold">
                   <Star className="w-3 h-3" />
@@ -190,6 +189,13 @@ export default function PartnershipPage() {
                 </span>
               </div>
             </div>
+          </div>
+
+          {/* Partner Since — small inline row below name */}
+          <div className="mt-4 pt-3 border-t border-white/20 flex items-center gap-2">
+            <Calendar className="w-3.5 h-3.5 text-white/70 shrink-0" />
+            <span className="text-white/70 text-xs font-medium uppercase tracking-wide">Partner Since</span>
+            <span className="text-white text-xs font-bold">{fmtDate(member.joinedAt)}</span>
           </div>
         </div>
       </div>
@@ -240,24 +246,12 @@ export default function PartnershipPage() {
             value={fmt(member.total_signups)}
             color="bg-blue-50 text-blue-600"
           />
-          <StatCard
-            icon={Calendar}
-            label="Partner Since"
-            value={fmtDate(member.joinedAt)}
-            color="bg-amber-50 text-amber-600"
-          />
           {member.total_revenue != null && (
             <StatCard
               icon={TrendingUp}
               label="Revenue Generated"
               value={`₹${fmt(member.total_revenue)}`}
               color="bg-purple-50 text-purple-600"
-            />
-          )}
-          {member.total_revenue != null && member.commission_percentage != null && (
-            <CommissionEarnedCard
-              revenue={member.total_revenue}
-              commission={member.commission_percentage}
             />
           )}
         </div>
@@ -282,64 +276,74 @@ export default function PartnershipPage() {
               <p className="text-gray-400 text-sm mt-1">When someone signs up using your code, they'll appear here.</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              {/* Table Header */}
+              <div className="grid grid-cols-[28px_1fr_100px_110px_70px_80px] gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-wide">
+                <span>#</span>
+                <span>Email</span>
+                <span>Signup Date</span>
+                <span>Plan</span>
+                <span className="text-center">Comm %</span>
+                <span className="text-right">Earned</span>
+              </div>
+
+              {/* Table Rows */}
               {signups.map((s, i) => {
-                const status = subscriptionStatus(s.subscriptionEndDate);
+                const priceNum = parseFloat(String(s.planPrice).replace(/[^0-9.]/g, "")) || 0;
+                const comm = member.commission_percentage ?? 0;
+                const earned = Math.round((priceNum * comm) / 100);
                 return (
                   <div
                     key={i}
-                    className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col sm:flex-row sm:items-center gap-3"
+                    className={`grid grid-cols-[28px_1fr_100px_110px_70px_80px] gap-2 px-4 py-3 items-center text-sm border-b border-gray-50 last:border-0 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/40"}`}
                   >
-                    {/* Serial + status dot */}
-                    <div className="flex items-center gap-3 sm:w-8 shrink-0">
-                      <span className="text-xs font-bold text-gray-400 w-6 text-center">{i + 1}</span>
-                      <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                        status === "active" ? "bg-green-400" :
-                        status === "lifetime" ? "bg-purple-400" :
-                        "bg-gray-300"
-                      }`} title={status} />
+                    <span className="text-xs font-bold text-gray-300">{i + 1}</span>
+
+                    {/* Email */}
+                    <span className="text-xs text-gray-700 font-medium truncate" title={s.email}>
+                      {s.email || "—"}
+                    </span>
+
+                    {/* Signup Date */}
+                    <span className="text-xs text-gray-500">{fmtDate(s.signedUpAt)}</span>
+
+                    {/* Plan */}
+                    <div className="flex items-center gap-1 min-w-0">
+                      <span className="text-xs font-semibold text-gray-800 truncate">{s.planName || "—"}</span>
                     </div>
 
-                    {/* Plan info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span className="text-sm font-bold text-gray-800">{s.planName || "—"}</span>
-                        {s.planBadge && (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-700 border border-orange-200 uppercase">{s.planBadge}</span>
-                        )}
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                          status === "active" ? "bg-green-100 text-green-700" :
-                          status === "lifetime" ? "bg-purple-100 text-purple-700" :
-                          "bg-gray-100 text-gray-500"
-                        }`}>
-                          {status === "active" ? "Active" : status === "lifetime" ? "Lifetime" : "Expired"}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-3 text-xs text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <Tag className="w-3 h-3" />
-                          {s.planPrice || "—"}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          Joined {fmtDate(s.signedUpAt)}
-                        </span>
-                        {s.subscriptionEndDate && (
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {status === "active" ? "Expires" : "Expired"} {fmtDate(s.subscriptionEndDate)}
-                          </span>
-                        )}
-                      </div>
+                    {/* Commission % */}
+                    <div className="flex justify-center">
+                      <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[11px] font-bold rounded-full">
+                        {comm > 0 ? `${comm}%` : "—"}
+                      </span>
                     </div>
 
-                    {/* Masked contact */}
-                    <div className="text-xs text-gray-400 text-right shrink-0 font-mono">
-                      {s.adminNumber ? `📱 ${s.adminNumber}` : s.email ? `✉ ${maskEmail(s.email)}` : ""}
+                    {/* Earned */}
+                    <div className="text-right">
+                      <span className={`text-xs font-bold ${earned > 0 ? "text-green-600" : "text-gray-400"}`}>
+                        {earned > 0 ? `₹${earned.toLocaleString("en-IN")}` : "—"}
+                      </span>
                     </div>
                   </div>
                 );
               })}
+
+              {/* Table Footer — total earned */}
+              {member.commission_percentage != null && member.commission_percentage > 0 && (
+                <div className="grid grid-cols-[28px_1fr_100px_110px_70px_80px] gap-2 px-4 py-3 bg-green-50 border-t border-green-100">
+                  <span />
+                  <span className="text-xs font-bold text-green-700 col-span-4">Total Commission Earned</span>
+                  <span className="text-right text-xs font-black text-green-700">
+                    ₹{Math.round(
+                      signups.reduce((sum, s) => {
+                        const p = parseFloat(String(s.planPrice).replace(/[^0-9.]/g, "")) || 0;
+                        return sum + (p * (member.commission_percentage ?? 0)) / 100;
+                      }, 0)
+                    ).toLocaleString("en-IN")}
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>
