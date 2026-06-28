@@ -319,12 +319,44 @@ router.post("/public/reviews/:id/like", ipRateLimit(20, 60_000), async (req, res
 });
 
 // ── Partner code validation (public — no auth) ────────────────────────────────
+import crypto from "crypto";
 import { Influencer } from "../models/Influencer";
 import { Ambassador } from "../models/Ambassador";
 import { ReferralCode } from "../models/ReferralCode";
 import { User } from "../models/User";
 import { OtpCode } from "../models/OtpCode";
-import { sendPartnerVerificationEmail } from "../services/emailOtp";
+import { Withdrawal } from "../models/Withdrawal";
+import { sendPartnerVerificationEmail, sendWithdrawalOtpEmail } from "../services/emailOtp";
+
+// ── Withdrawal session tokens (in-memory, 5-min TTL) ─────────────────────────
+const _wdTokens = new Map<string, { type: string; code: string; email: string; name: string; expiresAt: number }>();
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _wdTokens.entries()) {
+    if (now > v.expiresAt) _wdTokens.delete(k);
+  }
+}, 60_000);
+
+async function findPartnerForWithdrawal(type: string, code: string) {
+  if (type === "influencer") {
+    const inf = await Influencer.findOne({ coupon_code: code }).lean();
+    if (!inf) return null;
+    return { email: (inf as any).email || "", name: inf.name, upi_id: (inf as any).upi_id || "", withdrawable_balance: (inf as any).withdrawable_balance ?? 0 };
+  } else if (type === "ambassador") {
+    const amb = await Ambassador.findOne({ referral_code: code }).lean();
+    if (!amb) return null;
+    return { email: (amb as any).email || "", name: amb.name, upi_id: (amb as any).upi_id || "", withdrawable_balance: (amb as any).withdrawable_balance ?? 0 };
+  } else if (type === "referral") {
+    const rc = await ReferralCode.findOne({ referral_code: code })
+      .populate<{ owner_admin_id: any }>("owner_admin_id", "email username")
+      .lean();
+    if (!rc) return null;
+    const owner = (rc as any).owner_admin_id;
+    return { email: owner?.email || "", name: owner?.username || "Partner", upi_id: (rc as any).upi_id || "", withdrawable_balance: (rc as any).withdrawable_balance ?? 0 };
+  }
+  return null;
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 router.get(
   "/public/validate-partner-code",
@@ -572,5 +604,196 @@ router.get(
   }
 );
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ── Withdrawal: get balance + history ─────────────────────────────────────────
+router.get(
+  "/public/partner/:type/:code/withdrawal",
+  ipRateLimit(30, 60_000),
+  async (req: Request, res: Response) => {
+    const type = req.params.type.toLowerCase();
+    const code = req.params.code.toUpperCase();
+    if (!["influencer", "ambassador", "referral"].includes(type)) {
+      res.status(400).json({ error: "Invalid partner type" }); return;
+    }
+    try {
+      const partner = await findPartnerForWithdrawal(type, code);
+      if (!partner) { res.status(404).json({ error: "Partner not found" }); return; }
+      const history = await Withdrawal.find({ partnerType: type, partnerCode: code })
+        .sort({ createdAt: -1 }).limit(50).lean();
+      res.json({
+        withdrawable_balance: partner.withdrawable_balance,
+        upi_id: partner.upi_id,
+        history: history.map(w => ({
+          requestId: w.requestId,
+          amount: w.amount,
+          upiId: w.upiId,
+          status: w.status,
+          createdAt: (w as any).createdAt.toISOString(),
+          completedAt: w.completedAt ? new Date(w.completedAt).toISOString() : null,
+        })),
+      });
+    } catch (err) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+// ── Withdrawal: update UPI ID ─────────────────────────────────────────────────
+router.patch(
+  "/public/partner/:type/:code/upi",
+  ipRateLimit(10, 60_000),
+  async (req: Request, res: Response) => {
+    const type = req.params.type.toLowerCase();
+    const code = req.params.code.toUpperCase();
+    const { email, upiId } = req.body as { email?: string; upiId?: string };
+    if (!["influencer", "ambassador", "referral"].includes(type)) {
+      res.status(400).json({ error: "Invalid partner type" }); return;
+    }
+    if (!email || !upiId) { res.status(400).json({ error: "email and upiId required" }); return; }
+    const upi = upiId.trim();
+    if (!/^[a-zA-Z0-9._-]+@[a-zA-Z0-9]+$/.test(upi)) {
+      res.status(400).json({ error: "Invalid UPI ID format. Example: name@paytm" }); return;
+    }
+    try {
+      const partner = await findPartnerForWithdrawal(type, code);
+      if (!partner) { res.status(404).json({ error: "Partner not found" }); return; }
+      if (partner.email !== email.toLowerCase().trim()) {
+        res.status(403).json({ error: "Email does not match partner records" }); return;
+      }
+      if (type === "influencer") {
+        await Influencer.updateOne({ coupon_code: code }, { upi_id: upi });
+      } else if (type === "ambassador") {
+        await Ambassador.updateOne({ referral_code: code }, { upi_id: upi });
+      } else {
+        await ReferralCode.updateOne({ referral_code: code }, { upi_id: upi });
+      }
+      res.json({ success: true, upiId: upi });
+    } catch (err) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+// ── Withdrawal: send OTP ──────────────────────────────────────────────────────
+router.post(
+  "/public/partner/withdrawal/send-otp",
+  ipRateLimit(5, 60_000),
+  async (req: Request, res: Response) => {
+    const { type, code, email, amount } = req.body as { type?: string; code?: string; email?: string; amount?: number };
+    if (!type || !code || !email || amount === undefined) {
+      res.status(400).json({ error: "type, code, email and amount required" }); return;
+    }
+    const t = type.toLowerCase();
+    const c = code.toUpperCase().trim();
+    const e = email.toLowerCase().trim();
+    const amt = Number(amount);
+    if (!["influencer", "ambassador", "referral"].includes(t)) {
+      res.status(400).json({ error: "Invalid type" }); return;
+    }
+    if (isNaN(amt) || amt < 500 || amt > 25000) {
+      res.status(400).json({ error: "Amount must be between ₹500 and ₹25,000" }); return;
+    }
+    try {
+      const partner = await findPartnerForWithdrawal(t, c);
+      if (!partner) { res.status(404).json({ error: "Partner not found" }); return; }
+      if (!partner.email) { res.status(400).json({ error: "No email registered. Contact admin." }); return; }
+      if (partner.email !== e) { res.status(403).json({ error: "Email does not match our records" }); return; }
+      if (amt > partner.withdrawable_balance) {
+        res.status(400).json({ error: "Amount exceeds withdrawable balance" }); return;
+      }
+      const active = await Withdrawal.findOne({ partnerCode: c, partnerType: t, status: { $in: ["pending", "processing"] } });
+      if (active) {
+        res.status(409).json({ error: "You already have an active withdrawal request. Please wait for it to complete." }); return;
+      }
+      await OtpCode.updateMany({ email: e, storeId: `wd_${c}`, purpose: "partner-withdrawal", used: false }, { used: true });
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      await OtpCode.create({ email: e, storeId: `wd_${c}`, code: otp, purpose: "partner-withdrawal", expiresAt: new Date(Date.now() + 10 * 60 * 1000) });
+      await sendWithdrawalOtpEmail(e, otp, partner.name, amt);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Withdrawal send-otp error:", err);
+      res.status(500).json({ error: "Failed to send OTP. Please try again." });
+    }
+  }
+);
+
+// ── Withdrawal: verify OTP → session_token ────────────────────────────────────
+router.post(
+  "/public/partner/withdrawal/verify-otp",
+  ipRateLimit(8, 60_000),
+  async (req: Request, res: Response) => {
+    const { type, code, email, otp } = req.body as { type?: string; code?: string; email?: string; otp?: string };
+    if (!type || !code || !email || !otp) {
+      res.status(400).json({ error: "type, code, email and otp required" }); return;
+    }
+    const t = type.toLowerCase();
+    const c = code.toUpperCase().trim();
+    const e = email.toLowerCase().trim();
+    try {
+      const record = await OtpCode.findOne({
+        email: e, storeId: `wd_${c}`, code: otp.trim(),
+        purpose: "partner-withdrawal", used: false, expiresAt: { $gt: new Date() },
+      });
+      if (!record) { res.status(400).json({ error: "Invalid or expired OTP. Please try again." }); return; }
+      record.used = true;
+      await record.save();
+      const sessionToken = crypto.randomBytes(32).toString("hex");
+      const partner = await findPartnerForWithdrawal(t, c);
+      _wdTokens.set(sessionToken, { type: t, code: c, email: e, name: partner?.name || "", expiresAt: Date.now() + 5 * 60 * 1000 });
+      res.json({ success: true, session_token: sessionToken });
+    } catch {
+      res.status(500).json({ error: "Verification failed" });
+    }
+  }
+);
+
+// ── Withdrawal: create request ────────────────────────────────────────────────
+router.post(
+  "/public/partner/withdrawal/request",
+  ipRateLimit(3, 60_000),
+  async (req: Request, res: Response) => {
+    const { session_token, amount, upiId } = req.body as { session_token?: string; amount?: number; upiId?: string };
+    if (!session_token || amount === undefined || !upiId) {
+      res.status(400).json({ error: "session_token, amount and upiId required" }); return;
+    }
+    const session = _wdTokens.get(session_token);
+    if (!session || Date.now() > session.expiresAt) {
+      res.status(401).json({ error: "Session expired. Please verify OTP again." }); return;
+    }
+    const { type: t, code: c, email: e } = session;
+    const amt = Number(amount);
+    if (isNaN(amt) || amt < 500 || amt > 25000) {
+      res.status(400).json({ error: "Amount must be between ₹500 and ₹25,000" }); return;
+    }
+    if (!/^[a-zA-Z0-9._-]+@[a-zA-Z0-9]+$/.test(upiId.trim())) {
+      res.status(400).json({ error: "Invalid UPI ID" }); return;
+    }
+    const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket?.remoteAddress || "unknown";
+    const ua = String(req.headers["user-agent"] || "").slice(0, 300);
+    try {
+      const partner = await findPartnerForWithdrawal(t, c);
+      if (!partner) { res.status(404).json({ error: "Partner not found" }); return; }
+      if (amt > partner.withdrawable_balance) {
+        res.status(400).json({ error: "Amount exceeds withdrawable balance" }); return;
+      }
+      const active = await Withdrawal.findOne({ partnerCode: c, partnerType: t, status: { $in: ["pending", "processing"] } });
+      if (active) { res.status(409).json({ error: "Active withdrawal request already exists" }); return; }
+      const requestId = `WD-${new Date().getFullYear()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
+      await Withdrawal.create({ requestId, partnerType: t, partnerCode: c, partnerEmail: e, amount: amt, upiId: upiId.trim(), status: "pending", ipAddress: ip, userAgent: ua });
+      if (t === "influencer") {
+        await Influencer.updateOne({ coupon_code: c }, { $inc: { withdrawable_balance: -amt } });
+      } else if (t === "ambassador") {
+        await Ambassador.updateOne({ referral_code: c }, { $inc: { withdrawable_balance: -amt } });
+      } else {
+        await ReferralCode.updateOne({ referral_code: c }, { $inc: { withdrawable_balance: -amt } });
+      }
+      _wdTokens.delete(session_token);
+      res.json({ success: true, requestId });
+    } catch (err) {
+      console.error("Withdrawal request error:", err);
+      res.status(500).json({ error: "Failed to create withdrawal request" });
+    }
+  }
+);
 
 export default router;

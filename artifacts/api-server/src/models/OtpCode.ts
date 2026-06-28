@@ -15,7 +15,7 @@ const OtpCodeSchema = new Schema<IOtpCode>(
     email: { type: String, required: true, lowercase: true, trim: true },
     storeId: { type: String, default: "" },
     code: { type: String, required: true },
-    purpose: { type: String, enum: ["signup", "signin", "admin-creation", "admin-forgot-password", "partner-verification"], required: true },
+    purpose: { type: String, enum: ["signup", "signin", "admin-creation", "admin-forgot-password", "partner-verification", "partner-withdrawal"], required: true },
     expiresAt: { type: Date, required: true },
     used: { type: Boolean, default: false },
   },

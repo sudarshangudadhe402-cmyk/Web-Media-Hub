@@ -1,0 +1,145 @@
+Build Partner Withdrawal Page
+
+Create a modern, responsive, high-end SaaS "Withdrawal" page for the Partner Dashboard. The design should match the existing website theme.
+
+Section 1: Withdrawable Balance
+
+Display a summary card showing:
+
+- Withdrawable Balance (₹)
+
+Do NOT show:
+
+- Available Balance
+- Pending Earnings
+- Total Earnings
+
+Section 2: Withdraw Amount
+
+Create a number input field.
+
+Label:
+
+- Withdraw Amount
+
+Requirements:
+
+- On mobile, open the numeric keyboard.
+- Show placeholder: "Enter withdrawal amount".
+- Add a Withdraw All button that automatically fills the input with the full withdrawable balance.
+
+Section 3: Payment Method
+
+Display only:
+
+- UPI ID
+
+Allow partner to:
+
+- Add UPI ID
+- Edit UPI ID
+- Validate format before saving
+
+Do NOT add bank account fields.
+
+Section 4: Verification
+
+Verification Method:
+
+- Email OTP only
+
+Flow:
+
+1. Partner clicks Withdraw.
+2. Send OTP to the registered email.
+3. Verify OTP.
+4. Only after successful verification, create the withdrawal request.
+
+Section 5: Withdraw Button
+
+Primary button:
+
+- Withdraw
+
+Disable button when:
+
+- Amount is below minimum.
+- Amount exceeds withdrawable balance.
+- Email is not verified.
+- OTP verification is incomplete.
+
+Section 6: Withdrawal History
+
+Show every request in a clean table.
+
+Columns:
+
+- Request ID
+- Date
+- Amount
+- Status
+- Completion Date
+
+Status values:
+
+- Pending
+- Processing
+- Completed
+- Failed
+
+If status is Completed, display the completion date beside the status.
+
+Fraud Protection
+
+Minimum Withdrawal:
+₹500
+
+Maximum Withdrawal:
+₹25,000 per request.
+
+Rules:
+
+- User cannot request more than the withdrawable balance.
+- One active withdrawal request at a time.
+- Prevent duplicate requests.
+- Validate amount on both frontend and backend.
+- Generate unique Request ID.
+- Store IP address and device information for every request.
+- Rate limit withdrawal requests.
+- Prevent OTP brute-force attempts.
+- Log every withdrawal action.
+- Reject invalid or modified API requests.
+- All sensitive APIs must require authentication.
+- Never trust frontend validation alone.
+
+Payment Processing
+
+Do NOT create any Super Admin approval page.
+
+The system should be fully automatic.
+
+Flow:
+
+1. OTP verified.
+2. Create withdrawal request.
+3. Payment gateway/API processes payment automatically.
+4. On success:
+   - Mark status as Completed.
+   - Reduce withdrawable balance.
+   - Save transaction ID.
+5. On failure:
+   - Keep balance unchanged.
+   - Mark status as Failed.
+   - Show retry option if applicable.
+
+UI Requirements
+
+- Modern SaaS design.
+- Mobile-first responsive layout.
+- Premium cards with smooth animations.
+- Loading indicators.
+- Success and error toasts.
+- Dark/Light mode support.
+- Fast performance.
+- Secure backend implementation.
+- Clean, reusable React components with proper validation and error handling.

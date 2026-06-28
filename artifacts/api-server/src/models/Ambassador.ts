@@ -10,6 +10,8 @@ export interface IAmbassador extends Document {
   total_signups: number;
   total_paid_admins: number;
   total_revenue: number;
+  upi_id: string;
+  withdrawable_balance: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,6 +27,8 @@ const AmbassadorSchema = new Schema<IAmbassador>(
     total_signups: { type: Number, default: 0 },
     total_paid_admins: { type: Number, default: 0 },
     total_revenue: { type: Number, default: 0 },
+    upi_id: { type: String, default: "", trim: true },
+    withdrawable_balance: { type: Number, default: 0, min: 0 },
   },
   { timestamps: true }
 );
