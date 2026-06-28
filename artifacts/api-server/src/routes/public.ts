@@ -616,6 +616,36 @@ router.get(
 );
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── Partner: check if email is already registered ────────────────────────────
+router.get(
+  "/public/partner/:type/:code/has-email",
+  ipRateLimit(30, 60_000),
+  async (req: Request, res: Response) => {
+    const type = req.params.type.toLowerCase();
+    const code = req.params.code.toUpperCase();
+    if (!["influencer", "ambassador", "referral"].includes(type)) {
+      res.status(400).json({ error: "Invalid partner type" }); return;
+    }
+    try {
+      let hasEmail = false;
+      if (type === "influencer") {
+        const inf = await Influencer.findOne({ coupon_code: code }, { email: 1 }).lean();
+        hasEmail = !!(inf as any)?.email;
+      } else if (type === "ambassador") {
+        const amb = await Ambassador.findOne({ referral_code: code }, { email: 1 }).lean();
+        hasEmail = !!(amb as any)?.email;
+      } else {
+        const rc = await ReferralCode.findOne({ referral_code: code }).populate<{ owner_admin_id: any }>("owner_admin_id", "email").lean();
+        hasEmail = !!rc?.owner_admin_id?.email;
+      }
+      res.json({ has_email: hasEmail });
+    } catch {
+      res.json({ has_email: false });
+    }
+  }
+);
+// ─────────────────────────────────────────────────────────────────────────────
+
 // ── Wallet: get full wallet data + transaction ledger ─────────────────────────
 router.get(
   "/public/partner/:type/:code/wallet",

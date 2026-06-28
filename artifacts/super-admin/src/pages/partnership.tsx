@@ -203,6 +203,7 @@ export default function PartnershipPage() {
   const [inputOtp, setInputOtp] = useState("");
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyError, setVerifyError] = useState("");
+  const [partnerHasEmail, setPartnerHasEmail] = useState<boolean | null>(null);
 
   // ── Partner data ───────────────────────────────────────────────────────────
   const [data, setData] = useState<{ member: MemberProfile; signups: SignupRecord[] } | null>(null);
@@ -236,6 +237,15 @@ export default function PartnershipPage() {
   function showToast(msg: string, type: "success" | "error" = "success") {
     setToast({ msg, type });
   }
+
+  // Fetch has-email status on load (to show Register vs Verify)
+  useEffect(() => {
+    if (!type || !code || verified) return;
+    fetch(`/api/public/partner/${encodeURIComponent(type)}/${encodeURIComponent(code)}/has-email`)
+      .then(r => r.json())
+      .then(d => setPartnerHasEmail(d.has_email ?? false))
+      .catch(() => setPartnerHasEmail(false));
+  }, [type, code, verified]);
 
   // Fetch partner data when verified
   useEffect(() => {
@@ -405,14 +415,23 @@ export default function PartnershipPage() {
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
             {verifyStep === "email" ? (
               <>
-                <h2 className="font-bold text-gray-900 mb-1">Apna email darj karein</h2>
-                <p className="text-sm text-gray-500 mb-3">Agar aap pehli baar aa rahe hain, aapka email yahaan register ho jayega. Warna registered email se OTP milega.</p>
-                <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-3 mb-4">
-                  <span className="text-amber-500 text-base leading-none mt-0.5">🔒</span>
-                  <p className="text-xs text-amber-800 leading-relaxed">
-                    <strong>Email yaad rakhein</strong> — yahi email aage withdrawal ke liye bhi use hogi. Ek baar register hone ke baad email change nahi hogi.
-                  </p>
-                </div>
+                {partnerHasEmail === false ? (
+                  <>
+                    <h2 className="font-bold text-gray-900 mb-1">Register Your Email</h2>
+                    <p className="text-sm text-gray-500 mb-3">Enter your email address to register and verify your partner account.</p>
+                    <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-3 mb-4">
+                      <span className="text-amber-500 text-base leading-none mt-0.5">🔒</span>
+                      <p className="text-xs text-amber-800 leading-relaxed">
+                        <strong>Remember this email</strong> — it will be used for all future logins and withdrawal verifications. Once registered, it cannot be changed.
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="font-bold text-gray-900 mb-1">Verify Your Identity</h2>
+                    <p className="text-sm text-gray-500 mb-3">Enter your registered email address to receive a one-time verification code.</p>
+                  </>
+                )}
                 <div className="space-y-3">
                   <div>
                     <label className="text-xs font-semibold text-gray-700 mb-1.5 block uppercase tracking-wide">Email address</label>
