@@ -195,7 +195,13 @@ export default function PartnershipPage() {
           <div className="mt-4 pt-3 border-t border-white/20 flex items-center gap-2">
             <Calendar className="w-3.5 h-3.5 text-white/70 shrink-0" />
             <span className="text-white/70 text-xs font-medium uppercase tracking-wide">Partner Since</span>
-            <span className="text-white text-xs font-bold">{fmtDate(member.joinedAt)}</span>
+            <span className="text-white text-xs font-bold flex-1">{fmtDate(member.joinedAt)}</span>
+            <button
+              disabled
+              className="px-3 py-1 bg-green-500/80 text-white text-xs font-bold rounded-full cursor-not-allowed opacity-80 border border-green-400/50"
+            >
+              Withdraw
+            </button>
           </div>
         </div>
       </div>
@@ -204,34 +210,32 @@ export default function PartnershipPage() {
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
 
         {/* ── Commission + Customer Discount Badges ───────────────────────── */}
-        <div className="space-y-3">
+        <div className="space-y-2">
           {member.commission_percentage != null && member.commission_percentage > 0 && (
-            <div className="flex items-center gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
-              <div className="w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
-                <Percent className="w-5 h-5 text-indigo-600" />
+            <div className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-2.5">
+              <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
+                <Percent className="w-4 h-4 text-indigo-600" />
               </div>
-              <div className="flex-1">
-                <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Your Commission Rate</p>
-                <p className="text-lg font-black text-gray-900 mt-0.5">{member.commission_percentage}% per sale</p>
-                <p className="text-xs text-gray-400 mt-0.5">You earn this on every paying admin you bring in</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide leading-none">Your Commission Rate</p>
+                <p className="text-sm font-bold text-gray-900 mt-0.5">{member.commission_percentage}% per sale</p>
               </div>
-              <span className="px-3 py-1.5 bg-indigo-100 text-indigo-700 text-sm font-bold rounded-full">
+              <span className="px-2.5 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-full shrink-0">
                 {member.commission_percentage}%
               </span>
             </div>
           )}
 
           {(member.customer_discount_percentage ?? 0) > 0 && (
-            <div className="flex items-center gap-3 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl border border-blue-100 shadow-sm px-5 py-4">
-              <div className="w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
-                <Tag className="w-5 h-5 text-blue-600" />
+            <div className="flex items-center gap-3 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border border-blue-100 shadow-sm px-4 py-2.5">
+              <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                <Tag className="w-4 h-4 text-blue-600" />
               </div>
-              <div className="flex-1">
-                <p className="text-xs text-blue-600 font-medium uppercase tracking-wide">Customer Discount</p>
-                <p className="text-lg font-black text-gray-900 mt-0.5">{member.customer_discount_percentage}% off for your referrals</p>
-                <p className="text-xs text-blue-500 mt-0.5">Anyone who uses your code <span className="font-mono font-bold">{member.code}</span> gets this discount</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] text-blue-500 font-medium uppercase tracking-wide leading-none">Customer Discount</p>
+                <p className="text-sm font-bold text-gray-900 mt-0.5">{member.customer_discount_percentage}% off — code <span className="font-mono">{member.code}</span></p>
               </div>
-              <span className="px-3 py-1.5 bg-blue-100 text-blue-700 text-sm font-bold rounded-full">
+              <span className="px-2.5 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full shrink-0">
                 {member.customer_discount_percentage}% OFF
               </span>
             </div>
