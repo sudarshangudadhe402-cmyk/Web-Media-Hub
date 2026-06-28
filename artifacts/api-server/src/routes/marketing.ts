@@ -301,6 +301,19 @@ router.post("/marketing/referral-codes", requireSuperAdmin, async (req: AuthRequ
   }
 });
 
+router.put("/marketing/referral-codes/:id", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { commission_percentage, customer_discount_percentage } = req.body;
+    const rc = await ReferralCode.findByIdAndUpdate(
+      req.params.id,
+      { commission_percentage: commission_percentage ?? 0, customer_discount_percentage: customer_discount_percentage ?? 0 },
+      { new: true }
+    );
+    if (!rc) { res.status(404).json({ error: "Not found" }); return; }
+    res.json(rc);
+  } catch { res.status(500).json({ error: "Failed" }); }
+});
+
 router.delete("/marketing/referral-codes/:id", requireSuperAdmin, async (_req, res: Response): Promise<void> => {
   try {
     await ReferralCode.findByIdAndDelete(_req.params.id);

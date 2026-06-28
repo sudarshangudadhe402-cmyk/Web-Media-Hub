@@ -602,34 +602,38 @@ function InfluencersTab() {
               <table className="w-full text-sm">
                 <thead><tr className="border-b bg-muted/30 text-xs text-muted-foreground">
                   <th className="text-left p-3 font-medium">Name</th>
-                  <th className="text-left p-3 font-medium">Coupon Code</th>
+                  <th className="text-left p-3 font-medium">Code</th>
                   <th className="text-right p-3 font-medium">Commission</th>
                   <th className="text-right p-3 font-medium">Cust. Discount</th>
                   <th className="text-right p-3 font-medium">Signups</th>
-                  <th className="text-right p-3 font-medium">Paying</th>
+                  <th className="text-right p-3 font-medium">Paying Admin</th>
                   <th className="text-right p-3 font-medium">Revenue</th>
-                  <th className="text-right p-3 font-medium">Commission Earned</th>
-                  <th className="p-3" />
+                  <th className="text-right p-3 font-medium">Earned</th>
+                  <th className="text-center p-3 font-medium">Partner Page</th>
+                  <th className="text-center p-3 font-medium">Edit</th>
                 </tr></thead>
                 <tbody>
                   {paged.length === 0 ? (
-                    <tr><td colSpan={9} className="text-center py-10 text-muted-foreground">No influencers found</td></tr>
+                    <tr><td colSpan={10} className="text-center py-10 text-muted-foreground">No influencers found</td></tr>
                   ) : paged.map((inf) => (
                     <tr key={inf._id} className="border-b last:border-0 hover:bg-muted/20">
                       <td className="p-3 font-medium">{inf.name}</td>
-                      <td className="p-3"><Badge variant="outline">{inf.coupon_code}</Badge></td>
-                      <td className="p-3 text-right">{inf.commission_percentage}%</td>
-                      <td className="p-3 text-right text-blue-600 font-semibold">{inf.customer_discount_percentage ?? 0}%</td>
+                      <td className="p-3"><Badge variant="outline" className="font-mono">{inf.coupon_code}</Badge></td>
+                      <td className="p-3 text-right font-semibold text-indigo-600">{inf.commission_percentage}%</td>
+                      <td className="p-3 text-right font-semibold text-blue-600">{inf.customer_discount_percentage ?? 0}%</td>
                       <td className="p-3 text-right font-semibold">{inf.total_signups}</td>
                       <td className="p-3 text-right text-green-600 font-semibold">{inf.total_paid_admins}</td>
                       <td className="p-3 text-right font-semibold">{fmtRs(inf.total_revenue)}</td>
-                      <td className="p-3 text-right text-purple-600 font-semibold">{fmtRs(inf.total_revenue * inf.commission_percentage / 100)}</td>
-                      <td className="p-3 text-right">
-                        <div className="flex gap-1 justify-end">
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50" title="Show QR code" onClick={() => setQrTarget({ code: inf.coupon_code, name: inf.name })}><QrCode className="w-3.5 h-3.5" /></Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50" title="Copy partnership link" onClick={() => copyLink("influencer", inf.coupon_code, toast)}><Link2 className="w-3.5 h-3.5" /></Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditing(inf); setForm({ name: inf.name, coupon_code: inf.coupon_code, commission_percentage: String(inf.commission_percentage), customer_discount_percentage: String(inf.customer_discount_percentage ?? 0) }); setShowForm(true); }}><Edit2 className="w-3.5 h-3.5" /></Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => del(inf._id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                      <td className="p-3 text-right text-purple-600 font-bold">{fmtRs(inf.total_revenue * inf.commission_percentage / 100)}</td>
+                      <td className="p-3 text-center">
+                        <Button size="sm" variant="outline" className="h-7 text-xs text-cyan-600 border-cyan-200 hover:bg-cyan-50 gap-1" onClick={() => copyLink("influencer", inf.coupon_code, toast)}>
+                          <Link2 className="w-3 h-3" />Partner Page
+                        </Button>
+                      </td>
+                      <td className="p-3 text-center">
+                        <div className="flex gap-1 justify-center">
+                          <Button size="icon" variant="ghost" className="h-7 w-7" title="Edit" onClick={() => { setEditing(inf); setForm({ name: inf.name, coupon_code: inf.coupon_code, commission_percentage: String(inf.commission_percentage), customer_discount_percentage: String(inf.customer_discount_percentage ?? 0) }); setShowForm(true); }}><Edit2 className="w-3.5 h-3.5" /></Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" title="Delete" onClick={() => del(inf._id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                         </div>
                       </td>
                     </tr>
@@ -738,15 +742,15 @@ function AmbassadorsTab() {
               <table className="w-full text-sm">
                 <thead><tr className="border-b bg-muted/30 text-xs text-muted-foreground">
                   <th className="text-left p-3 font-medium">Name</th>
-                  <th className="text-left p-3 font-medium">City</th>
                   <th className="text-left p-3 font-medium">Code</th>
                   <th className="text-right p-3 font-medium">Commission</th>
                   <th className="text-right p-3 font-medium">Cust. Discount</th>
                   <th className="text-right p-3 font-medium">Signups</th>
-                  <th className="text-right p-3 font-medium">Paying</th>
+                  <th className="text-right p-3 font-medium">Paying Admin</th>
                   <th className="text-right p-3 font-medium">Revenue</th>
                   <th className="text-right p-3 font-medium">Earned</th>
-                  <th className="p-3" />
+                  <th className="text-center p-3 font-medium">Partner Page</th>
+                  <th className="text-center p-3 font-medium">Edit</th>
                 </tr></thead>
                 <tbody>
                   {paged.length === 0 ? (
@@ -754,20 +758,22 @@ function AmbassadorsTab() {
                   ) : paged.map((amb) => (
                     <tr key={amb._id} className="border-b last:border-0 hover:bg-muted/20">
                       <td className="p-3 font-medium">{amb.name}</td>
-                      <td className="p-3 text-muted-foreground">{amb.city || "—"}</td>
-                      <td className="p-3"><Badge variant="outline">{amb.referral_code}</Badge></td>
-                      <td className="p-3 text-right">{amb.commission_percentage}%</td>
-                      <td className="p-3 text-right text-blue-600 font-semibold">{amb.customer_discount_percentage ?? 0}%</td>
+                      <td className="p-3"><Badge variant="outline" className="font-mono">{amb.referral_code}</Badge></td>
+                      <td className="p-3 text-right font-semibold text-indigo-600">{amb.commission_percentage}%</td>
+                      <td className="p-3 text-right font-semibold text-blue-600">{amb.customer_discount_percentage ?? 0}%</td>
                       <td className="p-3 text-right font-semibold">{amb.total_signups}</td>
                       <td className="p-3 text-right text-green-600 font-semibold">{amb.total_paid_admins}</td>
                       <td className="p-3 text-right font-semibold">{fmtRs(amb.total_revenue)}</td>
-                      <td className="p-3 text-right text-purple-600 font-semibold">{fmtRs(amb.total_revenue * amb.commission_percentage / 100)}</td>
-                      <td className="p-3 text-right">
-                        <div className="flex gap-1 justify-end">
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-violet-600 hover:text-violet-700 hover:bg-violet-50" title="Show QR code" onClick={() => setQrTarget({ code: amb.referral_code, name: amb.name })}><QrCode className="w-3.5 h-3.5" /></Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-violet-600 hover:text-violet-700 hover:bg-violet-50" title="Copy partnership link" onClick={() => copyLink("ambassador", amb.referral_code, toast)}><Link2 className="w-3.5 h-3.5" /></Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditing(amb); setForm({ name: amb.name, city: amb.city||"", referral_code: amb.referral_code, commission_percentage: String(amb.commission_percentage), customer_discount_percentage: String(amb.customer_discount_percentage ?? 0) }); setShowForm(true); }}><Edit2 className="w-3.5 h-3.5" /></Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => del(amb._id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                      <td className="p-3 text-right text-purple-600 font-bold">{fmtRs(amb.total_revenue * amb.commission_percentage / 100)}</td>
+                      <td className="p-3 text-center">
+                        <Button size="sm" variant="outline" className="h-7 text-xs text-violet-600 border-violet-200 hover:bg-violet-50 gap-1" onClick={() => copyLink("ambassador", amb.referral_code, toast)}>
+                          <Link2 className="w-3 h-3" />Partner Page
+                        </Button>
+                      </td>
+                      <td className="p-3 text-center">
+                        <div className="flex gap-1 justify-center">
+                          <Button size="icon" variant="ghost" className="h-7 w-7" title="Edit" onClick={() => { setEditing(amb); setForm({ name: amb.name, city: amb.city||"", referral_code: amb.referral_code, commission_percentage: String(amb.commission_percentage), customer_discount_percentage: String(amb.customer_discount_percentage ?? 0) }); setShowForm(true); }}><Edit2 className="w-3.5 h-3.5" /></Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" title="Delete" onClick={() => del(amb._id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                         </div>
                       </td>
                     </tr>
@@ -799,6 +805,9 @@ function ReferralTab() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [qrTarget, setQrTarget] = useState<{ code: string; name: string } | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  const [form, setForm] = useState({ commission_percentage: "", customer_discount_percentage: "" });
   const { toast } = useToast();
   const PAGE_SIZE = 10;
 
@@ -820,6 +829,18 @@ function ReferralTab() {
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paged = filtered.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE);
 
+  async function save() {
+    if (!editing) return;
+    const r = await fetch(`${BASE}/marketing/referral-codes/${editing._id}`, {
+      method: "PUT", headers: authHeaders(),
+      body: JSON.stringify({ commission_percentage: parseFloat(form.commission_percentage) || 0, customer_discount_percentage: parseFloat(form.customer_discount_percentage) || 0 }),
+    });
+    if (!r.ok) { toast({ title: "Failed to update", variant: "destructive" }); return; }
+    toast({ title: "Updated" });
+    setShowForm(false); setEditing(null);
+    load();
+  }
+
   async function del(id: string) {
     if (!confirm("Delete this referral code?")) return;
     await fetch(`${BASE}/marketing/referral-codes/${id}`, { method: "DELETE", headers: authHeaders() });
@@ -833,38 +854,73 @@ function ReferralTab() {
         <Button size="sm" variant="outline" onClick={load}><RefreshCw className="w-4 h-4 mr-1" />Refresh</Button>
       </div>
 
+      {/* Edit form */}
+      {showForm && editing && (
+        <Card className="border-amber-200 bg-amber-50/40">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold">Edit Referral Code — <span className="font-mono text-amber-700">{editing.referral_code}</span></h3>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setShowForm(false); setEditing(null); }}><X className="w-4 h-4" /></Button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="text-xs font-medium mb-1 block">Commission % <span className="text-muted-foreground">(partner earns)</span></label><Input type="number" value={form.commission_percentage} onChange={e => setForm(p => ({...p, commission_percentage: e.target.value}))} placeholder="10" min="0" max="100" /></div>
+              <div><label className="text-xs font-medium mb-1 block">Customer Discount % <span className="text-muted-foreground">(buyer gets)</span></label><Input type="number" value={form.customer_discount_percentage} onChange={e => setForm(p => ({...p, customer_discount_percentage: e.target.value}))} placeholder="5" min="0" max="100" /></div>
+            </div>
+            <div className="flex gap-2 mt-3">
+              <Button size="sm" onClick={save}><Check className="w-4 h-4 mr-1" />Update</Button>
+              <Button size="sm" variant="ghost" onClick={() => { setShowForm(false); setEditing(null); }}>Cancel</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardContent className="p-0">
           {loading ? <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div> : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="border-b bg-muted/30 text-xs text-muted-foreground">
-                  <th className="text-left p-3 font-medium">Referral Code</th>
-                  <th className="text-left p-3 font-medium">Owner Admin</th>
+                  <th className="text-left p-3 font-medium">Name</th>
+                  <th className="text-left p-3 font-medium">Code</th>
+                  <th className="text-right p-3 font-medium">Commission</th>
+                  <th className="text-right p-3 font-medium">Cust. Discount</th>
                   <th className="text-right p-3 font-medium">Signups</th>
-                  <th className="text-right p-3 font-medium">Paying Admins</th>
-                  <th className="text-right p-3 font-medium">Created</th>
-                  <th className="p-3" />
+                  <th className="text-right p-3 font-medium">Paying Admin</th>
+                  <th className="text-right p-3 font-medium">Revenue</th>
+                  <th className="text-right p-3 font-medium">Earned</th>
+                  <th className="text-center p-3 font-medium">Partner Page</th>
+                  <th className="text-center p-3 font-medium">Edit</th>
                 </tr></thead>
                 <tbody>
                   {paged.length === 0 ? (
-                    <tr><td colSpan={6} className="text-center py-10 text-muted-foreground">No referral codes found</td></tr>
-                  ) : paged.map((rc) => (
-                    <tr key={rc._id} className="border-b last:border-0 hover:bg-muted/20">
-                      <td className="p-3"><Badge variant="outline">{rc.referral_code}</Badge></td>
-                      <td className="p-3 font-medium">{rc.owner_admin_id?.username || "—"}</td>
-                      <td className="p-3 text-right font-semibold">{rc.total_signups}</td>
-                      <td className="p-3 text-right text-green-600 font-semibold">{rc.total_paid_admins}</td>
-                      <td className="p-3 text-right text-muted-foreground">{new Date(rc.createdAt).toLocaleDateString()}</td>
-                      <td className="p-3 text-right">
-                        <div className="flex gap-1 justify-end">
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-amber-600 hover:text-amber-700 hover:bg-amber-50" title="Show QR code" onClick={() => setQrTarget({ code: rc.referral_code, name: rc.owner_admin_id?.username || rc.referral_code })}><QrCode className="w-3.5 h-3.5" /></Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-amber-600 hover:text-amber-700 hover:bg-amber-50" title="Copy partnership link" onClick={() => copyLink("referral", rc.referral_code, toast)}><Link2 className="w-3.5 h-3.5" /></Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => del(rc._id)}><Trash2 className="w-3.5 h-3.5" /></Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                    <tr><td colSpan={10} className="text-center py-10 text-muted-foreground">No referral codes found</td></tr>
+                  ) : paged.map((rc) => {
+                    const comm = rc.commission_percentage ?? 0;
+                    const rev = rc.total_revenue ?? 0;
+                    return (
+                      <tr key={rc._id} className="border-b last:border-0 hover:bg-muted/20">
+                        <td className="p-3 font-medium">{rc.owner_admin_id?.username || "—"}</td>
+                        <td className="p-3"><Badge variant="outline" className="font-mono">{rc.referral_code}</Badge></td>
+                        <td className="p-3 text-right font-semibold text-indigo-600">{comm}%</td>
+                        <td className="p-3 text-right font-semibold text-blue-600">{rc.customer_discount_percentage ?? 0}%</td>
+                        <td className="p-3 text-right font-semibold">{rc.total_signups ?? 0}</td>
+                        <td className="p-3 text-right text-green-600 font-semibold">{rc.total_paid_admins ?? 0}</td>
+                        <td className="p-3 text-right font-semibold">{fmtRs(rev)}</td>
+                        <td className="p-3 text-right text-purple-600 font-bold">{fmtRs(rev * comm / 100)}</td>
+                        <td className="p-3 text-center">
+                          <Button size="sm" variant="outline" className="h-7 text-xs text-amber-600 border-amber-200 hover:bg-amber-50 gap-1" onClick={() => copyLink("referral", rc.referral_code, toast)}>
+                            <Link2 className="w-3 h-3" />Partner Page
+                          </Button>
+                        </td>
+                        <td className="p-3 text-center">
+                          <div className="flex gap-1 justify-center">
+                            <Button size="icon" variant="ghost" className="h-7 w-7" title="Edit" onClick={() => { setEditing(rc); setForm({ commission_percentage: String(comm), customer_discount_percentage: String(rc.customer_discount_percentage ?? 0) }); setShowForm(true); }}><Edit2 className="w-3.5 h-3.5" /></Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" title="Delete" onClick={() => del(rc._id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
