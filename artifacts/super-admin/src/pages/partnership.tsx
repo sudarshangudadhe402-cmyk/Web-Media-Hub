@@ -324,7 +324,13 @@ export default function PartnershipPage() {
             {verifyStep === "email" ? (
               <>
                 <h2 className="font-bold text-gray-900 mb-1">Verify your identity</h2>
-                <p className="text-sm text-gray-500 mb-5">Enter the email address registered with your partner account to receive a one-time code.</p>
+                <p className="text-sm text-gray-500 mb-3">Enter the email address registered with your partner account to receive a one-time code.</p>
+                <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-3 mb-4">
+                  <span className="text-amber-500 text-base leading-none mt-0.5">🔒</span>
+                  <p className="text-xs text-amber-800 leading-relaxed">
+                    <strong>Email yaad rakhein</strong> — yahi email withdrawal ke time bhi verify hogi. Bina is email ke aap payment request nahi kar sakte.
+                  </p>
+                </div>
                 <div className="space-y-3">
                   <div>
                     <label className="text-xs font-semibold text-gray-700 mb-1.5 block uppercase tracking-wide">Email address</label>
