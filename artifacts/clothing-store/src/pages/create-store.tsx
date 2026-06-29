@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -88,6 +88,59 @@ export default function CreateStore() {
   const [checking,     setChecking]     = useState(false);
   const [dupePopup,    setDupePopup]    = useState<DupePopup | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [submitting,   setSubmitting]   = useState(false);
+  const [submitError,  setSubmitError]  = useState<string | null>(null);
+  const [submitted,    setSubmitted]    = useState(false);
+  const [refAdmin,     setRefAdmin]     = useState<string>("");
+
+  /* Capture ?ref= param from URL at mount */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref") ?? "";
+    if (ref) {
+      setRefAdmin(ref);
+      sessionStorage.setItem("wmh_ref_admin", ref);
+    } else {
+      const stored = sessionStorage.getItem("wmh_ref_admin") ?? "";
+      if (stored) setRefAdmin(stored);
+    }
+  }, []);
+
+  async function handleSubmitStore() {
+    const values = form.getValues();
+    setSubmitError(null);
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/store-requests/public", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: values.email.trim(),
+          password: values.password,
+          storeName: values.storeName.trim(),
+          whatsapp: values.whatsapp.trim(),
+          plan: selectedPlan?.key ?? null,
+          planName: selectedPlan?.name ?? "",
+          planPrice: selectedPlan?.price ?? "",
+          planPeriod: selectedPlan?.period ?? "",
+          planBadge: selectedPlan?.badge ?? "",
+          planColor: selectedPlan?.color ?? "",
+          ref_admin: refAdmin,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSubmitError(data.error ?? "Something went wrong, please try again.");
+        return;
+      }
+      sessionStorage.removeItem("wmh_ref_admin");
+      setSubmitted(true);
+    } catch {
+      setSubmitError("Network error, please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -669,21 +722,31 @@ export default function CreateStore() {
                     </p>
                   </div>
 
+                  {submitError && (
+                    <div className="w-full rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 text-center">
+                      {submitError}
+                    </div>
+                  )}
                   <div className="flex gap-3 w-full mt-2">
-                    <button type="button" onClick={()=>goTo(2)}
-                      className="flex-1 flex items-center justify-center gap-2 font-semibold hover:opacity-80 transition-opacity"
+                    <button type="button" onClick={()=>goTo(2)} disabled={submitting}
+                      className="flex-1 flex items-center justify-center gap-2 font-semibold hover:opacity-80 transition-opacity disabled:opacity-40"
                       style={{ height:"48px", borderRadius:"12px", border:`2px solid ${LABEL}`, color:LABEL, background:"transparent", fontSize:"14px" }}>
                       <ArrowLeft className="w-4 h-4" /> Back
                     </button>
-                    <button type="button" disabled
-                      className="flex-1 flex items-center justify-center gap-2 font-bold text-white cursor-not-allowed"
-                      style={{ height:"48px", borderRadius:"12px", background:"#C5BFB5", fontSize:"14px" }}>
-                      Done ✅
+                    <button
+                      type="button"
+                      onClick={handleSubmitStore}
+                      disabled={submitting || !selectedPlan}
+                      className="flex-1 flex items-center justify-center gap-2 font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed"
+                      style={{ height:"48px", borderRadius:"12px", background: selectedPlan && !submitting ? "#16A34A" : "#C5BFB5", fontSize:"14px" }}>
+                      {submitting ? "Submitting…" : "Done ✅"}
                     </button>
                   </div>
-                  <p className="text-xs" style={{ color: "#BBAA99" }}>
-                    Done will activate once all steps are complete
-                  </p>
+                  {!selectedPlan && (
+                    <p className="text-xs" style={{ color: "#BBAA99" }}>
+                      Please select a plan in Step 2 to continue
+                    </p>
+                  )}
                 </div>
               </div>
             </motion.div>

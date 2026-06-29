@@ -808,123 +808,133 @@ function ReferralTab() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [qrTarget, setQrTarget] = useState<{ code: string; name: string } | null>(null);
-  const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ commission_percentage: "", customer_discount_percentage: "" });
+  const [selected, setSelected] = useState<any>(null);
   const { toast } = useToast();
-  const PAGE_SIZE = 10;
+  const PAGE_SIZE = 12;
 
   const load = async () => {
     setLoading(true);
     try {
-      const r = await fetch(`${BASE}/marketing/referral-codes`, { headers: authHeaders() });
+      const r = await fetch(`${BASE}/store-requests/referral-history`, { headers: authHeaders() });
+      if (!r.ok) throw new Error("Failed");
       const data = await r.json();
       setList(Array.isArray(data) ? data : []);
-    } catch { toast({ title: "Failed", variant: "destructive" }); }
+    } catch { toast({ title: "Failed to load referral history", variant: "destructive" }); }
     finally { setLoading(false); }
   };
   useEffect(() => { load(); }, []);
 
   const filtered = list.filter(r =>
-    r.referral_code?.toLowerCase().includes(search.toLowerCase()) ||
-    r.owner_admin_id?.username?.toLowerCase().includes(search.toLowerCase())
+    (r.referred_by_admin_username ?? "").toLowerCase().includes(search.toLowerCase()) ||
+    (r.storeName ?? "").toLowerCase().includes(search.toLowerCase()) ||
+    (r.email ?? "").toLowerCase().includes(search.toLowerCase())
   );
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paged = filtered.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE);
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  async function save() {
-    if (!editing) return;
-    const r = await fetch(`${BASE}/marketing/referral-codes/${editing._id}`, {
-      method: "PUT", headers: authHeaders(),
-      body: JSON.stringify({ commission_percentage: parseFloat(form.commission_percentage) || 0, customer_discount_percentage: parseFloat(form.customer_discount_percentage) || 0 }),
-    });
-    if (!r.ok) { toast({ title: "Failed to update", variant: "destructive" }); return; }
-    toast({ title: "Updated" });
-    setShowForm(false); setEditing(null);
-    load();
-  }
-
-  async function del(id: string) {
-    if (!confirm("Delete this referral code?")) return;
-    await fetch(`${BASE}/marketing/referral-codes/${id}`, { method: "DELETE", headers: authHeaders() });
-    load();
-  }
+  const approved = list.filter(r => r.status === "approved").length;
+  const pending  = list.filter(r => r.status === "pending").length;
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2 items-center justify-between">
-        <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Search by code or admin..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="pl-9 h-9 w-64" /></div>
-        <Button size="sm" variant="outline" onClick={load}><RefreshCw className="w-4 h-4 mr-1" />Refresh</Button>
-      </div>
-
-      {/* Edit form */}
-      {showForm && editing && (
-        <Card className="border-amber-200 bg-amber-50/40">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold">Edit Referral Code — <span className="font-mono text-amber-700">{editing.referral_code}</span></h3>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setShowForm(false); setEditing(null); }}><X className="w-4 h-4" /></Button>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs font-medium mb-1 block">Commission % <span className="text-muted-foreground">(partner earns)</span></label><Input type="number" value={form.commission_percentage} onChange={e => setForm(p => ({...p, commission_percentage: e.target.value}))} placeholder="10" min="0" max="100" /></div>
-              <div><label className="text-xs font-medium mb-1 block">Customer Discount % <span className="text-muted-foreground">(buyer gets)</span></label><Input type="number" value={form.customer_discount_percentage} onChange={e => setForm(p => ({...p, customer_discount_percentage: e.target.value}))} placeholder="5" min="0" max="100" /></div>
-            </div>
-            <div className="flex gap-2 mt-3">
-              <Button size="sm" onClick={save}><Check className="w-4 h-4 mr-1" />Update</Button>
-              <Button size="sm" variant="ghost" onClick={() => { setShowForm(false); setEditing(null); }}>Cancel</Button>
-            </div>
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-primary">{list.length}</p>
+            <p className="text-xs text-muted-foreground mt-1">Total Referrals</p>
           </CardContent>
         </Card>
-      )}
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-green-600">{approved}</p>
+            <p className="text-xs text-muted-foreground mt-1">Approved</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-amber-600">{pending}</p>
+            <p className="text-xs text-muted-foreground mt-1">Pending</p>
+          </CardContent>
+        </Card>
+      </div>
 
+      {/* Search + Refresh */}
+      <div className="flex flex-wrap gap-2 items-center justify-between">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by store or referrer..."
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            className="pl-9 h-9 w-64"
+          />
+        </div>
+        <Button size="sm" variant="outline" onClick={load}>
+          <RefreshCw className="w-4 h-4 mr-1" />Refresh
+        </Button>
+      </div>
+
+      {/* Table */}
       <Card>
         <CardContent className="p-0">
-          {loading ? <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div> : (
+          {loading ? (
+            <div className="flex justify-center py-10">
+              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead><tr className="border-b bg-muted/30 text-xs text-muted-foreground">
-                  <th className="text-left p-3 font-medium">Name</th>
-                  <th className="text-left p-3 font-medium">Code</th>
-                  <th className="text-right p-3 font-medium">Commission</th>
-                  <th className="text-right p-3 font-medium">Cust. Discount</th>
-                  <th className="text-right p-3 font-medium">Signups</th>
-                  <th className="text-right p-3 font-medium">Paying Admin</th>
-                  <th className="text-right p-3 font-medium">Revenue</th>
-                  <th className="text-right p-3 font-medium">Earned</th>
-                  <th className="text-center p-3 font-medium">Partner Page</th>
-                  <th className="text-center p-3 font-medium">Edit</th>
-                </tr></thead>
+                <thead>
+                  <tr className="border-b bg-muted/30 text-xs text-muted-foreground">
+                    <th className="text-left p-3 font-medium">Referred By (Admin)</th>
+                    <th className="text-left p-3 font-medium">New Store</th>
+                    <th className="text-left p-3 font-medium">Email</th>
+                    <th className="text-left p-3 font-medium">Status</th>
+                    <th className="text-left p-3 font-medium">Date</th>
+                    <th className="text-center p-3 font-medium">Details</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {paged.length === 0 ? (
-                    <tr><td colSpan={10} className="text-center py-10 text-muted-foreground">No referral codes found</td></tr>
-                  ) : paged.map((rc) => {
-                    const comm = rc.commission_percentage ?? 0;
-                    const rev = rc.total_revenue ?? 0;
-                    return (
-                      <tr key={rc._id} className="border-b last:border-0 hover:bg-muted/20">
-                        <td className="p-3 font-medium">{rc.owner_admin_id?.username || "—"}</td>
-                        <td className="p-3"><Badge variant="outline" className="font-mono">{rc.referral_code}</Badge></td>
-                        <td className="p-3 text-right font-semibold text-indigo-600">{comm}%</td>
-                        <td className="p-3 text-right font-semibold text-blue-600">{rc.customer_discount_percentage ?? 0}%</td>
-                        <td className="p-3 text-right font-semibold">{rc.total_signups ?? 0}</td>
-                        <td className="p-3 text-right text-green-600 font-semibold">{rc.total_paid_admins ?? 0}</td>
-                        <td className="p-3 text-right font-semibold">{fmtRs(rev)}</td>
-                        <td className="p-3 text-right text-purple-600 font-bold">{fmtRs(rev * comm / 100)}</td>
-                        <td className="p-3 text-center">
-                          <Button size="sm" variant="outline" className="h-7 text-xs text-amber-600 border-amber-200 hover:bg-amber-50 gap-1" onClick={() => copyLink("referral", rc.referral_code, toast)}>
-                            <Link2 className="w-3 h-3" />Partner Page
-                          </Button>
-                        </td>
-                        <td className="p-3 text-center">
-                          <div className="flex gap-1 justify-center">
-                            <Button size="icon" variant="ghost" className="h-7 w-7" title="Edit" onClick={() => { setEditing(rc); setForm({ commission_percentage: String(comm), customer_discount_percentage: String(rc.customer_discount_percentage ?? 0) }); setShowForm(true); }}><Edit2 className="w-3.5 h-3.5" /></Button>
-                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" title="Delete" onClick={() => del(rc._id)}><Trash2 className="w-3.5 h-3.5" /></Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                    <tr>
+                      <td colSpan={6} className="text-center py-12 text-muted-foreground">
+                        {search ? "No matches found" : "No admin referrals yet. Admins share their referral link and when their friend creates a store, it appears here."}
+                      </td>
+                    </tr>
+                  ) : paged.map((r) => (
+                    <tr
+                      key={r._id || r.id}
+                      className="border-b last:border-0 hover:bg-muted/20 cursor-pointer"
+                      onClick={() => setSelected(r)}
+                    >
+                      <td className="p-3 font-semibold text-primary">{r.referred_by_admin_username || "—"}</td>
+                      <td className="p-3 font-medium">{r.storeName}</td>
+                      <td className="p-3 text-muted-foreground text-xs">{r.email}</td>
+                      <td className="p-3">
+                        <Badge variant="outline" className={
+                          r.status === "approved" ? "border-green-300 text-green-700 bg-green-50" :
+                          r.status === "rejected" ? "border-red-300 text-red-700 bg-red-50" :
+                          "border-amber-300 text-amber-700 bg-amber-50"
+                        }>
+                          {r.status}
+                        </Badge>
+                      </td>
+                      <td className="p-3 text-xs text-muted-foreground">
+                        {new Date(r.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                      </td>
+                      <td className="p-3 text-center">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs"
+                          onClick={e => { e.stopPropagation(); setSelected(r); }}
+                        >
+                          View
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -932,15 +942,64 @@ function ReferralTab() {
         </CardContent>
       </Card>
 
+      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2">
-          <Button size="sm" variant="outline" disabled={page===1} onClick={() => setPage(p=>p-1)}><ChevronLeft className="w-4 h-4" /></Button>
+          <Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage(p => p - 1)}>
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
           <span className="text-sm">{page} / {totalPages}</span>
-          <Button size="sm" variant="outline" disabled={page===totalPages} onClick={() => setPage(p=>p+1)}><ChevronRight className="w-4 h-4" /></Button>
+          <Button size="sm" variant="outline" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>
+            <ChevronRight className="w-4 h-4" />
+          </Button>
         </div>
       )}
 
-      {qrTarget && <QRDialog open={true} onClose={() => setQrTarget(null)} type="referral" code={qrTarget.code} name={qrTarget.name} />}
+      {/* Detail Dialog */}
+      <Dialog open={!!selected} onOpenChange={o => !o && setSelected(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Referral Details</DialogTitle>
+          </DialogHeader>
+          {selected && (
+            <div className="space-y-4">
+              <div className="rounded-xl border bg-blue-50/50 p-4 space-y-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-blue-600 mb-2">Referring Admin</p>
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-blue-500" />
+                  <span className="font-semibold text-sm">{selected.referred_by_admin_username || "—"}</span>
+                </div>
+              </div>
+              <div className="rounded-xl border bg-green-50/50 p-4 space-y-1.5">
+                <p className="text-xs font-bold uppercase tracking-wider text-green-600 mb-2">New Store (Referred)</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                  <div className="text-muted-foreground text-xs">Store Name</div>
+                  <div className="font-medium text-xs">{selected.storeName}</div>
+                  <div className="text-muted-foreground text-xs">Email</div>
+                  <div className="text-xs truncate">{selected.email}</div>
+                  <div className="text-muted-foreground text-xs">WhatsApp</div>
+                  <div className="text-xs">{selected.whatsapp}</div>
+                  <div className="text-muted-foreground text-xs">Plan</div>
+                  <div className="text-xs">{selected.planName || selected.plan || "—"}</div>
+                  <div className="text-muted-foreground text-xs">Status</div>
+                  <div>
+                    <Badge variant="outline" className={`text-[10px] ${
+                      selected.status === "approved" ? "border-green-300 text-green-700 bg-green-50" :
+                      selected.status === "rejected" ? "border-red-300 text-red-700 bg-red-50" :
+                      "border-amber-300 text-amber-700 bg-amber-50"
+                    }`}>
+                      {selected.status}
+                    </Badge>
+                  </div>
+                  <div className="text-muted-foreground text-xs">Date</div>
+                  <div className="text-xs">{new Date(selected.createdAt).toLocaleString("en-IN")}</div>
+                </div>
+              </div>
+              <Button className="w-full" size="sm" onClick={() => setSelected(null)}>Close</Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

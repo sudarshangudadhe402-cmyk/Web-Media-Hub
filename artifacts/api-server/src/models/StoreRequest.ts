@@ -14,6 +14,7 @@ export interface IStoreRequest extends Document {
   status: "pending" | "approved" | "rejected";
   submittedBy: string;
   rewardCode?: string;
+  referred_by_admin_username?: string;
   createdAt: Date;
 }
 
@@ -32,6 +33,7 @@ const StoreRequestSchema = new Schema<IStoreRequest>(
     status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
     submittedBy: { type: String, required: true },
     rewardCode: { type: String },
+    referred_by_admin_username: { type: String, default: "" },
   },
   { timestamps: true }
 );

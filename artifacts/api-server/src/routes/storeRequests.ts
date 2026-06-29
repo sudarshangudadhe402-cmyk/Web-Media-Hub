@@ -26,6 +26,7 @@ function generateRewardCode(email: string): string {
 function fmt(s: InstanceType<typeof StoreRequest>) {
   return {
     id: String(s._id),
+    _id: String(s._id),
     email: s.email,
     storeName: s.storeName,
     whatsapp: s.whatsapp,
@@ -38,6 +39,7 @@ function fmt(s: InstanceType<typeof StoreRequest>) {
     status: s.status,
     submittedBy: s.submittedBy,
     rewardCode: s.rewardCode ?? null,
+    referred_by_admin_username: s.referred_by_admin_username ?? "",
     createdAt: s.createdAt.toISOString(),
     updatedAt: (s as any).updatedAt ? new Date((s as any).updatedAt).toISOString() : s.createdAt.toISOString(),
   };
@@ -49,6 +51,106 @@ router.get("/store-requests/my", requireAuth, async (req: any, res) => {
     res.json(requests.map(fmt));
   } catch (err) {
     req.log.error({ err }, "My store requests error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── Admin referral history (stores created via this admin's referral link) ──
+router.get("/store-requests/my-referrals", requireAuth, async (req: any, res) => {
+  try {
+    const adminUser = await User.findById(req.user?.id).select("username").lean() as any;
+    if (!adminUser?.username) {
+      res.json([]);
+      return;
+    }
+    const requests = await StoreRequest.find({
+      referred_by_admin_username: adminUser.username,
+    }).sort({ createdAt: -1 });
+    res.json(requests.map(fmt));
+  } catch (err) {
+    req.log?.error?.({ err }, "My referrals error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── Super admin: all admin-to-admin referral history ──
+router.get("/store-requests/referral-history", requireSuperAdmin, async (req: any, res) => {
+  try {
+    const requests = await StoreRequest.find({
+      referred_by_admin_username: { $ne: "", $exists: true },
+    }).sort({ createdAt: -1 });
+    res.json(requests.map(fmt));
+  } catch (err) {
+    req.log?.error?.({ err }, "Referral history error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── Public store request (friend clicks referral link, no auth) ──
+router.post("/store-requests/public", async (req: any, res) => {
+  try {
+    const { email, password, storeName, whatsapp, plan, planName, planPrice, planPeriod, planBadge, planColor, ref_admin } = req.body;
+    if (!email || !password || !storeName || !whatsapp) {
+      res.status(400).json({ error: "All fields are required" });
+      return;
+    }
+
+    const emailLower = email.toLowerCase().trim();
+
+    const existingEmail = await User.findOne({ email: emailLower });
+    if (existingEmail) {
+      res.status(400).json({ error: "Email already registered. Please use a different email." });
+      return;
+    }
+
+    const existingRequest = await StoreRequest.findOne({ email: emailLower });
+    if (existingRequest) {
+      res.status(400).json({ error: "A request with this email is already pending." });
+      return;
+    }
+
+    const cleanPhone = (whatsapp || "").replace(/\D/g, "");
+    if (cleanPhone) {
+      const existingMobile = await User.findOne({
+        $or: [
+          { adminNumber: cleanPhone },
+          { adminNumber: `+91${cleanPhone}` },
+          { adminNumber: cleanPhone.replace(/^91/, "") },
+        ],
+      });
+      if (existingMobile) {
+        res.status(400).json({ error: "Mobile number already registered. Please use a different number." });
+        return;
+      }
+    }
+
+    const referredBy = (ref_admin ?? "").trim();
+
+    const request = await StoreRequest.create({
+      email: emailLower,
+      password,
+      storeName,
+      whatsapp: cleanPhone ? `+91${cleanPhone.replace(/^91/, "")}` : whatsapp,
+      plan: plan ?? planName ?? null,
+      planName: planName ?? plan ?? "",
+      planPrice: planPrice ?? "",
+      planPeriod: planPeriod ?? "",
+      planBadge: planBadge ?? "",
+      planColor: planColor ?? "",
+      status: "pending",
+      submittedBy: "public",
+      referred_by_admin_username: referredBy,
+    });
+
+    await Notification.create({
+      type: "store_request",
+      message: `New store request: "${storeName}" submitted${referredBy ? ` via referral from ${referredBy}` : ""}`,
+      relatedId: String(request._id),
+    });
+
+    res.status(201).json(fmt(request));
+  } catch (err) {
+    req.log?.error?.({ err }, "Public store request error");
     res.status(500).json({ error: "Internal server error" });
   }
 });

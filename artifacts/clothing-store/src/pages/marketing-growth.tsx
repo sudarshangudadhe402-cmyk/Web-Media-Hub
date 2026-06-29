@@ -1,7 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { QRCodeCanvas } from "qrcode.react";
-import PricingOverlay, { type SelectedPlan } from "@/components/pricing-overlay";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,23 +22,17 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import {
-  useSubmitStoreRequest,
-  useMyStoreRequests,
-  getMyStoreRequestsQueryKey,
   useGetStore,
   useGetDashboardSummary,
 } from "@workspace/api-client-react";
+import { useAuth } from "@/hooks/use-auth";
 import {
   TrendingUp,
   Video,
   PlusCircle,
-  Star,
   MapPin,
   CheckCircle,
-  XCircle,
-  Store,
   Gift,
-  Clock,
   Copy,
   Link as LinkIcon,
   ChevronRight,
@@ -54,10 +47,9 @@ import {
   Megaphone,
   Eye,
   X,
+  Share2,
+  Clock,
 } from "lucide-react";
-
-type Tab = "friend" | "approved" | "rejected";
-type PageView = "main" | "addFriend" | "choosePlan";
 
 const SOURCE_OPTIONS = [
   { value: "instagram", label: "Instagram", color: "#E1306C" },
@@ -299,31 +291,60 @@ function CampaignDetail({ campaign, onBack, onCopyLink, onToggle, onDelete }: {
 export default function MarketingGrowth() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   /* ── AI Video state ── */
-  const [pageView, setPageView] = useState<PageView>("main");
-  const [selectedPlan, setSelectedPlan] = useState<SelectedPlan | null>(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<Tab>("friend");
-  const [selectedApproved, setSelectedApproved] = useState<any>(null);
-  const [approvedTabSeenAt, setApprovedTabSeenAt] = useState<string | null>(() =>
-    localStorage.getItem("wmh_ai_video_approved_tab_seen_at")
-  );
   const [claimHelpOpen, setClaimHelpOpen] = useState(false);
-  const [form, setForm] = useState({ email: "", password: "", storeName: "", whatsapp: "" });
 
-  const submitRequest = useSubmitStoreRequest();
-  const { data: myRequests } = useMyStoreRequests();
+  /* ── My Referrals query ── */
+  const { data: myReferrals = [] } = useQuery<any[]>({
+    queryKey: ["my-referrals"],
+    queryFn: async () => {
+      const res = await fetch("/api/store-requests/my-referrals", { headers: authHeaders() });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    refetchInterval: 30000,
+  });
 
-  const pending = (myRequests ?? []).filter((r) => r.status === "pending");
-  const approved = (myRequests ?? []).filter((r) => r.status === "approved");
-  const rejected = (myRequests ?? []).filter((r) => r.status === "rejected");
-  const rewardCoins = approved.filter((r) => r.rewardCode && r.rewardCode !== "NO_REWARD_MONTHLY_PLAN").length * 1000;
+  const rewardCoins = myReferrals.filter(
+    (r) => r.status === "approved" && r.rewardCode && r.rewardCode !== "NO_REWARD_MONTHLY_PLAN"
+  ).length * 1000;
 
-  const approvedTabHasDot =
-    approved.length > 0 &&
-    (!approvedTabSeenAt ||
-      approved.some((r) => new Date((r as any).updatedAt ?? r.createdAt) > new Date(approvedTabSeenAt!)));
+  const referralLink = user?.username
+    ? `${window.location.origin}/create-store?ref=${encodeURIComponent(user.username)}`
+    : "";
+
+  function copyReferralLink() {
+    if (!referralLink) return;
+    navigator.clipboard.writeText(referralLink);
+    toast({ title: "Referral link copied!" });
+  }
+
+  function shareViaWhatsApp() {
+    const msg = encodeURIComponent(
+      `Join Web Media Hub and create your own fashion store! 🛍️\n\nClick here to get started:\n${referralLink}`
+    );
+    window.open(`https://wa.me/?text=${msg}`, "_blank");
+  }
+
+  function shareViaTelegram() {
+    const msg = encodeURIComponent("Join Web Media Hub and create your own fashion store! 🛍️");
+    const url = encodeURIComponent(referralLink);
+    window.open(`https://t.me/share/url?url=${url}&text=${msg}`, "_blank");
+  }
+
+  function shareNative() {
+    if (navigator.share) {
+      navigator.share({
+        title: "Web Media Hub",
+        text: "Join Web Media Hub and create your own fashion store! 🛍️",
+        url: referralLink,
+      }).catch(() => {});
+    } else {
+      copyReferralLink();
+    }
+  }
 
   /* ── Store data for tracking links ── */
   const { data: store } = useGetStore({ query: { retry: false } });
@@ -455,163 +476,7 @@ export default function MarketingGrowth() {
     createCampaign.mutate({ campaignName: campaignName.trim(), source: effectiveSource, trackingLink, qrEnabled });
   }
 
-  function handleFormChange(e: React.ChangeEvent<HTMLInputElement>) {
-    let val = e.target.value;
-    if (e.target.name === "password") val = val.replace(/[^0-9]/g, "");
-    setForm((prev) => ({ ...prev, [e.target.name]: val }));
-  }
-
-  function validateWhatsApp(digits: string): string | null {
-    if (digits.length !== 10) return "WhatsApp number must be exactly 10 digits";
-    if (/^0+$/.test(digits)) return "Spam number not allowed, please fill real 🙏";
-    if (/^(\d)\1{9}$/.test(digits)) return "Spam number not allowed, please fill real 🙏";
-    return null;
-  }
-
-  function handleDone(e: React.FormEvent) {
-    e.preventDefault();
-    const whatsappError = validateWhatsApp(form.whatsapp);
-    if (whatsappError) { toast({ variant: "destructive", title: whatsappError }); return; }
-    submitRequest.mutate(
-      { data: { email: form.email, password: form.password, storeName: form.storeName, whatsapp: `+91${form.whatsapp}` } },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getMyStoreRequestsQueryKey() });
-          setPageView("main");
-          setConfirmOpen(true);
-          setForm({ email: "", password: "", storeName: "", whatsapp: "" });
-        },
-        onError: (err: any) => {
-          const reason: string = err?.data?.error ?? err?.data?.message ?? err?.response?.data?.error ?? err?.message?.replace(/^HTTP \d+[^:]*:\s*/i, "") ?? "";
-          const isEmailTaken = reason.toLowerCase().includes("already exists") || reason.toLowerCase().includes("email");
-          const isSpamWhatsApp = reason.toLowerCase().includes("whatsapp") || reason.toLowerCase().includes("phone") || reason.toLowerCase().includes("spam");
-          const title = isEmailTaken ? "Email already exists, please try different 🙏" : isSpamWhatsApp ? "Spam number not allowed, please fill real 🙏" : reason || "Something went wrong, please try again 🙏";
-          toast({ variant: "destructive", title });
-        },
-      }
-    );
-  }
-
-  const tabItems: { key: Tab; label: string; icon: React.ElementType; count: number; activeClass?: string; showDot?: boolean }[] = [
-    { key: "friend", label: "Friend Store", icon: Store, count: pending.length },
-    { key: "approved", label: "Approved Store", icon: CheckCircle, count: approved.length, activeClass: "bg-green-600 text-white border-green-600", showDot: approvedTabHasDot },
-    { key: "rejected", label: "Rejected Store", icon: XCircle, count: rejected.length, activeClass: "bg-red-600 text-white border-red-600" },
-  ];
-  const tabData = { friend: pending, approved, rejected };
-
-  /* ── Full-page views ── */
-  if (pageView === "choosePlan") {
-    return <PricingOverlay onBack={() => setPageView("addFriend")} onSelectPlan={(plan) => { setSelectedPlan(plan); setPageView("addFriend"); }} />;
-  }
-
-  if (pageView === "addFriend") {
-    return (
-      <div className="h-screen flex flex-col bg-background">
-        <div className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 border-b bg-background">
-          <button onClick={() => { setPageView("main"); setForm({ email: "", password: "", storeName: "", whatsapp: "" }); }} className="p-1.5 rounded-full hover:bg-muted transition-colors">
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-2">
-            <Store className="w-5 h-5 text-green-600" />
-            <span className="font-bold text-base">Add My Friend's Store</span>
-          </div>
-        </div>
-        <form onSubmit={handleDone} className="flex-1 min-h-0 flex flex-col">
-          <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5 max-w-lg mx-auto w-full">
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" placeholder="friend@example.com" value={form.email} onChange={handleFormChange} required />
-              <p className="text-xs text-muted-foreground">Friend's email address for store login</p>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" name="password" type="text" inputMode="numeric" placeholder="Only numbers" value={form.password} onChange={handleFormChange} required />
-              <p className="text-xs text-muted-foreground">Only numbers allowed (no letters or emoji)</p>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="storeName">Store Name</Label>
-              <Input id="storeName" name="storeName" placeholder="Friend's store name" value={form.storeName} onChange={handleFormChange} required />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="whatsapp" className="flex items-center gap-1.5">
-                Store Owner WhatsApp Number
-                <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-              </Label>
-              <div className="flex items-center border border-input rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-ring">
-                <span className="px-3 py-2 bg-muted text-sm font-medium text-muted-foreground border-r border-input shrink-0">+91</span>
-                <input id="whatsapp" name="whatsapp" type="tel" inputMode="numeric" maxLength={10} placeholder="0000000000"
-                  value={form.whatsapp}
-                  onChange={(e) => { const val = e.target.value.replace(/\D/g, "").slice(0, 10); setForm((p) => ({ ...p, whatsapp: val })); }}
-                  className="flex-1 px-3 py-2 text-sm bg-background outline-none" required />
-              </div>
-              <p className="text-xs text-muted-foreground">Enter 10-digit mobile number (repeated digits not allowed)</p>
-            </div>
-            <button type="button" onClick={() => setPageView("choosePlan")}
-              className="w-full flex items-center justify-between gap-3 rounded-xl px-5 py-4 font-semibold text-base transition-colors active:opacity-80"
-              style={{ background: "linear-gradient(135deg,#f59e0b,#fbbf24)", color: "#fff", boxShadow: "0 2px 12px rgba(251,191,36,0.4)" }}>
-              <div className="flex items-center gap-3">
-                <Star className="w-5 h-5 fill-white text-white shrink-0" />
-                <span>{selectedPlan ? "Change Plan" : "Choose Plan"}</span>
-              </div>
-              <ChevronRight className="w-5 h-5 shrink-0" />
-            </button>
-            {selectedPlan && (
-              <div className="rounded-xl border p-4 space-y-1" style={{ borderColor: selectedPlan.color + "55", background: selectedPlan.color + "11" }}>
-                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: selectedPlan.color }}>{selectedPlan.badge}</p>
-                <p className="font-bold text-sm">{selectedPlan.name}</p>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-extrabold" style={{ color: selectedPlan.color }}>{selectedPlan.price}</span>
-                  <span className="text-xs text-muted-foreground">{selectedPlan.period}</span>
-                </div>
-                <p className="text-xs text-muted-foreground">{selectedPlan.tagline}</p>
-              </div>
-            )}
-          </div>
-          <div className="shrink-0 border-t bg-background px-5 py-4 flex gap-3 max-w-lg mx-auto w-full">
-            <Button type="button" variant="outline" className="flex-1" onClick={() => { setPageView("main"); setForm({ email: "", password: "", storeName: "", whatsapp: "" }); setSelectedPlan(null); }}>Cancel</Button>
-            <Button type="submit" className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:opacity-40"
-              disabled={submitRequest.isPending || !form.email || !form.password || !form.storeName || form.whatsapp.length !== 10 || !selectedPlan}>
-              {submitRequest.isPending ? "Submitting..." : "Done"}
-            </Button>
-          </div>
-        </form>
-        <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-center justify-center">
-                <Video className="w-5 h-5 text-primary" />
-                Store Submitted
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3 pt-2">
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3">
-                <MapPin className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-amber-800 text-sm">Payment Required for Approval</p>
-                  <p className="text-amber-700 text-sm mt-1">The store owner will need to complete a payment to get their store approved on Web Media Hub.</p>
-                </div>
-              </div>
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex gap-3">
-                <Gift className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-green-800 text-sm">Your Reward</p>
-                  <p className="text-green-700 text-sm mt-1">Once the store is approved, you will receive <span className="font-bold text-green-800">1000 ₹ Web Media Hub Coins</span> added to your account.</p>
-                </div>
-              </div>
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-3">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0 mt-1" />
-                <div>
-                  <p className="font-semibold text-red-800 text-sm">Important — Plan Restriction</p>
-                  <p className="text-red-700 text-sm mt-1">This reward is <span className="font-bold underline">not applicable</span> on the <span className="font-bold">₹999/month</span> plan. Reward is only earned when the referred store purchases a higher plan.</p>
-                </div>
-              </div>
-              <Button className="w-full" onClick={() => setConfirmOpen(false)}>Got it</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-    );
-  }
+  /* ── Full-page views removed (replaced by referral link system) ── */
 
   /* ── Main Page ── */
   return (
@@ -906,20 +771,63 @@ export default function MarketingGrowth() {
           </div>
         </div>
 
-        {/* Add Friend CTA */}
-        <button
-          onClick={() => setPageView("addFriend")}
-          className="w-full flex items-center justify-between gap-4 bg-green-600 hover:bg-green-700 active:bg-green-800 transition-colors text-white rounded-xl px-6 py-5 shadow-lg"
-        >
-          <div className="flex items-center gap-3">
-            <PlusCircle className="w-6 h-6 shrink-0" />
-            <div className="text-left">
-              <p className="font-semibold text-lg leading-tight">Add My Friend's Store</p>
-              <p className="text-green-100 text-sm">Refer a store and earn 1000 coins on approval</p>
+        {/* Referral Link Card */}
+        <Card className="border-2 border-green-200 overflow-hidden">
+          <div className="px-5 pt-4 pb-2">
+            <div className="flex items-center gap-2 mb-3">
+              <Share2 className="w-5 h-5 text-green-600" />
+              <p className="font-bold text-base">Your Referral Link</p>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">
+              Share this link with your friends. When they create a store using your link, you earn coins!
+            </p>
+            <div className="bg-muted rounded-xl px-3 py-2.5 flex items-center gap-2 mb-3">
+              <LinkIcon className="w-4 h-4 text-primary shrink-0" />
+              <span className="flex-1 text-xs font-mono text-muted-foreground truncate">
+                {referralLink || "Loading your link..."}
+              </span>
+              <button
+                onClick={copyReferralLink}
+                disabled={!referralLink}
+                className="shrink-0 p-1.5 rounded-lg hover:bg-background transition-colors disabled:opacity-40"
+                title="Copy link"
+              >
+                <Copy className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={shareViaWhatsApp}
+                disabled={!referralLink}
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-40"
+                style={{ background: "#25D366" }}
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488z"/></svg>
+                WhatsApp
+              </button>
+              <button
+                onClick={shareViaTelegram}
+                disabled={!referralLink}
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-40"
+                style={{ background: "#0088cc" }}
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                Telegram
+              </button>
+              <button
+                onClick={shareNative}
+                disabled={!referralLink}
+                className="flex items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-sm font-semibold border transition-colors hover:bg-muted/60 disabled:opacity-40"
+              >
+                <Share2 className="w-4 h-4" />
+                More
+              </button>
             </div>
           </div>
-          <Store className="w-8 h-8 text-green-200 shrink-0" />
-        </button>
+          <div className="px-5 py-2.5 bg-amber-50 border-t border-amber-100 text-xs text-amber-700 font-medium">
+            💡 Friend creates store via your link → store gets approved → you earn <strong>1000 coins</strong>!
+          </div>
+        </Card>
 
         {/* Rewards */}
         <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
@@ -978,158 +886,64 @@ export default function MarketingGrowth() {
           <ChevronRight className="w-5 h-5 text-green-200 shrink-0" />
         </button>
 
-        {/* Friends Store */}
+        {/* My Referrals History */}
         <div>
-          <h3 className="text-base font-semibold mb-4">Friends Store</h3>
-          <div className="flex gap-2 mb-4">
-            {tabItems.map(({ key, label, icon: Icon, count, activeClass, showDot }) => (
-              <button
-                key={key}
-                onClick={() => {
-                  setActiveTab(key);
-                  if (key === "approved" && approved.length > 0) {
-                    const now = new Date().toISOString();
-                    localStorage.setItem("wmh_ai_video_approved_tab_seen_at", now);
-                    setApprovedTabSeenAt(now);
-                  }
-                }}
-                className={`relative flex-1 flex flex-col items-center justify-center gap-1 py-3 px-2 rounded-xl text-xs font-medium border transition-colors ${
-                  activeTab === key
-                    ? (activeClass ?? "bg-primary text-primary-foreground border-primary")
-                    : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span className="text-center leading-tight hidden sm:block">{label}</span>
-                <Badge variant="secondary" className="text-[10px] mt-0.5">{count}</Badge>
-                {showDot && (
-                  <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 border-2 border-white" />
-                  </span>
-                )}
-              </button>
-            ))}
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              <Users className="w-4 h-4 text-muted-foreground" />
+              My Referrals
+              <Badge variant="secondary" className="text-[11px]">{myReferrals.length}</Badge>
+            </h3>
           </div>
 
-          {tabData[activeTab].length === 0 ? (
+          {myReferrals.length === 0 ? (
             <Card className="border-dashed border-2">
               <CardContent className="p-12 text-center space-y-3">
-                {activeTab === "friend" && (<>
-                  <Store className="w-12 h-12 mx-auto text-muted-foreground/40" />
-                  <p className="text-muted-foreground font-medium">No pending store requests</p>
-                  <p className="text-sm text-muted-foreground/70">Stores you refer will appear here once submitted</p>
-                </>)}
-                {activeTab === "approved" && (<>
-                  <CheckCircle className="w-12 h-12 mx-auto text-green-400/40" />
-                  <p className="text-muted-foreground font-medium">No approved stores yet</p>
-                  <p className="text-sm text-muted-foreground/70">Once your referral is approved you'll earn 1000 coins</p>
-                </>)}
-                {activeTab === "rejected" && (<>
-                  <XCircle className="w-12 h-12 mx-auto text-red-400/40" />
-                  <p className="text-muted-foreground font-medium">No rejected stores</p>
-                </>)}
+                <Users className="w-12 h-12 mx-auto text-muted-foreground/30" />
+                <p className="text-muted-foreground font-medium">No referrals yet</p>
+                <p className="text-sm text-muted-foreground/70">
+                  Share your referral link above. When a friend creates a store using your link, they'll appear here.
+                </p>
               </CardContent>
             </Card>
           ) : (
             <div className="space-y-2">
-              {tabData[activeTab].map((req) => {
-                const isApproved = req.status === "approved";
-                return (
-                  <Card
-                    key={req.id}
-                    className={`overflow-hidden ${isApproved ? "cursor-pointer hover:shadow-md transition-shadow border-green-200" : ""}`}
-                    onClick={() => isApproved && setSelectedApproved(req)}
-                  >
-                    <CardContent className="p-4 flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                        req.status === "approved" ? "bg-green-100" :
-                        req.status === "rejected" ? "bg-red-100" : "bg-amber-100"
-                      }`}>
-                        {req.status === "approved" ? <CheckCircle className="w-5 h-5 text-green-600" /> :
-                         req.status === "rejected" ? <XCircle className="w-5 h-5 text-red-600" /> :
-                         <Clock className="w-5 h-5 text-amber-600" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm truncate">{req.storeName}</p>
-                        <p className="text-xs text-muted-foreground truncate">{req.email} · {req.whatsapp}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {new Date(req.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                        </p>
-                      </div>
-                      <Badge className={`text-[10px] shrink-0 ${
+              {myReferrals.map((req: any) => (
+                <Card key={req.id || req._id} className="overflow-hidden">
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                      req.status === "approved" ? "bg-green-100" :
+                      req.status === "rejected" ? "bg-red-100" : "bg-amber-100"
+                    }`}>
+                      {req.status === "approved" ? <CheckCircle className="w-5 h-5 text-green-600" /> :
+                       req.status === "rejected" ? <X className="w-5 h-5 text-red-600" /> :
+                       <Clock className="w-5 h-5 text-amber-600" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">{req.storeName}</p>
+                      <p className="text-xs text-muted-foreground truncate">{req.email}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {new Date(req.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <Badge className={`text-[10px] ${
                         req.status === "approved" ? "bg-green-600 text-white" :
                         req.status === "rejected" ? "bg-red-600 text-white" : "bg-amber-500 text-white"
                       }`}>
                         {req.status === "approved" ? "Approved" : req.status === "rejected" ? "Rejected" : "Pending"}
                       </Badge>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                      {req.status === "approved" && req.rewardCode && req.rewardCode !== "NO_REWARD_MONTHLY_PLAN" && (
+                        <span className="text-[10px] font-bold text-green-600">+1000 coins 🎉</span>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           )}
         </div>
       </section>
-
-      {/* ── Approved Store Detail Dialog ── */}
-      <Dialog open={!!selectedApproved} onOpenChange={(o) => !o && setSelectedApproved(null)}>
-        <DialogContent className="sm:max-w-md">
-          {selectedApproved && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                  {selectedApproved.storeName}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-3 pt-2">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-muted rounded-lg p-3">
-                    <p className="text-xs text-muted-foreground">Email</p>
-                    <p className="font-semibold text-sm mt-0.5 truncate">{selectedApproved.email}</p>
-                  </div>
-                  <div className="bg-muted rounded-lg p-3">
-                    <p className="text-xs text-muted-foreground">WhatsApp</p>
-                    <p className="font-semibold text-sm mt-0.5">{selectedApproved.whatsapp}</p>
-                  </div>
-                </div>
-
-                {selectedApproved.rewardCode && selectedApproved.rewardCode !== "NO_REWARD_MONTHLY_PLAN" ? (
-                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Gift className="w-5 h-5 text-green-600 shrink-0" />
-                      <p className="font-semibold text-green-800 text-sm">+1000 Coins Earned 🎉</p>
-                    </div>
-                    <p className="text-green-700 text-xs">Your reward code — Claim rewards on NexGenStudio.com</p>
-                    <div className="flex items-center gap-2 bg-white border border-green-300 rounded-lg px-3 py-2">
-                      <span className="font-mono font-extrabold text-green-700 text-lg tracking-widest flex-1">
-                        {selectedApproved.rewardCode}
-                      </span>
-                      <button
-                        onClick={() => { navigator.clipboard.writeText(selectedApproved.rewardCode ?? ""); toast({ title: "Reward code copied!" }); }}
-                        className="p-1.5 rounded hover:bg-green-50 transition-colors shrink-0"
-                      >
-                        <Copy className="w-4 h-4 text-green-600" />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-3">
-                    <Gift className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-red-700 text-sm">No Reward</p>
-                      <p className="text-red-600 text-xs mt-1">Reward not applicable on ₹999/month plan</p>
-                    </div>
-                  </div>
-                )}
-
-                <Button className="w-full" onClick={() => setSelectedApproved(null)}>Close</Button>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* ── Claim Help Dialog ── */}
       <Dialog open={claimHelpOpen} onOpenChange={setClaimHelpOpen}>
@@ -1143,14 +957,18 @@ export default function MarketingGrowth() {
           <div className="space-y-3 pt-2 text-sm text-foreground">
             <div className="flex gap-3">
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center shrink-0">1</span>
-              <p>Refer a friend's store using the <strong>Add My Friend's Store</strong> button above.</p>
+              <p>Copy your <strong>referral link</strong> from above and share it with your friend via WhatsApp or Telegram.</p>
             </div>
             <div className="flex gap-3">
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center shrink-0">2</span>
-              <p>Once the store is approved and the owner makes payment, your coins are credited automatically.</p>
+              <p>Your friend clicks the link, fills in their store details, and submits their store request.</p>
             </div>
             <div className="flex gap-3">
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center shrink-0">3</span>
+              <p>Once the store is approved and the owner makes payment, <strong>1000 coins</strong> are credited to your account automatically.</p>
+            </div>
+            <div className="flex gap-3">
+              <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center shrink-0">4</span>
               <p>Contact <strong>Web Media Hub support</strong> to redeem your coins for a free AI Promotional Video.</p>
             </div>
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-700">
