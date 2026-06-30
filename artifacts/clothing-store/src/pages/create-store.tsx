@@ -9,7 +9,7 @@ import {
   Mail, Lock, Store, Phone, CheckCircle, Lock as LockIcon,
   CreditCard, KeyRound, X, AlertCircle, Shirt, Check,
 } from "lucide-react";
-import PricingOverlay, { SelectedPlan } from "@/components/pricing-overlay";
+import DynamicPricingOverlay, { SelectedPlan } from "@/components/dynamic-pricing-overlay";
 
 /* ─── Spam domains ─── */
 const SPAM_DOMAINS = [
@@ -188,7 +188,7 @@ export default function CreateStore() {
 
   if (showPricing) {
     return (
-      <PricingOverlay
+      <DynamicPricingOverlay
         onBack={() => setShowPricing(false)}
         onSelectPlan={(plan) => { setSelectedPlan(plan); setShowPricing(false); }}
       />
