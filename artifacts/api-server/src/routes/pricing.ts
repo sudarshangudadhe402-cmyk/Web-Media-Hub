@@ -7,16 +7,17 @@ const router = Router();
 async function getOrCreate() {
   let doc = await DynamicPricing.findById("pricing-v2");
   if (!doc) {
-    doc = await DynamicPricing.create({ _id: "pricing-v2", plans: [], categories: [] });
+    doc = await DynamicPricing.create({ _id: "pricing-v2", plans: [], categories: [], storeTypes: [] });
   }
   return doc;
 }
 
-// GET /api/pricing — list plans + categories
+// GET /api/pricing — list plans + categories + storeTypes
 router.get("/pricing", async (req, res) => {
   try {
     const doc = await getOrCreate();
     const category = (req.query.category as string)?.trim();
+    const storeType = (req.query.storeType as string)?.trim();
     const search = (req.query.search as string)?.trim().toLowerCase();
 
     let plans = doc.plans as any[];
@@ -24,15 +25,20 @@ router.get("/pricing", async (req, res) => {
     if (category && category !== "all") {
       plans = plans.filter((p: any) => p.categories?.includes(category));
     }
+    if (storeType && storeType !== "all") {
+      plans = plans.filter((p: any) => p.storeTypes?.includes(storeType));
+    }
     if (search) {
       plans = plans.filter(
         (p: any) =>
           p.name.toLowerCase().includes(search) ||
-          p.price.toLowerCase().includes(search)
+          p.price.toLowerCase().includes(search) ||
+          String(p.durationDays ?? "").includes(search) ||
+          (p.storeTypes ?? []).some((s: string) => s.toLowerCase().includes(search))
       );
     }
 
-    res.json({ plans: plans.map(planToJson), categories: doc.categories });
+    res.json({ plans: plans.map(planToJson), categories: doc.categories, storeTypes: doc.storeTypes });
   } catch (err) {
     (req as any).log?.error({ err }, "Get pricing error");
     res.status(500).json({ error: "Internal server error" });
@@ -42,7 +48,7 @@ router.get("/pricing", async (req, res) => {
 // POST /api/pricing/plans — create plan
 router.post("/pricing/plans", requireSuperAdmin, async (req, res) => {
   try {
-    const { badgeText, name, price, durationDays, features, coupons, categories } = req.body;
+    const { badgeText, name, price, durationDays, features, coupons, categories, storeTypes } = req.body;
     if (!badgeText?.trim() || !name?.trim() || !price?.trim()) {
       res.status(400).json({ error: "badgeText, name, and price are required" });
       return;
@@ -56,6 +62,7 @@ router.post("/pricing/plans", requireSuperAdmin, async (req, res) => {
       features: Array.isArray(features) ? features : [],
       coupons: Array.isArray(coupons) ? coupons : [],
       categories: Array.isArray(categories) ? categories : [],
+      storeTypes: Array.isArray(storeTypes) ? storeTypes : [],
     });
     await doc.save();
     const created = (doc.plans as any[])[(doc.plans as any[]).length - 1];
@@ -73,7 +80,7 @@ router.put("/pricing/plans/:id", requireSuperAdmin, async (req, res) => {
     const plan = (doc.plans as any[]).find((p: any) => String(p._id) === req.params.id);
     if (!plan) { res.status(404).json({ error: "Plan not found" }); return; }
 
-    const { badgeText, name, price, durationDays, features, coupons, categories } = req.body;
+    const { badgeText, name, price, durationDays, features, coupons, categories, storeTypes } = req.body;
     if (badgeText !== undefined) plan.badgeText = badgeText;
     if (name !== undefined) plan.name = name;
     if (price !== undefined) plan.price = price;
@@ -81,6 +88,7 @@ router.put("/pricing/plans/:id", requireSuperAdmin, async (req, res) => {
     if (features !== undefined) plan.features = features;
     if (coupons !== undefined) plan.coupons = coupons;
     if (categories !== undefined) plan.categories = categories;
+    if (storeTypes !== undefined) plan.storeTypes = storeTypes;
 
     await doc.save();
     res.json(planToJson(plan));
@@ -131,7 +139,6 @@ router.delete("/pricing/categories/:name", requireSuperAdmin, async (req, res) =
     const cat = decodeURIComponent(req.params.name);
     const doc = await getOrCreate();
     (doc as any).categories = (doc.categories as string[]).filter((c) => c !== cat);
-    // Also remove this category from all plans
     for (const plan of doc.plans as any[]) {
       plan.categories = (plan.categories as string[]).filter((c: string) => c !== cat);
     }
@@ -139,6 +146,41 @@ router.delete("/pricing/categories/:name", requireSuperAdmin, async (req, res) =
     res.json({ categories: doc.categories });
   } catch (err) {
     (req as any).log?.error({ err }, "Delete category error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/pricing/store-types — add store type
+router.post("/pricing/store-types", requireSuperAdmin, async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name?.trim()) { res.status(400).json({ error: "Store type name required" }); return; }
+    const doc = await getOrCreate();
+    const st = name.trim();
+    if (!(doc.storeTypes as string[]).includes(st)) {
+      (doc.storeTypes as string[]).push(st);
+      await doc.save();
+    }
+    res.json({ storeTypes: doc.storeTypes });
+  } catch (err) {
+    (req as any).log?.error({ err }, "Add store type error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// DELETE /api/pricing/store-types/:name — remove store type
+router.delete("/pricing/store-types/:name", requireSuperAdmin, async (req, res) => {
+  try {
+    const st = decodeURIComponent(req.params.name);
+    const doc = await getOrCreate();
+    (doc as any).storeTypes = (doc.storeTypes as string[]).filter((s) => s !== st);
+    for (const plan of doc.plans as any[]) {
+      plan.storeTypes = (plan.storeTypes as string[]).filter((s: string) => s !== st);
+    }
+    await doc.save();
+    res.json({ storeTypes: doc.storeTypes });
+  } catch (err) {
+    (req as any).log?.error({ err }, "Delete store type error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -166,6 +208,7 @@ function planToJson(p: any) {
     features: p.features ?? [],
     coupons: p.coupons ?? [],
     categories: p.categories ?? [],
+    storeTypes: p.storeTypes ?? [],
     createdAt: p.createdAt,
   };
 }

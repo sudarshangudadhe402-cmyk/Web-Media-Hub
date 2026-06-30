@@ -19,6 +19,7 @@ const DynamicPlanSchema = new Schema(
     features: { type: [String], default: [] },
     coupons: { type: [CouponSchema], default: [] },
     categories: { type: [String], default: [] },
+    storeTypes: { type: [String], default: [] },
   },
   { timestamps: true }
 );
@@ -28,6 +29,7 @@ const DynamicPricingSchema = new Schema(
     _id: { type: String, default: "pricing-v2" },
     plans: { type: [DynamicPlanSchema], default: [] },
     categories: { type: [String], default: [] },
+    storeTypes: { type: [String], default: [] },
   },
   { timestamps: true }
 );

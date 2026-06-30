@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useToast } from "@/hooks/use-toast";
 import {
   Plus, Search, Tag, Trash2, ChevronDown, ChevronUp, X, Check,
-  Clock, Calendar, Pencil, BadgePlus, Layers,
+  Clock, Calendar, Pencil, BadgePlus, Layers, Store, ChevronRight,
 } from "lucide-react";
 
 const TOKEN_KEY = "wmh_super_token";
@@ -33,38 +33,24 @@ interface Plan {
   features: string[];
   coupons: PlanCoupon[];
   categories: string[];
+  storeTypes: string[];
 }
 
 interface PricingData {
   plans: Plan[];
   categories: string[];
+  storeTypes: string[];
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function daysToHuman(days: number | null): string {
-  if (days === null) return "Lifetime";
-  if (days <= 0) return "Lifetime";
+  if (days === null || days <= 0) return "Lifetime";
   if (days === 1) return "1 day";
-  if (days < 7) return `${days} days`;
-  if (days < 30) return `${Math.round(days / 7)} week${Math.round(days / 7) > 1 ? "s" : ""}`;
+  if (days < 30) return `${days} days`;
   const months = Math.round(days / 30);
   if (months < 12) return `${months} month${months > 1 ? "s" : ""}`;
   const years = +(days / 365).toFixed(1);
   return years === 1 ? "1 year" : `${years} years`;
-}
-
-function daysToMonthLabel(days: number | null): string {
-  if (days === null) return "Lifetime";
-  if (days <= 0) return "Lifetime";
-  if (days < 7) return `${days} days`;
-  if (days < 30) return `${Math.round(days / 7)} weeks`;
-  const months = Math.round(days / 30);
-  if (months === 1) return "Monthly";
-  if (months === 3) return "Quarterly";
-  if (months === 6) return "Half Yearly";
-  if (months < 12) return `${months} Months`;
-  if (months === 12) return "Yearly";
-  return `${Math.round(days / 365)} Years`;
 }
 
 // ── API calls ─────────────────────────────────────────────────────────────────
@@ -95,10 +81,7 @@ async function updatePlan(id: string, data: Partial<Omit<Plan, "id">>): Promise<
 }
 
 async function deletePlan(id: string): Promise<void> {
-  const res = await fetch(`/api/pricing/plans/${id}`, {
-    method: "DELETE",
-    headers: authHeaders(),
-  });
+  const res = await fetch(`/api/pricing/plans/${id}`, { method: "DELETE", headers: authHeaders() });
   if (!res.ok) throw new Error("Failed to delete plan");
 }
 
@@ -109,18 +92,33 @@ async function addCategory(name: string): Promise<string[]> {
     body: JSON.stringify({ name }),
   });
   if (!res.ok) throw new Error("Failed to add category");
-  const d = await res.json();
-  return d.categories;
+  return (await res.json()).categories;
 }
 
 async function removeCategory(name: string): Promise<string[]> {
   const res = await fetch(`/api/pricing/categories/${encodeURIComponent(name)}`, {
-    method: "DELETE",
-    headers: authHeaders(),
+    method: "DELETE", headers: authHeaders(),
   });
   if (!res.ok) throw new Error("Failed to remove category");
-  const d = await res.json();
-  return d.categories;
+  return (await res.json()).categories;
+}
+
+async function addStoreType(name: string): Promise<string[]> {
+  const res = await fetch("/api/pricing/store-types", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) throw new Error("Failed to add store type");
+  return (await res.json()).storeTypes;
+}
+
+async function removeStoreType(name: string): Promise<string[]> {
+  const res = await fetch(`/api/pricing/store-types/${encodeURIComponent(name)}`, {
+    method: "DELETE", headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to remove store type");
+  return (await res.json()).storeTypes;
 }
 
 // ── Feature List Editor ───────────────────────────────────────────────────────
@@ -129,7 +127,7 @@ function FeatureEditor({ features, onChange }: { features: string[]; onChange: (
   const add = () => { const t = input.trim(); if (!t) return; onChange([...features, t]); setInput(""); };
   return (
     <div className="space-y-2">
-      <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto pr-1">
+      <div className="flex flex-col gap-1.5 max-h-36 overflow-y-auto pr-1">
         {features.map((f, i) => (
           <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5 text-sm">
             <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />
@@ -141,13 +139,9 @@ function FeatureEditor({ features, onChange }: { features: string[]; onChange: (
         ))}
       </div>
       <div className="flex gap-2">
-        <Input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
+        <Input value={input} onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
-          placeholder="Add a feature..."
-          className="h-9 text-sm"
-        />
+          placeholder="Add a feature..." className="h-9 text-sm" />
         <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={add}>
           <Plus className="h-4 w-4" />
         </Button>
@@ -195,33 +189,33 @@ function CouponEditor({ coupons, onChange }: { coupons: PlanCoupon[]; onChange: 
               </button>
             </div>
           ))}
-          {!open || (
-            <div className="space-y-2 pt-1">
-              <div className="grid grid-cols-2 gap-2">
-                <Input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="CODE e.g. SAVE50" className="h-9 text-sm font-mono" />
-                <Input value={discountedPrice} onChange={(e) => setDiscountedPrice(e.target.value)} placeholder="Price e.g. ₹799" className="h-9 text-sm" />
-              </div>
-              <div className="flex gap-2">
-                <Input value={maxUses} onChange={(e) => setMaxUses(e.target.value.replace(/\D/g, ""))} placeholder="Max uses e.g. 10" className="h-9 text-sm flex-1" />
-                <Button type="button" size="sm" className="h-9 bg-green-600 hover:bg-green-700 text-white px-4" onClick={addCoupon}>Add</Button>
-              </div>
+          <div className="space-y-2 pt-1">
+            <div className="grid grid-cols-2 gap-2">
+              <Input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="CODE e.g. SAVE50" className="h-9 text-sm font-mono" />
+              <Input value={discountedPrice} onChange={(e) => setDiscountedPrice(e.target.value)} placeholder="Price e.g. ₹799" className="h-9 text-sm" />
             </div>
-          )}
+            <div className="flex gap-2">
+              <Input value={maxUses} onChange={(e) => setMaxUses(e.target.value.replace(/\D/g, ""))} placeholder="Max uses e.g. 10" className="h-9 text-sm flex-1" />
+              <Button type="button" size="sm" className="h-9 bg-green-600 hover:bg-green-700 text-white px-4" onClick={addCoupon}>Add</Button>
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-// ── Category Manager Dialog ───────────────────────────────────────────────────
-function CategoryManagerDialog({
-  open, onClose, categories, onAdd, onRemove, adding, removing,
+// ── Generic Tag Manager Dialog ─────────────────────────────────────────────────
+function TagManagerDialog({
+  open, onClose, title, icon, items, onAdd, onRemove, adding, removing, color,
 }: {
   open: boolean; onClose: () => void;
-  categories: string[];
+  title: string; icon: React.ReactNode;
+  items: string[];
   onAdd: (name: string) => void;
   onRemove: (name: string) => void;
   adding: boolean; removing: string | null;
+  color: string;
 }) {
   const [input, setInput] = useState("");
   function handleAdd() {
@@ -230,12 +224,18 @@ function CategoryManagerDialog({
     onAdd(t);
     setInput("");
   }
+  const colorMap: Record<string, { btn: string; badge: string; tag: string }> = {
+    violet: { btn: "bg-violet-600 hover:bg-violet-700", badge: "bg-violet-600", tag: "bg-violet-50 text-violet-700 border-violet-200" },
+    orange: { btn: "bg-orange-500 hover:bg-orange-600", badge: "bg-orange-500", tag: "bg-orange-50 text-orange-700 border-orange-200" },
+  };
+  const c = colorMap[color] ?? colorMap.violet;
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Layers className="h-5 w-5 text-violet-600" /> Manage Categories
+            {icon} {title}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3 py-1">
@@ -244,27 +244,23 @@ function CategoryManagerDialog({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
-              placeholder="New category name..."
+              placeholder={`New ${title.toLowerCase()} name...`}
               className="h-9 text-sm"
             />
-            <Button size="sm" className="h-9 px-4 bg-violet-600 hover:bg-violet-700 text-white" onClick={handleAdd} disabled={adding}>
+            <Button size="sm" className={`h-9 px-4 text-white ${c.btn}`} onClick={handleAdd} disabled={adding}>
               {adding ? "..." : "Add"}
             </Button>
           </div>
-          {categories.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No categories yet. Add one above.</p>
+          {items.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No items yet. Add one above.</p>
           ) : (
             <div className="space-y-1.5 max-h-56 overflow-y-auto">
-              {categories.map((cat) => (
-                <div key={cat} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2.5">
-                  <span className="flex-1 text-sm font-medium text-gray-700">{cat}</span>
-                  <button
-                    type="button"
-                    onClick={() => onRemove(cat)}
-                    disabled={removing === cat}
-                    className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-40"
-                  >
-                    {removing === cat ? <span className="text-xs">...</span> : <X className="h-4 w-4" />}
+              {items.map((item) => (
+                <div key={item} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2.5">
+                  <span className="flex-1 text-sm font-medium text-gray-700">{item}</span>
+                  <button type="button" onClick={() => onRemove(item)} disabled={removing === item}
+                    className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-40">
+                    {removing === item ? <span className="text-xs">...</span> : <X className="h-4 w-4" />}
                   </button>
                 </div>
               ))}
@@ -288,38 +284,41 @@ const EMPTY_PLAN = (): Omit<Plan, "id"> => ({
   features: [],
   coupons: [],
   categories: [],
+  storeTypes: [],
 });
 
 function PlanFormDialog({
-  open, onClose, onSave, saving, initial, allCategories, title,
+  open, onClose, onSave, saving, initial, allCategories, allStoreTypes, title,
 }: {
   open: boolean; onClose: () => void;
   onSave: (data: Omit<Plan, "id">) => void;
   saving: boolean;
   initial?: Omit<Plan, "id">;
   allCategories: string[];
+  allStoreTypes: string[];
   title: string;
 }) {
-  const [draft, setDraft] = useState<Omit<Plan, "id">>(initial ? { ...initial, coupons: [...initial.coupons], features: [...initial.features], categories: [...initial.categories] } : EMPTY_PLAN());
+  const [draft, setDraft] = useState<Omit<Plan, "id">>(
+    initial
+      ? { ...initial, coupons: [...initial.coupons], features: [...initial.features], categories: [...initial.categories], storeTypes: [...(initial.storeTypes ?? [])] }
+      : EMPTY_PLAN()
+  );
   const set = <K extends keyof Omit<Plan, "id">>(k: K, v: Omit<Plan, "id">[K]) => setDraft((prev) => ({ ...prev, [k]: v }));
 
   const priceNum = parseInt(draft.price.replace(/[₹,\s]/g, ""), 10);
   const formattedPrice = !isNaN(priceNum) && priceNum > 0 ? `₹${priceNum.toLocaleString("en-IN")}` : draft.price;
 
-  const monthLabel = daysToHuman(draft.durationDays);
-
   function toggleCategory(cat: string) {
-    set("categories", draft.categories.includes(cat)
-      ? draft.categories.filter((c) => c !== cat)
-      : [...draft.categories, cat]);
+    set("categories", draft.categories.includes(cat) ? draft.categories.filter((c) => c !== cat) : [...draft.categories, cat]);
+  }
+
+  function toggleStoreType(st: string) {
+    set("storeTypes", (draft.storeTypes ?? []).includes(st) ? (draft.storeTypes ?? []).filter((s) => s !== st) : [...(draft.storeTypes ?? []), st]);
   }
 
   function handleSave() {
     if (!draft.badgeText.trim() || !draft.name.trim() || !draft.price.trim()) return;
-    onSave({
-      ...draft,
-      price: formattedPrice || draft.price,
-    });
+    onSave({ ...draft, price: formattedPrice || draft.price });
   }
 
   return (
@@ -352,12 +351,7 @@ function PlanFormDialog({
           {/* Price */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">3. Price</label>
-            <Input
-              value={draft.price}
-              onChange={(e) => set("price", e.target.value)}
-              placeholder="e.g. ₹999 or 999"
-              className="h-10"
-            />
+            <Input value={draft.price} onChange={(e) => set("price", e.target.value)} placeholder="e.g. ₹999 or 999" className="h-10" />
             {formattedPrice && <p className="text-xs text-muted-foreground">Will show as: <span className="font-bold text-foreground">{formattedPrice}</span></p>}
           </div>
 
@@ -365,23 +359,14 @@ function PlanFormDialog({
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">4. Plan Duration (days)</label>
             <div className="flex items-center gap-3">
-              <Input
-                type="number"
-                min={1}
-                value={draft.durationDays ?? ""}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  set("durationDays", v === "" ? null : parseInt(v, 10));
-                }}
-                placeholder="Leave empty for Lifetime"
-                className="h-10 max-w-[200px]"
-              />
+              <Input type="number" min={1} value={draft.durationDays ?? ""}
+                onChange={(e) => { const v = e.target.value; set("durationDays", v === "" ? null : parseInt(v, 10)); }}
+                placeholder="Leave empty for Lifetime" className="h-10 max-w-[200px]" />
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold bg-blue-50 text-blue-700 border border-blue-200">
                 {draft.durationDays ? <Calendar className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
-                {monthLabel}
+                {daysToHuman(draft.durationDays)}
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">System will count subscription start & end date from this duration.</p>
           </div>
 
           {/* Features */}
@@ -399,19 +384,15 @@ function PlanFormDialog({
           {/* Categories */}
           {allCategories.length > 0 && (
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Categories</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">7. Categories</label>
               <div className="flex flex-wrap gap-2">
                 {allCategories.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => toggleCategory(cat)}
+                  <button key={cat} type="button" onClick={() => toggleCategory(cat)}
                     className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
                       draft.categories.includes(cat)
                         ? "bg-violet-600 text-white border-violet-600"
                         : "bg-gray-50 text-gray-600 border-gray-200 hover:border-violet-300"
-                    }`}
-                  >
+                    }`}>
                     {draft.categories.includes(cat) && <Check className="inline h-3 w-3 mr-1" />}
                     {cat}
                   </button>
@@ -419,15 +400,34 @@ function PlanFormDialog({
               </div>
             </div>
           )}
+
+          {/* Store types */}
+          {allStoreTypes.length > 0 && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">8. Store (for "Data" field on card)</label>
+              <div className="flex flex-wrap gap-2">
+                {allStoreTypes.map((st) => (
+                  <button key={st} type="button" onClick={() => toggleStoreType(st)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
+                      (draft.storeTypes ?? []).includes(st)
+                        ? "bg-orange-500 text-white border-orange-500"
+                        : "bg-gray-50 text-gray-600 border-gray-200 hover:border-orange-300"
+                    }`}>
+                    {(draft.storeTypes ?? []).includes(st) && <Check className="inline h-3 w-3 mr-1" />}
+                    {st}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">Selected store shows in the "Data" field of the plan card.</p>
+            </div>
+          )}
         </div>
 
         <DialogFooter className="gap-2 pt-2">
           <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button
-            onClick={handleSave}
+          <Button onClick={handleSave}
             disabled={saving || !draft.badgeText.trim() || !draft.name.trim() || !draft.price.trim()}
-            className="bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white"
-          >
+            className="bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white">
             {saving ? "Saving…" : title}
           </Button>
         </DialogFooter>
@@ -445,7 +445,7 @@ function PlanDetailDialog({
 }) {
   const [showAll, setShowAll] = useState(false);
   if (!plan) return null;
-  const features = showAll ? plan.features : plan.features.slice(0, 4);
+  const features = showAll ? plan.features : plan.features.slice(0, 5);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -460,12 +460,24 @@ function PlanDetailDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-1">
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-gray-900">{plan.price}</span>
-            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-              {plan.durationDays ? <Calendar className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
-              {daysToHuman(plan.durationDays)}
-              {plan.durationDays && <span className="text-xs">({plan.durationDays} days)</span>}
+          {/* Price + Validity + Data row */}
+          <div className="flex items-start gap-6 py-1">
+            <div>
+              <p className="text-3xl font-extrabold text-gray-900 leading-none">{plan.price}</p>
+            </div>
+            <div className="flex gap-6">
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Validity</p>
+                <p className="text-sm font-bold text-gray-800 mt-0.5">
+                  {plan.durationDays ? `${plan.durationDays} days` : "Lifetime"}
+                </p>
+              </div>
+              {(plan.storeTypes ?? []).length > 0 && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Data</p>
+                  <p className="text-sm font-bold text-gray-800 mt-0.5">{(plan.storeTypes ?? []).join(", ")}</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -487,12 +499,9 @@ function PlanDetailDialog({
                     <span className="text-gray-700">{f}</span>
                   </div>
                 ))}
-                {plan.features.length > 4 && (
-                  <button
-                    onClick={() => setShowAll((s) => !s)}
-                    className="text-xs text-blue-600 hover:underline pl-5"
-                  >
-                    {showAll ? "Show less" : `+${plan.features.length - 4} more features`}
+                {plan.features.length > 5 && (
+                  <button onClick={() => setShowAll((s) => !s)} className="text-xs text-blue-600 hover:underline pl-5">
+                    {showAll ? "Show less" : `+${plan.features.length - 5} more features`}
                   </button>
                 )}
               </div>
@@ -519,17 +528,12 @@ function PlanDetailDialog({
         </div>
 
         <DialogFooter className="gap-2 flex-col sm:flex-row">
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-400"
-            onClick={onDelete}
-            disabled={deleting}
-          >
-            {deleting ? "Deleting…" : <><Trash2 className="h-3.5 w-3.5 mr-1" />Delete</>}
-          </Button>
-          <Button size="sm" className="gap-1" onClick={onEdit}>
+          <Button variant="outline" size="sm" onClick={onEdit} className="gap-1.5 flex-1">
             <Pencil className="h-3.5 w-3.5" /> Edit Plan
+          </Button>
+          <Button
+            variant="destructive" size="sm" onClick={onDelete} disabled={deleting} className="gap-1.5 flex-1">
+            <Trash2 className="h-3.5 w-3.5" /> {deleting ? "Deleting…" : "Delete Plan"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -537,88 +541,69 @@ function PlanDetailDialog({
   );
 }
 
-// ── Plan Card (telecom style) ─────────────────────────────────────────────────
+// ── Jio-style Plan Card ───────────────────────────────────────────────────────
 function PlanCard({ plan, onClick }: { plan: Plan; onClick: () => void }) {
-  const PREVIEW_COUNT = 3;
+  const PREVIEW_COUNT = 2;
+  const visibleFeatures = plan.features.slice(0, PREVIEW_COUNT);
   const hasMore = plan.features.length > PREVIEW_COUNT;
+  const storeDisplay = (plan.storeTypes ?? []).length > 0
+    ? (plan.storeTypes ?? []).join(", ")
+    : "All Stores";
+  const validityDisplay = plan.durationDays ? `${plan.durationDays} days` : "Lifetime";
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="w-full text-left rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md hover:border-orange-300 transition-all duration-200 overflow-hidden group"
+      className="w-full text-left bg-white border border-gray-200 rounded-xl px-4 py-3.5 hover:border-orange-300 hover:shadow-sm transition-all duration-150 active:scale-[0.99]"
     >
-      {/* Top stripe */}
-      <div className="h-1.5 w-full bg-gradient-to-r from-orange-400 via-pink-500 to-purple-500" />
+      {/* Top row: Price | Validity | Data | Chevron */}
+      <div className="flex items-start gap-4">
+        {/* Price */}
+        <div className="flex-none min-w-[90px]">
+          <p className="text-xl font-extrabold text-gray-900 leading-tight">{plan.price}</p>
+          {plan.badgeText && (
+            <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-orange-100 text-orange-700 border border-orange-200 leading-none">
+              {plan.badgeText}
+            </span>
+          )}
+        </div>
 
-      <div className="p-4 space-y-3">
-        {/* Badge */}
-        <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-gradient-to-r from-orange-50 to-pink-50 text-orange-700 border border-orange-200">
-          {plan.badgeText}
-        </span>
-
-        {/* Price + Validity row */}
-        <div className="flex items-end justify-between gap-2">
+        {/* Validity + Data */}
+        <div className="flex gap-6 flex-1 pt-0.5">
           <div>
-            <p className="text-2xl font-extrabold text-gray-900 leading-none">{plan.price}</p>
-            <div className="flex items-center gap-1 mt-1">
-              {plan.durationDays ? (
-                <Calendar className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-              ) : (
-                <Clock className="h-3.5 w-3.5 text-purple-500 shrink-0" />
-              )}
-              <span className="text-xs text-muted-foreground font-medium">
-                {daysToHuman(plan.durationDays)}
-              </span>
-            </div>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold">Validity</p>
+            <p className="text-sm font-bold text-gray-800 mt-0.5">{validityDisplay}</p>
           </div>
-          <div className="text-right">
-            <p className="text-sm font-bold text-gray-800 leading-tight">{plan.name}</p>
-            {plan.durationDays && (
-              <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-600 border border-blue-100">
-                {daysToMonthLabel(plan.durationDays)}
+          <div>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold">Data</p>
+            <p className="text-sm font-bold text-gray-800 mt-0.5 truncate max-w-[110px]">{storeDisplay}</p>
+          </div>
+        </div>
+
+        {/* Chevron */}
+        <ChevronRight className="h-5 w-5 text-gray-300 shrink-0 mt-1" />
+      </div>
+
+      {/* Features row */}
+      {(visibleFeatures.length > 0 || hasMore) && (
+        <div className="mt-3 border-t border-gray-100 pt-2.5">
+          <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">
+            {visibleFeatures.join(" • ")}
+            {hasMore && (
+              <span className="ml-1 text-orange-500 font-semibold inline-flex items-center gap-0.5">
+                See more <ChevronDown className="h-3 w-3" />
               </span>
             )}
-          </div>
+          </p>
         </div>
+      )}
 
-        {/* Category chips */}
-        {plan.categories.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {plan.categories.map((c) => (
-              <span key={c} className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-50 text-violet-600 border border-violet-100">{c}</span>
-            ))}
-          </div>
-        )}
-
-        {/* Divider */}
-        <div className="border-t border-dashed border-gray-200" />
-
-        {/* Features preview */}
-        <div className="space-y-1.5">
-          {plan.features.slice(0, PREVIEW_COUNT).map((f, i) => (
-            <div key={i} className="flex items-center gap-2 text-sm text-gray-600">
-              <Check className="h-3 w-3 text-green-500 shrink-0" />
-              <span className="truncate">{f}</span>
-            </div>
-          ))}
-          {hasMore && (
-            <p className="text-xs text-blue-500 font-medium pl-5 group-hover:underline">
-              +{plan.features.length - PREVIEW_COUNT} more… see details
-            </p>
-          )}
-          {plan.features.length === 0 && (
-            <p className="text-xs text-gray-400 italic">No features added yet</p>
-          )}
+      {plan.features.length === 0 && (
+        <div className="mt-2.5 border-t border-gray-100 pt-2">
+          <p className="text-xs text-gray-300 italic">No features added</p>
         </div>
-
-        {plan.coupons.length > 0 && (
-          <div className="flex items-center gap-1.5 pt-1">
-            <Tag className="h-3 w-3 text-green-600" />
-            <span className="text-xs text-green-700 font-medium">{plan.coupons.length} coupon code{plan.coupons.length > 1 ? "s" : ""} available</span>
-          </div>
-        )}
-      </div>
+      )}
     </button>
   );
 }
@@ -627,97 +612,100 @@ function PlanCard({ plan, onClick }: { plan: Plan; onClick: () => void }) {
 export default function PricingConfig() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const storeScrollRef = useRef<HTMLDivElement>(null);
 
   const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] = useState("all");
+  const [activeStore, setActiveStore] = useState("all");
   const [showAddPlan, setShowAddPlan] = useState(false);
   const [showCategoryMgr, setShowCategoryMgr] = useState(false);
+  const [showStoreMgr, setShowStoreMgr] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
+
   const [addingCategory, setAddingCategory] = useState(false);
   const [removingCategory, setRemovingCategory] = useState<string | null>(null);
+  const [addingStore, setAddingStore] = useState(false);
+  const [removingStore, setRemovingStore] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery<PricingData>({
     queryKey: ["dynamic-pricing"],
     queryFn: fetchPricing,
     staleTime: 30_000,
-    placeholderData: { plans: [], categories: [] },
+    placeholderData: { plans: [], categories: [], storeTypes: [] },
   });
 
   const allCategories = data?.categories ?? [];
+  const allStoreTypes = data?.storeTypes ?? [];
   const allPlans = data?.plans ?? [];
 
   // Filter plans
   const filteredPlans = useMemo(() => {
     let plans = allPlans;
-    if (activeCategory !== "all") {
-      plans = plans.filter((p) => p.categories.includes(activeCategory));
+    if (activeStore !== "all") {
+      plans = plans.filter((p) => (p.storeTypes ?? []).includes(activeStore));
     }
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       plans = plans.filter(
-        (p) => p.name.toLowerCase().includes(q) || p.price.toLowerCase().includes(q)
+        (p) =>
+          p.price.toLowerCase().includes(q) ||
+          p.name.toLowerCase().includes(q) ||
+          String(p.durationDays ?? "").includes(q) ||
+          (p.storeTypes ?? []).some((s) => s.toLowerCase().includes(q))
       );
     }
     return plans;
-  }, [allPlans, activeCategory, search]);
+  }, [allPlans, activeStore, search]);
 
   // ── Mutations ────────────────────────────────────────────────────────────────
   const createMutation = useMutation({
     mutationFn: createPlan,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dynamic-pricing"] });
-      setShowAddPlan(false);
-      toast({ title: "Plan created!", description: "New plan added successfully." });
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["dynamic-pricing"] }); setShowAddPlan(false); toast({ title: "Plan created!" }); },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Omit<Plan, "id">> }) => updatePlan(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dynamic-pricing"] });
-      setEditingPlan(null);
-      setSelectedPlan(null);
-      toast({ title: "Plan updated!", description: "Changes saved." });
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["dynamic-pricing"] }); setEditingPlan(null); setSelectedPlan(null); toast({ title: "Plan updated!" }); },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: deletePlan,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dynamic-pricing"] });
-      setSelectedPlan(null);
-      toast({ title: "Plan deleted" });
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["dynamic-pricing"] }); setSelectedPlan(null); toast({ title: "Plan deleted" }); },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const addCatMutation = useMutation({
     mutationFn: addCategory,
     onMutate: () => setAddingCategory(true),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dynamic-pricing"] });
-      setAddingCategory(false);
-      toast({ title: "Category added" });
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["dynamic-pricing"] }); setAddingCategory(false); toast({ title: "Category added" }); },
     onError: (e: Error) => { setAddingCategory(false); toast({ title: "Error", description: e.message, variant: "destructive" }); },
   });
 
   const removeCatMutation = useMutation({
     mutationFn: removeCategory,
     onMutate: (name) => setRemovingCategory(name),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dynamic-pricing"] });
-      setRemovingCategory(null);
-      toast({ title: "Category removed" });
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["dynamic-pricing"] }); setRemovingCategory(null); toast({ title: "Category removed" }); },
     onError: (e: Error) => { setRemovingCategory(null); toast({ title: "Error", description: e.message, variant: "destructive" }); },
   });
 
+  const addStoreMutation = useMutation({
+    mutationFn: addStoreType,
+    onMutate: () => setAddingStore(true),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["dynamic-pricing"] }); setAddingStore(false); toast({ title: "Store added" }); },
+    onError: (e: Error) => { setAddingStore(false); toast({ title: "Error", description: e.message, variant: "destructive" }); },
+  });
+
+  const removeStoreMutation = useMutation({
+    mutationFn: removeStoreType,
+    onMutate: (name) => setRemovingStore(name),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["dynamic-pricing"] }); setRemovingStore(null); toast({ title: "Store removed" }); },
+    onError: (e: Error) => { setRemovingStore(null); toast({ title: "Error", description: e.message, variant: "destructive" }); },
+  });
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
@@ -725,78 +713,80 @@ export default function PricingConfig() {
           <p className="text-sm text-muted-foreground mt-0.5">{allPlans.length} plan{allPlans.length !== 1 ? "s" : ""} configured</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5 h-9 text-violet-700 border-violet-200 hover:bg-violet-50 hover:border-violet-400"
-            onClick={() => setShowCategoryMgr(true)}
-          >
+          <Button variant="outline" size="sm" className="gap-1.5 h-9 text-violet-700 border-violet-200 hover:bg-violet-50 hover:border-violet-400"
+            onClick={() => setShowCategoryMgr(true)}>
             <Layers className="h-4 w-4" />
             Category
             {allCategories.length > 0 && (
               <span className="ml-0.5 text-xs font-bold bg-violet-600 text-white px-1.5 py-0.5 rounded-full">{allCategories.length}</span>
             )}
           </Button>
+          <Button variant="outline" size="sm" className="gap-1.5 h-9 text-orange-700 border-orange-200 hover:bg-orange-50 hover:border-orange-400"
+            onClick={() => setShowStoreMgr(true)}>
+            <Store className="h-4 w-4" />
+            Store
+            {allStoreTypes.length > 0 && (
+              <span className="ml-0.5 text-xs font-bold bg-orange-500 text-white px-1.5 py-0.5 rounded-full">{allStoreTypes.length}</span>
+            )}
+          </Button>
           <Button
-            className="gap-2 h-10 px-5 text-sm font-bold bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white shadow-md shadow-orange-200 hover:shadow-orange-300 transition-all"
-            onClick={() => setShowAddPlan(true)}
-          >
+            className="gap-2 h-9 px-4 text-sm font-bold bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white shadow-sm"
+            onClick={() => setShowAddPlan(true)}>
             <Plus className="h-4 w-4" />
             Add Plan
           </Button>
         </div>
       </div>
 
-      {/* ── Category tabs ──────────────────────────────────────────────────── */}
-      {allCategories.length > 0 && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={() => setActiveCategory("all")}
-            className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all border ${
-              activeCategory === "all"
-                ? "bg-gray-900 text-white border-gray-900"
-                : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
-            }`}
-          >
-            All Plans
-          </button>
-          {allCategories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat === activeCategory ? "all" : cat)}
-              className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all border ${
-                activeCategory === cat
-                  ? "bg-violet-600 text-white border-violet-600"
-                  : "bg-white text-gray-600 border-gray-200 hover:border-violet-300"
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* ── Search bar ─────────────────────────────────────────────────────── */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search plans by name or price..."
-          className="pl-10 h-11 bg-white border-gray-200 focus:border-orange-300 rounded-xl"
+          placeholder="Search by price, validity (days), or store..."
+          className="pl-10 h-11 bg-white border-gray-200 focus:border-orange-300 rounded-xl text-sm"
         />
         {search && (
-          <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+          <button onClick={() => setSearch("")} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700">
             <X className="h-4 w-4" />
           </button>
         )}
       </div>
 
-      {/* ── Plans grid ─────────────────────────────────────────────────────── */}
+      {/* ── Store filter chips ──────────────────────────────────────────────── */}
+      {allStoreTypes.length > 0 && (
+        <div ref={storeScrollRef} className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          <button
+            onClick={() => setActiveStore("all")}
+            className={`flex-none px-4 py-1.5 rounded-full text-sm font-semibold border transition-all ${
+              activeStore === "all"
+                ? "bg-gray-900 text-white border-gray-900"
+                : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
+            }`}
+          >
+            All
+          </button>
+          {allStoreTypes.map((st) => (
+            <button key={st}
+              onClick={() => setActiveStore(st === activeStore ? "all" : st)}
+              className={`flex-none px-4 py-1.5 rounded-full text-sm font-semibold border transition-all ${
+                activeStore === st
+                  ? "bg-orange-500 text-white border-orange-500"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-orange-300"
+              }`}
+            >
+              {st}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Plans list ─────────────────────────────────────────────────────── */}
       {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-52 rounded-2xl bg-gray-100 animate-pulse" />
+            <div key={i} className="h-24 rounded-xl bg-gray-100 animate-pulse" />
           ))}
         </div>
       ) : filteredPlans.length === 0 ? (
@@ -805,21 +795,21 @@ export default function PricingConfig() {
             <BadgePlus className="h-8 w-8 text-orange-400" />
           </div>
           <h3 className="text-base font-semibold text-gray-700 mb-1">
-            {search || activeCategory !== "all" ? "No plans found" : "No plans yet"}
+            {search || activeStore !== "all" ? "No plans found" : "No plans yet"}
           </h3>
           <p className="text-sm text-muted-foreground mb-4">
-            {search || activeCategory !== "all"
-              ? "Try a different search or category"
+            {search || activeStore !== "all"
+              ? "Try a different search or store filter"
               : "Click Add Plan to create your first pricing plan"}
           </p>
-          {!search && activeCategory === "all" && (
+          {!search && activeStore === "all" && (
             <Button className="bg-gradient-to-r from-orange-500 to-pink-500 text-white gap-2" onClick={() => setShowAddPlan(true)}>
               <Plus className="h-4 w-4" /> Add First Plan
             </Button>
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-2.5">
           {filteredPlans.map((plan) => (
             <PlanCard key={plan.id} plan={plan} onClick={() => setSelectedPlan(plan)} />
           ))}
@@ -833,6 +823,7 @@ export default function PricingConfig() {
         onSave={(data) => createMutation.mutate(data)}
         saving={createMutation.isPending}
         allCategories={allCategories}
+        allStoreTypes={allStoreTypes}
         title="Add Plan"
       />
 
@@ -844,6 +835,7 @@ export default function PricingConfig() {
           saving={updateMutation.isPending}
           initial={editingPlan}
           allCategories={allCategories}
+          allStoreTypes={allStoreTypes}
           title="Save Changes"
         />
       )}
@@ -857,14 +849,30 @@ export default function PricingConfig() {
         deleting={deleteMutation.isPending}
       />
 
-      <CategoryManagerDialog
+      <TagManagerDialog
         open={showCategoryMgr}
         onClose={() => setShowCategoryMgr(false)}
-        categories={allCategories}
+        title="Categories"
+        icon={<Layers className="h-5 w-5 text-violet-600" />}
+        items={allCategories}
         onAdd={(name) => addCatMutation.mutate(name)}
         onRemove={(name) => removeCatMutation.mutate(name)}
         adding={addingCategory}
         removing={removingCategory}
+        color="violet"
+      />
+
+      <TagManagerDialog
+        open={showStoreMgr}
+        onClose={() => setShowStoreMgr(false)}
+        title="Stores"
+        icon={<Store className="h-5 w-5 text-orange-500" />}
+        items={allStoreTypes}
+        onAdd={(name) => addStoreMutation.mutate(name)}
+        onRemove={(name) => removeStoreMutation.mutate(name)}
+        adding={addingStore}
+        removing={removingStore}
+        color="orange"
       />
     </div>
   );
