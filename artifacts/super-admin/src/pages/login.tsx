@@ -97,7 +97,7 @@ export default function Login() {
       setLockoutUntil(null);
       login(data.token);
       toast({ title: "Welcome, Mr_Sid_55!" });
-      setLocation("/manage-admins");
+      setLocation("/admins");
     } catch {
       toast({
         variant: "destructive",
