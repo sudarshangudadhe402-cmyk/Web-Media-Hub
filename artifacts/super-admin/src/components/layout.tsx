@@ -1,66 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useListStoreRequests } from "@workspace/api-client-react";
 import {
   LogOut,
   Menu,
-  Shield,
   Users,
   ShieldCheck,
-  FileText,
-  TrendingUp,
-  Tag,
-  BarChart2,
 } from "lucide-react";
 
-const SA_MANAGE_SEEN_KEY = "wmh_sa_manage_seen_at";
-
 const navItems = [
-  { path: "/manage-admins", name: "Manage Admins", icon: Shield },
   { path: "/admins", name: "Admin History", icon: Users },
-  { path: "/pricing-config", name: "Pricing Plans", icon: Tag },
-  { path: "/revenue", name: "Revenue & Growth", icon: TrendingUp },
-  { path: "/marketing", name: "Growth & Marketing", icon: BarChart2 },
-  { path: "/legal-log", name: "Legal Agreements", icon: FileText },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const [location] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  const [manageSeenAt, setManageSeenAt] = useState<string | null>(() =>
-    localStorage.getItem(SA_MANAGE_SEEN_KEY)
-  );
-
-  const { data: allRequests = [] } = useListStoreRequests({
-    query: { refetchInterval: 30_000 },
-  });
-  const pendingRequests = allRequests.filter((r) => r.status === "pending");
-
-  const manageAdminsHasDot =
-    pendingRequests.length > 0 &&
-    (!manageSeenAt ||
-      pendingRequests.some(
-        (r) => new Date(r.createdAt) > new Date(manageSeenAt!)
-      ));
-
-  useEffect(() => {
-    const onManagePage =
-      location === "/manage-admins" || location.startsWith("/manage-admins/");
-    if (onManagePage) {
-      const now = new Date().toISOString();
-      localStorage.setItem(SA_MANAGE_SEEN_KEY, now);
-      setManageSeenAt(now);
-    }
-  }, [location]);
-
-  const dotMap: Record<string, boolean> = {
-    "/manage-admins": manageAdminsHasDot,
-  };
 
   function NavLinks({ light = false }: { light?: boolean }) {
     return (
@@ -69,7 +26,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           const Icon = item.icon;
           const active =
             location === item.path || location.startsWith(item.path + "/");
-          const hasDot = dotMap[item.path] ?? false;
           return (
             <Link
               key={item.path}
@@ -87,12 +43,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             >
               <Icon className={`h-4 w-4 shrink-0 transition-transform duration-150 ${active && !light ? "text-sidebar-primary" : ""}`} />
               <span className="flex-1 truncate">{item.name}</span>
-              {hasDot && (
-                <span className="relative flex h-2 w-2 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500" />
-                </span>
-              )}
             </Link>
           );
         })}
