@@ -8,10 +8,18 @@ import {
   Menu,
   Users,
   ShieldCheck,
+  FileText,
+  TrendingUp,
+  Tag,
+  BarChart2,
 } from "lucide-react";
 
 const navItems = [
   { path: "/admins", name: "Admin History", icon: Users },
+  { path: "/pricing-config", name: "Pricing Plans", icon: Tag },
+  { path: "/revenue", name: "Revenue & Growth", icon: TrendingUp },
+  { path: "/marketing", name: "Growth & Marketing", icon: BarChart2 },
+  { path: "/legal-log", name: "Legal Agreements", icon: FileText },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {

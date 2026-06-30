@@ -6,9 +6,13 @@ import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
 import Login from "@/pages/login";
 import Admins from "@/pages/admins";
+import LegalLog from "@/pages/legal-log";
+import Revenue from "@/pages/revenue";
+import PricingConfig from "@/pages/pricing-config";
+import MarketingAnalytics from "@/pages/marketing";
+import PartnershipPage from "@/pages/partnership";
 import Layout from "@/components/layout";
 import NotFound from "@/pages/not-found";
-import PartnershipPage from "@/pages/partnership";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +51,26 @@ function Router() {
       <Route path="/admins">
         <ProtectedRoute>
           <Admins />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/revenue">
+        <ProtectedRoute>
+          <Revenue />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/legal-log">
+        <ProtectedRoute>
+          <LegalLog />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/pricing-config">
+        <ProtectedRoute>
+          <PricingConfig />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/marketing">
+        <ProtectedRoute>
+          <MarketingAnalytics />
         </ProtectedRoute>
       </Route>
       <Route path="/partnership/:type/:code" component={PartnershipPage} />
