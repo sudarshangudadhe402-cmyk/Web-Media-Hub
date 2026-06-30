@@ -126,7 +126,7 @@ function PlanCard({ plan, onSelect }: { plan: DynamicPlan; onSelect: () => void 
             <p className="text-sm font-bold mt-0.5" style={{ color: LABEL }}>{validityDisplay}</p>
           </div>
           <div>
-            <p className="text-[9px] uppercase tracking-wide font-semibold" style={{ color: HINT }}>Data</p>
+            <p className="text-[9px] uppercase tracking-wide font-semibold" style={{ color: HINT }}>Store</p>
             <p className="text-sm font-bold mt-0.5 truncate max-w-[100px]" style={{ color: LABEL }}>{storeDisplay}</p>
           </div>
         </div>
