@@ -81,17 +81,6 @@ export const ForgotPasswordResetSchema = z.object({
     .regex(/^\d+$/, "Password must be digits only"),
 });
 
-export const CapacityEvictSendOtpSchema = z.object({
-  identifier: safeString(254),
-  password: passwordField,
-});
-
-export const CapacityEvictVerifySchema = z.object({
-  identifier: safeString(254),
-  password: passwordField,
-  otp: otpField,
-});
-
 export const CustomerSendOtpSchema = z.object({
   storeSlug: slugField,
   email: emailField,

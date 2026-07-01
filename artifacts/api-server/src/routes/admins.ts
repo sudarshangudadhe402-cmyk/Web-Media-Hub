@@ -14,13 +14,6 @@ import { DEFAULT_PRICING_CONFIG } from "./settings";
 
 const router = Router();
 
-function getLoginCapacity(planName: string, planPrice: string): number {
-  if (planName === "Starting Plan" || planPrice === "₹999") return 2;
-  if (planName === "Lifetime Business" || planPrice === "₹15,999") return 4;
-  if (planName === "Enterprise" || planPrice === "₹19,999") return Infinity;
-  return 1;
-}
-
 function calcSubscriptionDates(
   subscriptionDays: number | null | undefined,
   planPeriod: string
@@ -293,7 +286,6 @@ router.get("/admins", requireSuperAdmin, async (req, res) => {
         role: a.role,
         isActive: a.isActive !== false,
         activeSessionCount: (a.activeSessions ?? []).length,
-        loginCapacity: getLoginCapacity(a.planName ?? "", a.planPrice ?? ""),
         storeSlug: storeMap[String(a._id)]?.publicSlug ?? null,
         storeName: storeMap[String(a._id)]?.name ?? null,
         storeCreatedAt: storeMap[String(a._id)]?.createdAt?.toISOString() ?? null,
@@ -409,7 +401,6 @@ router.post("/admins", requireSuperAdmin, async (req, res) => {
       role: admin.role,
       isActive: true,
       activeSessionCount: 0,
-      loginCapacity: getLoginCapacity(planName ?? "", planPrice ?? ""),
       storeSlug: null,
       storeName: null,
       storeCreatedAt: null,
@@ -469,19 +460,6 @@ router.patch("/admins/:id/toggle-active", requireSuperAdmin, async (req, res) =>
     res.json({ id: String(admin._id), isActive: admin.isActive });
   } catch (err) {
     req.log.error({ err }, "Toggle active error");
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-router.patch("/admins/:id/multi-device", requireSuperAdmin, async (req, res) => {
-  try {
-    const { multiDeviceAllowed } = req.body;
-    if (typeof multiDeviceAllowed !== "boolean") { res.status(400).json({ error: "multiDeviceAllowed must be a boolean" }); return; }
-    const admin = await User.findByIdAndUpdate(req.params.id, { multiDeviceAllowed }, { new: true });
-    if (!admin) { res.status(404).json({ error: "Admin not found" }); return; }
-    res.json({ id: String(admin._id), multiDeviceAllowed: admin.multiDeviceAllowed });
-  } catch (err) {
-    req.log.error({ err }, "Toggle multi-device error");
     res.status(500).json({ error: "Internal server error" });
   }
 });

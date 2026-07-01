@@ -14,8 +14,6 @@ import {
   ChangePasswordSchema,
   ForgotPasswordSendOtpSchema,
   ForgotPasswordResetSchema,
-  CapacityEvictSendOtpSchema,
-  CapacityEvictVerifySchema,
 } from "../schemas/authSchemas";
 
 const SUPER_ADMIN_ACCESS_CODE = process.env.SUPER_ADMIN_ACCESS_CODE || "WMH@2024";
@@ -91,16 +89,6 @@ setInterval(() => {
     if (rec.lastAttempt < cutoff) loginAttempts.delete(key);
   }
 }, 60 * 60 * 1000);
-// ────────────────────────────────────────────────────────────────────────────
-
-// ─── Plan-based login capacity ───────────────────────────────────────────────
-function getLoginCapacity(planName: string, planPrice: string): number {
-  if (planName === "Starting Plan" || planPrice === "₹999") return 2;
-  if (planName === "Lifetime Business" || planPrice === "₹15,999") return 4;
-  if (planName === "Enterprise" || planPrice === "₹19,999") return Infinity;
-  // Premium Annual (₹5,999) or any unknown plan → 1 device
-  return 1;
-}
 // ────────────────────────────────────────────────────────────────────────────
 
 const router = Router();
@@ -191,21 +179,6 @@ router.post("/auth/login", loginStrictLimiter, validate(AdminLoginSchema), requi
         return;
       }
     }
-
-    // ── Plan-based device limit check (admins only) ──────────────────────────
-    if (user.role === "admin") {
-      const capacity = getLoginCapacity(user.planName ?? "", user.planPrice ?? "");
-      const currentCount = (user.activeSessions ?? []).length;
-      if (currentCount >= capacity) {
-        res.status(403).json({
-          error: "LOGIN_CAPACITY_FULL",
-          capacity,
-          current: currentCount,
-        });
-        return;
-      }
-    }
-    // ─────────────────────────────────────────────────────────────────────────
 
     clearFailures(attemptKey);
 
@@ -394,128 +367,6 @@ router.post("/auth/admin/forgot-password/reset", authRateLimiter, validate(Forgo
     res.json({ message: "Password reset successfully" });
   } catch (err) {
     req.log.error({ err }, "Admin forgot password reset error");
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// ── Capacity Evict — Send OTP ─────────────────────────────────────────────────
-router.post("/auth/capacity-evict/send-otp", otpRateLimiter, validate(CapacityEvictSendOtpSchema), requireDb, async (req, res) => {
-  try {
-    const { identifier, password } = req.body;
-    if (!identifier || !password) {
-      res.status(400).json({ error: "Identifier and password are required" }); return;
-    }
-
-    const user = await User.findOne({
-      $or: [{ username: identifier.trim() }, { email: identifier.trim() }],
-      role: "admin",
-    });
-    if (!user) { res.status(401).json({ error: "Incorrect email or password." }); return; }
-
-    const valid = await user.comparePassword(password);
-    if (!valid) { res.status(401).json({ error: "Incorrect email or password." }); return; }
-
-    if (!user.email) {
-      res.status(400).json({ error: "No email address on file for this account" }); return;
-    }
-
-    // Check capacity is actually full
-    const capacity = getLoginCapacity(user.planName ?? "", user.planPrice ?? "");
-    const currentCount = (user.activeSessions ?? []).length;
-    if (currentCount < capacity) {
-      res.status(400).json({ error: "Login slots are not full. Please try logging in normally." }); return;
-    }
-
-    // Rate limit: max 3 OTPs per email in 10 min
-    const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000);
-    const recentCount = await OtpCode.countDocuments({
-      email: user.email.toLowerCase(),
-      purpose: "capacity-evict",
-      createdAt: { $gte: tenMinAgo },
-    });
-    if (recentCount >= 3) {
-      res.status(429).json({ error: "Too many OTP requests. Please wait 10 minutes." }); return;
-    }
-
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min expiry
-
-    await OtpCode.create({ email: user.email.toLowerCase(), storeId: "admin", code, purpose: "capacity-evict", expiresAt });
-    await sendOtpEmail(user.email, code, "Web Media Hub", "capacity-evict");
-
-    // Return masked email
-    const parts = user.email.split("@");
-    const maskedLocal = parts[0].length <= 2
-      ? "*".repeat(parts[0].length)
-      : parts[0][0] + "*".repeat(parts[0].length - 2) + parts[0][parts[0].length - 1];
-    const maskedEmail = `${maskedLocal}@${parts[1]}`;
-
-    res.json({ message: "OTP sent", maskedEmail });
-  } catch (err) {
-    req.log.error({ err }, "Capacity evict send OTP error");
-    res.status(500).json({ error: "Failed to send OTP" });
-  }
-});
-
-// ── Capacity Evict — Verify OTP + Evict Oldest Session ───────────────────────
-router.post("/auth/capacity-evict/verify", loginStrictLimiter, validate(CapacityEvictVerifySchema), requireDb, async (req, res) => {
-  try {
-    const { identifier, password, otp } = req.body;
-    if (!identifier || !password || !otp) {
-      res.status(400).json({ error: "Identifier, password and OTP are required" }); return;
-    }
-
-    const user = await User.findOne({
-      $or: [{ username: identifier.trim() }, { email: identifier.trim() }],
-      role: "admin",
-    });
-    if (!user) { res.status(401).json({ error: "Incorrect email or password." }); return; }
-
-    const valid = await user.comparePassword(password);
-    if (!valid) { res.status(401).json({ error: "Incorrect email or password." }); return; }
-
-    if (!user.email) { res.status(400).json({ error: "No email on file" }); return; }
-
-    // Verify OTP
-    const record = await OtpCode.findOne({
-      email: user.email.toLowerCase(),
-      purpose: "capacity-evict",
-      used: false,
-      expiresAt: { $gt: new Date() },
-    }).sort({ createdAt: -1 });
-
-    if (!record) { res.status(400).json({ error: "Invalid or expired code. Please request a new one." }); return; }
-    const evictOtpMatch = crypto.timingSafeEqual(Buffer.from(record.code), Buffer.from(otp.trim().padEnd(record.code.length)));
-    if (!evictOtpMatch || record.code.length !== otp.trim().length) {
-      res.status(400).json({ error: "Incorrect OTP. Please try again." }); return;
-    }
-
-    record.used = true;
-    await record.save();
-
-    // Evict oldest session
-    if (!user.activeSessions) user.activeSessions = [];
-    user.activeSessions.sort((a, b) => new Date(a.loginAt).getTime() - new Date(b.loginAt).getTime());
-    user.activeSessions.shift(); // remove oldest
-
-    // Create new session
-    const sessionId = crypto.randomUUID();
-    user.activeSessions.push({ sessionId, loginAt: new Date() });
-    await user.save();
-
-    const token = signToken(String(user._id), sessionId, user.role);
-    res.json({
-      token,
-      user: {
-        id: String(user._id),
-        username: user.username,
-        email: user.email ?? "",
-        role: user.role,
-        createdAt: user.createdAt,
-      },
-    });
-  } catch (err) {
-    req.log.error({ err }, "Capacity evict verify error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
