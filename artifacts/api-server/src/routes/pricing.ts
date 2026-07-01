@@ -185,6 +185,90 @@ router.delete("/pricing/store-types/:name", requireSuperAdmin, async (req, res) 
   }
 });
 
+// GET /api/pricing/validate-coupon?code=XYZ&planId=ID — public coupon validation
+router.get("/pricing/validate-coupon", async (req, res) => {
+  try {
+    const code = (req.query.code as string)?.trim().toUpperCase();
+    const planId = (req.query.planId as string)?.trim();
+
+    if (!code) { res.status(400).json({ valid: false, error: "Coupon code required" }); return; }
+    if (!planId) { res.status(400).json({ valid: false, error: "Plan ID required" }); return; }
+
+    const doc = await getOrCreate();
+    const plan = (doc.plans as any[]).find((p: any) => String(p._id) === planId);
+    if (!plan) { res.status(404).json({ valid: false, error: "Plan not found" }); return; }
+
+    // Helper: parse price string like "₹5,999" → 5999
+    function parsePrice(str: string): number {
+      const n = parseFloat(str.replace(/[^\d.]/g, ""));
+      return isNaN(n) ? 0 : n;
+    }
+    function formatPrice(n: number): string {
+      return `₹${Math.round(n).toLocaleString("en-IN")}`;
+    }
+
+    const originalPrice = plan.price as string;
+    const originalNum = parsePrice(originalPrice);
+
+    // 1. Check plan-specific coupons first
+    const planCoupons: any[] = Array.isArray(plan.coupons) ? plan.coupons : [];
+    const planCoupon = planCoupons.find((c: any) => c.code.toUpperCase() === code);
+    if (planCoupon) {
+      const remaining = planCoupon.maxUses - (planCoupon.usedCount ?? 0);
+      if (remaining <= 0) {
+        res.json({ valid: false, error: "Coupon limit reached" }); return;
+      }
+      res.json({
+        valid: true,
+        type: "plan",
+        discountedPrice: planCoupon.discountedPrice,
+        originalPrice,
+        savings: originalNum > 0 ? formatPrice(originalNum - parsePrice(planCoupon.discountedPrice)) : null,
+      });
+      return;
+    }
+
+    // 2. Check influencer coupons (global — any plan)
+    const { Influencer } = await import("../models/Influencer");
+    const influencer = await Influencer.findOne({ coupon_code: code });
+    if (influencer && influencer.customer_discount_percentage > 0) {
+      const discountedNum = originalNum * (1 - influencer.customer_discount_percentage / 100);
+      res.json({
+        valid: true,
+        type: "influencer",
+        discountedPrice: formatPrice(discountedNum),
+        originalPrice,
+        discountPercent: influencer.customer_discount_percentage,
+        savings: formatPrice(originalNum - discountedNum),
+        partnerName: influencer.name,
+      });
+      return;
+    }
+
+    // 3. Check ambassador referral codes (global — any plan)
+    const { Ambassador } = await import("../models/Ambassador");
+    const ambassador = await Ambassador.findOne({ referral_code: code });
+    if (ambassador && ambassador.customer_discount_percentage > 0) {
+      const discountedNum = originalNum * (1 - ambassador.customer_discount_percentage / 100);
+      res.json({
+        valid: true,
+        type: "ambassador",
+        discountedPrice: formatPrice(discountedNum),
+        originalPrice,
+        discountPercent: ambassador.customer_discount_percentage,
+        savings: formatPrice(originalNum - discountedNum),
+        partnerName: ambassador.name,
+      });
+      return;
+    }
+
+    res.json({ valid: false, error: "Invalid or expired coupon code" });
+  } catch (err) {
+    (req as any).log?.error({ err }, "Validate coupon error");
+    res.status(500).json({ valid: false, error: "Server error" });
+  }
+});
+
 // GET /api/pricing/plans/:id — get single plan (super admin, includes coupons)
 router.get("/pricing/plans/:id", requireSuperAdmin, async (req, res) => {
   try {

@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Search, X, Check, ChevronRight, Star, Tag } from "lucide-react";
+import { ArrowLeft, Search, X, Check, ChevronRight, Star, Tag, Ticket } from "lucide-react";
 
 // ── Colors (match create-store.tsx theme) ─────────────────────────────────────
 const GOLD = "#D4A017";
@@ -37,6 +37,18 @@ export interface SelectedPlan {
   tagline: string;
   color: string;
   features: string[];
+  couponCode?: string;
+}
+
+interface CouponResult {
+  valid: boolean;
+  type?: "plan" | "influencer" | "ambassador";
+  discountedPrice?: string;
+  originalPrice?: string;
+  discountPercent?: number;
+  savings?: string;
+  partnerName?: string;
+  error?: string;
 }
 
 interface Props {
@@ -158,6 +170,41 @@ export default function DynamicPricingOverlay({ onBack, onSelectPlan }: Props) {
   const [activeStore, setActiveStore] = useState("all");
   const [detailPlan, setDetailPlan] = useState<DynamicPlan | null>(null);
 
+  // Coupon state
+  const [couponCode, setCouponCode] = useState("");
+  const [couponResult, setCouponResult] = useState<CouponResult | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const couponInputRef = useRef<HTMLInputElement>(null);
+
+  function openDetail(plan: DynamicPlan) {
+    setCouponCode("");
+    setCouponResult(null);
+    setDetailPlan(plan);
+  }
+
+  async function applyCoupon() {
+    if (!couponCode.trim() || !detailPlan) return;
+    setCouponLoading(true);
+    setCouponResult(null);
+    try {
+      const res = await fetch(
+        `/api/pricing/validate-coupon?code=${encodeURIComponent(couponCode.trim())}&planId=${detailPlan.id}`
+      );
+      const data: CouponResult = await res.json();
+      setCouponResult(data);
+    } catch {
+      setCouponResult({ valid: false, error: "Network error. Please try again." });
+    } finally {
+      setCouponLoading(false);
+    }
+  }
+
+  function removeCoupon() {
+    setCouponCode("");
+    setCouponResult(null);
+    setTimeout(() => couponInputRef.current?.focus(), 50);
+  }
+
   const { data, isLoading } = useQuery<PricingData>({
     queryKey: ["dynamic-pricing-public"],
     queryFn: fetchPricing,
@@ -187,16 +234,21 @@ export default function DynamicPricingOverlay({ onBack, onSelectPlan }: Props) {
   }, [allPlans, activeStore, search]);
 
   function handleSelect(plan: DynamicPlan) {
+    const finalPrice =
+      couponResult?.valid && couponResult.discountedPrice
+        ? couponResult.discountedPrice
+        : plan.price;
     const selected: SelectedPlan = {
       key: plan.id,
       planKey: plan.id,
       badge: plan.badgeText,
       name: plan.name,
-      price: plan.price,
+      price: finalPrice,
       period: planToPeriod(plan.durationDays),
       tagline: planToTagline(plan),
       color: GOLD_BG,
       features: plan.features,
+      couponCode: couponResult?.valid ? couponCode.trim().toUpperCase() : undefined,
     };
     onSelectPlan(selected);
   }
@@ -240,7 +292,7 @@ export default function DynamicPricingOverlay({ onBack, onSelectPlan }: Props) {
                   </div>
                   {(detailPlan.storeTypes ?? []).length > 0 && (
                     <div className="mt-2">
-                      <p className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: HINT }}>Data</p>
+                      <p className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: HINT }}>Store</p>
                       <p className="text-sm font-bold" style={{ color: LABEL }}>{(detailPlan.storeTypes ?? []).join(", ")}</p>
                     </div>
                   )}
@@ -272,6 +324,92 @@ export default function DynamicPricingOverlay({ onBack, onSelectPlan }: Props) {
               </div>
             )}
 
+            {/* Coupon Code Section */}
+            <div className="bg-white rounded-2xl p-5" style={{ border: `1.5px solid ${BORDER}` }}>
+              <div className="flex items-center gap-2 mb-3">
+                <Ticket className="w-4 h-4" style={{ color: GOLD }} />
+                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: HINT }}>Have a Coupon Code?</p>
+              </div>
+
+              {couponResult?.valid ? (
+                /* ── Applied state ── */
+                <div>
+                  <div className="flex items-center justify-between p-3 rounded-xl mb-2"
+                    style={{ background: "#F0FAF0", border: "1.5px solid #4CAF50" }}>
+                    <div className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-green-600 shrink-0" />
+                      <div>
+                        <p className="text-xs font-bold text-green-700">{couponCode.toUpperCase()} applied!</p>
+                        {couponResult.partnerName && (
+                          <p className="text-[10px] text-green-600">{couponResult.type === "influencer" ? "Influencer" : "Ambassador"}: {couponResult.partnerName}</p>
+                        )}
+                      </div>
+                    </div>
+                    <button onClick={removeCoupon} className="ml-2 p-1 rounded-full hover:bg-green-100 transition-colors">
+                      <X className="w-3.5 h-3.5 text-green-600" />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between px-1">
+                    <div>
+                      <span className="text-xs line-through" style={{ color: HINT }}>{couponResult.originalPrice}</span>
+                      <span className="text-base font-extrabold ml-2" style={{ color: LABEL }}>{couponResult.discountedPrice}</span>
+                    </div>
+                    {couponResult.savings && (
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#E8F5E9", color: "#2E7D32" }}>
+                        Save {couponResult.savings}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                /* ── Input state ── */
+                <div>
+                  <div className="flex gap-2">
+                    <input
+                      ref={couponInputRef}
+                      type="text"
+                      value={couponCode}
+                      onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponResult(null); }}
+                      onKeyDown={(e) => e.key === "Enter" && applyCoupon()}
+                      placeholder="Enter coupon code"
+                      className="flex-1 outline-none text-sm font-medium uppercase tracking-wider"
+                      style={{
+                        height: "44px",
+                        borderRadius: "10px",
+                        border: `1.5px solid ${couponResult?.valid === false ? "#EF5350" : BORDER}`,
+                        background: "#FAFAFA",
+                        paddingLeft: "12px",
+                        paddingRight: "12px",
+                        color: LABEL,
+                      }}
+                      disabled={couponLoading}
+                    />
+                    <button
+                      type="button"
+                      onClick={applyCoupon}
+                      disabled={!couponCode.trim() || couponLoading}
+                      className="font-bold text-white text-sm px-4 rounded-xl shrink-0 transition-opacity"
+                      style={{
+                        height: "44px",
+                        background: couponCode.trim() && !couponLoading
+                          ? `linear-gradient(135deg, ${GOLD_BG}, #E8940A)`
+                          : "#D4C5A9",
+                        opacity: couponCode.trim() && !couponLoading ? 1 : 0.7,
+                        cursor: couponCode.trim() && !couponLoading ? "pointer" : "not-allowed",
+                      }}
+                    >
+                      {couponLoading ? "..." : "Apply"}
+                    </button>
+                  </div>
+                  {couponResult?.valid === false && (
+                    <p className="text-xs font-medium mt-2 px-1" style={{ color: "#EF5350" }}>
+                      {couponResult.error ?? "Invalid coupon code"}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Select button */}
             <button
               type="button"
@@ -286,7 +424,7 @@ export default function DynamicPricingOverlay({ onBack, onSelectPlan }: Props) {
               }}
             >
               <Star className="w-4 h-4 fill-white" />
-              Select This Plan
+              {couponResult?.valid ? `Select at ${couponResult.discountedPrice}` : "Select This Plan"}
             </button>
           </div>
         </div>
@@ -402,7 +540,7 @@ export default function DynamicPricingOverlay({ onBack, onSelectPlan }: Props) {
               Note: Check the plan details before selecting.
             </p>
             {filteredPlans.map((plan) => (
-              <PlanCard key={plan.id} plan={plan} onSelect={() => setDetailPlan(plan)} />
+              <PlanCard key={plan.id} plan={plan} onSelect={() => openDetail(plan)} />
             ))}
           </div>
         )}
