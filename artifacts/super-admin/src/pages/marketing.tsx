@@ -6,12 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, Legend,
 } from "recharts";
 import {
   TrendingUp, Users, DollarSign, Activity, Plus, Trash2, Edit2,
-  Download, Search, ChevronLeft, ChevronRight, X, Check, RefreshCw, Link2, QrCode,
+  Download, Search, ChevronLeft, ChevronRight, X, Check, RefreshCw, Link2, QrCode, MoreVertical,
 } from "lucide-react";
 
 function partnerLink(type: "influencer" | "ambassador" | "referral", code: string) {
@@ -288,40 +291,6 @@ function DashboardTab() {
         </Card>
       )}
 
-      {/* Top Ambassadors */}
-      {data.topAmbassadors?.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Top Ambassadors</CardTitle></CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead><tr className="border-b text-muted-foreground text-xs">
-                  <th className="text-left pb-2 pr-4">Name</th>
-                  <th className="text-left pb-2 pr-4">City</th>
-                  <th className="text-left pb-2 pr-4">Code</th>
-                  <th className="text-right pb-2 pr-4">Signups</th>
-                  <th className="text-right pb-2 pr-4">Paying</th>
-                  <th className="text-right pb-2 pr-4">Revenue</th>
-                  <th className="text-right pb-2">Commission</th>
-                </tr></thead>
-                <tbody>
-                  {data.topAmbassadors.map((amb: any) => (
-                    <tr key={amb._id} className="border-b last:border-0">
-                      <td className="py-2 pr-4 font-medium">{amb.name}</td>
-                      <td className="py-2 pr-4 text-muted-foreground">{amb.city || "—"}</td>
-                      <td className="py-2 pr-4"><Badge variant="outline">{amb.referral_code}</Badge></td>
-                      <td className="text-right py-2 pr-4">{amb.total_signups}</td>
-                      <td className="text-right py-2 pr-4 text-green-600">{amb.total_paid_admins}</td>
-                      <td className="text-right py-2 pr-4">{fmtRs(amb.total_revenue)}</td>
-                      <td className="text-right py-2 text-purple-600 font-semibold">{fmtRs(amb.total_revenue * amb.commission_percentage / 100)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
@@ -1086,12 +1055,12 @@ function SourcesTab() {
 
         <CardContent className="p-0">
           {/* Table Header */}
-          <div className="grid grid-cols-[1fr_52px_52px_72px_80px] border-b bg-muted/30 px-3 py-2 text-xs font-semibold text-muted-foreground gap-1">
+          <div className="grid grid-cols-[1fr_52px_52px_72px_44px] border-b bg-muted/30 px-3 py-2 text-xs font-semibold text-muted-foreground gap-1">
             <span>Source</span>
             <span className="text-center text-blue-600">Admin</span>
             <span className="text-center text-purple-600">Paying</span>
             <span className="text-right text-green-600">Revenue</span>
-            <span className="text-center">Actions</span>
+            <span></span>
           </div>
 
           {loading ? (
@@ -1101,9 +1070,9 @@ function SourcesTab() {
           ) : sorted.map((row) => {
             const url = trackingLink(row.key);
             return (
-              <div key={row.key} className="border-b border-border last:border-0">
+              <div key={row.key} className="border-b-2 border-border last:border-0">
                 {/* Main Row */}
-                <div className="grid grid-cols-[1fr_52px_52px_72px_80px] items-center px-3 py-2.5 hover:bg-muted/10 transition-colors gap-1">
+                <div className="grid grid-cols-[1fr_52px_52px_72px_44px] items-center px-3 py-2.5 hover:bg-muted/10 transition-colors gap-1">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: row.color }} />
                     <span className="text-sm font-medium truncate">{row.label}</span>
@@ -1117,23 +1086,25 @@ function SourcesTab() {
                   <div className="text-right">
                     <span className="text-sm font-bold text-green-600">{fmtRs(row.revenue)}</span>
                   </div>
-                  <div className="flex items-center justify-center gap-1">
-                    <Button
-                      size="icon" variant="ghost"
-                      className="h-7 w-7 text-blue-600 hover:text-blue-700 hover:bg-blue-50 shrink-0"
-                      title="Edit source"
-                      onClick={() => setEditTarget({ type: row.type, key: row.key, id: row.id, label: row.label, color: row.color })}
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button
-                      size="icon" variant="ghost"
-                      className="h-7 w-7 text-destructive hover:text-destructive hover:bg-red-50 shrink-0"
-                      title="Delete source"
-                      onClick={() => row.type === "custom" ? deleteCustomSource(row.id!, row.label) : deleteBuiltinSource(row.key, row.label)}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
+                  <div className="flex items-center justify-center">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0">
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setEditTarget({ type: row.type, key: row.key, id: row.id, label: row.label, color: row.color })}>
+                          <Edit2 className="w-3.5 h-3.5 mr-2" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => row.type === "custom" ? deleteCustomSource(row.id!, row.label) : deleteBuiltinSource(row.key, row.label)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
                 {/* Copy Link Row */}
