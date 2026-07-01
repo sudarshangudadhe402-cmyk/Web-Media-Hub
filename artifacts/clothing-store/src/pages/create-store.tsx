@@ -88,10 +88,11 @@ export default function CreateStore() {
   const [checking,     setChecking]     = useState(false);
   const [dupePopup,    setDupePopup]    = useState<DupePopup | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [submitting,   setSubmitting]   = useState(false);
-  const [submitError,  setSubmitError]  = useState<string | null>(null);
-  const [submitted,    setSubmitted]    = useState(false);
-  const [refAdmin,     setRefAdmin]     = useState<string>("");
+  const [submitting,     setSubmitting]     = useState(false);
+  const [submitError,    setSubmitError]    = useState<string | null>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [rzpLoading,     setRzpLoading]     = useState(false);
+  const [refAdmin,       setRefAdmin]       = useState<string>("");
 
   /* Capture ?ref= param from URL at mount */
   useEffect(() => {
@@ -106,40 +107,108 @@ export default function CreateStore() {
     }
   }, []);
 
-  async function handleSubmitStore() {
+  async function handlePayNow() {
     const values = form.getValues();
     setSubmitError(null);
-    setSubmitting(true);
+    setRzpLoading(true);
     try {
-      const res = await fetch("/api/store-requests/public", {
+      // 1. Create Razorpay order
+      const orderRes = await fetch("/api/payments/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: values.email.trim(),
-          password: values.password,
-          storeName: values.storeName.trim(),
-          whatsapp: values.whatsapp.trim(),
-          plan: selectedPlan?.key ?? null,
-          planName: selectedPlan?.name ?? "",
           planPrice: selectedPlan?.price ?? "",
-          planPeriod: selectedPlan?.period ?? "",
-          planBadge: selectedPlan?.badge ?? "",
-          planColor: selectedPlan?.color ?? "",
-          couponCode: selectedPlan?.couponCode ?? null,
-          ref_admin: refAdmin,
+          planName: selectedPlan?.name ?? "",
+          email: values.email.trim(),
         }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setSubmitError(data.error ?? "Something went wrong, please try again.");
+      const orderData = await orderRes.json();
+      if (!orderRes.ok) {
+        setSubmitError(orderData.error ?? "Failed to initiate payment. Please try again.");
         return;
       }
-      sessionStorage.removeItem("wmh_ref_admin");
-      setSubmitted(true);
-    } catch {
-      setSubmitError("Network error, please try again.");
+
+      // 2. Load Razorpay script if not already loaded
+      if (!(window as any).Razorpay) {
+        await new Promise<void>((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = "https://checkout.razorpay.com/v1/checkout.js";
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error("Failed to load payment SDK"));
+          document.head.appendChild(script);
+        });
+      }
+
+      // 3. Open Razorpay checkout
+      setRzpLoading(false);
+      await new Promise<void>((resolve, reject) => {
+        const rzp = new (window as any).Razorpay({
+          key: orderData.keyId,
+          amount: orderData.amount,
+          currency: orderData.currency,
+          order_id: orderData.orderId,
+          name: "Web Media Hub",
+          description: selectedPlan?.name ?? "Store Plan",
+          prefill: {
+            email: values.email.trim(),
+            contact: `+91${values.whatsapp.trim()}`,
+          },
+          theme: { color: "#F5A623" },
+          handler: async (response: any) => {
+            // 4. Verify payment + auto-create admin
+            setSubmitting(true);
+            try {
+              const verifyRes = await fetch("/api/payments/verify-and-register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  email: values.email.trim(),
+                  password: values.password,
+                  storeName: values.storeName.trim(),
+                  whatsapp: values.whatsapp.trim(),
+                  plan: selectedPlan?.key ?? null,
+                  planName: selectedPlan?.name ?? "",
+                  planPrice: selectedPlan?.price ?? "",
+                  planPeriod: selectedPlan?.period ?? "",
+                  planBadge: selectedPlan?.badge ?? "",
+                  planColor: selectedPlan?.color ?? "",
+                  couponCode: selectedPlan?.couponCode ?? null,
+                  ref_admin: refAdmin,
+                }),
+              });
+              const verifyData = await verifyRes.json();
+              if (!verifyRes.ok) {
+                setSubmitError(verifyData.error ?? "Payment verified but registration failed. Contact support.");
+                reject(new Error(verifyData.error));
+                return;
+              }
+              sessionStorage.removeItem("wmh_ref_admin");
+              setPaymentSuccess(true);
+              goTo(3);
+              resolve();
+            } catch {
+              setSubmitError("Registration failed after payment. Please contact support.");
+              reject(new Error("Registration failed"));
+            } finally {
+              setSubmitting(false);
+            }
+          },
+          modal: {
+            ondismiss: () => {
+              setSubmitError(null);
+              resolve();
+            },
+          },
+        });
+        rzp.open();
+      });
+    } catch (err: any) {
+      setSubmitError(err?.message ?? "Payment failed. Please try again.");
     } finally {
-      setSubmitting(false);
+      setRzpLoading(false);
     }
   }
 
@@ -649,40 +718,75 @@ export default function CreateStore() {
                   )}
                 </div>
 
-                {/* RIGHT — Payment coming soon */}
+                {/* RIGHT — Razorpay Payment */}
                 <div className="flex flex-col sm:w-1/2 p-6 items-center justify-center text-center gap-4">
                   <div className="w-20 h-20 rounded-2xl flex items-center justify-center"
-                    style={{ background: "#EFF6FF", border: "2px dashed #BFDBFE" }}>
-                    <CreditCard className="w-9 h-9" style={{ color: "#93C5FD" }} />
+                    style={{ background: "#FFF8EC", border: `2px dashed ${GOLD}` }}>
+                    <CreditCard className="w-9 h-9" style={{ color: GOLD }} />
                   </div>
                   <div>
-                    <p className="font-bold text-base mb-1.5" style={{ color: "#2563EB" }}>Payment — Coming Soon</p>
-                    <p className="text-sm max-w-xs leading-relaxed" style={{ color: HINT }}>
-                      Secure payment integration will be available soon. We'll add UPI, card & more options here.
+                    <p className="font-bold text-base mb-1" style={{ color: LABEL }}>Complete Payment</p>
+                    <p className="text-sm leading-relaxed" style={{ color: HINT }}>
+                      Pay securely via UPI, Card, Net Banking or Wallet. Your store will be activated immediately after payment.
                     </p>
                   </div>
 
-                  {/* Step 3 navigation */}
-                  <div className="flex gap-3 w-full mt-2">
-                    <button type="button" onClick={()=>goTo(1)}
-                      className="flex-1 flex items-center justify-center gap-2 font-semibold hover:opacity-80 transition-opacity"
-                      style={{ height:"48px", borderRadius:"12px", border:`2px solid ${LABEL}`, color:LABEL, background:"transparent", fontSize:"14px" }}>
-                      <ArrowLeft className="w-4 h-4" /> Back
+                  {/* Accepted payment icons */}
+                  <div className="flex items-center gap-2 flex-wrap justify-center">
+                    {["UPI", "Card", "Net Banking", "Wallet"].map(m => (
+                      <span key={m} className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                        style={{ background: "#F3F4F6", color: "#6B7280", border: "1px solid #E5E7EB" }}>
+                        {m}
+                      </span>
+                    ))}
+                  </div>
+
+                  {submitError && (
+                    <div className="w-full rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700 text-center">
+                      {submitError}
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 w-full mt-1">
+                    <button type="button" onClick={() => goTo(1)} disabled={rzpLoading || submitting}
+                      className="flex items-center justify-center gap-2 font-semibold hover:opacity-80 transition-opacity disabled:opacity-40"
+                      style={{ height:"48px", borderRadius:"12px", border:`2px solid ${LABEL}`, color:LABEL, background:"transparent", fontSize:"14px", width:"80px" }}>
+                      <ArrowLeft className="w-4 h-4" />
                     </button>
-                    <motion.button type="button" onClick={()=>goTo(3)}
-                      whileHover={{scale:1.012}} whileTap={{scale:0.97}}
+                    <motion.button
+                      type="button"
+                      onClick={handlePayNow}
+                      disabled={!selectedPlan || rzpLoading || submitting}
+                      whileHover={{ scale: selectedPlan && !rzpLoading ? 1.012 : 1 }}
+                      whileTap={{ scale: 0.97 }}
                       className="flex-1 flex items-center justify-center gap-2 font-bold text-white"
-                      style={{ height:"48px", borderRadius:"12px", background:LABEL, fontSize:"14px", boxShadow:"0 4px 14px rgba(0,0,0,0.18)" }}>
-                      Continue <ChevronRight className="w-4 h-4" />
+                      style={{
+                        height: "48px", borderRadius: "12px", fontSize: "15px",
+                        background: selectedPlan && !rzpLoading && !submitting
+                          ? `linear-gradient(135deg, ${GOLD_BG}, #E8940A)`
+                          : "#C5BFB5",
+                        boxShadow: selectedPlan ? "0 4px 14px rgba(245,166,35,0.4)" : "none",
+                        cursor: selectedPlan && !rzpLoading ? "pointer" : "not-allowed",
+                      }}
+                    >
+                      {rzpLoading || submitting ? (
+                        <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Processing…</>
+                      ) : (
+                        <><CreditCard className="w-4 h-4" /> Pay Now</>
+                      )}
                     </motion.button>
                   </div>
+
+                  {!selectedPlan && (
+                    <p className="text-xs" style={{ color: "#BBAA99" }}>Please select a plan first</p>
+                  )}
                 </div>
 
               </div>
             </motion.div>
           )}
 
-          {/* ══ STEP 4: Store Login Details ══ */}
+          {/* ══ STEP 4: Store Created Success ══ */}
           {step === 3 && (
             <motion.div
               key="step4"
@@ -694,60 +798,75 @@ export default function CreateStore() {
               <div className="bg-white rounded-2xl overflow-hidden"
                 style={{ boxShadow: "0 10px 40px rgba(0,0,0,0.10)", border: `1px solid ${BORDER}` }}>
 
-                <div className="px-6 pt-6 pb-5 text-center">
-                  <div className="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center"
-                    style={{ background: "#16A34A" }}>
-                    <KeyRound className="w-7 h-7 text-white" />
-                  </div>
-                  <p className="font-extrabold text-xs tracking-widest mb-0.5" style={{ color: GOLD }}>STEP 4 OF 4</p>
-                  <h2 className="text-2xl font-black mb-1.5"
+                <div className="px-6 pt-7 pb-4 text-center">
+                  <motion.div
+                    initial={{ scale: 0 }} animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.1 }}
+                    className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center"
+                    style={{ background: "linear-gradient(135deg, #16A34A, #22C55E)" }}>
+                    <Check className="w-9 h-9 text-white" strokeWidth={3} />
+                  </motion.div>
+                  <h2 className="text-2xl font-black mb-1"
                     style={{ fontFamily:"'Playfair Display', Georgia, serif", color: LABEL }}>
-                    Store Login Details
+                    Store Activated! 🎉
                   </h2>
-                  <div className="flex items-center justify-center gap-2 mb-3">
-                    <div className="h-px flex-1" style={{ background:`linear-gradient(to right, transparent, ${GOLD})` }} />
-                    <span style={{ color: GOLD, fontSize:"12px" }}>◆</span>
-                    <div className="h-px flex-1" style={{ background:`linear-gradient(to left, transparent, ${GOLD})` }} />
-                  </div>
+                  <p className="text-sm" style={{ color: HINT }}>Payment successful. Your store is ready.</p>
                 </div>
 
-                <div className="px-6 pb-7 flex flex-col items-center gap-4 text-center">
-                  <div className="w-20 h-20 rounded-2xl flex items-center justify-center"
-                    style={{ background: "#F0FDF4", border: "2px dashed #86EFAC" }}>
-                    <KeyRound className="w-9 h-9" style={{ color: "#4ADE80" }} />
-                  </div>
-                  <div>
-                    <p className="font-bold text-base mb-1.5" style={{ color: "#16A34A" }}>Coming Soon</p>
-                    <p className="text-sm max-w-xs leading-relaxed" style={{ color: HINT }}>
-                      Your store login credentials and dashboard access details will be configured here.
+                <div className="px-6 pb-7 flex flex-col gap-4">
+                  {/* Credentials card */}
+                  <div className="rounded-2xl p-4 space-y-3"
+                    style={{ background: BG, border: `1.5px solid ${BORDER}` }}>
+                    <p className="text-xs font-bold uppercase tracking-wider" style={{ color: HINT }}>Your Login Credentials</p>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 p-3 bg-white rounded-xl"
+                        style={{ border: `1px solid ${BORDER}` }}>
+                        <Mail className="w-4 h-4 shrink-0" style={{ color: GOLD }} />
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: HINT }}>Email</p>
+                          <p className="text-sm font-bold truncate" style={{ color: LABEL }}>{form.getValues("email")}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 p-3 bg-white rounded-xl"
+                        style={{ border: `1px solid ${BORDER}` }}>
+                        <Lock className="w-4 h-4 shrink-0" style={{ color: GOLD }} />
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: HINT }}>Password</p>
+                          <p className="text-sm font-bold tracking-widest" style={{ color: LABEL }}>{"•".repeat(form.getValues("password").length)}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 p-3 bg-white rounded-xl"
+                        style={{ border: `1px solid ${BORDER}` }}>
+                        <Store className="w-4 h-4 shrink-0" style={{ color: GOLD }} />
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: HINT }}>Store Name</p>
+                          <p className="text-sm font-bold" style={{ color: LABEL }}>{form.getValues("storeName")}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <p className="text-xs leading-relaxed text-center pt-1" style={{ color: HINT }}>
+                      Save these credentials — use them to login to your store dashboard.
                     </p>
                   </div>
 
-                  {submitError && (
-                    <div className="w-full rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 text-center">
-                      {submitError}
-                    </div>
-                  )}
-                  <div className="flex gap-3 w-full mt-2">
-                    <button type="button" onClick={()=>goTo(2)} disabled={submitting}
-                      className="flex-1 flex items-center justify-center gap-2 font-semibold hover:opacity-80 transition-opacity disabled:opacity-40"
-                      style={{ height:"48px", borderRadius:"12px", border:`2px solid ${LABEL}`, color:LABEL, background:"transparent", fontSize:"14px" }}>
-                      <ArrowLeft className="w-4 h-4" /> Back
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSubmitStore}
-                      disabled={submitting || !selectedPlan}
-                      className="flex-1 flex items-center justify-center gap-2 font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed"
-                      style={{ height:"48px", borderRadius:"12px", background: selectedPlan && !submitting ? "#16A34A" : "#C5BFB5", fontSize:"14px" }}>
-                      {submitting ? "Submitting…" : "Done ✅"}
-                    </button>
-                  </div>
-                  {!selectedPlan && (
-                    <p className="text-xs" style={{ color: "#BBAA99" }}>
-                      Please select a plan in Step 2 to continue
-                    </p>
-                  )}
+                  {/* Login button */}
+                  <motion.button
+                    type="button"
+                    onClick={() => setLocation("/login")}
+                    whileHover={{ scale: 1.012 }} whileTap={{ scale: 0.97 }}
+                    className="w-full flex items-center justify-center gap-2 font-bold text-white"
+                    style={{
+                      height: "52px", borderRadius: "14px", fontSize: "15px",
+                      background: "linear-gradient(135deg, #16A34A, #22C55E)",
+                      boxShadow: "0 4px 16px rgba(22,163,74,0.35)",
+                    }}
+                  >
+                    <KeyRound className="w-4 h-4" /> Login to My Store
+                  </motion.button>
                 </div>
               </div>
             </motion.div>

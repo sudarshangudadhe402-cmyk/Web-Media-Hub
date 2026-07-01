@@ -19,6 +19,7 @@ import ledgerRouter from "./ledger";
 import customerAccountsRouter from "./customerAccounts";
 import marketingRouter from "./marketing";
 import campaignsRouter from "./campaigns";
+import paymentsRouter from "./payments";
 import { requireDb } from "../middlewares/dbCheck";
 
 const router: IRouter = Router();
@@ -46,5 +47,6 @@ router.use(ledgerRouter);
 router.use(customerAccountsRouter);
 router.use(marketingRouter);
 router.use(campaignsRouter);
+router.use(paymentsRouter);
 
 export default router;
