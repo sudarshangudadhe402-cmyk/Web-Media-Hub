@@ -994,8 +994,54 @@ function SourcesTab() {
     b.revenue - a.revenue
   );
 
+  /* Non-deletable rows — INFLUENCER, AMBASSADOR, REFERRAL */
+  const nonDeletableRows = (["INFLUENCER","AMBASSADOR","REFERRAL"] as const).map(key => {
+    const s = statsMap[key];
+    return {
+      key,
+      label: SOURCE_LABELS[key] || key,
+      color: SOURCE_COLORS[key] || "#6b7280",
+      admin: s?.total_signups ?? 0,
+      paying: s?.total_paid_admins ?? 0,
+      revenue: s?.total_revenue ?? 0,
+    };
+  });
+
   return (
     <div className="space-y-4">
+
+      {/* Non-deletable Partner Sources Table */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm text-muted-foreground font-semibold tracking-wide uppercase">Partner Channels</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="grid grid-cols-[1fr_52px_52px_72px] border-b bg-muted/30 px-3 py-2 text-xs font-semibold text-muted-foreground gap-1">
+            <span>Source</span>
+            <span className="text-center text-blue-600">Admin</span>
+            <span className="text-center text-purple-600">Paying</span>
+            <span className="text-right text-green-600">Revenue</span>
+          </div>
+          {nonDeletableRows.map(row => (
+            <div key={row.key} className="grid grid-cols-[1fr_52px_52px_72px] items-center px-3 py-2.5 border-b-2 border-border last:border-0 hover:bg-muted/10 transition-colors gap-1">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: row.color }} />
+                <span className="text-sm font-medium truncate">{row.label}</span>
+              </div>
+              <div className="text-center">
+                <span className="text-sm font-bold text-blue-600">{row.admin}</span>
+              </div>
+              <div className="text-center">
+                <span className="text-sm font-bold text-purple-600">{row.paying}</span>
+              </div>
+              <div className="text-right">
+                <span className="text-sm font-bold text-green-600">{fmtRs(row.revenue)}</span>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
       {/* Add Source Form */}
       {showAddForm && (
         <Card>
