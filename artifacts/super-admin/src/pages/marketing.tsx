@@ -224,22 +224,17 @@ function DateFilterBar({ range, setRange, from, setFrom, to, setTo }: any) {
 function DashboardTab() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [range, setRange] = useState("all");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
   const { toast } = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ range });
-      if (range === "custom" && from && to) { params.set("from", from); params.set("to", to); }
-      const r = await fetch(`${BASE}/marketing/dashboard?${params}`, { headers: authHeaders() });
+      const r = await fetch(`${BASE}/marketing/dashboard?range=all`, { headers: authHeaders() });
       if (!r.ok) throw new Error("Server error");
       setData(await r.json());
     } catch { toast({ title: "Failed to load dashboard", variant: "destructive" }); }
     finally { setLoading(false); }
-  }, [range, from, to]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
@@ -248,9 +243,7 @@ function DashboardTab() {
 
   return (
     <div className="space-y-6">
-      <DateFilterBar range={range} setRange={setRange} from={from} setFrom={setFrom} to={to} setTo={setTo} />
-
-      {/* Stats */}
+      {/* Stats — always all-time cumulative */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard title="Total Admins" value={fmt(data.totalAdmins)} icon={Users} color="bg-blue-500" />
         <StatCard title="Paying Admins" value={fmt(data.totalPayingAdmins)} sub={`${data.totalAdmins > 0 ? Math.round(data.totalPayingAdmins/data.totalAdmins*100) : 0}% conversion`} icon={Activity} color="bg-green-500" />
