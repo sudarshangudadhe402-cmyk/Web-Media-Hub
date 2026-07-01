@@ -125,6 +125,7 @@ export default function CreateStore() {
           planPeriod: selectedPlan?.period ?? "",
           planBadge: selectedPlan?.badge ?? "",
           planColor: selectedPlan?.color ?? "",
+          couponCode: selectedPlan?.couponCode ?? null,
           ref_admin: refAdmin,
         }),
       });

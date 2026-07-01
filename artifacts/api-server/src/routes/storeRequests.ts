@@ -4,6 +4,8 @@ import { User } from "../models/User";
 import { Store } from "../models/Store";
 import { requireAuth, requireSuperAdmin } from "../middlewares/auth";
 import { Notification } from "../models/Notification";
+import { Influencer } from "../models/Influencer";
+import { Ambassador } from "../models/Ambassador";
 
 const router = Router();
 
@@ -89,7 +91,7 @@ router.get("/store-requests/referral-history", requireSuperAdmin, async (req: an
 // ── Public store request (friend clicks referral link, no auth) ──
 router.post("/store-requests/public", async (req: any, res) => {
   try {
-    const { email, password, storeName, whatsapp, plan, planName, planPrice, planPeriod, planBadge, planColor, ref_admin } = req.body;
+    const { email, password, storeName, whatsapp, plan, planName, planPrice, planPeriod, planBadge, planColor, ref_admin, couponCode } = req.body;
     if (!email || !password || !storeName || !whatsapp) {
       res.status(400).json({ error: "All fields are required" });
       return;
@@ -147,6 +149,17 @@ router.post("/store-requests/public", async (req: any, res) => {
       message: `New store request: "${storeName}" submitted${referredBy ? ` via referral from ${referredBy}` : ""}`,
       relatedId: String(request._id),
     });
+
+    // Track coupon usage — increment total_signups on influencer or ambassador
+    if (couponCode) {
+      const code = String(couponCode).trim().toUpperCase();
+      const [infUpdated] = await Promise.all([
+        Influencer.updateOne({ coupon_code: code }, { $inc: { total_signups: 1 } }),
+      ]);
+      if (!infUpdated.modifiedCount) {
+        await Ambassador.updateOne({ referral_code: code }, { $inc: { total_signups: 1 } });
+      }
+    }
 
     res.status(201).json(fmt(request));
   } catch (err) {
