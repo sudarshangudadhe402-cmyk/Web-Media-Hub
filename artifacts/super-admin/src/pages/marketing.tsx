@@ -1101,7 +1101,7 @@ function SourcesTab() {
           ) : sorted.map((row) => {
             const url = trackingLink(row.key);
             return (
-              <div key={row.key} className="border-b last:border-0">
+              <div key={row.key} className="border-b border-border/25 last:border-0">
                 {/* Main Row */}
                 <div className="grid grid-cols-[1fr_52px_52px_72px_80px] items-center px-3 py-2.5 hover:bg-muted/10 transition-colors gap-1">
                   <div className="flex items-center gap-2 min-w-0">
