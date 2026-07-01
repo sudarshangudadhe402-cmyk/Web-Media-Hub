@@ -224,7 +224,6 @@ function DashboardTab() {
   const [range, setRange] = useState("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [analysisMode, setAnalysisMode] = useState<"admin" | "revenue" | "paying">("admin");
   const { toast } = useToast();
 
   const load = useCallback(async () => {
@@ -254,197 +253,6 @@ function DashboardTab() {
         <StatCard title="Paying Admins" value={fmt(data.totalPayingAdmins)} sub={`${data.totalAdmins > 0 ? Math.round(data.totalPayingAdmins/data.totalAdmins*100) : 0}% conversion`} icon={Activity} color="bg-green-500" />
         <StatCard title="Total Revenue" value={fmtRs(data.totalRevenue)} icon={DollarSign} color="bg-purple-500" />
         <StatCard title="This Month" value={fmtRs(data.monthlyRevenue)} icon={TrendingUp} color="bg-orange-500" />
-      </div>
-
-      {/* Combined Source Analysis */}
-      {(() => {
-        const sorted = [...(data.bySource || [])].sort((a: any, b: any) =>
-          analysisMode === "admin" ? b.signups - a.signups :
-          analysisMode === "paying" ? b.payingAdmins - a.payingAdmins :
-          b.revenue - a.revenue
-        );
-        const topColor = analysisMode === "admin" ? "#3b82f6" : analysisMode === "paying" ? "#8b5cf6" : "#16a34a";
-        return (
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <CardTitle className="text-sm">Source Analysis</CardTitle>
-                <div className="flex rounded-lg border overflow-hidden text-xs font-semibold">
-                  <button
-                    onClick={() => setAnalysisMode("admin")}
-                    className={`px-3 py-1.5 transition-colors ${analysisMode === "admin" ? "bg-blue-600 text-white" : "text-muted-foreground hover:bg-muted"}`}
-                  >
-                    Admin
-                  </button>
-                  <button
-                    onClick={() => setAnalysisMode("paying")}
-                    className={`px-3 py-1.5 border-l transition-colors ${analysisMode === "paying" ? "bg-purple-600 text-white" : "text-muted-foreground hover:bg-muted"}`}
-                  >
-                    Paying
-                  </button>
-                  <button
-                    onClick={() => setAnalysisMode("revenue")}
-                    className={`px-3 py-1.5 border-l transition-colors ${analysisMode === "revenue" ? "bg-green-600 text-white" : "text-muted-foreground hover:bg-muted"}`}
-                  >
-                    Revenue
-                  </button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="grid grid-cols-4 border-b bg-muted/30 px-3 py-2 text-xs font-semibold text-muted-foreground">
-                <span>Source</span>
-                <span className="text-center text-blue-600">Admins</span>
-                <span className="text-center text-purple-600">Paying</span>
-                <span className="text-right text-green-600">Revenue</span>
-              </div>
-              {sorted.length === 0 ? (
-                <div className="py-8 text-center text-muted-foreground text-sm">No data available</div>
-              ) : (
-                sorted.map((s: any, i: number) => {
-                  const color = s.color || SOURCE_COLORS[s.source] || "#6b7280";
-                  const label = s.label || SOURCE_LABELS[s.source] || s.source;
-                  const isTop = i === 0;
-                  return (
-                    <div
-                      key={s.source}
-                      className={`grid grid-cols-4 items-center px-3 py-3 border-b last:border-0 hover:bg-muted/20 transition-colors ${isTop ? "bg-muted/10" : ""}`}
-                    >
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
-                        <span className="text-xs font-medium truncate">{label}</span>
-                        {isTop && (
-                          <span className="text-[9px] px-1 py-0.5 rounded font-bold shrink-0" style={{ background: topColor + "22", color: topColor }}>TOP</span>
-                        )}
-                      </div>
-                      <div className="text-center">
-                        <span className="text-sm font-bold" style={{ color: "#3b82f6" }}>{s.signups}</span>
-                      </div>
-                      <div className="text-center">
-                        <span className="text-sm font-bold" style={{ color: "#8b5cf6" }}>{s.payingAdmins ?? 0}</span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-sm font-bold" style={{ color: "#16a34a" }}>{fmtRs(s.revenue)}</span>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </CardContent>
-          </Card>
-        );
-      })()}
-
-      {/* Monthly Growth Trend by Source */}
-      {(() => {
-        const bySourceMonthly: Record<string, { month: string; signups: number; revenue: number }[]> = data.bySourceMonthly || {};
-        const sources = (data.bySource || []).filter((s: any) => s.signups > 0 || s.revenue > 0);
-        if (sources.length === 0) return null;
-        const sorted = [...sources].sort((a: any, b: any) =>
-          analysisMode === "admin" ? b.signups - a.signups :
-          analysisMode === "paying" ? b.payingAdmins - a.payingAdmins :
-          b.revenue - a.revenue
-        );
-        const monthKeys: string[] = sorted.length > 0
-          ? (bySourceMonthly[sorted[0].source] || []).map((m: any) => m.month)
-          : [];
-        const shortMonth = (key: string) => {
-          const [y, m] = key.split("-");
-          return new Date(Number(y), Number(m) - 1, 1).toLocaleString("en", { month: "short" });
-        };
-        return (
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div>
-                  <CardTitle className="text-sm">Monthly Growth Trend</CardTitle>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Last 6 months — {analysisMode === "admin" ? "Admin signups" : "Revenue"} per source
-                  </p>
-                </div>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span className="w-3 h-0.5 bg-green-500 inline-block rounded" /> Growing
-                  <span className="w-3 h-0.5 bg-red-500 inline-block rounded ml-2" /> Declining
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="flex items-center border-b bg-muted/30 px-4 py-2">
-                <div className="w-32 text-xs font-semibold text-muted-foreground shrink-0">Source</div>
-                <div className="flex-1 flex justify-between px-2">
-                  {monthKeys.map(k => (
-                    <span key={k} className="text-[10px] text-muted-foreground">{shortMonth(k)}</span>
-                  ))}
-                </div>
-                <div className="w-16 text-right text-xs font-semibold text-muted-foreground shrink-0">
-                  {analysisMode === "admin" ? "Signups" : "Revenue"}
-                </div>
-              </div>
-              {sorted.map((s: any) => {
-                const color = s.color || SOURCE_COLORS[s.source] || "#6b7280";
-                const label = s.label || SOURCE_LABELS[s.source] || s.source;
-                const monthly = bySourceMonthly[s.source] || [];
-                const values = monthly.map((m: any) => analysisMode === "admin" ? m.signups : m.revenue);
-                const last = values[values.length - 1] ?? 0;
-                const prev = values[values.length - 2] ?? 0;
-                const trend = last - prev;
-                return (
-                  <div key={s.source} className="flex items-center border-b last:border-0 px-4 py-2.5 hover:bg-muted/20 transition-colors">
-                    <div className="w-32 shrink-0 flex items-center gap-2 min-w-0">
-                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
-                      <span className="text-xs font-medium truncate">{label}</span>
-                    </div>
-                    <div className="flex-1 flex items-center justify-center">
-                      <Sparkline values={values} color={color} width={160} height={28} />
-                    </div>
-                    <div className="w-16 shrink-0 text-right">
-                      <div className="text-xs font-bold" style={{ color }}>
-                        {analysisMode === "admin" ? last : fmtRs(last)}
-                      </div>
-                      {trend !== 0 && (
-                        <div className={`text-[10px] font-semibold ${trend > 0 ? "text-green-600" : "text-red-500"}`}>
-                          {trend > 0 ? "▲" : "▼"} {analysisMode === "admin" ? Math.abs(trend) : fmtRs(Math.abs(trend))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
-        );
-      })()}
-
-      {/* Monthly charts */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Monthly Signups</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={180}>
-              <LineChart data={data.monthlySignups || []} margin={{ left: -10 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" tick={{ fontSize: 9 }} />
-                <YAxis tick={{ fontSize: 10 }} />
-                <Tooltip />
-                <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} dot={false} name="Signups" />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Monthly Revenue</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={180}>
-              <LineChart data={data.monthlyRevenueChart || []} margin={{ left: -10 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" tick={{ fontSize: 9 }} />
-                <YAxis tick={{ fontSize: 10 }} tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} />
-                <Tooltip formatter={(v: any) => fmtRs(v)} />
-                <Line type="monotone" dataKey="revenue" stroke="#22c55e" strokeWidth={2} dot={false} name="Revenue" />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Top Influencers */}
@@ -1044,40 +852,105 @@ function CopyLinkButton({ url }: { url: string }) {
   );
 }
 
+type SortMode = "admin" | "paying" | "revenue";
+
+function EditSourceDialog({
+  open, onClose, source, onSaved,
+}: {
+  open: boolean; onClose: () => void;
+  source: { type: "builtin" | "custom"; key: string; id?: string; label: string; color: string };
+  onSaved: () => void;
+}) {
+  const [label, setLabel] = useState(source.label);
+  const [color, setColor] = useState(source.color);
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => { setLabel(source.label); setColor(source.color); }, [source]);
+
+  async function save() {
+    setSaving(true);
+    try {
+      if (source.type === "custom") {
+        const r = await fetch(`${BASE}/marketing/sources/config/${source.id}`, {
+          method: "PUT", headers: authHeaders(),
+          body: JSON.stringify({ label, color }),
+        });
+        if (!r.ok) throw new Error();
+      } else {
+        const r = await fetch(`${BASE}/marketing/sources/builtin/${source.key}`, {
+          method: "PATCH", headers: authHeaders(),
+          body: JSON.stringify({ label_override: label, color_override: color }),
+        });
+        if (!r.ok) throw new Error();
+      }
+      toast({ title: "Source updated" });
+      onSaved();
+      onClose();
+    } catch { toast({ title: "Failed to update", variant: "destructive" }); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={o => !o && onClose()}>
+      <DialogContent className="max-w-xs">
+        <DialogHeader><DialogTitle>Edit Source</DialogTitle></DialogHeader>
+        <div className="space-y-4 py-1">
+          <div>
+            <label className="text-xs font-medium mb-1 block">Label</label>
+            <Input value={label} onChange={e => setLabel(e.target.value)} className="h-9" />
+          </div>
+          <div>
+            <label className="text-xs font-medium mb-1 block">Color</label>
+            <div className="flex items-center gap-2">
+              <input type="color" value={color} onChange={e => setColor(e.target.value)} className="w-9 h-9 rounded border border-border cursor-pointer p-0.5 bg-card" />
+              <span className="text-xs text-muted-foreground font-mono">{color}</span>
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+            <Button size="sm" onClick={save} disabled={saving || !label.trim()}>
+              {saving ? "Saving..." : "Save"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function SourcesTab() {
+  const [stats, setStats] = useState<any[]>([]);
+  const [builtinSettings, setBuiltinSettings] = useState<Record<string, any>>({});
   const [customSources, setCustomSources] = useState<any[]>([]);
-  const [csLoading, setCsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [sortMode, setSortMode] = useState<SortMode>("admin");
   const [showAddForm, setShowAddForm] = useState(false);
   const [newLabel, setNewLabel] = useState("");
   const [newColor, setNewColor] = useState("#6b7280");
   const [saving, setSaving] = useState(false);
-  const [partnerCounts, setPartnerCounts] = useState<{ influencer: number; ambassador: number; referral: number }>({ influencer: 0, ambassador: 0, referral: 0 });
-
+  const [editTarget, setEditTarget] = useState<any>(null);
   const { toast } = useToast();
 
-  const loadCustom = useCallback(async () => {
-    setCsLoading(true);
+  const loadAll = useCallback(async () => {
+    setLoading(true);
     try {
-      const r = await fetch(`${BASE}/marketing/sources/config`, { headers: authHeaders() });
-      const cd = await r.json();
-      setCustomSources(Array.isArray(cd) ? cd : []);
-    } catch { }
-    finally { setCsLoading(false); }
+      const [statsRes, builtinRes, customRes] = await Promise.all([
+        fetch(`${BASE}/marketing/sources`, { headers: authHeaders() }),
+        fetch(`${BASE}/marketing/sources/builtin`, { headers: authHeaders() }),
+        fetch(`${BASE}/marketing/sources/config`, { headers: authHeaders() }),
+      ]);
+      const [statsData, builtinData, customData] = await Promise.all([
+        statsRes.json(), builtinRes.json(), customRes.json(),
+      ]);
+      setStats(Array.isArray(statsData) ? statsData : []);
+      setBuiltinSettings(builtinData || {});
+      setCustomSources(Array.isArray(customData) ? customData : []);
+    } catch { toast({ title: "Failed to load sources", variant: "destructive" }); }
+    finally { setLoading(false); }
   }, []);
 
-  const loadCounts = useCallback(async () => {
-    try {
-      const r = await fetch(`${BASE}/marketing/partner-counts`, { headers: authHeaders() });
-      if (r.ok) { const d = await r.json(); setPartnerCounts(d); }
-    } catch { }
-  }, []);
-
-  useEffect(() => {
-    loadCustom();
-    loadCounts();
-    const interval = setInterval(loadCounts, 10000);
-    return () => clearInterval(interval);
-  }, [loadCustom, loadCounts]);
+  useEffect(() => { loadAll(); }, [loadAll]);
 
   async function addSource() {
     if (!newLabel.trim()) { toast({ title: "Label is required", variant: "destructive" }); return; }
@@ -1085,73 +958,88 @@ function SourcesTab() {
     try {
       const key = newLabel.trim().toUpperCase().replace(/\s+/g, "_");
       const r = await fetch(`${BASE}/marketing/sources/config`, {
-        method: "POST",
-        headers: authHeaders(),
+        method: "POST", headers: authHeaders(),
         body: JSON.stringify({ key, label: newLabel.trim(), color: newColor }),
       });
       if (!r.ok) { const e = await r.json(); toast({ title: e.error || "Failed", variant: "destructive" }); return; }
       toast({ title: "Source added" });
       setNewLabel(""); setNewColor("#6b7280"); setShowAddForm(false);
-      loadCustom();
+      loadAll();
     } catch { toast({ title: "Failed", variant: "destructive" }); }
     finally { setSaving(false); }
   }
 
-  async function deleteSource(id: string) {
-    if (!confirm("Delete this source?")) return;
+  async function deleteCustomSource(id: string, label: string) {
+    if (!confirm(`Delete "${label}" source?`)) return;
     await fetch(`${BASE}/marketing/sources/config/${id}`, { method: "DELETE", headers: authHeaders() });
-    loadCustom();
+    toast({ title: "Source deleted" });
+    loadAll();
   }
 
-  const NON_DELETABLE_INFO: { key: typeof NON_DELETABLE_KEYS[number]; label: string; count: number }[] = [
-    { key: "INFLUENCER", label: "Influencer", count: partnerCounts.influencer },
-    { key: "AMBASSADOR", label: "Ambassador", count: partnerCounts.ambassador },
-    { key: "REFERRAL",   label: "Referral",   count: partnerCounts.referral  },
+  async function deleteBuiltinSource(key: string, label: string) {
+    if (!confirm(`Delete "${label}" source? It will be hidden from all views.`)) return;
+    await fetch(`${BASE}/marketing/sources/builtin/${key}`, {
+      method: "PATCH", headers: authHeaders(),
+      body: JSON.stringify({ isActive: false }),
+    });
+    toast({ title: "Source deleted" });
+    loadAll();
+  }
+
+  const statsMap: Record<string, any> = {};
+  for (const s of stats) { statsMap[s.source] = s; }
+
+  const customMap: Record<string, any> = {};
+  for (const c of customSources) { customMap[c.key] = c; }
+
+  const activeBuiltinDeletable = DELETABLE_BUILTIN_KEYS.filter(key => {
+    const setting = builtinSettings[key];
+    return !setting || setting.isActive !== false;
+  });
+
+  type SourceRow = {
+    key: string; label: string; color: string;
+    admin: number; paying: number; revenue: number;
+    type: "non-deletable" | "builtin" | "custom";
+    id?: string;
+  };
+
+  const rows: SourceRow[] = [
+    ...activeBuiltinDeletable.map(key => {
+      const setting = builtinSettings[key];
+      const effectiveLabel = setting?.label_override || SOURCE_LABELS[key] || key;
+      const effectiveColor = setting?.color_override || SOURCE_COLORS[key] || "#6b7280";
+      const s = statsMap[key];
+      return {
+        key, label: effectiveLabel, color: effectiveColor,
+        admin: s?.total_signups ?? 0, paying: s?.total_paid_admins ?? 0, revenue: s?.total_revenue ?? 0,
+        type: "builtin" as const,
+      };
+    }),
+    ...customSources.map(src => {
+      const s = statsMap[src.key];
+      return {
+        key: src.key, label: src.label, color: src.color,
+        admin: s?.total_signups ?? 0, paying: s?.total_paid_admins ?? 0, revenue: s?.total_revenue ?? 0,
+        type: "custom" as const, id: src._id,
+      };
+    }),
   ];
+
+  const sorted = [...rows].sort((a, b) =>
+    sortMode === "admin" ? b.admin - a.admin :
+    sortMode === "paying" ? b.paying - a.paying :
+    b.revenue - a.revenue
+  );
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm">Sources Management</CardTitle>
-            <Button size="sm" onClick={() => setShowAddForm(v => !v)}>
-              <Plus className="w-4 h-4 mr-1" />{showAddForm ? "Cancel" : "Add Source"}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-
-          {/* ── NON DELETABLE SECTION ── */}
-          <div className="px-4 py-2 bg-muted/30 border-y border-border">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-foreground">Non Deletable</p>
-          </div>
-          <div className="divide-y divide-border">
-            {NON_DELETABLE_INFO.map(({ key, label, count }) => (
-              <div key={key} className="flex items-center justify-between px-4 py-3 hover:bg-muted/10">
-                <div className="flex items-center gap-3">
-                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: SOURCE_COLORS[key] }} />
-                  <p className="text-sm font-medium">{label}</p>
-                </div>
-                <Badge variant="secondary" className="text-xs font-semibold tabular-nums min-w-[2rem] justify-center">
-                  {count}
-                </Badge>
-              </div>
-            ))}
-          </div>
-
-          {/* ── DIVIDER ── */}
-          <div className="border-t-2 border-border" />
-
-          {/* ── DELETABLE SOURCE SECTION ── */}
-          <div className="px-4 py-2 bg-muted/30 border-y border-border">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-foreground">Deletable Source</p>
-          </div>
-
-          {/* Add form */}
-          {showAddForm && (
-            <div className="flex flex-wrap gap-3 items-end p-4 border-b border-border bg-muted/20">
-              <div className="flex-1 min-w-[160px]">
+      {/* Add Source Form */}
+      {showAddForm && (
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="flex flex-wrap gap-3 items-end">
+              <div className="flex-1 min-w-[150px]">
                 <label className="text-xs font-medium mb-1 block">Source Name *</label>
                 <Input value={newLabel} onChange={e => setNewLabel(e.target.value)} placeholder="e.g. Telegram, Twitter" className="h-9" onKeyDown={e => e.key === "Enter" && addSource()} />
               </div>
@@ -1162,67 +1050,111 @@ function SourcesTab() {
                   <span className="text-xs text-muted-foreground font-mono">{newColor}</span>
                 </div>
               </div>
-              {newLabel.trim() && (
-                <div className="flex-1 min-w-[200px]">
-                  <label className="text-xs font-medium mb-1 block text-muted-foreground">Auto-generated link</label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground font-mono truncate">{trackingLink(newLabel.trim().toUpperCase().replace(/\s+/g,"_"))}</span>
-                  </div>
-                </div>
-              )}
-              <Button size="sm" onClick={addSource} disabled={saving}>
-                <Check className="w-4 h-4 mr-1" />{saving ? "Saving..." : "Add"}
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => { setShowAddForm(false); setNewLabel(""); setNewColor("#6b7280"); }}>Cancel</Button>
+                <Button size="sm" onClick={addSource} disabled={saving}>
+                  <Check className="w-4 h-4 mr-1" />{saving ? "Saving..." : "Add"}
+                </Button>
+              </div>
             </div>
-          )}
+          </CardContent>
+        </Card>
+      )}
 
-          {/* Builtin deletable sources */}
-          <div className="divide-y divide-border">
-            {DELETABLE_BUILTIN_KEYS.map(key => {
-              const url = trackingLink(key);
-              return (
-                <div key={key} className="flex items-center justify-between px-4 py-3 hover:bg-muted/10 gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: SOURCE_COLORS[key] }} />
-                    <p className="text-sm font-medium">{SOURCE_LABELS[key]}</p>
-                  </div>
-                  <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
-                    <span className="text-xs text-muted-foreground font-mono truncate hidden sm:block max-w-[260px]">{url}</span>
-                    <CopyLinkButton url={url} />
-                  </div>
-                </div>
-              );
-            })}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex rounded-lg border overflow-hidden text-xs font-semibold">
+              <button
+                onClick={() => setSortMode("admin")}
+                className={`px-3 py-1.5 transition-colors ${sortMode === "admin" ? "bg-blue-600 text-white" : "text-muted-foreground hover:bg-muted"}`}
+              >Admin</button>
+              <button
+                onClick={() => setSortMode("paying")}
+                className={`px-3 py-1.5 border-l transition-colors ${sortMode === "paying" ? "bg-purple-600 text-white" : "text-muted-foreground hover:bg-muted"}`}
+              >Paying</button>
+              <button
+                onClick={() => setSortMode("revenue")}
+                className={`px-3 py-1.5 border-l transition-colors ${sortMode === "revenue" ? "bg-green-600 text-white" : "text-muted-foreground hover:bg-muted"}`}
+              >Revenue</button>
+            </div>
+            <Button size="sm" onClick={() => setShowAddForm(v => !v)}>
+              <Plus className="w-4 h-4 mr-1" />Add Source
+            </Button>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-0">
+          {/* Table Header */}
+          <div className="grid grid-cols-[1fr_52px_52px_72px_80px] border-b bg-muted/30 px-3 py-2 text-xs font-semibold text-muted-foreground gap-1">
+            <span>Source</span>
+            <span className="text-center text-blue-600">Admin</span>
+            <span className="text-center text-purple-600">Paying</span>
+            <span className="text-right text-green-600">Revenue</span>
+            <span className="text-center">Actions</span>
           </div>
 
-          {/* Custom sources */}
-          <div className="divide-y divide-border">
-            {csLoading ? (
-              <div className="flex justify-center py-5"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
-            ) : customSources.length === 0 ? (
-              <div className="px-4 py-4 text-center text-xs text-muted-foreground">No custom sources yet — click "Add Source" to add one.</div>
-            ) : customSources.map(src => {
-              const url = trackingLink(src.key);
-              return (
-                <div key={src._id} className="flex items-center justify-between px-4 py-3 hover:bg-muted/10 gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: src.color }} />
-                    <p className="text-sm font-medium">{src.label}</p>
+          {loading ? (
+            <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+          ) : sorted.length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground text-sm">No sources found</div>
+          ) : sorted.map((row) => {
+            const url = trackingLink(row.key);
+            return (
+              <div key={row.key} className="border-b last:border-0">
+                {/* Main Row */}
+                <div className="grid grid-cols-[1fr_52px_52px_72px_80px] items-center px-3 py-2.5 hover:bg-muted/10 transition-colors gap-1">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: row.color }} />
+                    <span className="text-sm font-medium truncate">{row.label}</span>
                   </div>
-                  <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
-                    <span className="text-xs text-muted-foreground font-mono truncate hidden sm:block max-w-[220px]">{url}</span>
-                    <CopyLinkButton url={url} />
-                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive shrink-0" onClick={() => deleteSource(src._id)}>
+                  <div className="text-center">
+                    <span className="text-sm font-bold text-blue-600">{row.admin}</span>
+                  </div>
+                  <div className="text-center">
+                    <span className="text-sm font-bold text-purple-600">{row.paying}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-bold text-green-600">{fmtRs(row.revenue)}</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-1">
+                    <Button
+                      size="icon" variant="ghost"
+                      className="h-7 w-7 text-blue-600 hover:text-blue-700 hover:bg-blue-50 shrink-0"
+                      title="Edit source"
+                      onClick={() => setEditTarget({ type: row.type, key: row.key, id: row.id, label: row.label, color: row.color })}
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      size="icon" variant="ghost"
+                      className="h-7 w-7 text-destructive hover:text-destructive hover:bg-red-50 shrink-0"
+                      title="Delete source"
+                      onClick={() => row.type === "custom" ? deleteCustomSource(row.id!, row.label) : deleteBuiltinSource(row.key, row.label)}
+                    >
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-
+                {/* Copy Link Row */}
+                <div className="px-3 pb-2 flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground font-mono truncate flex-1">{url}</span>
+                  <CopyLinkButton url={url} />
+                </div>
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
+
+      {editTarget && (
+        <EditSourceDialog
+          open={!!editTarget}
+          onClose={() => setEditTarget(null)}
+          source={editTarget}
+          onSaved={loadAll}
+        />
+      )}
     </div>
   );
 }

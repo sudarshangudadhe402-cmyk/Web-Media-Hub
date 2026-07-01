@@ -443,13 +443,14 @@ router.get("/marketing/export/csv", requireSuperAdmin, async (req: AuthRequest, 
   } catch { res.status(500).json({ error: "Failed" }); }
 });
 
-/* ── BUILTIN SOURCE SETTINGS (active/inactive toggle) ── */
+/* ── BUILTIN SOURCE SETTINGS (active/inactive toggle + label/color override) ── */
 router.get("/marketing/sources/builtin", requireSuperAdmin, async (_req, res: Response): Promise<void> => {
   try {
     const settings = await BuiltinSourceSetting.find().lean();
-    // Return a map key → isActive; missing keys default to true
-    const map: Record<string, boolean> = {};
-    for (const s of settings) { map[s.key] = s.isActive; }
+    const map: Record<string, { isActive: boolean; label_override: string; color_override: string }> = {};
+    for (const s of settings as any[]) {
+      map[s.key] = { isActive: s.isActive, label_override: s.label_override || "", color_override: s.color_override || "" };
+    }
     res.json(map);
   } catch { res.status(500).json({ error: "Failed" }); }
 });
@@ -457,11 +458,15 @@ router.get("/marketing/sources/builtin", requireSuperAdmin, async (_req, res: Re
 router.patch("/marketing/sources/builtin/:key", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { key } = req.params;
-    const { isActive } = req.body;
-    if (typeof isActive !== "boolean") { res.status(400).json({ error: "isActive (boolean) required" }); return; }
+    const { isActive, label_override, color_override } = req.body;
+    const update: any = {};
+    if (typeof isActive === "boolean") update.isActive = isActive;
+    if (typeof label_override === "string") update.label_override = label_override;
+    if (typeof color_override === "string") update.color_override = color_override;
+    if (Object.keys(update).length === 0) { res.status(400).json({ error: "No valid fields provided" }); return; }
     const setting = await BuiltinSourceSetting.findOneAndUpdate(
       { key },
-      { isActive },
+      update,
       { upsert: true, new: true }
     );
     res.json(setting);
@@ -486,6 +491,20 @@ router.post("/marketing/sources/config", requireSuperAdmin, async (req: AuthRequ
     if (err.code === 11000) { res.status(409).json({ error: "Source key already exists" }); return; }
     res.status(500).json({ error: "Failed" });
   }
+});
+
+router.put("/marketing/sources/config/:id", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { label, color } = req.body;
+    if (!label) { res.status(400).json({ error: "label required" }); return; }
+    const src = await MarketingSourceConfig.findByIdAndUpdate(
+      req.params.id,
+      { label, color: color || "#6b7280" },
+      { new: true }
+    );
+    if (!src) { res.status(404).json({ error: "Not found" }); return; }
+    res.json(src);
+  } catch { res.status(500).json({ error: "Failed" }); }
 });
 
 router.delete("/marketing/sources/config/:id", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
