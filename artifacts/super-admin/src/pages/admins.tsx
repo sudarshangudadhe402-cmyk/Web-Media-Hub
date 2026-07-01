@@ -111,12 +111,38 @@ function getSourceStyle(source: string) {
   return SOURCE_COLORS[key] ?? { bg: "rgba(107,114,128,0.12)", text: "#6b7280", label: source };
 }
 
+interface PricingPlan {
+  id: string;
+  name: string;
+  price: string;
+}
+
+const TAB_COLORS = [
+  { color: "#2563eb", bg: "rgba(37,99,235,0.10)" },
+  { color: "#d97706", bg: "rgba(217,119,6,0.10)" },
+  { color: "#16a34a", bg: "rgba(22,163,74,0.10)" },
+  { color: "#FF2D2D", bg: "rgba(255,45,45,0.10)" },
+  { color: "#9333ea", bg: "rgba(147,51,234,0.10)" },
+  { color: "#0891b2", bg: "rgba(8,145,178,0.10)" },
+];
+
 export default function Admins() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: admins, isLoading } = useListAdmins();
   const deleteAdmin = useDeleteAdmin();
+
+  const { data: pricingData } = useQuery({
+    queryKey: ["pricing-plans"],
+    queryFn: async () => {
+      const res = await fetch("/api/pricing");
+      if (!res.ok) throw new Error("Failed to load plans");
+      return res.json() as Promise<{ plans: PricingPlan[] }>;
+    },
+    staleTime: 30_000,
+  });
+  const pricingPlans = pricingData?.plans ?? [];
 
   const [linkInput, setLinkInput] = useState("");
   const [isEditingLink, setIsEditingLink] = useState(false);
@@ -264,27 +290,24 @@ export default function Admins() {
   }
 
   const [storeSearch, setStoreSearch] = useState("");
-  const [planFilter, setPlanFilter] = useState<"all" | "demo" | "premium" | "lifetime" | "enterprise">("all");
+  const [planFilter, setPlanFilter] = useState<string>("all");
 
   const adminCount = admins?.length ?? 0;
 
   const PLAN_TABS = [
-    { id: "all" as const, label: "All", price: null, color: "#6b7280", bg: "rgba(107,114,128,0.10)" },
-    { id: "demo" as const, label: "Month (31 day)", price: "₹999/Month", color: "#2563eb", bg: "rgba(37,99,235,0.10)" },
-    { id: "premium" as const, label: "Premium Annual Plan", price: "₹5,999/Year", color: "#d97706", bg: "rgba(217,119,6,0.10)" },
-    { id: "lifetime" as const, label: "Lifetime Business Plan", price: "₹15,999 One-Time", color: "#16a34a", bg: "rgba(22,163,74,0.10)" },
-    { id: "enterprise" as const, label: "Enterprise Plan", price: "₹19,999 One-Time", color: "#FF2D2D", bg: "rgba(255,45,45,0.10)" },
+    { id: "all", label: "All", price: null as string | null, color: "#6b7280", bg: "rgba(107,114,128,0.10)" },
+    ...pricingPlans.map((plan, i) => {
+      const c = TAB_COLORS[i % TAB_COLORS.length];
+      return { id: plan.id, label: plan.name, price: plan.price as string | null, color: c.color, bg: c.bg };
+    }),
   ];
 
-  function matchesPlan(a: (typeof admins)[number], planId: typeof planFilter) {
+  function matchesPlan(a: (typeof admins)[number], planId: string) {
     if (planId === "all") return true;
-    const planName = ((a as any).planName as string ?? "").toLowerCase();
-    const planPrice = ((a as any).planPrice as string ?? "").toLowerCase();
-    if (planId === "demo") return planPrice.includes("999") && !planPrice.includes("5,999") && !planPrice.includes("15,999") && !planPrice.includes("19,999") || planName.includes("starting");
-    if (planId === "premium") return planPrice.includes("5,999") || planName.includes("premium annual");
-    if (planId === "lifetime") return planPrice.includes("15,999") || planName.includes("lifetime");
-    if (planId === "enterprise") return planPrice.includes("19,999") || planName.includes("enterprise");
-    return true;
+    const plan = pricingPlans.find((p) => p.id === planId);
+    if (!plan) return false;
+    const planName = ((a as any).planName as string ?? "").trim().toLowerCase();
+    return planName === plan.name.trim().toLowerCase();
   }
 
   const searchTrimmed = storeSearch.trim().toLowerCase();
@@ -314,7 +337,7 @@ export default function Admins() {
     }
   }
 
-  const activePlanTab = PLAN_TABS.find(t => t.id === planFilter)!;
+  const activePlanTab = PLAN_TABS.find(t => t.id === planFilter) ?? PLAN_TABS[0];
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-12">

@@ -12,6 +12,7 @@ import {
   Store,
   Medal,
   Crown,
+  Tag,
 } from "lucide-react";
 
 /* ── Auth fetch ─────────────────────────────────────────────────────────────── */
@@ -49,17 +50,11 @@ function parsePrice(v: string | null | undefined): number {
   return isNaN(n) ? 0 : n;
 }
 
-type PlanCategory = "monthly" | "yearly" | "lifetime" | "other";
-
-function classify(admin: { planPrice?: string; planName?: string; planPeriod?: string }): PlanCategory {
-  const price  = admin.planPrice  ?? "";
-  const name   = (admin.planName  ?? "").toLowerCase();
-  const period = (admin.planPeriod ?? "").toLowerCase();
-  if (price.includes("15,999") || name.includes("lifetime"))            return "lifetime";
-  if (price.includes("5,999")  || period.includes("year") || name.includes("premium annual")) return "yearly";
-  if (price.includes("999") && !price.includes("5,999") && !price.includes("15,999") && !price.includes("19,999")) return "monthly";
-  if (period.includes("month"))                                          return "monthly";
-  return "other";
+interface PricingPlan {
+  id: string;
+  name: string;
+  price: string;
+  durationDays: number | null;
 }
 
 function rupees(n: number): string {
@@ -80,11 +75,9 @@ function RankBadge({ rank }: { rank: number }) {
   );
 }
 
-/* ── Plan card data ─────────────────────────────────────────────────────────── */
-const PLANS = [
+/* ── Plan card color palette (cycles through created plans) ──────────────────── */
+const PLAN_STYLES = [
   {
-    key: "monthly",
-    label: "Monthly",
     Icon: CalendarDays,
     cardCls: "bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800/40",
     iconCls: "bg-blue-100 dark:bg-blue-900/40",
@@ -93,8 +86,6 @@ const PLANS = [
     labelCls: "text-blue-500",
   },
   {
-    key: "yearly",
-    label: "Yearly",
     Icon: Star,
     cardCls: "bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800/40",
     iconCls: "bg-amber-100 dark:bg-amber-900/40",
@@ -103,8 +94,6 @@ const PLANS = [
     labelCls: "text-amber-500",
   },
   {
-    key: "lifetime",
-    label: "Lifetime",
     Icon: Crown,
     cardCls: "bg-purple-50 border-purple-200 dark:bg-purple-950/30 dark:border-purple-800/40",
     iconCls: "bg-purple-100 dark:bg-purple-900/40",
@@ -112,7 +101,31 @@ const PLANS = [
     valueCls: "text-purple-600 dark:text-purple-400",
     labelCls: "text-purple-500",
   },
-] as const;
+  {
+    Icon: Tag,
+    cardCls: "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800/40",
+    iconCls: "bg-emerald-100 dark:bg-emerald-900/40",
+    iconColor: "text-emerald-500",
+    valueCls: "text-emerald-600 dark:text-emerald-400",
+    labelCls: "text-emerald-500",
+  },
+  {
+    Icon: Medal,
+    cardCls: "bg-rose-50 border-rose-200 dark:bg-rose-950/30 dark:border-rose-800/40",
+    iconCls: "bg-rose-100 dark:bg-rose-900/40",
+    iconColor: "text-rose-500",
+    valueCls: "text-rose-600 dark:text-rose-400",
+    labelCls: "text-rose-500",
+  },
+  {
+    Icon: Trophy,
+    cardCls: "bg-cyan-50 border-cyan-200 dark:bg-cyan-950/30 dark:border-cyan-800/40",
+    iconCls: "bg-cyan-100 dark:bg-cyan-900/40",
+    iconColor: "text-cyan-500",
+    valueCls: "text-cyan-600 dark:text-cyan-400",
+    labelCls: "text-cyan-500",
+  },
+];
 
 /* ── Page ───────────────────────────────────────────────────────────────────── */
 export default function Revenue() {
@@ -130,37 +143,42 @@ export default function Revenue() {
     retry: 2,
   });
 
-  /* revenue breakdown */
+  const { data: pricingData, isLoading: plansLoading } = useQuery({
+    queryKey: ["pricing-plans"],
+    queryFn: async () => {
+      const res = await fetch("/api/pricing");
+      if (!res.ok) throw new Error("Failed to load plans");
+      return res.json() as Promise<{ plans: PricingPlan[] }>;
+    },
+    staleTime: 30_000,
+  });
+  const pricingPlans = pricingData?.plans ?? [];
+
+  /* revenue breakdown — computed against the plans currently created on the Pricing page */
   const rev = useMemo(() => {
-    const monthly  = { count: 0, total: 0 };
-    const yearly   = { count: 0, total: 0 };
-    const lifetime = { count: 0, total: 0 };
+    const perPlan = pricingPlans.map((plan) => {
+      const planNameLc = plan.name.trim().toLowerCase();
+      let count = 0;
+      let total = 0;
+      for (const a of admins) {
+        const planName = ((a as any).planName as string ?? "").trim().toLowerCase();
+        if (planName === planNameLc) {
+          count++;
+          total += parsePrice((a as any).planPrice);
+        }
+      }
+      return { ...plan, count, total };
+    });
 
-    for (const a of admins) {
-      const cat   = classify(a as any);
-      const price = parsePrice((a as any).planPrice);
-      if (cat === "monthly")  { monthly.count++;  monthly.total  += price; }
-      if (cat === "yearly")   { yearly.count++;   yearly.total   += price; }
-      if (cat === "lifetime") { lifetime.count++; lifetime.total += price; }
-    }
+    const grand  = admins.reduce((sum, a) => sum + parsePrice((a as any).planPrice), 0);
+    const paying = admins.filter((a) => parsePrice((a as any).planPrice) > 0).length;
 
-    return {
-      monthly, yearly, lifetime,
-      grand: monthly.total + yearly.total + lifetime.total,
-      paying: monthly.count + yearly.count + lifetime.count,
-    };
-  }, [admins]);
+    return { perPlan, grand, paying };
+  }, [admins, pricingPlans]);
 
   const leaderboard  = overview?.admins    ?? [];
   const totalTryOn   = overview?.totalTryOn ?? 0;
   const totalAds     = overview?.totalAds   ?? 0;
-
-  /* plan counts by key */
-  const planData: Record<string, { count: number; total: number }> = {
-    monthly:  rev.monthly,
-    yearly:   rev.yearly,
-    lifetime: rev.lifetime,
-  };
 
   /* ── render ── */
   return (
@@ -202,40 +220,47 @@ export default function Revenue() {
           )}
         </div>
 
-        {/* ── 3 Plan Cards (always side-by-side) ── */}
-        <div className="grid grid-cols-3 gap-2 w-full">
-          {PLANS.map(({ key, label, Icon, cardCls, iconCls, iconColor, valueCls, labelCls }) => {
-            const { count, total } = planData[key] ?? { count: 0, total: 0 };
-            return (
-              <div
-                key={key}
-                className={`rounded-xl border p-2.5 flex flex-col items-center gap-2 w-full ${cardCls}`}
-              >
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${iconCls}`}>
-                  <Icon className={`w-4 h-4 shrink-0 ${iconColor}`} />
-                </div>
-                <p className={`text-[10px] font-bold text-center leading-tight ${labelCls}`}>
-                  {label}
-                </p>
-                {adminsLoading ? (
-                  <Skeleton className="h-5 w-12" />
-                ) : (
+        {/* ── Plan Cards — side by side, scrollable when many plans ── */}
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none w-full">
+          {plansLoading || adminsLoading ? (
+            [1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-24 w-28 rounded-xl shrink-0" />
+            ))
+          ) : rev.perPlan.length === 0 ? (
+            <div className="rounded-xl border-2 border-dashed border-border w-full py-6 text-center">
+              <Tag className="w-6 h-6 mx-auto text-muted-foreground/30 mb-1.5" />
+              <p className="text-xs text-muted-foreground">No plans created yet on the Pricing page</p>
+            </div>
+          ) : (
+            rev.perPlan.map((plan, i) => {
+              const { Icon, cardCls, iconCls, iconColor, valueCls, labelCls } = PLAN_STYLES[i % PLAN_STYLES.length];
+              return (
+                <div
+                  key={plan.id}
+                  className={`rounded-xl border p-2.5 flex flex-col items-center gap-2 shrink-0 w-28 ${cardCls}`}
+                >
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${iconCls}`}>
+                    <Icon className={`w-4 h-4 shrink-0 ${iconColor}`} />
+                  </div>
+                  <p className={`text-[10px] font-bold text-center leading-tight line-clamp-2 ${labelCls}`}>
+                    {plan.name}
+                  </p>
                   <div className="text-center">
                     <p className={`text-sm font-extrabold leading-tight ${valueCls}`}>
-                      {rupees(total)}
+                      {rupees(plan.total)}
                     </p>
                     <p className="text-[9px] text-muted-foreground mt-0.5">
-                      {count} admin{count !== 1 ? "s" : ""}
+                      {plan.count} admin{plan.count !== 1 ? "s" : ""}
                     </p>
                   </div>
-                )}
-              </div>
-            );
-          })}
+                </div>
+              );
+            })
+          )}
         </div>
 
         <p className="text-[10px] text-muted-foreground text-center">
-          Calculated from each admin's registered plan · Enterprise excluded
+          Calculated from each admin's registered plan, matched against plans created on the Pricing page
         </p>
 
         {/* ── Ads & Engagement ── */}
