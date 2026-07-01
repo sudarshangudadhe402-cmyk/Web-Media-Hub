@@ -13,7 +13,6 @@ import Dashboard from "@/pages/dashboard";
 import Products from "@/pages/products";
 import Categories from "@/pages/categories";
 import MyStore from "@/pages/my-store";
-import AiVideo from "@/pages/ai-video";
 import MarketingGrowth from "@/pages/marketing-growth";
 import UsernamePassword from "@/pages/username-password";
 import ManageAdmins from "@/pages/manage-admins";
@@ -21,7 +20,6 @@ import AdminsPage from "@/pages/admins";
 import PublicStore from "@/pages/public-store";
 import LegalAgreement from "@/pages/legal-agreement";
 import MarketingSourceSelect from "@/pages/marketing-source-select";
-import StoreRequest from "@/pages/store-request";
 import SalesLedger from "@/pages/sales-ledger";
 import DemoStore from "@/pages/demo-store";
 import { Layout } from "@/components/layout";
@@ -184,9 +182,6 @@ function Router() {
       </Route>
       <Route path="/admins">
         {() => <ProtectedRoute component={AdminsPage} adminOnly={true} />}
-      </Route>
-      <Route path="/store-request">
-        {() => <ProtectedRouteFullPage component={StoreRequest} />}
       </Route>
       <Route path="/sales-ledger">
         {() => <ProtectedRoute component={SalesLedger} />}
