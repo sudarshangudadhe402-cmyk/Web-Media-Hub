@@ -48,7 +48,7 @@ function ipRateLimit(maxReqs: number, windowMs: number) {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
-router.get("/public/store/:slug", async (req, res) => {
+router.get("/public/store/:slug", ipRateLimit(60, 60 * 1000), async (req, res) => {
   try {
     const store = await Store.findOne({ publicSlug: req.params.slug });
     if (!store) {
