@@ -52,10 +52,16 @@ export default function Login() {
 
     setIsLoading(true);
     try {
+      const trimmedIdentifier = identifier.trim();
+      const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedIdentifier);
+      const credentials = isEmail
+        ? { email: trimmedIdentifier }
+        : { username: trimmedIdentifier };
+
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: identifier.trim(), email: identifier.trim(), password, accessCode: accessCode.trim() }),
+        body: JSON.stringify({ ...credentials, password, accessCode: accessCode.trim() }),
       });
 
       const data = await res.json();
