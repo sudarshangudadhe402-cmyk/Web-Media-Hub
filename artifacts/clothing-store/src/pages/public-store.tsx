@@ -4,7 +4,7 @@ import {
   MapPin, Clock, CalendarDays, MessageCircle, Heart, ShoppingBag,
   ChevronLeft, X, Camera, Loader2, RefreshCw,
   CheckCircle2, TrendingDown, Download, Share2,
-  CreditCard, CheckCircle, AlertCircle, Edit2, Trash2,
+  CreditCard, CheckCircle, AlertCircle, Edit2, Trash2, Box,
 } from "lucide-react";
 import { LoyaltyCardVisual } from "@/components/loyalty-card-visual";
 import { useState, useRef, useEffect, useMemo } from "react";
@@ -139,6 +139,8 @@ export default function PublicStore() {
   const [tryOnLoading, setTryOnLoading] = useState(false);
   const [lastCountedPhoto, setLastCountedPhoto] = useState<string | null>(null);
 
+  const [show3DUnavailable, setShow3DUnavailable] = useState(false);
+  const [viewing3D, setViewing3D] = useState<PublicProduct | null>(null);
   const [bookingForm, setBookingForm] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(`wmh_customer_${slug}`) || "null");
@@ -1631,17 +1633,75 @@ export default function PublicStore() {
           <div className="pb-28" />
         </div>
 
-        <div className="shrink-0 z-20 border-t px-4 py-3" style={{ background: "#ffffff", borderColor: "#f0f0f0" }}>
-          <div className="flex gap-3">
-            <button onClick={openTryOn} className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold text-sm transition-colors border-2" style={{ background: "transparent", borderColor: "#000", color: "#000", fontFamily: "'Poppins', sans-serif" }}>
+        <div className="shrink-0 z-20 border-t px-4 py-3 space-y-2" style={{ background: "#ffffff", borderColor: "#f0f0f0" }}>
+          <div className="flex gap-2">
+            <button onClick={openTryOn} className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-2xl font-bold text-sm transition-colors border-2" style={{ background: "transparent", borderColor: "#000", color: "#000", fontFamily: "'Poppins', sans-serif" }}>
               <Camera className="w-4 h-4" />
               Virtual Try-On
             </button>
-            <button onClick={openBooking} className="flex-1 flex items-center justify-center gap-1.5 py-3.5 rounded-2xl font-black text-sm transition-colors" style={{ background: "#000000", color: "white", fontFamily: "'Montserrat', sans-serif" }}>
-              Book at ₹{selectedProduct.discountPrice.toLocaleString()}
+            <button
+              className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-2xl font-bold text-sm transition-colors border-2"
+              style={selectedProduct.modelUrl
+                ? { background: "transparent", borderColor: "#7c3aed", color: "#7c3aed", fontFamily: "'Poppins', sans-serif" }
+                : { background: "transparent", borderColor: "#d1d5db", color: "#9ca3af", fontFamily: "'Poppins', sans-serif" }}
+              onClick={() => { if (selectedProduct.modelUrl) setViewing3D(selectedProduct); else setShow3DUnavailable(true); }}
+            >
+              <Box className="w-4 h-4" />
+              3D Model
             </button>
           </div>
+          <button onClick={openBooking} className="w-full flex items-center justify-center gap-1.5 py-3.5 rounded-2xl font-black text-sm transition-colors" style={{ background: "#000000", color: "white", fontFamily: "'Montserrat', sans-serif" }}>
+            Book at ₹{selectedProduct.discountPrice.toLocaleString()}
+          </button>
         </div>
+
+        {/* 3D Not Available popup */}
+        {show3DUnavailable && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setShow3DUnavailable(false)}>
+            <div className="absolute inset-0 bg-black/40" />
+            <div className="relative w-full rounded-t-3xl px-6 pt-6 pb-12 text-center" style={{ background: "#ffffff" }} onClick={(e) => e.stopPropagation()}>
+              <div className="w-12 h-1 rounded-full bg-gray-200 mx-auto mb-5" />
+              <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "#f3f0ff" }}>
+                <Box className="w-8 h-8" style={{ color: "#7c3aed" }} />
+              </div>
+              <p className="font-black text-lg text-gray-900 mb-2" style={{ fontFamily: "'Montserrat', sans-serif" }}>3D Model Not Available</p>
+              <p className="text-sm text-gray-500 mb-6">This product doesn't have a 3D model yet. Check back later!</p>
+              <button className="w-full py-3.5 rounded-2xl font-bold text-sm" style={{ background: "#000000", color: "white" }} onClick={() => setShow3DUnavailable(false)}>Got it</button>
+            </div>
+          </div>
+        )}
+
+        {/* 3D Model Viewer */}
+        {viewing3D && (
+          <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "rgba(0,0,0,0.92)" }}>
+            <div className="flex items-center justify-between px-4 pt-10 pb-3">
+              <div className="flex items-center gap-2">
+                <Box className="w-5 h-5 text-purple-400" />
+                <div>
+                  <p className="text-white text-sm font-bold leading-tight" style={{ fontFamily: "'Poppins', sans-serif" }}>{viewing3D.name}</p>
+                  <p className="text-purple-300 text-[11px]">3D Model Viewer</p>
+                </div>
+              </div>
+              <button onClick={() => setViewing3D(null)} className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.12)" }}>
+                <X className="w-5 h-5 text-white" />
+              </button>
+            </div>
+            <div className="flex-1 flex flex-col items-center justify-center px-4">
+              <model-viewer
+                src={viewing3D.modelUrl!}
+                alt={viewing3D.name}
+                auto-rotate="true"
+                camera-controls="true"
+                shadow-intensity="1"
+                exposure="1"
+                style={{ width: "100%", height: "420px", background: "transparent", borderRadius: "20px" }}
+              />
+            </div>
+            <div className="px-4 pb-10 pt-2 text-center">
+              <p className="text-gray-400 text-[12px]">👆 Drag to rotate &nbsp;·&nbsp; Pinch to zoom</p>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

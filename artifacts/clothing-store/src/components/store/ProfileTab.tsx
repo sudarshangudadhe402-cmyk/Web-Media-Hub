@@ -541,6 +541,7 @@ export default function ProfileTab({
           <div className="space-y-3">
             {[
               { icon: "🪞", title: "Virtual Try-On", desc: "See how clothes look on you before booking" },
+              { icon: "🧊", title: "3D Model", desc: "Explore products in full 3D before you buy" },
               { icon: "🎫", title: "Loyalty Card", desc: "Earn rewards on every purchase" },
               { icon: "⚡", title: "Easy Booking", desc: "Book in seconds, pay at store" },
               { icon: "📱", title: "Digital Catalog", desc: "Browse full collection anytime, anywhere" },

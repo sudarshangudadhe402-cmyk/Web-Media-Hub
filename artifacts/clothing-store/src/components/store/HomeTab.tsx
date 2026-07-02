@@ -1,4 +1,4 @@
-import { Search, X, ShoppingBag, Heart, Zap, Camera, CreditCard, BookOpen, ChevronRight, CalendarDays, MapPin, Info } from "lucide-react";
+import { Search, X, ShoppingBag, Heart, Zap, Camera, CreditCard, BookOpen, ChevronRight, CalendarDays, MapPin, Info, Box } from "lucide-react";
 import { useState } from "react";
 
 interface PublicProduct {
@@ -41,6 +41,7 @@ interface HomeTabProps {
 
 const FEATURES = [
   { icon: Camera, label: "Virtual Try-On", desc: "See before you buy" },
+  { icon: Box, label: "3D Model", desc: "View products in 3D" },
   { icon: BookOpen, label: "Easy Booking", desc: "Book in seconds" },
   { icon: CreditCard, label: "Loyalty Card", desc: "Earn rewards" },
   { icon: ShoppingBag, label: "Digital Catalog", desc: "Browse anytime" },
@@ -195,12 +196,16 @@ export default function HomeTab({
                 <p className="text-[11px] text-gray-500 leading-snug mb-3">
                   Upload your photo and see yourself wearing any outfit instantly.
                 </p>
-                <div className="flex items-center gap-1 mb-3">
+                <div className="flex items-center gap-1 mb-1.5">
                   <Zap className="w-3 h-3 text-gray-700 fill-gray-700" />
                   <span className="text-[10px] font-bold text-gray-600">Powered by Virtual Try-On</span>
                 </div>
+                <div className="flex items-center gap-1 mb-3">
+                  <Box className="w-3 h-3 text-purple-500" />
+                  <span className="text-[10px] font-bold text-purple-500">+ 3D Model View</span>
+                </div>
                 <p className="text-[11px] font-semibold text-gray-500 italic leading-snug">
-                  Go to product and try Virtual Try-On 🌍
+                  Try Virtual Try-On &amp; 3D Model on any product 🌍
                 </p>
               </div>
               <div className="relative flex-shrink-0 overflow-hidden" style={{ width: "44%" }}>
@@ -416,6 +421,7 @@ export default function HomeTab({
               <div className="space-y-2.5">
                 {[
                   { label: "Virtual Try-On", Icon: Camera },
+                  { label: "3D Model View", Icon: Box },
                   { label: "Online Booking", Icon: CalendarDays },
                   { label: "Loyalty Card", Icon: CreditCard },
                   { label: "All details about separate product", Icon: Info },

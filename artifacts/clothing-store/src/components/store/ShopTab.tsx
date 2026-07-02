@@ -1,21 +1,6 @@
 import { Search, X, SlidersHorizontal, ShoppingBag, Heart, Camera, Box, Star } from "lucide-react";
 import { useState } from "react";
 
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      "model-viewer": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement> & {
-        src?: string;
-        alt?: string;
-        "auto-rotate"?: boolean | string;
-        "camera-controls"?: boolean | string;
-        "shadow-intensity"?: string;
-        exposure?: string;
-        style?: React.CSSProperties;
-      }, HTMLElement>;
-    }
-  }
-}
 
 interface PublicProduct {
   id: string;
