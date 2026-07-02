@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { MarketingCampaign } from "../models/MarketingCampaign";
-import { CustomerAccount } from "../models/CustomerAccount";
 import { Store } from "../models/Store";
 import { AuthRequest, requireAuth } from "../middlewares/auth";
 
@@ -16,27 +15,18 @@ router.get("/campaigns", requireAuth, async (req: AuthRequest, res) => {
     if (!store) { res.json([]); return; }
     const storeId = String(store._id);
     const campaigns = await MarketingCampaign.find({ storeId }).sort({ createdAt: -1 });
-    const results = await Promise.all(
-      campaigns.map(async (c) => {
-        const customerCount = await CustomerAccount.countDocuments({
-          storeId,
-          campaign: c.campaignSlug,
-          source: c.source,
-        });
-        return {
-          id: String(c._id),
-          campaignName: c.campaignName,
-          campaignSlug: c.campaignSlug,
-          source: c.source,
-          trackingLink: c.trackingLink,
-          qrEnabled: c.qrEnabled,
-          isActive: c.isActive,
-          customerCount,
-          visitCount: c.visitCount ?? 0,
-          createdAt: c.createdAt.toISOString(),
-        };
-      })
-    );
+    const results = campaigns.map((c) => ({
+      id: String(c._id),
+      campaignName: c.campaignName,
+      campaignSlug: c.campaignSlug,
+      source: c.source,
+      trackingLink: c.trackingLink,
+      qrEnabled: c.qrEnabled,
+      isActive: c.isActive,
+      customerCount: c.trackedCount ?? 0,
+      visitCount: c.visitCount ?? 0,
+      createdAt: c.createdAt.toISOString(),
+    }));
     res.json(results);
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
@@ -52,7 +42,7 @@ router.post("/public/campaigns/track-visit", async (req, res) => {
     if (!store) { res.json({ ok: false }); return; }
     await MarketingCampaign.findOneAndUpdate(
       { storeId: String(store._id), source, campaignSlug: campaign, isActive: true },
-      { $inc: { visitCount: 1 } }
+      { $inc: { visitCount: 1, trackedCount: 1 } }
     );
     res.json({ ok: true });
   } catch {
