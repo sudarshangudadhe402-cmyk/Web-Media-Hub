@@ -474,7 +474,7 @@ function PlanDetailDialog({
               </div>
               {(plan.storeTypes ?? []).length > 0 && (
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Data</p>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Store</p>
                   <p className="text-sm font-bold text-gray-800 mt-0.5">{(plan.storeTypes ?? []).join(", ")}</p>
                 </div>
               )}
@@ -576,7 +576,7 @@ function PlanCard({ plan, onClick }: { plan: Plan; onClick: () => void }) {
             <p className="text-sm font-bold text-gray-800 mt-0.5">{validityDisplay}</p>
           </div>
           <div>
-            <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold">Data</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold">Store</p>
             <p className="text-sm font-bold text-gray-800 mt-0.5 truncate max-w-[110px]">{storeDisplay}</p>
           </div>
         </div>
