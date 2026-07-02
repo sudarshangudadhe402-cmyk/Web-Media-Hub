@@ -833,24 +833,27 @@ export default function Dashboard() {
     <div className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
 
-      {/* Row 1: Total Products — full width */}
-      <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => setLocation("/products")}>
-        <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-4">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Total Products</CardTitle>
-          <Package className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <p className="text-[11px] text-muted-foreground mb-0.5">Categories</p>
-              <div className="text-3xl font-extrabold text-gray-900">{(summary as any).totalCategories ?? 0}</div>
-            </div>
-            <div className="text-right">
-              <p className="text-[11px] text-muted-foreground mb-0.5">Products</p>
-              <div className="text-3xl font-extrabold text-gray-900">{summary.totalProducts}</div>
-            </div>
-          </div>
-        </CardContent>
+      {/* Row 1: Total Products + Total Categories — split card */}
+      <Card className="overflow-hidden">
+        <div className="flex divide-x divide-gray-100">
+          {/* Left: Total Products */}
+          <button
+            className="flex-1 text-left px-4 py-4 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+            onClick={() => setLocation("/products")}
+          >
+            <p className="text-[11px] text-muted-foreground mb-1">Total Products</p>
+            <div className="text-3xl font-extrabold text-gray-900">{summary.totalProducts}</div>
+          </button>
+
+          {/* Right: Total Categories */}
+          <button
+            className="flex-1 text-left px-4 py-4 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+            onClick={() => setLocation("/categories")}
+          >
+            <p className="text-[11px] text-muted-foreground mb-1">Total Categories</p>
+            <div className="text-3xl font-extrabold text-gray-900">{(summary as any).totalCategories ?? 0}</div>
+          </button>
+        </div>
       </Card>
 
       {/* Row 2: Active Bookings */}
