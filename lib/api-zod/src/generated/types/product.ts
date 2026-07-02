@@ -11,6 +11,8 @@ export interface Product {
   id: string;
   name: string;
   /** @nullable */
+  brandName?: string | null;
+  /** @nullable */
   description?: string | null;
   images: string[];
   /**
@@ -24,6 +26,8 @@ export interface Product {
   functionCategory?: string | null;
   productType: ProductProductType;
   sizes: string[];
+  stock?: number;
+  colours?: string[];
   likeCount: number;
   /** @nullable */
   storeId?: string | null;

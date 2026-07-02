@@ -49,6 +49,8 @@ import {
   Box,
   Link as LinkIcon,
   Copy,
+  Palette,
+  Package,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -62,6 +64,7 @@ const AGE_OPTIONS = Array.from({ length: 50 }, (_, i) => `${i}-${i + 1}Y`);
 const GENDER_OPTIONS = ["Men", "Women", "Boys", "Girls", "Unisex"];
 
 interface ProductForm {
+  brandName: string;
   name: string;
   description: string;
   discountPrice: string;
@@ -71,9 +74,12 @@ interface ProductForm {
   sizes: string[];
   age: string;
   gender: string;
+  stock: string;
+  colours: string[];
 }
 
 const EMPTY_FORM: ProductForm = {
+  brandName: "",
   name: "",
   description: "",
   discountPrice: "",
@@ -83,6 +89,8 @@ const EMPTY_FORM: ProductForm = {
   sizes: [],
   age: "",
   gender: "",
+  stock: "",
+  colours: [],
 };
 
 function toggleItem(arr: string[], val: string): string[] {
@@ -98,6 +106,7 @@ export default function Products() {
   const [modelUrl, setModelUrl] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [colourInput, setColourInput] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [previousProductId, setPreviousProductId] = useState<string | null>(null);
   const [activeImgIdx, setActiveImgIdx] = useState(0);
@@ -164,6 +173,7 @@ export default function Products() {
     setImageUrls([]);
     setModelUrl(null);
     setEditingId(null);
+    setColourInput("");
   }
 
   function openAdd() {
@@ -177,6 +187,7 @@ export default function Products() {
 
   function openEdit(product: any) {
     setForm({
+      brandName: product.brandName ?? "",
       name: product.name,
       description: product.description ?? "",
       discountPrice: String(product.discountPrice),
@@ -186,7 +197,10 @@ export default function Products() {
       sizes: product.sizes,
       age: product.age ?? "",
       gender: product.gender ?? "",
+      stock: String(product.stock ?? 0),
+      colours: product.colours ?? [],
     });
+    setColourInput("");
     setImageUrls(product.images ?? []);
     setModelUrl(product.modelUrl ?? null);
     setEditingId(product.id);
@@ -227,7 +241,7 @@ export default function Products() {
 
   async function handleFileChange(files: FileList | null) {
     if (!files) return;
-    const remaining = 2 - imageUrls.length;
+    const remaining = 4 - imageUrls.length;
     if (remaining <= 0) return;
     const toUpload = Array.from(files).slice(0, remaining);
     for (const file of toUpload) {
@@ -278,13 +292,50 @@ export default function Products() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!form.brandName.trim()) {
+      toast({ title: "Brand name is required", variant: "destructive" });
+      return;
+    }
     if (!form.name.trim()) {
       toast({ title: "Product name is required", variant: "destructive" });
       return;
     }
+    if (imageUrls.length === 0) {
+      toast({ title: "At least one product image is required", variant: "destructive" });
+      return;
+    }
+    if (!form.discountPrice || !form.actualPrice) {
+      toast({ title: "Both prices are required", variant: "destructive" });
+      return;
+    }
+    if (!form.functionCategory) {
+      toast({ title: "Category is required", variant: "destructive" });
+      return;
+    }
+    if (form.stock === "") {
+      toast({ title: "Stock quantity is required", variant: "destructive" });
+      return;
+    }
+    if (form.colours.length === 0) {
+      toast({ title: "At least one colour is required", variant: "destructive" });
+      return;
+    }
+    if (form.sizes.length === 0) {
+      toast({ title: "At least one size is required", variant: "destructive" });
+      return;
+    }
+    if (!form.age) {
+      toast({ title: "Age range is required", variant: "destructive" });
+      return;
+    }
+    if (!form.gender) {
+      toast({ title: "Gender is required", variant: "destructive" });
+      return;
+    }
     const data = {
+      brandName: form.brandName,
       name: form.name,
-      description: form.description,
+      description: form.description || undefined,
       discountPrice: parseFloat(form.discountPrice) || 0,
       actualPrice: parseFloat(form.actualPrice) || 0,
       functionCategory: form.functionCategory || undefined,
@@ -292,6 +343,8 @@ export default function Products() {
       sizes: form.sizes,
       age: form.age || undefined,
       gender: form.gender || undefined,
+      stock: parseInt(form.stock) || 0,
+      colours: form.colours,
       images: imageUrls,
       modelUrl: modelUrl || undefined,
     };
@@ -695,371 +748,463 @@ export default function Products() {
         </div>
       )}
 
-      {/* ── ADD / EDIT FORM DIALOG ── */}
-      <Dialog
-        open={formOpen}
-        onOpenChange={(open) => {
-          setFormOpen(open);
-          if (!open) resetForm();
-        }}
-      >
-        <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editingId ? "Update Product" : "Add New Product"}
-            </DialogTitle>
-          </DialogHeader>
+      {/* ── ADD / EDIT FORM — FULL PAGE OVERLAY ── */}
+      {formOpen && (() => {
+        const isPublishReady =
+          form.brandName.trim() !== "" &&
+          form.name.trim() !== "" &&
+          imageUrls.length > 0 &&
+          form.discountPrice !== "" &&
+          form.actualPrice !== "" &&
+          form.functionCategory !== "" &&
+          form.stock !== "" &&
+          form.colours.length > 0 &&
+          form.sizes.length > 0 &&
+          form.age !== "" &&
+          form.gender !== "";
 
-          <form onSubmit={handleSubmit} className="space-y-5 pb-2">
-            {/* 1. Product Name */}
-            <div className="space-y-1.5">
-              <Label>
-                Product Name <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                placeholder="e.g. Floral Summer Kurta"
-                value={form.name}
-                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-              />
+        function addColour(val: string) {
+          const trimmed = val.trim();
+          if (trimmed && !form.colours.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
+            setForm((p) => ({ ...p, colours: [...p.colours, trimmed] }));
+          }
+          setColourInput("");
+        }
+
+        return (
+          <div className="fixed inset-0 z-50 flex flex-col bg-white">
+            {/* ── Sticky header ── */}
+            <div className="flex items-center gap-2 px-3 py-2 bg-white border-b shadow-sm shrink-0">
+              <button
+                type="button"
+                aria-label="Go back"
+                onClick={() => { setFormOpen(false); resetForm(); }}
+                className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5 text-gray-700" />
+              </button>
+              <h2 className="font-semibold text-base flex-1 text-gray-800">
+                {editingId ? "Update Product" : "Add New Product"}
+              </h2>
             </div>
 
-            {/* 2. Product Image */}
-            <div className="space-y-1.5">
-              <Label>Product Image</Label>
-              <label className={`flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-xl transition-colors bg-muted/40 ${imageUrls.length >= 2 ? "opacity-50 cursor-not-allowed border-muted" : "cursor-pointer hover:border-primary/50"}`}>
-                <Upload className="w-6 h-6 text-muted-foreground mb-1" />
-                <span className="text-xs text-muted-foreground">
-                  {uploadImage.isPending
-                    ? "Uploading..."
-                    : imageUrls.length >= 2
-                    ? "Images added"
-                    : `Click to upload (${imageUrls.length}/2)`}
-                </span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => handleFileChange(e.target.files)}
-                  disabled={uploadImage.isPending || imageUrls.length >= 2}
-                />
-              </label>
-              {imageUrls.length > 0 && (
-                <div className="flex gap-2 flex-wrap mt-1">
-                  {imageUrls.map((url, i) => (
-                    <div key={i} className="relative w-16 h-16 rounded-lg border overflow-hidden">
-                      <img
-                        src={url}
-                        alt={`img-${i}`}
-                        className="w-full h-full object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setImageUrls((p) => p.filter((_, idx) => idx !== i))
-                        }
-                        className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/70 text-white rounded-full flex items-center justify-center"
-                      >
-                        <X className="w-2.5 h-2.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            {/* ── Scrollable form body ── */}
+            <div className="flex-1 overflow-y-auto">
+              <form id="add-product-form" onSubmit={handleSubmit} className="space-y-5 px-4 pt-5 pb-4">
 
-            {/* 3. 3D Model Upload */}
-            <div className="space-y-1.5">
-              <Label className="flex items-center gap-1.5">
-                <Box className="w-3.5 h-3.5 text-purple-500" />
-                3D Model <span className="text-[11px] text-muted-foreground font-normal">(optional · .glb / .gltf)</span>
-              </Label>
-              {modelUrl ? (
-                <div className="flex items-center gap-3 p-3 rounded-xl border bg-purple-50 border-purple-200">
-                  <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
-                    <Box className="w-5 h-5 text-purple-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-purple-700">3D model uploaded</p>
-                    <p className="text-[10px] text-purple-400 truncate">{modelUrl.slice(0, 40)}…</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setModelUrl(null)}
-                    className="w-6 h-6 rounded-full bg-red-100 text-red-500 flex items-center justify-center shrink-0 hover:bg-red-200 transition-colors"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
+                {/* 1. Brand Name */}
+                <div className="space-y-1.5">
+                  <Label>
+                    Brand Name <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    placeholder="e.g. Zara, H&M, Fabindia"
+                    value={form.brandName}
+                    onChange={(e) => setForm((p) => ({ ...p, brandName: e.target.value }))}
+                  />
                 </div>
-              ) : (
-                <label className={`flex flex-col items-center justify-center w-full border-2 border-dashed rounded-xl transition-colors bg-muted/40 overflow-hidden ${uploadModel.isPending ? "cursor-not-allowed border-purple-300" : "cursor-pointer hover:border-purple-400 hover:bg-purple-50/40"}`}>
-                  {uploadModel.isPending ? (
-                    <div className="w-full px-4 py-3 flex flex-col gap-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-purple-700">Uploading 3D model…</span>
-                        <span className="text-xs font-semibold text-purple-600">{Math.min(Math.round(uploadProgress), 100)}%</span>
-                      </div>
-                      <div className="w-full h-2 bg-purple-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-purple-400 to-purple-600 rounded-full transition-all duration-200 ease-out"
-                          style={{ width: `${Math.min(uploadProgress, 100)}%` }}
-                        />
-                      </div>
-                      <span className="text-[10px] text-muted-foreground text-center">Please wait, do not close this window</span>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-20">
-                      <Box className="w-5 h-5 text-purple-400 mb-1" />
-                      <span className="text-xs text-muted-foreground">Click to upload 3D model</span>
+
+                {/* 2. Product Name */}
+                <div className="space-y-1.5">
+                  <Label>
+                    Product Name <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    placeholder="e.g. Floral Summer Kurta"
+                    value={form.name}
+                    onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                  />
+                </div>
+
+                {/* 3. Product Image */}
+                <div className="space-y-1.5">
+                  <Label>
+                    Product Image <span className="text-destructive">*</span>
+                    <span className="text-[11px] text-muted-foreground font-normal ml-1">({imageUrls.length}/4)</span>
+                  </Label>
+                  {imageUrls.length > 0 && (
+                    <div className="flex gap-2 flex-wrap mb-2">
+                      {imageUrls.map((url, i) => (
+                        <div key={i} className="relative w-20 h-20 rounded-lg border overflow-hidden">
+                          <img src={url} alt={`Product image ${i + 1}`} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            aria-label={`Remove image ${i + 1}`}
+                            onClick={() => setImageUrls((p) => p.filter((_, idx) => idx !== i))}
+                            className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/70 text-white rounded-full flex items-center justify-center"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   )}
-                  <input
-                    type="file"
-                    accept=".glb,.gltf"
-                    className="hidden"
-                    onChange={(e) => handleModelFileChange(e.target.files)}
-                    disabled={uploadModel.isPending}
+                  {imageUrls.length < 4 && (
+                    <label className={`flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-xl transition-colors bg-muted/40 ${uploadImage.isPending ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-primary/50"}`}>
+                      <Upload className="w-6 h-6 text-muted-foreground mb-1" />
+                      <span className="text-xs text-muted-foreground">
+                        {uploadImage.isPending ? "Uploading..." : `Click to upload (${imageUrls.length}/4)`}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => handleFileChange(e.target.files)}
+                        disabled={uploadImage.isPending}
+                      />
+                    </label>
+                  )}
+                </div>
+
+                {/* 4. 3D Model Upload — optional */}
+                <div className="space-y-1.5">
+                  <Label className="flex items-center gap-1.5">
+                    <Box className="w-3.5 h-3.5 text-purple-500" />
+                    3D Model <span className="text-[11px] text-muted-foreground font-normal">(optional · .glb / .gltf)</span>
+                  </Label>
+                  {modelUrl ? (
+                    <div className="flex items-center gap-3 p-3 rounded-xl border bg-purple-50 border-purple-200">
+                      <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
+                        <Box className="w-5 h-5 text-purple-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-purple-700">3D model uploaded</p>
+                        <p className="text-[10px] text-purple-400 truncate">{modelUrl.slice(0, 40)}…</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setModelUrl(null)}
+                        className="w-6 h-6 rounded-full bg-red-100 text-red-500 flex items-center justify-center shrink-0 hover:bg-red-200 transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className={`flex flex-col items-center justify-center w-full border-2 border-dashed rounded-xl transition-colors bg-muted/40 overflow-hidden ${uploadModel.isPending ? "cursor-not-allowed border-purple-300" : "cursor-pointer hover:border-purple-400 hover:bg-purple-50/40"}`}>
+                      {uploadModel.isPending ? (
+                        <div className="w-full px-4 py-3 flex flex-col gap-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium text-purple-700">Uploading 3D model…</span>
+                            <span className="text-xs font-semibold text-purple-600">{Math.min(Math.round(uploadProgress), 100)}%</span>
+                          </div>
+                          <div className="w-full h-2 bg-purple-100 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-purple-400 to-purple-600 rounded-full transition-all duration-200 ease-out"
+                              style={{ width: `${Math.min(uploadProgress, 100)}%` }}
+                            />
+                          </div>
+                          <span className="text-[10px] text-muted-foreground text-center">Please wait, do not close this window</span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-20">
+                          <Box className="w-5 h-5 text-purple-400 mb-1" />
+                          <span className="text-xs text-muted-foreground">Click to upload 3D model</span>
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        accept=".glb,.gltf"
+                        className="hidden"
+                        onChange={(e) => handleModelFileChange(e.target.files)}
+                        disabled={uploadModel.isPending}
+                      />
+                    </label>
+                  )}
+                </div>
+
+                {/* 5. NexGenStudio Link */}
+                {globalLink && (
+                  <div className="rounded-xl border border-primary/20 overflow-hidden">
+                    <div className="flex items-center px-4 py-2.5 bg-primary/5 border-b border-primary/20">
+                      <span className="text-sm font-bold text-primary tracking-wide">NexGenStudio</span>
+                      <span className="text-xs text-muted-foreground ml-2">(3D Model &amp; products on Model's generator + AI Promotional Video)</span>
+                    </div>
+                    <div className="flex items-center gap-3 px-4 py-3">
+                      <LinkIcon className="w-4 h-4 text-primary shrink-0" />
+                      <a href={globalLink} target="_blank" rel="noopener noreferrer"
+                        className="flex-1 text-sm text-primary font-medium underline underline-offset-2 truncate">
+                        {globalLink}
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => { navigator.clipboard.writeText(globalLink); toast({ title: "Link copied!" }); }}
+                        className="p-1.5 rounded-lg hover:bg-primary/10 transition-colors shrink-0">
+                        <Copy className="w-4 h-4 text-muted-foreground" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 6. Description — optional */}
+                <div className="space-y-1.5">
+                  <Label className="flex items-center gap-1.5">
+                    Description
+                    <span className="text-[11px] text-muted-foreground font-normal">(optional)</span>
+                  </Label>
+                  <Textarea
+                    rows={3}
+                    placeholder="Describe this product..."
+                    value={form.description}
+                    onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
                   />
-                </label>
-              )}
-            </div>
-
-            {/* 4. NexGenStudio Link */}
-            {globalLink && (
-              <div className="rounded-xl border border-primary/20 overflow-hidden">
-                <div className="flex items-center px-4 py-2.5 bg-primary/5 border-b border-primary/20">
-                  <span className="text-sm font-bold text-primary tracking-wide">NexGenStudio</span>
-                  <span className="text-xs text-muted-foreground ml-2">(3D Model &amp; products on Model's generator + AI Promotional Video)</span>
                 </div>
-                <div className="flex items-center gap-3 px-4 py-3">
-                  <LinkIcon className="w-4 h-4 text-primary shrink-0" />
-                  <a href={globalLink} target="_blank" rel="noopener noreferrer"
-                    className="flex-1 text-sm text-primary font-medium underline underline-offset-2 truncate">
-                    {globalLink}
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => { navigator.clipboard.writeText(globalLink); toast({ title: "Link copied!" }); }}
-                    className="p-1.5 rounded-lg hover:bg-primary/10 transition-colors shrink-0">
-                    <Copy className="w-4 h-4 text-muted-foreground" />
-                  </button>
+
+                {/* 7. Price — side by side */}
+                <div className="space-y-1.5">
+                  <Label>
+                    Price <span className="text-destructive">*</span>
+                  </Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Discount Price</p>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₹</span>
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          placeholder="0"
+                          className="pl-7"
+                          value={form.discountPrice}
+                          onChange={(e) => setForm((p) => ({ ...p, discountPrice: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Actual Price</p>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₹</span>
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          placeholder="0"
+                          className="pl-7"
+                          value={form.actualPrice}
+                          onChange={(e) => setForm((p) => ({ ...p, actualPrice: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  {(form.discountPrice || form.actualPrice) && (
+                    <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2">
+                      <span className="text-base font-bold text-green-700">₹{form.discountPrice || "0"}</span>
+                      {form.actualPrice && parseFloat(form.actualPrice) > parseFloat(form.discountPrice || "0") && (
+                        <>
+                          <span className="text-sm text-muted-foreground line-through">₹{form.actualPrice}</span>
+                          <span className="text-xs font-semibold text-red-500">
+                            {Math.round(((parseFloat(form.actualPrice) - parseFloat(form.discountPrice || "0")) / parseFloat(form.actualPrice)) * 100)}% OFF
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
 
-            {/* 5. Description */}
-            <div className="space-y-1.5">
-              <Label>Description</Label>
-              <Textarea
-                rows={2}
-                placeholder="Describe this product..."
-                value={form.description}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, description: e.target.value }))
-                }
-              />
-            </div>
+                {/* 8. Category */}
+                <div className="space-y-1.5">
+                  <Label>
+                    Category <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={form.functionCategory || ""}
+                    onValueChange={(v) => setForm((p) => ({ ...p, functionCategory: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories?.map((c) => (
+                        <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {!categories?.length && (
+                    <p className="text-xs text-muted-foreground">No categories yet — go to Categories page to add some.</p>
+                  )}
+                </div>
 
-            {/* 6. Price — Discount + Actual side by side */}
-            <div className="space-y-1.5">
-              <Label>Price</Label>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Discount Price</p>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                      ₹
-                    </span>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      className="pl-7"
-                      value={form.discountPrice}
-                      onChange={(e) =>
-                        setForm((p) => ({ ...p, discountPrice: e.target.value }))
-                      }
-                    />
+                {/* 9. Product Type chips */}
+                <div className="space-y-1.5">
+                  <Label>Type <span className="text-destructive">*</span></Label>
+                  <div className="flex gap-2 flex-wrap">
+                    {PRODUCT_TYPES.map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setForm((p) => ({ ...p, productType: t }))}
+                        className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                          form.productType === t
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-muted text-muted-foreground border-border hover:border-primary/40"
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Actual Price</p>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                      ₹
-                    </span>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      className="pl-7"
-                      value={form.actualPrice}
-                      onChange={(e) =>
-                        setForm((p) => ({ ...p, actualPrice: e.target.value }))
+
+                {/* 10. Stock */}
+                <div className="space-y-1.5">
+                  <Label className="flex items-center gap-1.5">
+                    <Package className="w-3.5 h-3.5 text-gray-500" />
+                    Stock <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="e.g. 50"
+                    min={0}
+                    value={form.stock}
+                    onChange={(e) => setForm((p) => ({ ...p, stock: e.target.value }))}
+                  />
+                </div>
+
+                {/* 10. Colour — tag input */}
+                <div className="space-y-1.5">
+                  <Label className="flex items-center gap-1.5">
+                    <Palette className="w-3.5 h-3.5 text-pink-500" />
+                    Colour <span className="text-destructive">*</span>
+                    <span className="text-[11px] text-muted-foreground font-normal">(press Enter or comma to add)</span>
+                  </Label>
+                  {form.colours.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {form.colours.map((c) => (
+                        <span key={c} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-pink-50 border border-pink-200 text-pink-700 text-xs font-medium">
+                          {c}
+                          <button
+                            type="button"
+                            aria-label={`Remove colour ${c}`}
+                            onClick={() => setForm((p) => ({ ...p, colours: p.colours.filter((x) => x !== c) }))}
+                            className="ml-0.5 hover:text-red-500 transition-colors"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <Input
+                    placeholder="e.g. Red, Blue, Black"
+                    value={colourInput}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v.endsWith(",")) {
+                        addColour(v.slice(0, -1));
+                      } else {
+                        setColourInput(v);
                       }
-                    />
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addColour(colourInput);
+                      }
+                    }}
+                    onBlur={() => { if (colourInput.trim()) addColour(colourInput); }}
+                  />
+                </div>
+
+                {/* 11. Size chips */}
+                <div className="space-y-1.5">
+                  <Label>
+                    Size <span className="text-destructive">*</span>
+                  </Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {SIZE_OPTIONS.map((s) => {
+                      const selected = form.sizes.includes(s);
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setForm((p) => ({ ...p, sizes: toggleItem(p.sizes, s) }))}
+                          className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+                            selected
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-background text-muted-foreground border-border hover:border-primary/40"
+                          }`}
+                        >
+                          {s}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-              </div>
-              {/* Price preview */}
-              {(form.discountPrice || form.actualPrice) && (
-                <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2">
-                  <span className="text-base font-bold text-green-700">
-                    ₹{form.discountPrice || "0"}
-                  </span>
-                  {form.actualPrice &&
-                    parseFloat(form.actualPrice) >
-                      parseFloat(form.discountPrice || "0") && (
-                      <>
-                        <span className="text-sm text-muted-foreground line-through">
-                          ₹{form.actualPrice}
-                        </span>
-                        <span className="text-xs font-semibold text-red-500">
-                          {Math.round(
-                            ((parseFloat(form.actualPrice) -
-                              parseFloat(form.discountPrice || "0")) /
-                              parseFloat(form.actualPrice)) *
-                              100
-                          )}
-                          % OFF
-                        </span>
-                      </>
-                    )}
+
+                {/* 12. Age selector */}
+                <div className="space-y-1.5">
+                  <Label>
+                    Age <span className="text-destructive">*</span>
+                  </Label>
+                  <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pr-1">
+                    {AGE_OPTIONS.map((a) => (
+                      <button
+                        key={a}
+                        type="button"
+                        onClick={() => setForm((p) => ({ ...p, age: p.age === a ? "" : a }))}
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors shrink-0 ${
+                          form.age === a
+                            ? "bg-orange-500 text-white border-orange-500"
+                            : "bg-background text-muted-foreground border-border hover:border-orange-300"
+                        }`}
+                      >
+                        {a}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              )}
+
+                {/* 13. Gender selector */}
+                <div className="space-y-1.5">
+                  <Label>
+                    Gender <span className="text-destructive">*</span>
+                  </Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {GENDER_OPTIONS.map((g) => (
+                      <button
+                        key={g}
+                        type="button"
+                        onClick={() => setForm((p) => ({ ...p, gender: p.gender === g ? "" : g }))}
+                        className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                          form.gender === g
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : "bg-background text-muted-foreground border-border hover:border-blue-300"
+                        }`}
+                      >
+                        {g}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Spacer for sticky footer */}
+                <div className="h-2" />
+              </form>
             </div>
 
-            {/* 7. Category */}
-            <div className="space-y-1.5">
-              <Label>Category</Label>
-              <Select
-                value={form.functionCategory || "none"}
-                onValueChange={(v) =>
-                  setForm((p) => ({
-                    ...p,
-                    functionCategory: v === "none" ? "" : v,
-                  }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {categories?.map((c) => (
-                    <SelectItem key={c.id} value={c.name}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {!categories?.length && (
-                <p className="text-xs text-muted-foreground">
-                  No categories yet — go to Categories page to add some.
+            {/* ── Sticky Publish footer ── */}
+            <div className="shrink-0 bg-white border-t shadow-[0_-2px_12px_rgba(0,0,0,0.08)] px-4 py-3">
+              {!isPublishReady && (
+                <p className="text-[11px] text-muted-foreground text-center mb-2">
+                  Fill all required fields <span className="text-destructive">*</span> to publish
                 </p>
               )}
+              <Button
+                type="submit"
+                form="add-product-form"
+                disabled={!isPublishReady || isPending || uploadImage.isPending}
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold text-base py-5 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+              >
+                {isPending
+                  ? "Publishing..."
+                  : editingId
+                  ? "Update Product"
+                  : "Publish"}
+              </Button>
             </div>
-
-            {/* 8. Product Type chips */}
-            <div className="space-y-1.5">
-              <Label>Type</Label>
-              <div className="flex gap-2 flex-wrap">
-                {PRODUCT_TYPES.map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setForm((p) => ({ ...p, productType: t }))}
-                    className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                      form.productType === t
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-muted text-muted-foreground border-border hover:border-primary/40"
-                    }`}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 9. Size chips */}
-            <div className="space-y-1.5">
-              <Label>Size</Label>
-              <div className="flex flex-wrap gap-1.5">
-                {SIZE_OPTIONS.map((s) => {
-                  const selected = form.sizes.includes(s);
-                  return (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => setForm((p) => ({ ...p, sizes: toggleItem(p.sizes, s) }))}
-                      className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
-                        selected
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-background text-muted-foreground border-border hover:border-primary/40"
-                      }`}
-                    >
-                      {s}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 10. Age selector */}
-            <div className="space-y-1.5">
-              <Label>Age</Label>
-              <div className="flex flex-wrap gap-1.5">
-                {AGE_OPTIONS.map((a) => (
-                  <button
-                    key={a}
-                    type="button"
-                    onClick={() => setForm((p) => ({ ...p, age: p.age === a ? "" : a }))}
-                    className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
-                      form.age === a
-                        ? "bg-orange-500 text-white border-orange-500"
-                        : "bg-background text-muted-foreground border-border hover:border-orange-300"
-                    }`}
-                  >
-                    {a}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 11. Gender selector */}
-            <div className="space-y-1.5">
-              <Label>Gender</Label>
-              <div className="flex flex-wrap gap-1.5">
-                {GENDER_OPTIONS.map((g) => (
-                  <button
-                    key={g}
-                    type="button"
-                    onClick={() => setForm((p) => ({ ...p, gender: p.gender === g ? "" : g }))}
-                    className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
-                      form.gender === g
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-background text-muted-foreground border-border hover:border-blue-300"
-                    }`}
-                  >
-                    {g}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Done / Update button */}
-            <Button
-              type="submit"
-              disabled={isPending || uploadImage.isPending}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold text-base py-5"
-            >
-              {isPending
-                ? "Saving..."
-                : editingId
-                ? "Update Product"
-                : "Done"}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+          </div>
+        );
+      })()}
 
       {/* ── PRODUCT DETAIL DIALOG (Meesho/Flipkart full-screen) ── */}
       {selectedProduct && (

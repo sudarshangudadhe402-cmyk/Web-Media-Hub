@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IProduct extends Document {
   name: string;
+  brandName?: string;
   description?: string;
   images: string[];
   modelUrl?: string;
@@ -12,6 +13,8 @@ export interface IProduct extends Document {
   sizes: string[];
   age?: string;
   gender?: string;
+  stock: number;
+  colours: string[];
   likeCount: number;
   tryOnLikeCount: number;
   storeId?: string;
@@ -21,6 +24,7 @@ export interface IProduct extends Document {
 const ProductSchema = new Schema<IProduct>(
   {
     name: { type: String, required: true, trim: true },
+    brandName: { type: String, trim: true },
     description: { type: String },
     images: [{ type: String }],
     modelUrl: { type: String },
@@ -35,6 +39,8 @@ const ProductSchema = new Schema<IProduct>(
     sizes: [{ type: String }],
     age: { type: String },
     gender: { type: String },
+    stock: { type: Number, default: 0 },
+    colours: [{ type: String }],
     likeCount: { type: Number, default: 0 },
     tryOnLikeCount: { type: Number, default: 0 },
     storeId: { type: String },

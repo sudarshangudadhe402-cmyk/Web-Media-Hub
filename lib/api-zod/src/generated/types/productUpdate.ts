@@ -9,6 +9,7 @@ import type { ProductUpdateProductType } from './productUpdateProductType';
 
 export interface ProductUpdate {
   name?: string;
+  brandName?: string;
   description?: string;
   images?: string[];
   /** URL of the 3D model file (.glb/.gltf) */
@@ -18,4 +19,6 @@ export interface ProductUpdate {
   functionCategory?: string;
   productType?: ProductUpdateProductType;
   sizes?: string[];
+  stock?: number;
+  colours?: string[];
 }

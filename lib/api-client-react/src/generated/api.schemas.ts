@@ -75,6 +75,8 @@ export interface Product {
   id: string;
   name: string;
   /** @nullable */
+  brandName?: string | null;
+  /** @nullable */
   description?: string | null;
   images: string[];
   /**
@@ -88,6 +90,8 @@ export interface Product {
   functionCategory?: string | null;
   productType: ProductProductType;
   sizes: string[];
+  stock?: number;
+  colours?: string[];
   likeCount: number;
   /** @nullable */
   storeId?: string | null;
@@ -106,6 +110,7 @@ export const ProductInputProductType = {
 
 export interface ProductInput {
   name: string;
+  brandName?: string;
   description?: string;
   images: string[];
   /** URL of the 3D model file (.glb/.gltf) */
@@ -115,6 +120,8 @@ export interface ProductInput {
   functionCategory?: string;
   productType: ProductInputProductType;
   sizes: string[];
+  stock?: number;
+  colours?: string[];
 }
 
 export type ProductUpdateProductType = typeof ProductUpdateProductType[keyof typeof ProductUpdateProductType];
@@ -129,6 +136,7 @@ export const ProductUpdateProductType = {
 
 export interface ProductUpdate {
   name?: string;
+  brandName?: string;
   description?: string;
   images?: string[];
   /** URL of the 3D model file (.glb/.gltf) */
@@ -138,6 +146,8 @@ export interface ProductUpdate {
   functionCategory?: string;
   productType?: ProductUpdateProductType;
   sizes?: string[];
+  stock?: number;
+  colours?: string[];
 }
 
 export interface LikeResponse {

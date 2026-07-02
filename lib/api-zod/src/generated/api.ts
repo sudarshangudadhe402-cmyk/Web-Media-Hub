@@ -104,6 +104,7 @@ export const ListProductsQueryParams = zod.object({
 export const ListProductsResponseItem = zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "brandName": zod.string().nullish(),
   "description": zod.string().nullish(),
   "images": zod.array(zod.string()),
   "modelUrl": zod.string().nullish().describe('URL of the 3D model file (.glb\/.gltf)'),
@@ -112,6 +113,8 @@ export const ListProductsResponseItem = zod.object({
   "functionCategory": zod.string().nullish(),
   "productType": zod.enum(['Top', 'Bottom', 'Full Outfit', 'Functional']),
   "sizes": zod.array(zod.string()),
+  "stock": zod.number().optional(),
+  "colours": zod.array(zod.string()).optional(),
   "likeCount": zod.number(),
   "storeId": zod.string().nullish(),
   "createdAt": zod.string()
@@ -124,6 +127,7 @@ export const ListProductsResponse = zod.array(ListProductsResponseItem)
  */
 export const CreateProductBody = zod.object({
   "name": zod.string(),
+  "brandName": zod.string().optional(),
   "description": zod.string().optional(),
   "images": zod.array(zod.string()),
   "modelUrl": zod.string().optional().describe('URL of the 3D model file (.glb\/.gltf)'),
@@ -131,7 +135,9 @@ export const CreateProductBody = zod.object({
   "actualPrice": zod.number(),
   "functionCategory": zod.string().optional(),
   "productType": zod.enum(['Top', 'Bottom', 'Full Outfit', 'Functional']),
-  "sizes": zod.array(zod.string())
+  "sizes": zod.array(zod.string()),
+  "stock": zod.number().optional(),
+  "colours": zod.array(zod.string()).optional()
 })
 
 
@@ -145,6 +151,7 @@ export const GetProductParams = zod.object({
 export const GetProductResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "brandName": zod.string().nullish(),
   "description": zod.string().nullish(),
   "images": zod.array(zod.string()),
   "modelUrl": zod.string().nullish().describe('URL of the 3D model file (.glb\/.gltf)'),
@@ -153,6 +160,8 @@ export const GetProductResponse = zod.object({
   "functionCategory": zod.string().nullish(),
   "productType": zod.enum(['Top', 'Bottom', 'Full Outfit', 'Functional']),
   "sizes": zod.array(zod.string()),
+  "stock": zod.number().optional(),
+  "colours": zod.array(zod.string()).optional(),
   "likeCount": zod.number(),
   "storeId": zod.string().nullish(),
   "createdAt": zod.string()
@@ -168,6 +177,7 @@ export const UpdateProductParams = zod.object({
 
 export const UpdateProductBody = zod.object({
   "name": zod.string().optional(),
+  "brandName": zod.string().optional(),
   "description": zod.string().optional(),
   "images": zod.array(zod.string()).optional(),
   "modelUrl": zod.string().optional().describe('URL of the 3D model file (.glb\/.gltf)'),
@@ -175,12 +185,15 @@ export const UpdateProductBody = zod.object({
   "actualPrice": zod.number().optional(),
   "functionCategory": zod.string().optional(),
   "productType": zod.enum(['Top', 'Bottom', 'Full Outfit', 'Functional']).optional(),
-  "sizes": zod.array(zod.string()).optional()
+  "sizes": zod.array(zod.string()).optional(),
+  "stock": zod.number().optional(),
+  "colours": zod.array(zod.string()).optional()
 })
 
 export const UpdateProductResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "brandName": zod.string().nullish(),
   "description": zod.string().nullish(),
   "images": zod.array(zod.string()),
   "modelUrl": zod.string().nullish().describe('URL of the 3D model file (.glb\/.gltf)'),
@@ -189,6 +202,8 @@ export const UpdateProductResponse = zod.object({
   "functionCategory": zod.string().nullish(),
   "productType": zod.enum(['Top', 'Bottom', 'Full Outfit', 'Functional']),
   "sizes": zod.array(zod.string()),
+  "stock": zod.number().optional(),
+  "colours": zod.array(zod.string()).optional(),
   "likeCount": zod.number(),
   "storeId": zod.string().nullish(),
   "createdAt": zod.string()
@@ -287,6 +302,7 @@ export const ListBookingsResponseItem = zod.object({
   "product": zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "brandName": zod.string().nullish(),
   "description": zod.string().nullish(),
   "images": zod.array(zod.string()),
   "modelUrl": zod.string().nullish().describe('URL of the 3D model file (.glb\/.gltf)'),
@@ -295,6 +311,8 @@ export const ListBookingsResponseItem = zod.object({
   "functionCategory": zod.string().nullish(),
   "productType": zod.enum(['Top', 'Bottom', 'Full Outfit', 'Functional']),
   "sizes": zod.array(zod.string()),
+  "stock": zod.number().optional(),
+  "colours": zod.array(zod.string()).optional(),
   "likeCount": zod.number(),
   "storeId": zod.string().nullish(),
   "createdAt": zod.string()
@@ -334,6 +352,7 @@ export const IgnoreBookingResponse = zod.object({
   "product": zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "brandName": zod.string().nullish(),
   "description": zod.string().nullish(),
   "images": zod.array(zod.string()),
   "modelUrl": zod.string().nullish().describe('URL of the 3D model file (.glb\/.gltf)'),
@@ -342,6 +361,8 @@ export const IgnoreBookingResponse = zod.object({
   "functionCategory": zod.string().nullish(),
   "productType": zod.enum(['Top', 'Bottom', 'Full Outfit', 'Functional']),
   "sizes": zod.array(zod.string()),
+  "stock": zod.number().optional(),
+  "colours": zod.array(zod.string()).optional(),
   "likeCount": zod.number(),
   "storeId": zod.string().nullish(),
   "createdAt": zod.string()
@@ -506,6 +527,7 @@ export const GetDashboardSummaryResponse = zod.object({
   "product": zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "brandName": zod.string().nullish(),
   "description": zod.string().nullish(),
   "images": zod.array(zod.string()),
   "modelUrl": zod.string().nullish().describe('URL of the 3D model file (.glb\/.gltf)'),
@@ -514,6 +536,8 @@ export const GetDashboardSummaryResponse = zod.object({
   "functionCategory": zod.string().nullish(),
   "productType": zod.enum(['Top', 'Bottom', 'Full Outfit', 'Functional']),
   "sizes": zod.array(zod.string()),
+  "stock": zod.number().optional(),
+  "colours": zod.array(zod.string()).optional(),
   "likeCount": zod.number(),
   "storeId": zod.string().nullish(),
   "createdAt": zod.string()

@@ -9,6 +9,7 @@ import type { ProductInputProductType } from './productInputProductType';
 
 export interface ProductInput {
   name: string;
+  brandName?: string;
   description?: string;
   images: string[];
   /** URL of the 3D model file (.glb/.gltf) */
@@ -18,4 +19,6 @@ export interface ProductInput {
   functionCategory?: string;
   productType: ProductInputProductType;
   sizes: string[];
+  stock?: number;
+  colours?: string[];
 }

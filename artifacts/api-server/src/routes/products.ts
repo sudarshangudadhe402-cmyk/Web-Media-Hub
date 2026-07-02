@@ -11,6 +11,7 @@ function formatProduct(p: InstanceType<typeof Product>) {
   return {
     id: String(p._id),
     name: p.name,
+    brandName: p.brandName ?? null,
     description: p.description ?? null,
     images: p.images,
     modelUrl: p.modelUrl ?? null,
@@ -21,6 +22,8 @@ function formatProduct(p: InstanceType<typeof Product>) {
     sizes: p.sizes,
     age: p.age ?? null,
     gender: p.gender ?? null,
+    stock: p.stock ?? 0,
+    colours: p.colours ?? [],
     likeCount: p.likeCount,
     tryOnLikeCount: p.tryOnLikeCount ?? 0,
     storeId: p.storeId ?? null,
@@ -56,7 +59,7 @@ router.get("/products", requireAuth, async (req: AuthRequest, res) => {
 
 router.post("/products", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { name, description, images, modelUrl, discountPrice, actualPrice, functionCategory, productType, sizes, age, gender } = req.body;
+    const { name, brandName, description, images, modelUrl, discountPrice, actualPrice, functionCategory, productType, sizes, age, gender, stock, colours } = req.body;
     const userId = String(req.user!._id);
     const store = await getMyStore(userId);
 
@@ -73,6 +76,7 @@ router.post("/products", requireAuth, async (req: AuthRequest, res) => {
 
     const product = await Product.create({
       name,
+      brandName,
       description,
       images: images || [],
       modelUrl,
@@ -83,6 +87,8 @@ router.post("/products", requireAuth, async (req: AuthRequest, res) => {
       sizes: sizes || [],
       age,
       gender,
+      stock: stock ?? 0,
+      colours: colours || [],
       storeId: String(store._id),
     });
 
