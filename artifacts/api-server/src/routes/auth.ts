@@ -16,7 +16,8 @@ import {
   ForgotPasswordResetSchema,
 } from "../schemas/authSchemas";
 
-const SUPER_ADMIN_ACCESS_CODE = process.env.SUPER_ADMIN_ACCESS_CODE || "WMH@2024";
+const SUPER_ADMIN_ACCESS_CODE = process.env.SUPER_ADMIN_ACCESS_CODE;
+if (!SUPER_ADMIN_ACCESS_CODE) throw new Error("SUPER_ADMIN_ACCESS_CODE env var is required");
 
 // ─── Brute-force protection with progressive delay (in-memory) ───────────────
 const MAX_ATTEMPTS = 5;
