@@ -840,19 +840,15 @@ export default function Dashboard() {
           <Package className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent className="px-4 pb-4">
-          <div className="text-3xl font-extrabold text-gray-900">{summary.totalProducts}</div>
-          <div className="grid grid-cols-4 gap-x-3 mt-2">
-            {[
-              { label: "Top", val: summary.categoryCounts.Top },
-              { label: "Bottom", val: summary.categoryCounts.Bottom },
-              { label: "Outfit", val: summary.categoryCounts["Full Outfit"] },
-              { label: "Func", val: summary.categoryCounts.Functional },
-            ].map(({ label, val }) => (
-              <div key={label} className="flex items-center gap-1">
-                <span className="text-[10px] text-muted-foreground">{label}:</span>
-                <span className="text-[10px] font-bold text-gray-700">{val}</span>
-              </div>
-            ))}
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="text-[11px] text-muted-foreground mb-0.5">Categories</p>
+              <div className="text-3xl font-extrabold text-gray-900">{(summary as any).totalCategories ?? 0}</div>
+            </div>
+            <div className="text-right">
+              <p className="text-[11px] text-muted-foreground mb-0.5">Products</p>
+              <div className="text-3xl font-extrabold text-gray-900">{summary.totalProducts}</div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -892,8 +888,13 @@ export default function Dashboard() {
           <User className="h-4 w-4 text-blue-500" />
         </CardHeader>
         <CardContent>
-          <p className="text-xs text-muted-foreground">View all customer accounts registered on your store</p>
-          <p className="text-xs text-blue-600 font-semibold mt-1">Click to manage →</p>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="text-3xl font-extrabold text-gray-900">{(summary as any).customerAccountCount ?? 0}</div>
+              <p className="text-xs text-muted-foreground mt-0.5">Registered customers</p>
+            </div>
+            <p className="text-xs text-blue-600 font-semibold">Click to manage →</p>
+          </div>
         </CardContent>
       </Card>
 

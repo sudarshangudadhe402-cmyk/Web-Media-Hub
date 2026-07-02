@@ -13,7 +13,6 @@ export * from './category';
 export * from './categoryInput';
 export * from './changePasswordInput';
 export * from './dashboardSummary';
-export * from './dashboardSummaryCategoryCounts';
 export * from './deleteResponse';
 export * from './errorResponse';
 export * from './healthStatus';

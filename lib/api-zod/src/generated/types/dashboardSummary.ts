@@ -6,11 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { Booking } from './booking';
-import type { DashboardSummaryCategoryCounts } from './dashboardSummaryCategoryCounts';
 
 export interface DashboardSummary {
   totalProducts: number;
-  categoryCounts: DashboardSummaryCategoryCounts;
+  totalCategories: number;
+  customerAccountCount: number;
   activeBookings: number;
   unreadNotifications: number;
   recentBookings?: Booking[];

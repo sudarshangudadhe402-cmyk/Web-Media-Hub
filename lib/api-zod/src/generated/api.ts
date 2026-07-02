@@ -513,12 +513,8 @@ export const MarkNotificationsReadResponse = zod.object({
  */
 export const GetDashboardSummaryResponse = zod.object({
   "totalProducts": zod.number(),
-  "categoryCounts": zod.object({
-  "Top": zod.number(),
-  "Bottom": zod.number(),
-  "Full Outfit": zod.number(),
-  "Functional": zod.number()
-}),
+  "totalCategories": zod.number(),
+  "customerAccountCount": zod.number(),
   "activeBookings": zod.number(),
   "unreadNotifications": zod.number(),
   "recentBookings": zod.array(zod.object({

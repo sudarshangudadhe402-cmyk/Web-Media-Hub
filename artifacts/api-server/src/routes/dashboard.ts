@@ -5,6 +5,7 @@ import { Notification } from "../models/Notification";
 import { Store } from "../models/Store";
 import { StoreVisitor } from "../models/StoreVisitor";
 import { LoyaltyCard } from "../models/LoyaltyCard";
+import { CustomerAccount } from "../models/CustomerAccount";
 import { AuthRequest, requireAuth } from "../middlewares/auth";
 import { requireDb } from "../middlewares/dbCheck";
 
@@ -25,25 +26,18 @@ router.get("/dashboard/summary", requireAuth, async (req: AuthRequest, res) => {
 
     const [
       totalProducts,
-      topCount,
-      bottomCount,
-      fullOutfitCount,
-      functionalCount,
+      distinctCategories,
+      customerAccountCount,
       unreadNotifications,
       dayVisitorsAgg,
       monthVisitorsAgg,
       allVisitorsAgg,
     ] = await Promise.all([
       Product.countDocuments(storeFilter),
-      // Top/Bottom/Full Outfit: count ALL products of that type (including those that also have a functionCategory)
-      Product.countDocuments({ ...storeFilter, productType: "Top" }),
-      Product.countDocuments({ ...storeFilter, productType: "Bottom" }),
-      Product.countDocuments({ ...storeFilter, productType: "Full Outfit" }),
-      // Functional: products that have a functionCategory set (any productType)
-      Product.countDocuments({
-        ...storeFilter,
-        functionCategory: { $exists: true, $nin: [null, ""] },
-      }),
+      storeId
+        ? Product.distinct("functionCategory", { storeId, functionCategory: { $exists: true, $nin: [null, ""] } })
+        : Promise.resolve([]),
+      storeId ? CustomerAccount.countDocuments({ storeId }) : Promise.resolve(0),
       storeId ? Notification.countDocuments({ read: false, storeId }) : Promise.resolve(0),
       storeId
         ? StoreVisitor.aggregate([
@@ -123,12 +117,8 @@ router.get("/dashboard/summary", requireAuth, async (req: AuthRequest, res) => {
 
     res.json({
       totalProducts,
-      categoryCounts: {
-        Top: topCount,
-        Bottom: bottomCount,
-        "Full Outfit": fullOutfitCount,
-        Functional: functionalCount,
-      },
+      totalCategories: (distinctCategories as string[]).length,
+      customerAccountCount,
       activeBookings,
       unseenBookings,
       unseenLoyaltyCards,

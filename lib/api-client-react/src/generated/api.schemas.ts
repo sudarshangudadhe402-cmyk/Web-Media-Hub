@@ -264,16 +264,10 @@ export interface Notification {
   createdAt: string;
 }
 
-export type DashboardSummaryCategoryCounts = {
-  Top: number;
-  Bottom: number;
-  'Full Outfit': number;
-  Functional: number;
-};
-
 export interface DashboardSummary {
   totalProducts: number;
-  categoryCounts: DashboardSummaryCategoryCounts;
+  totalCategories: number;
+  customerAccountCount: number;
   activeBookings: number;
   unreadNotifications: number;
   recentBookings?: Booking[];

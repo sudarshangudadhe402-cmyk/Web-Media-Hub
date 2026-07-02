@@ -919,22 +919,14 @@ components:
 
     DashboardSummary:
       type: object
-      required: [totalProducts, categoryCounts, activeBookings, unreadNotifications]
+      required: [totalProducts, totalCategories, customerAccountCount, activeBookings, unreadNotifications]
       properties:
         totalProducts:
           type: integer
-        categoryCounts:
-          type: object
-          properties:
-            Top:
-              type: integer
-            Bottom:
-              type: integer
-            "Full Outfit":
-              type: integer
-            Functional:
-              type: integer
-          required: [Top, Bottom, "Full Outfit", Functional]
+        totalCategories:
+          type: integer
+        customerAccountCount:
+          type: integer
         activeBookings:
           type: integer
         unreadNotifications:
