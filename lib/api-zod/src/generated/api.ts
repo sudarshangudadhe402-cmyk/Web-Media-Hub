@@ -134,7 +134,7 @@ export const CreateProductBody = zod.object({
   "discountPrice": zod.number(),
   "actualPrice": zod.number(),
   "functionCategory": zod.string().optional(),
-  "productType": zod.enum(['Top', 'Bottom', 'Full Outfit', 'Functional']),
+  "productType": zod.enum(['Top', 'Bottom', 'Full Outfit', 'Functional']).optional(),
   "sizes": zod.array(zod.string()),
   "stock": zod.number().optional(),
   "colours": zod.array(zod.string()).optional()

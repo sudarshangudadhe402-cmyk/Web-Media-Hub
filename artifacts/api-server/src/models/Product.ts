@@ -34,7 +34,6 @@ const ProductSchema = new Schema<IProduct>(
     productType: {
       type: String,
       enum: ["Top", "Bottom", "Full Outfit", "Functional"],
-      required: true,
     },
     sizes: [{ type: String }],
     age: { type: String },

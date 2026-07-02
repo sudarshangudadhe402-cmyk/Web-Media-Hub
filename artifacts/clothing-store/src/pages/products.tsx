@@ -70,7 +70,6 @@ interface ProductForm {
   discountPrice: string;
   actualPrice: string;
   functionCategory: string;
-  productType: ProductType;
   sizes: string[];
   age: string;
   gender: string;
@@ -85,7 +84,6 @@ const EMPTY_FORM: ProductForm = {
   discountPrice: "",
   actualPrice: "",
   functionCategory: "",
-  productType: "Top",
   sizes: [],
   age: "",
   gender: "",
@@ -193,7 +191,6 @@ export default function Products() {
       discountPrice: String(product.discountPrice),
       actualPrice: String(product.actualPrice),
       functionCategory: product.functionCategory ?? "",
-      productType: product.productType,
       sizes: product.sizes,
       age: product.age ?? "",
       gender: product.gender ?? "",
@@ -339,7 +336,6 @@ export default function Products() {
       discountPrice: parseFloat(form.discountPrice) || 0,
       actualPrice: parseFloat(form.actualPrice) || 0,
       functionCategory: form.functionCategory || undefined,
-      productType: form.productType,
       sizes: form.sizes,
       age: form.age || undefined,
       gender: form.gender || undefined,
@@ -1023,28 +1019,7 @@ export default function Products() {
                   )}
                 </div>
 
-                {/* 9. Product Type chips */}
-                <div className="space-y-1.5">
-                  <Label>Type <span className="text-destructive">*</span></Label>
-                  <div className="flex gap-2 flex-wrap">
-                    {PRODUCT_TYPES.map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setForm((p) => ({ ...p, productType: t }))}
-                        className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                          form.productType === t
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-muted text-muted-foreground border-border hover:border-primary/40"
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 10. Stock */}
+                {/* 9. Stock */}
                 <div className="space-y-1.5">
                   <Label className="flex items-center gap-1.5">
                     <Package className="w-3.5 h-3.5 text-gray-500" />

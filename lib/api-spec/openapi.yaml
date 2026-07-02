@@ -667,7 +667,7 @@ components:
 
     ProductInput:
       type: object
-      required: [name, discountPrice, actualPrice, productType, sizes, images]
+      required: [name, discountPrice, actualPrice, sizes, images]
       properties:
         name:
           type: string

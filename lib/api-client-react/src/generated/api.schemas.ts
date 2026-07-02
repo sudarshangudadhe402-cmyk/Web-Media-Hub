@@ -118,7 +118,7 @@ export interface ProductInput {
   discountPrice: number;
   actualPrice: number;
   functionCategory?: string;
-  productType: ProductInputProductType;
+  productType?: ProductInputProductType;
   sizes: string[];
   stock?: number;
   colours?: string[];
