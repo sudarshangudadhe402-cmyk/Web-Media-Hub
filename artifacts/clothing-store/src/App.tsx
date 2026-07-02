@@ -22,6 +22,7 @@ import LegalAgreement from "@/pages/legal-agreement";
 import MarketingSourceSelect from "@/pages/marketing-source-select";
 import SalesLedger from "@/pages/sales-ledger";
 import DemoStore from "@/pages/demo-store";
+import PartnershipPage from "@/pages/partnership";
 import { Layout } from "@/components/layout";
 
 const queryClient = new QueryClient();
@@ -188,6 +189,7 @@ function Router() {
       </Route>
       <Route path="/demo" component={DemoStore} />
       <Route path="/store/:slug" component={PublicStore} />
+      <Route path="/partnership/:type/:code" component={PartnershipPage} />
       <Route component={NotFound} />
     </Switch>
   );

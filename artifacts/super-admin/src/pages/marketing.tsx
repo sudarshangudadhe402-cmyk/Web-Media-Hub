@@ -19,8 +19,7 @@ import {
 
 function partnerLink(type: "influencer" | "ambassador" | "referral", code: string) {
   const origin = window.location.origin;
-  const base = (import.meta.env.BASE_URL || "/super-admin").replace(/\/$/, "");
-  return `${origin}${base}/partnership/${type}/${code}`;
+  return `${origin}/partnership/${type}/${code}`;
 }
 
 function copyLink(type: "influencer" | "ambassador" | "referral", code: string, toast: any) {
