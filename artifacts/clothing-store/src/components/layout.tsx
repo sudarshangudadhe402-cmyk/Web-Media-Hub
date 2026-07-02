@@ -36,11 +36,8 @@ import {
   useMarkNotificationsRead,
   useGetStore,
   useGetDashboardSummary,
-  useMyStoreRequests,
   getListNotificationsQueryKey,
 } from "@workspace/api-client-react";
-
-const AI_VIDEO_SEEN_KEY = "wmh_ai_video_seen_at";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
@@ -60,35 +57,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
     query: { enabled: isAdmin, refetchInterval: 30_000 },
   });
 
-  const { data: myRequests = [] } = useMyStoreRequests({
-    query: { enabled: isAdmin, refetchInterval: 60_000 },
-  });
-
-  const [aiVideoSeenAt, setAiVideoSeenAt] = useState<string | null>(() =>
-    localStorage.getItem(AI_VIDEO_SEEN_KEY)
-  );
-
   const dashboardHasDot =
     isAdmin &&
     (((dashSummary as any)?.unseenBookings ?? 0) > 0 ||
       ((dashSummary as any)?.unseenLoyaltyCards ?? 0) > 0);
-
-  const approvedRequests = (myRequests as any[]).filter((r) => r.status === "approved");
-  const aiVideoHasDot =
-    isAdmin &&
-    approvedRequests.length > 0 &&
-    (!aiVideoSeenAt ||
-      approvedRequests.some(
-        (r) => new Date(r.updatedAt ?? r.createdAt) > new Date(aiVideoSeenAt!)
-      ));
-
-  useEffect(() => {
-    if (location === "/marketing-growth") {
-      const now = new Date().toISOString();
-      localStorage.setItem(AI_VIDEO_SEEN_KEY, now);
-      setAiVideoSeenAt(now);
-    }
-  }, [location]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -123,7 +95,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const navDots: Record<string, boolean> = {
     "/dashboard": dashboardHasDot,
-    "/marketing-growth": aiVideoHasDot,
   };
 
   const storeName = store?.name || "Web Media Hub";

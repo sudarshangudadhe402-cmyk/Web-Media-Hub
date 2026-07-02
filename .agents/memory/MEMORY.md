@@ -1,1 +1,2 @@
 - [Shared lib package framer-motion resolution](shared-lib-peer-deps.md) — pnpm strict isolation blocks peer dep resolution from lib/ packages; use actual dependencies not peerDependencies.
+- [Openapi/orval hook removal checklist](openapi-hook-removal.md) — after deleting routes, always grep frontend for the generated hook names across ALL artifacts, not just the ones you edited.

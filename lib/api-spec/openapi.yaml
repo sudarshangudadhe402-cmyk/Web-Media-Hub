@@ -455,26 +455,6 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/User"
-    post:
-      operationId: createAdmin
-      tags: [admins]
-      summary: Create a new admin (super_admin only)
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AdminInput"
-      responses:
-        "201":
-          description: Admin created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User"
-
   /admins/{id}:
     delete:
       operationId: deleteAdmin
@@ -639,88 +619,6 @@ components:
           type: ["string", "null"]
         createdAt:
           type: string
-
-    AdminInput:
-      type: object
-      required: [email, password]
-      properties:
-        email:
-          type: string
-        password:
-          type: string
-        adminNumber:
-          type: string
-        planName:
-          type: string
-        planPrice:
-          type: string
-        planPeriod:
-          type: string
-        planBadge:
-          type: string
-        planColor:
-          type: string
-
-    StoreRequestItem:
-      type: object
-      required: [id, email, storeName, whatsapp, status, submittedBy, createdAt, updatedAt]
-      properties:
-        id:
-          type: string
-        email:
-          type: string
-        storeName:
-          type: string
-        whatsapp:
-          type: string
-        plan:
-          type: ["string", "null"]
-        planName:
-          type: ["string", "null"]
-        planPrice:
-          type: ["string", "null"]
-        planPeriod:
-          type: ["string", "null"]
-        planBadge:
-          type: ["string", "null"]
-        planColor:
-          type: ["string", "null"]
-        status:
-          type: string
-          enum: [pending, approved, rejected]
-        submittedBy:
-          type: string
-        rewardCode:
-          type: ["string", "null"]
-        createdAt:
-          type: string
-        updatedAt:
-          type: string
-
-    StoreRequestInput:
-      type: object
-      required: [email, password, storeName, whatsapp]
-      properties:
-        email:
-          type: string
-        password:
-          type: string
-        storeName:
-          type: string
-        whatsapp:
-          type: string
-        plan:
-          type: ["string", "null"]
-        planName:
-          type: ["string", "null"]
-        planPrice:
-          type: ["string", "null"]
-        planPeriod:
-          type: ["string", "null"]
-        planBadge:
-          type: ["string", "null"]
-        planColor:
-          type: ["string", "null"]
 
     Product:
       type: object

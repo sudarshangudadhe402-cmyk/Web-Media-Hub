@@ -6,7 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export * from './adminInput';
 export * from './authResponse';
 export * from './booking';
 export * from './bookingInput';
@@ -36,9 +35,6 @@ export * from './productUpdate';
 export * from './productUpdateProductType';
 export * from './store';
 export * from './storeInput';
-export * from './storeRequestInput';
-export * from './storeRequestItem';
-export * from './storeRequestItemStatus';
 export * from './storeUpdate';
 export * from './user';
 export * from './userRole';

@@ -452,21 +452,6 @@ export const ListAdminsResponse = zod.array(ListAdminsResponseItem)
 
 
 /**
- * @summary Create a new admin (super_admin only)
- */
-export const CreateAdminBody = zod.object({
-  "email": zod.string(),
-  "password": zod.string(),
-  "adminNumber": zod.string().optional(),
-  "planName": zod.string().optional(),
-  "planPrice": zod.string().optional(),
-  "planPeriod": zod.string().optional(),
-  "planBadge": zod.string().optional(),
-  "planColor": zod.string().optional()
-})
-
-
-/**
  * @summary Delete an admin (super_admin only)
  */
 export const DeleteAdminParams = zod.object({
