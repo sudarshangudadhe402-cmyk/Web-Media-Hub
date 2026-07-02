@@ -864,7 +864,7 @@ export default function MarketingGrowth() {
           <div className="rounded-xl border border-primary/20 overflow-hidden">
             <div className="flex items-center px-4 py-2.5 bg-primary/5 border-b border-primary/20">
               <span className="text-sm font-bold text-primary tracking-wide">NexGenStudio</span>
-              <span className="text-xs text-muted-foreground ml-2">(3D Model & product on Model's generator)</span>
+              <span className="text-xs text-muted-foreground ml-2">(3D Model &amp; products on Model's generator + AI Promotional Video)</span>
             </div>
             <div className="flex items-center gap-3 px-4 py-3">
               <LinkIcon className="w-4 h-4 text-primary shrink-0" />
