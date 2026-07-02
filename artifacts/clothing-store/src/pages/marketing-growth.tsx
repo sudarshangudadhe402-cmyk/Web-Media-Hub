@@ -162,8 +162,9 @@ function CampaignRow({ campaign, onClick }: { campaign: Campaign; onClick: () =>
   );
 }
 
-function CampaignDetail({ campaign, onBack, onCopyLink, onToggle, onDelete }: {
+function CampaignDetail({ campaign, storeSlug, onBack, onCopyLink, onToggle, onDelete }: {
   campaign: Campaign;
+  storeSlug: string;
   onBack: () => void;
   onCopyLink: (link: string) => void;
   onToggle: (id: string) => void;
@@ -171,6 +172,10 @@ function CampaignDetail({ campaign, onBack, onCopyLink, onToggle, onDelete }: {
 }) {
   const [showQr, setShowQr] = useState(false);
   const src = SOURCE_OPTIONS.find((s) => s.value === campaign.source);
+  // Always rebuild with current origin so the link works even if the domain changed
+  const liveTrackingLink = storeSlug
+    ? buildTrackingLink(storeSlug, campaign.source, campaign.campaignSlug)
+    : campaign.trackingLink;
 
   return (
     <div className="space-y-4">
@@ -233,9 +238,9 @@ function CampaignDetail({ campaign, onBack, onCopyLink, onToggle, onDelete }: {
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Tracking Link</p>
             <div className="bg-muted rounded-lg px-3 py-2.5 flex items-center gap-2">
               <LinkIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-              <span className="text-xs text-muted-foreground truncate flex-1 font-mono">{campaign.trackingLink}</span>
+              <span className="text-xs text-muted-foreground truncate flex-1 font-mono">{liveTrackingLink}</span>
               <button
-                onClick={() => onCopyLink(campaign.trackingLink)}
+                onClick={() => onCopyLink(liveTrackingLink)}
                 className="p-1 hover:bg-background rounded transition-colors shrink-0"
               >
                 <Copy className="w-3.5 h-3.5 text-muted-foreground" />
@@ -255,7 +260,7 @@ function CampaignDetail({ campaign, onBack, onCopyLink, onToggle, onDelete }: {
               </button>
               {showQr && (
                 <div className="mt-3 flex justify-center">
-                  <CampaignQrDownload link={campaign.trackingLink} name={campaign.campaignSlug} />
+                  <CampaignQrDownload link={liveTrackingLink} name={campaign.campaignSlug} />
                 </div>
               )}
             </div>
@@ -704,6 +709,7 @@ export default function MarketingGrowth() {
               return (
                 <CampaignDetail
                   campaign={selected}
+                  storeSlug={storeSlug}
                   onBack={() => setSelectedCampaignId(null)}
                   onCopyLink={handleCopyLink}
                   onToggle={(id) => toggleCampaign.mutate(id)}
