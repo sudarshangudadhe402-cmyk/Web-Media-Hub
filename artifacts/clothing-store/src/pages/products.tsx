@@ -47,9 +47,8 @@ import {
   Circle,
   Search,
   Box,
-  Video,
   Link as LinkIcon,
-  ExternalLink,
+  Copy,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -825,49 +824,28 @@ export default function Products() {
               )}
             </div>
 
-            {/* 4. AI Promotional Video */}
-            <div className="space-y-1.5">
-              <Label className="flex items-center gap-1.5">
-                <Video className="w-3.5 h-3.5 text-rose-500" />
-                AI Promotional Video
-                <span className="text-[11px] text-muted-foreground font-normal">(optional · via NexGenStudio)</span>
-              </Label>
-              {globalLink ? (
-                <div className="rounded-xl border border-rose-200 bg-rose-50 overflow-hidden">
-                  <div className="flex items-center gap-2 px-3 py-2 border-b border-rose-200 bg-rose-100/60">
-                    <Video className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                    <span className="text-xs font-semibold text-rose-700">Create a promotional video for this product</span>
-                  </div>
-                  <div className="px-3 py-2.5 space-y-2">
-                    <p className="text-[11px] text-rose-600/80 leading-snug">
-                      Use NexGenStudio to generate an AI promotional video showcasing this product.
-                    </p>
-                    <a
-                      href={globalLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-between w-full px-3 py-2 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 active:bg-rose-800 transition-colors"
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <LinkIcon className="w-3 h-3" />
-                        Open NexGenStudio
-                      </span>
-                      <ExternalLink className="w-3 h-3 opacity-70" />
-                    </a>
-                  </div>
+            {/* 4. NexGenStudio Link */}
+            {globalLink && (
+              <div className="rounded-xl border border-primary/20 overflow-hidden">
+                <div className="flex items-center px-4 py-2.5 bg-primary/5 border-b border-primary/20">
+                  <span className="text-sm font-bold text-primary tracking-wide">NexGenStudio</span>
+                  <span className="text-xs text-muted-foreground ml-2">(3D Model &amp; products on Model's generator + AI Promotional Video)</span>
                 </div>
-              ) : (
-                <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-rose-200 bg-rose-50/40">
-                  <Video className="w-5 h-5 text-rose-300 shrink-0" />
-                  <div>
-                    <p className="text-xs font-semibold text-rose-500">AI Promotional Video</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      Contact your admin to enable NexGenStudio for AI videos
-                    </p>
-                  </div>
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <LinkIcon className="w-4 h-4 text-primary shrink-0" />
+                  <a href={globalLink} target="_blank" rel="noopener noreferrer"
+                    className="flex-1 text-sm text-primary font-medium underline underline-offset-2 truncate">
+                    {globalLink}
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => { navigator.clipboard.writeText(globalLink); toast({ title: "Link copied!" }); }}
+                    className="p-1.5 rounded-lg hover:bg-primary/10 transition-colors shrink-0">
+                    <Copy className="w-4 h-4 text-muted-foreground" />
+                  </button>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* 5. Description */}
             <div className="space-y-1.5">
