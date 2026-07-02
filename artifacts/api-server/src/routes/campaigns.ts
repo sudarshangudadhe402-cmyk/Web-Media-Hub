@@ -23,7 +23,7 @@ router.get("/campaigns", requireAuth, async (req: AuthRequest, res) => {
       trackingLink: c.trackingLink,
       qrEnabled: c.qrEnabled,
       isActive: c.isActive,
-      customerCount: c.trackedCount ?? 0,
+      customerCount: c.visitCount ?? 0,
       visitCount: c.visitCount ?? 0,
       createdAt: c.createdAt.toISOString(),
     }));
@@ -42,7 +42,7 @@ router.post("/public/campaigns/track-visit", async (req, res) => {
     if (!store) { res.json({ ok: false }); return; }
     await MarketingCampaign.findOneAndUpdate(
       { storeId: String(store._id), source, campaignSlug: campaign, isActive: true },
-      { $inc: { visitCount: 1, trackedCount: 1 } }
+      { $inc: { visitCount: 1 } }
     );
     res.json({ ok: true });
   } catch {
