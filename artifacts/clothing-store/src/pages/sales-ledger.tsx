@@ -35,6 +35,7 @@ interface LedgerRow {
   adminId: string;
   date: string | null;
   customerName: string;
+  productName: string;
   productCost: number | null;
   paymentStatus: PaymentStatus;
   confirmed: boolean;
@@ -110,7 +111,7 @@ export default function SalesLedger() {
     mutationFn: async () => {
       const res = await authFetch("/api/ledger", {
         method: "POST",
-        body: JSON.stringify({ date: null, customerName: "", productCost: null, paymentStatus: "Pending", confirmed: false }),
+        body: JSON.stringify({ date: null, customerName: "", productName: "", productCost: null, paymentStatus: "Pending", confirmed: false }),
       });
       if (!res.ok) throw new Error("Failed");
       return res.json() as Promise<LedgerRow>;
@@ -216,11 +217,12 @@ export default function SalesLedger() {
   const displayCustomerCount = confirmedDisplayRows.filter((r) => r.customerName.trim()).length;
 
   function exportCSV() {
-    const header = ["Sr No", "Date", "Customer Name", "Product Cost", "Payment Status"];
+    const header = ["Sr No", "Date", "Customer Name", "Product Name", "Product Cost", "Payment Status"];
     const dataRows = confirmedRows.map((r, i) => [
       String(i + 1),
       isoToDisplay(r.date),
       r.customerName,
+      r.productName ?? "",
       r.productCost != null ? String(r.productCost) : "",
       r.paymentStatus,
     ]);
@@ -384,24 +386,25 @@ export default function SalesLedger() {
               <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
                 <thead>
                   <tr>
-                    <th className={thCls} style={{ position: "sticky", top: 0, zIndex: 10, width: 52, textAlign: "center" }}>Sr No</th>
-                    <th className={thCls} style={{ position: "sticky", top: 0, zIndex: 10, width: 140, textAlign: "center" }}>Date</th>
-                    <th className={thCls} style={{ position: "sticky", top: 0, zIndex: 10, minWidth: 180, textAlign: "left" }}>Customer Name</th>
-                    <th className={thCls} style={{ position: "sticky", top: 0, zIndex: 10, width: 140, textAlign: "left" }}>Product Cost</th>
-                    <th className={thCls} style={{ position: "sticky", top: 0, zIndex: 10, width: 130, textAlign: "center" }}>Payment Status</th>
-                    <th className={`${thCls} no-print`} style={{ position: "sticky", top: 0, zIndex: 10, width: 72, textAlign: "center" }}>Action</th>
+                    <th className={thCls} style={{ position: "sticky", top: 0, zIndex: 10, width: 40, textAlign: "center" }}>Sr No</th>
+                    <th className={thCls} style={{ position: "sticky", top: 0, zIndex: 10, width: 90, textAlign: "center" }}>Date</th>
+                    <th className={thCls} style={{ position: "sticky", top: 0, zIndex: 10, width: 140, textAlign: "left" }}>Customer Name</th>
+                    <th className={thCls} style={{ position: "sticky", top: 0, zIndex: 10, width: 120, textAlign: "left" }}>Product Name</th>
+                    <th className={thCls} style={{ position: "sticky", top: 0, zIndex: 10, width: 110, textAlign: "left" }}>Product Cost</th>
+                    <th className={thCls} style={{ position: "sticky", top: 0, zIndex: 10, width: 110, textAlign: "center" }}>Payment Status</th>
+                    <th className={`${thCls} no-print`} style={{ position: "sticky", top: 0, zIndex: 10, width: 60, textAlign: "center" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {isLoading ? (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: "center", padding: "60px 0", color: "hsl(var(--muted-foreground))", fontSize: 14 }}>
+                      <td colSpan={7} style={{ textAlign: "center", padding: "60px 0", color: "hsl(var(--muted-foreground))", fontSize: 14 }}>
                         Loading...
                       </td>
                     </tr>
                   ) : displayRows.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: "center", padding: "60px 0", color: "hsl(var(--muted-foreground))", fontSize: 14 }}>
+                      <td colSpan={7} style={{ textAlign: "center", padding: "60px 0", color: "hsl(var(--muted-foreground))", fontSize: 14 }}>
                         {searchQuery || dateFrom || dateTo ? "No matching records found" : "No records yet"}
                       </td>
                     </tr>
@@ -450,10 +453,29 @@ export default function SalesLedger() {
                                 onChange={(e) => setLocal(row.id, "customerName", e.target.value)}
                                 className={inputCls}
                                 placeholder="Customer name"
+                                maxLength={20}
                               />
                             ) : (
                               <div style={{ ...readCls, fontWeight: row.customerName ? 500 : 400, color: row.customerName ? "hsl(var(--foreground))" : "hsl(var(--muted-foreground))" }}>
-                                {row.customerName || "—"}
+                                {row.customerName ? (row.customerName.length > 20 ? row.customerName.slice(0, 20) + "…" : row.customerName) : "—"}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Product Name */}
+                          <td className={cellCls} style={{ padding: 0 }}>
+                            {isEditable ? (
+                              <input
+                                type="text"
+                                value={localRow.productName !== undefined ? localRow.productName : (row.productName ?? "")}
+                                onChange={(e) => setLocal(row.id, "productName", e.target.value)}
+                                className={inputCls}
+                                placeholder="Product name"
+                                maxLength={15}
+                              />
+                            ) : (
+                              <div style={{ ...readCls, fontWeight: row.productName ? 500 : 400, color: row.productName ? "hsl(var(--foreground))" : "hsl(var(--muted-foreground))" }}>
+                                {row.productName ? (row.productName.length > 15 ? row.productName.slice(0, 15) + "…" : row.productName) : "—"}
                               </div>
                             )}
                           </td>

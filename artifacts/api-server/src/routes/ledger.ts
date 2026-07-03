@@ -11,6 +11,7 @@ function fmt(e: InstanceType<typeof LedgerEntry>) {
     adminId: e.adminId,
     date: e.date ?? null,
     customerName: e.customerName,
+    productName: e.productName ?? "",
     productCost: e.productCost ?? null,
     paymentStatus: e.paymentStatus,
     confirmed: e.confirmed ?? false,
@@ -52,11 +53,12 @@ router.post("/ledger/bulk", requireAuth, requireDb, async (req: AuthRequest, res
 router.post("/ledger", requireAuth, requireDb, async (req: AuthRequest, res) => {
   try {
     const adminId = String(req.user!._id);
-    const { date, customerName, productCost, paymentStatus } = req.body;
+    const { date, customerName, productName, productCost, paymentStatus } = req.body;
     const entry = new LedgerEntry({
       adminId,
       date: date ?? null,
       customerName: customerName ?? "",
+      productName: productName ?? "",
       productCost: productCost != null && productCost !== "" ? Number(productCost) : null,
       paymentStatus: paymentStatus ?? "Pending",
     });
@@ -76,9 +78,10 @@ router.patch("/ledger/:id", requireAuth, requireDb, async (req: AuthRequest, res
       res.status(404).json({ error: "Entry not found" });
       return;
     }
-    const { date, customerName, productCost, paymentStatus } = req.body;
+    const { date, customerName, productName, productCost, paymentStatus } = req.body;
     if ("date" in req.body) entry.date = date ?? null;
     if ("customerName" in req.body) entry.customerName = customerName ?? "";
+    if ("productName" in req.body) entry.productName = productName ?? "";
     if ("productCost" in req.body)
       entry.productCost = productCost != null && productCost !== "" ? Number(productCost) : null;
     if ("paymentStatus" in req.body) entry.paymentStatus = paymentStatus;
