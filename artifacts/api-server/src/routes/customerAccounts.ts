@@ -2,6 +2,7 @@ import { Router } from "express";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { CustomerAccount } from "../models/CustomerAccount";
+import { MarketingCampaign } from "../models/MarketingCampaign";
 import { OtpCode } from "../models/OtpCode";
 import { Store } from "../models/Store";
 import { AuthRequest, requireAuth } from "../middlewares/auth";
@@ -153,6 +154,17 @@ router.post("/public/customer-account/verify-signup", validate(CustomerVerifySig
 
     const account = await CustomerAccount.create({ storeId, mobileNumber, password, source, campaign });
 
+    // Increment trackedCount (account opens) on the matching campaign.
+    // Don't filter by isActive — attribution should be counted even if the campaign was later deactivated.
+    if (source && campaign) {
+      MarketingCampaign.findOneAndUpdate(
+        { storeId, source, campaignSlug: campaign },
+        { $inc: { trackedCount: 1 } }
+      ).catch((err) => {
+        req.log?.error({ err, source, campaign, storeId }, "Failed to increment campaign trackedCount");
+      });
+    }
+
     res.status(201).json({
       id: String(account._id),
       mobileNumber: account.mobileNumber,
@@ -218,6 +230,9 @@ router.post("/public/customer-account/verify-signin", validate(CustomerVerifySig
 
     otpDoc.used = true;
     await otpDoc.save();
+
+    // Update last activity timestamp on successful signin
+    CustomerAccount.updateOne({ _id: account._id }, { $set: { lastActivityAt: new Date() } }).catch(() => {});
 
     res.json({
       id: String(account._id),

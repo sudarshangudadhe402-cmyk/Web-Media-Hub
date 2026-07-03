@@ -147,6 +147,30 @@ async function cleanupSuperAdminProducts() {
   }
 }
 
+async function startCustomerAccountCleanupJob() {
+  if (!dbAvailable) return;
+  const run = async () => {
+    try {
+      const cutoff = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000);
+      // Delete accounts where lastActivityAt (or createdAt for old records) is older than 45 days
+      const result = await CustomerAccount.deleteMany({
+        $or: [
+          { lastActivityAt: { $lt: cutoff } },
+          { lastActivityAt: { $exists: false }, createdAt: { $lt: cutoff } },
+        ],
+      });
+      if (result.deletedCount > 0) {
+        logger.info({ count: result.deletedCount }, "Auto-deleted inactive customer accounts (45-day rule)");
+      }
+    } catch (err) {
+      logger.error({ err }, "Customer account cleanup error");
+    }
+  };
+  // Run once on startup, then every 24 hours
+  await run();
+  setInterval(run, 24 * 60 * 60 * 1000);
+}
+
 async function startSubscriptionExpiryJob() {
   if (!dbAvailable) return;
   const run = async () => {
@@ -174,6 +198,7 @@ async function start() {
   await migratePasswordsToHash();
   await cleanupSuperAdminProducts();
   startSubscriptionExpiryJob();
+  startCustomerAccountCleanupJob();
 
   app.listen(port, (err) => {
     if (err) {

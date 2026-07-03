@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { MarketingCampaign } from "../models/MarketingCampaign";
 import { Store } from "../models/Store";
+import { CustomerAccount } from "../models/CustomerAccount";
 import { AuthRequest, requireAuth } from "../middlewares/auth";
 
 const router = Router();
@@ -23,8 +24,8 @@ router.get("/campaigns", requireAuth, async (req: AuthRequest, res) => {
       trackingLink: c.trackingLink,
       qrEnabled: c.qrEnabled,
       isActive: c.isActive,
-      customerCount: c.visitCount ?? 0,
       visitCount: c.visitCount ?? 0,
+      accountCount: c.trackedCount ?? 0,
       createdAt: c.createdAt.toISOString(),
     }));
     res.json(results);
@@ -83,7 +84,8 @@ router.post("/campaigns", requireAuth, async (req: AuthRequest, res) => {
       trackingLink: campaign.trackingLink,
       qrEnabled: campaign.qrEnabled,
       isActive: campaign.isActive,
-      customerCount: 0,
+      visitCount: 0,
+      accountCount: 0,
       createdAt: campaign.createdAt.toISOString(),
     });
   } catch (err) {

@@ -95,8 +95,8 @@ interface Campaign {
   trackingLink: string;
   qrEnabled: boolean;
   isActive: boolean;
-  customerCount: number;
-  visitCount: number;
+  visitCount: number;    // visitors from this campaign (with or without account)
+  accountCount: number;  // customers who opened an account from this campaign
   createdAt: string;
 }
 
@@ -151,7 +151,7 @@ function CampaignRow({ campaign, onClick }: { campaign: Campaign; onClick: () =>
       <div className="flex-1 min-w-0">
         <span className="text-sm font-semibold truncate block">{campaign.campaignName}</span>
         <span className="text-xs text-muted-foreground mt-0.5 block">
-          {campaign.visitCount ?? 0} visitors · {campaign.customerCount} accounts
+          {campaign.visitCount ?? 0} visitors · {campaign.accountCount ?? 0} accounts
         </span>
       </div>
       {!campaign.isActive && (
@@ -222,14 +222,14 @@ function CampaignDetail({ campaign, storeSlug, onBack, onCopyLink, onToggle, onD
                 <Eye className="w-4 h-4 text-blue-500" />
                 <span className="text-xl font-extrabold text-blue-600">{campaign.visitCount ?? 0}</span>
               </div>
-              <span className="text-[11px] text-blue-400 font-semibold">Visitors</span>
+              <span className="text-[11px] text-blue-400 font-semibold">Customer Visit Count</span>
             </div>
             <div className="flex flex-col items-center bg-primary/5 rounded-xl py-3 gap-1">
               <div className="flex items-center gap-1.5">
                 <Users className="w-4 h-4 text-primary" />
-                <span className="text-xl font-extrabold text-primary">{campaign.customerCount}</span>
+                <span className="text-xl font-extrabold text-primary">{campaign.accountCount ?? 0}</span>
               </div>
-              <span className="text-[11px] text-primary/60 font-semibold">Accounts</span>
+              <span className="text-[11px] text-primary/60 font-semibold">Account Count</span>
             </div>
           </div>
 
@@ -747,7 +747,7 @@ export default function MarketingGrowth() {
             </Card>
             <Card>
               <CardContent className="p-4 text-center">
-                <p className="text-2xl font-bold text-primary">{campaigns.reduce((sum, c) => sum + c.customerCount, 0)}</p>
+                <p className="text-2xl font-bold text-primary">{campaigns.reduce((sum, c) => sum + (c.visitCount ?? 0), 0)}</p>
                 <p className="text-xs text-muted-foreground mt-1">Customers Tracked</p>
               </CardContent>
             </Card>
