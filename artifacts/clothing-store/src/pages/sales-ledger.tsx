@@ -78,6 +78,7 @@ export default function SalesLedger() {
   const [editingIds, setEditingIds] = useState<Set<string>>(new Set());
 
   const hasInitialized = useRef(false);
+  const activeRowRef = useRef<HTMLInputElement>(null);
 
   const { data: serverRows = [], isLoading } = useQuery<LedgerRow[]>({
     queryKey: LEDGER_KEY,
@@ -187,7 +188,29 @@ export default function SalesLedger() {
     setEditingIds((prev) => new Set(prev).add(rowId));
   }
 
+  // Scroll and focus the next fillable row
+  function scrollToNextFillable() {
+    if (activeRowRef.current) {
+      activeRowRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => activeRowRef.current?.focus(), 200);
+    }
+  }
+
   const allRows = serverRows.map(getRow);
+
+  // The "next fillable" row = oldest unconfirmed row (lowest Sr No)
+  const nextFillableId =
+    [...allRows]
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      .find((r) => !r.confirmed)?.id ?? null;
+
+  // Auto-add: always keep at least 1 unfilled row
+  useEffect(() => {
+    if (!isLoading && allRows.length > 0 && allRows.every((r) => r.confirmed) && !createRow.isPending) {
+      createRow.mutate();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allRows.map((r) => r.confirmed + r.id).join(","), isLoading]);
 
   // For table: show all rows (both confirmed and draft), filtered by search/date
   // Order: newest at top (descending createdAt)
@@ -226,7 +249,7 @@ export default function SalesLedger() {
       r.productCost != null ? String(r.productCost) : "",
       r.paymentStatus,
     ]);
-    const totalRow = ["Total", `${totalCustomers} Customers`, "", String(totalSales), ""];
+    const totalRow = ["Total", `${totalCustomers} Customers`, "", "", String(totalSales), ""];
     const all = [header, ...dataRows, totalRow];
     const csv = all.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
@@ -413,24 +436,39 @@ export default function SalesLedger() {
                       const localRow = localValues[row.id] ?? {};
                       const isConfirmed = row.confirmed;
                       const isEditing = editingIds.has(row.id);
-                      // Row is editable if: not confirmed, OR confirmed but in edit mode
-                      const isEditable = !isConfirmed || isEditing;
+                      const isNextFillable = row.id === nextFillableId;
+                      const isFutureDraft = !isConfirmed && !isNextFillable;
+                      // Only the next-in-line unconfirmed row is editable; future drafts are locked
+                      const isEditable = (!isConfirmed && isNextFillable) || isEditing;
                       const isPaid = row.paymentStatus === "Paid";
                       const rowBg = isConfirmed
                         ? idx % 2 === 0 ? "hsl(142 71% 98%)" : "hsl(142 71% 96%)"
-                        : idx % 2 === 0 ? "transparent" : "hsl(var(--muted)/0.25)";
+                        : isNextFillable
+                          ? "hsl(215 100% 97%)"
+                          : idx % 2 === 0 ? "transparent" : "hsl(var(--muted)/0.25)";
 
                       return (
-                        <tr key={row.id} style={{ background: rowBg }}>
+                        <tr
+                          key={row.id}
+                          style={{
+                            background: rowBg,
+                            opacity: isFutureDraft ? 0.42 : 1,
+                            cursor: isFutureDraft ? "pointer" : "default",
+                            transition: "opacity 0.15s",
+                          }}
+                          onClick={isFutureDraft ? scrollToNextFillable : undefined}
+                          title={isFutureDraft ? "Complete the current row first" : undefined}
+                        >
                           {/* Sr No — bottom row = 1, increases upward */}
                           <td className={cellCls} style={{ textAlign: "center", padding: 0, userSelect: "none", color: "hsl(var(--muted-foreground))", fontSize: 12, fontFamily: "monospace" }}>
                             <div style={{ padding: "8px 6px" }}>{displayRows.length - idx}</div>
                           </td>
 
                           {/* Date */}
-                          <td className={cellCls} style={{ padding: 0 }}>
+                          <td className={cellCls} style={{ padding: 0, borderLeft: isNextFillable ? "3px solid hsl(215 100% 60%)" : undefined }}>
                             {isEditable ? (
                               <input
+                                ref={isNextFillable ? activeRowRef : undefined}
                                 type="date"
                                 value={localRow.date !== undefined ? (localRow.date ?? "") : (row.date ?? "")}
                                 onChange={(e) => setLocal(row.id, "date", e.target.value || null)}
@@ -565,8 +603,8 @@ export default function SalesLedger() {
                                 </button>
                               )}
 
-                              {/* Case 2: Draft (unconfirmed) → show ✅ */}
-                              {!isConfirmed && (
+                              {/* Case 2: Draft (unconfirmed) next-fillable only → show ✅ */}
+                              {!isConfirmed && isNextFillable && (
                                 <button
                                   onClick={() => handleConfirm(row.id)}
                                   title="Save this row"
@@ -643,10 +681,10 @@ export default function SalesLedger() {
                   )}
                 </tbody>
                 <tfoot>
-                  {(["Total", `${displayCustomerCount} Customer${displayCustomerCount !== 1 ? "s" : ""}`, "", `₹${formatIndian(displayTotalCost)}`, "", ""] as string[]).map((val, i) => (
+                  {(["Total", `${displayCustomerCount} Customer${displayCustomerCount !== 1 ? "s" : ""}`, "", "", `₹${formatIndian(displayTotalCost)}`, "", ""] as string[]).map((val, i) => (
                     <td
                       key={i}
-                      className={i === 5 ? "no-print" : ""}
+                      className={i === 6 ? "no-print" : ""}
                       style={{
                         position: "sticky",
                         bottom: 0,
@@ -654,10 +692,10 @@ export default function SalesLedger() {
                         background: "hsl(var(--muted))",
                         border: "1px solid hsl(var(--border))",
                         padding: val ? "9px 12px" : "9px 6px",
-                        fontWeight: i === 0 || i === 3 ? 700 : 600,
+                        fontWeight: i === 0 || i === 4 ? 700 : 600,
                         fontSize: 12,
                         textAlign: i === 0 || i === 1 ? "center" : "left",
-                        color: i === 3 ? "hsl(var(--foreground))" : "hsl(var(--muted-foreground))",
+                        color: i === 4 ? "hsl(var(--foreground))" : "hsl(var(--muted-foreground))",
                         whiteSpace: "nowrap",
                       }}
                     >
