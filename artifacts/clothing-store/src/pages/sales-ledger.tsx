@@ -198,12 +198,6 @@ export default function SalesLedger() {
 
   const allRows = serverRows.map(getRow);
 
-  // The "next fillable" row = oldest unconfirmed row (lowest Sr No)
-  const nextFillableId =
-    [...allRows]
-      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-      .find((r) => !r.confirmed)?.id ?? null;
-
   // Auto-add: always keep at least 1 unfilled row
   useEffect(() => {
     if (!isLoading && allRows.length > 0 && allRows.every((r) => r.confirmed) && !createRow.isPending) {
@@ -222,6 +216,10 @@ export default function SalesLedger() {
       return true;
     })
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  // The "next fillable" = unconfirmed row with lowest Sr No (last in displayRows since table is newest-first).
+  // Use displayRows directly so visual Sr No and nextFillable always stay in sync.
+  const nextFillableId = displayRows.slice().reverse().find((r) => !r.confirmed)?.id ?? null;
 
   // Stats: ONLY confirmed rows
   const confirmedRows = allRows.filter((r) => r.confirmed);
