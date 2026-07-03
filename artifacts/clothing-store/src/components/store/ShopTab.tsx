@@ -73,11 +73,7 @@ export default function ShopTab({
       );
     }
     if (activeCategory !== "all") {
-      if (["Top", "Bottom", "Full Outfit"].includes(activeCategory)) {
-        list = list.filter((p) => p.productType === activeCategory);
-      } else {
-        list = list.filter((p) => p.functionCategory === activeCategory);
-      }
+      list = list.filter((p) => p.functionCategory === activeCategory);
     }
     if (sortBy === "most-liked") {
       list = list.filter((p) => (likeCounts[p.id] ?? p.likeCount) > 0);

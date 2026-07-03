@@ -52,13 +52,9 @@ import {
   Palette,
   Package,
 } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /* ── constants ── */
-const PRODUCT_TYPES = ["Top", "Bottom", "Full Outfit"] as const;
-type ProductType = (typeof PRODUCT_TYPES)[number];
-
 const SIZE_OPTIONS = ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "Free Size"];
 const AGE_OPTIONS = Array.from({ length: 50 }, (_, i) => `${i}-${i + 1}Y`);
 const GENDER_OPTIONS = ["Men", "Women", "Boys", "Girls", "Unisex"];
@@ -97,7 +93,6 @@ function toggleItem(arr: string[], val: string): string[] {
 
 /* ── main component ── */
 export default function Products() {
-  const [filterType, setFilterType] = useState("All");
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [form, setForm] = useState<ProductForm>(EMPTY_FORM);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
@@ -134,11 +129,10 @@ export default function Products() {
   const globalLink = globalLinkData?.globalLink ?? null;
 
   const products = (allProducts ?? []).filter((p) => {
-    const typeMatch = filterType === "All" || p.productType === filterType;
     const catMatch = !filterCategory || p.functionCategory === filterCategory;
     const q = searchQuery.trim().toLowerCase();
     const nameMatch = !q || p.name.toLowerCase().includes(q);
-    return typeMatch && catMatch && nameMatch;
+    return catMatch && nameMatch;
   });
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
@@ -546,18 +540,6 @@ export default function Products() {
           </button>
         )}
       </div>
-
-      {/* Filter tabs */}
-      <Tabs value={filterType} onValueChange={(v) => { setFilterType(v); setFilterCategory(null); }}>
-        <TabsList>
-          <TabsTrigger value="All">All</TabsTrigger>
-          {PRODUCT_TYPES.map((t) => (
-            <TabsTrigger key={t} value={t}>
-              {t}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
 
       {/* Category chips */}
       {categories && categories.length > 0 && (
