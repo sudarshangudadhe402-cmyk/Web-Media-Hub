@@ -36,10 +36,16 @@ interface Plan {
   storeTypes: string[];
 }
 
+interface StoreTypeObj {
+  name: string;
+  category: string;
+}
+
 interface PricingData {
   plans: Plan[];
   categories: string[];
-  storeTypes: string[];
+  storeTypes: string[];          // normalized name strings (for filter chips & plan form)
+  rawStoreTypes: StoreTypeObj[]; // full objects (for the store manager dialog)
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -62,7 +68,14 @@ async function fetchPricing(): Promise<PricingData> {
   const res = await fetch("/api/pricing");
   if (!res.ok) throw new Error("Failed to fetch pricing");
   const data = await res.json();
-  return { ...data, storeTypes: normalizeStoreTypes(data.storeTypes ?? []) };
+  const rawStoreTypes: StoreTypeObj[] = (data.storeTypes ?? []).map((st: unknown) =>
+    typeof st === "string" ? { name: st, category: "" } : st as StoreTypeObj
+  );
+  return {
+    ...data,
+    storeTypes: rawStoreTypes.map((st) => st.name),
+    rawStoreTypes,
+  };
 }
 
 async function createPlan(data: Omit<Plan, "id">): Promise<Plan> {
@@ -108,13 +121,13 @@ async function removeCategory(name: string): Promise<string[]> {
   return (await res.json()).categories;
 }
 
-async function addStoreType(name: string): Promise<string[]> {
+async function addStoreType({ name, category }: { name: string; category: string }): Promise<string[]> {
   const res = await fetch("/api/pricing/store-types", {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, category }),
   });
-  if (!res.ok) throw new Error("Failed to add store type");
+  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e as any).error || "Failed to add store type"); }
   return normalizeStoreTypes((await res.json()).storeTypes ?? []);
 }
 
@@ -207,6 +220,123 @@ function CouponEditor({ coupons, onChange }: { coupons: PlanCoupon[]; onChange: 
         </div>
       )}
     </div>
+  );
+}
+
+// ── Store Type Manager Dialog (name + category required) ─────────────────────
+function StoreTypeMgrDialog({
+  open, onClose, allCategories, rawStoreTypes, onAdd, onRemove, adding, removing,
+}: {
+  open: boolean; onClose: () => void;
+  allCategories: string[];
+  rawStoreTypes: StoreTypeObj[];
+  onAdd: (name: string, category: string) => void;
+  onRemove: (name: string) => void;
+  adding: boolean; removing: string | null;
+}) {
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState("");
+
+  function handleAdd() {
+    const n = name.trim();
+    const c = category.trim();
+    if (!n || !c) return;
+    onAdd(n, c);
+    setName("");
+    setCategory("");
+  }
+
+  // Group by category for display
+  const grouped = allCategories.map((cat) => ({
+    cat,
+    types: rawStoreTypes.filter((st) => st.category === cat),
+  })).filter((g) => g.types.length > 0);
+  const uncategorized = rawStoreTypes.filter((st) => !st.category || !allCategories.includes(st.category));
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Store className="h-5 w-5 text-orange-500" /> Store Types
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 py-1">
+          {/* Add form */}
+          <div className="space-y-2 p-3 bg-orange-50 border border-orange-100 rounded-xl">
+            <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide">Add Store Type</p>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
+              placeholder="Store type name e.g. Men's wear"
+              className="h-9 text-sm"
+            />
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">Select category…</option>
+              {allCategories.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+            <Button
+              size="sm"
+              className="h-9 px-4 text-white bg-orange-500 hover:bg-orange-600 w-full"
+              onClick={handleAdd}
+              disabled={adding || !name.trim() || !category.trim()}
+            >
+              {adding ? "Adding…" : "Add Store Type"}
+            </Button>
+          </div>
+
+          {/* Existing list */}
+          {rawStoreTypes.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No store types yet. Add one above.</p>
+          ) : (
+            <div className="space-y-3 max-h-64 overflow-y-auto">
+              {grouped.map(({ cat, types }) => (
+                <div key={cat}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5 px-1">{cat}</p>
+                  <div className="space-y-1">
+                    {types.map((st) => (
+                      <div key={st.name} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2.5">
+                        <span className="flex-1 text-sm font-medium text-gray-700">{st.name}</span>
+                        <button type="button" onClick={() => onRemove(st.name)} disabled={removing === st.name}
+                          className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-40">
+                          {removing === st.name ? <span className="text-xs">…</span> : <X className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {uncategorized.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5 px-1">Uncategorized</p>
+                  <div className="space-y-1">
+                    {uncategorized.map((st) => (
+                      <div key={st.name} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2.5">
+                        <span className="flex-1 text-sm font-medium text-gray-700">{st.name}</span>
+                        <button type="button" onClick={() => onRemove(st.name)} disabled={removing === st.name}
+                          className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-40">
+                          {removing === st.name ? <span className="text-xs">…</span> : <X className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -635,12 +765,13 @@ export default function PricingConfig() {
   const { data, isLoading } = useQuery<PricingData>({
     queryKey: ["dynamic-pricing"],
     queryFn: fetchPricing,
-    staleTime: 30_000,
-    placeholderData: { plans: [], categories: [], storeTypes: [] },
+    staleTime: 0, // always re-fetch on mount so normalized data is used immediately
+    placeholderData: { plans: [], categories: [], storeTypes: [], rawStoreTypes: [] },
   });
 
   const allCategories = data?.categories ?? [];
   const allStoreTypes = data?.storeTypes ?? [];
+  const allRawStoreTypes = data?.rawStoreTypes ?? [];
   const allPlans = data?.plans ?? [];
 
   // Filter plans
@@ -696,9 +827,9 @@ export default function PricingConfig() {
   });
 
   const addStoreMutation = useMutation({
-    mutationFn: addStoreType,
+    mutationFn: ({ name, category }: { name: string; category: string }) => addStoreType({ name, category }),
     onMutate: () => setAddingStore(true),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["dynamic-pricing"] }); setAddingStore(false); toast({ title: "Store added" }); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["dynamic-pricing"] }); setAddingStore(false); toast({ title: "Store type added" }); },
     onError: (e: Error) => { setAddingStore(false); toast({ title: "Error", description: e.message, variant: "destructive" }); },
   });
 
@@ -867,17 +998,15 @@ export default function PricingConfig() {
         color="violet"
       />
 
-      <TagManagerDialog
+      <StoreTypeMgrDialog
         open={showStoreMgr}
         onClose={() => setShowStoreMgr(false)}
-        title="Stores"
-        icon={<Store className="h-5 w-5 text-orange-500" />}
-        items={allStoreTypes}
-        onAdd={(name) => addStoreMutation.mutate(name)}
+        allCategories={allCategories}
+        rawStoreTypes={allRawStoreTypes}
+        onAdd={(name, category) => addStoreMutation.mutate({ name, category })}
         onRemove={(name) => removeStoreMutation.mutate(name)}
         adding={addingStore}
         removing={removingStore}
-        color="orange"
       />
     </div>
   );

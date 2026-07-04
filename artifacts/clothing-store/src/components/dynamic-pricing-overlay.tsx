@@ -226,8 +226,13 @@ export default function DynamicPricingOverlay({ onBack, onSelectPlan }: Props) {
   const filteredPlans = useMemo(() => {
     let plans = allPlans;
     if (activeStore !== "all") {
-      // plans.storeTypes contains category names (e.g. "Clothing store")
-      plans = plans.filter((p) => (p.storeTypes ?? []).includes(activeStore));
+      // Filter by plan.categories (current format).
+      // Also check plan.storeTypes for backward-compat with plans saved before the
+      // category system was introduced (those plans stored category names in storeTypes).
+      plans = plans.filter((p) =>
+        (p.categories ?? []).includes(activeStore) ||
+        (p.storeTypes ?? []).includes(activeStore)
+      );
     }
     if (search.trim()) {
       const q = search.trim().toLowerCase();
@@ -236,6 +241,7 @@ export default function DynamicPricingOverlay({ onBack, onSelectPlan }: Props) {
           p.price.toLowerCase().includes(q) ||
           p.name.toLowerCase().includes(q) ||
           String(p.durationDays ?? "").includes(q) ||
+          (p.categories ?? []).some((s) => s.toLowerCase().includes(q)) ||
           (p.storeTypes ?? []).some((s) => s.toLowerCase().includes(q))
       );
     }
