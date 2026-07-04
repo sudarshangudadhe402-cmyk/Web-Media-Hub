@@ -3,9 +3,9 @@ import { Booking } from "../models/Booking";
 import { Product } from "../models/Product";
 import { Store } from "../models/Store";
 import { Notification } from "../models/Notification";
-import { LoyaltyCard } from "../models/LoyaltyCard";
 import { AuthRequest, requireAuth } from "../middlewares/auth";
 import { requireDb } from "../middlewares/dbCheck";
+import { getCardSnapshot, advanceGenerationIfFull } from "../services/loyaltyService";
 
 const router = Router();
 
@@ -126,12 +126,13 @@ router.post("/bookings", async (req, res) => {
     }
 
     let loyaltyCardGeneration: number | undefined;
-    let cardDoc: InstanceType<typeof LoyaltyCard> | null = null;
+    let cardApplied = false;
 
     if (loyaltyCardApplied && loyaltyCardId) {
-      cardDoc = await LoyaltyCard.findById(loyaltyCardId);
-      if (cardDoc) {
-        loyaltyCardGeneration = cardDoc.cardGeneration;
+      const snapshot = await getCardSnapshot(loyaltyCardId);
+      if (snapshot) {
+        loyaltyCardGeneration = snapshot.generation;
+        cardApplied = true;
       }
     }
 
@@ -162,20 +163,8 @@ router.post("/bookings", async (req, res) => {
 
     let cardRefreshed = false;
 
-    if (cardDoc && loyaltyCardGeneration !== undefined) {
-      const countInGen = await Booking.countDocuments({
-        loyaltyCardId: loyaltyCardId,
-        loyaltyCardGeneration: loyaltyCardGeneration,
-        ignored: { $ne: true },
-      });
-
-      if (countInGen >= 10) {
-        await LoyaltyCard.findByIdAndUpdate(loyaltyCardId, {
-          cardGeneration: loyaltyCardGeneration + 1,
-          refreshedAt: new Date(),
-        });
-        cardRefreshed = true;
-      }
+    if (cardApplied && loyaltyCardGeneration !== undefined) {
+      cardRefreshed = await advanceGenerationIfFull(loyaltyCardId, loyaltyCardGeneration);
     }
 
     res.status(201).json({

@@ -1,10 +1,9 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { LoyaltyCard } from "../models/LoyaltyCard";
-import { Booking } from "../models/Booking";
 import { Store } from "../models/Store";
-import { Product } from "../models/Product";
 import { AuthRequest, requireAuth } from "../middlewares/auth";
+import { getCarryOverBookings, getCurrentGenerationBookings } from "../services/loyaltyBookingQueryService";
 
 const router = Router();
 
@@ -133,21 +132,10 @@ router.get("/public/loyalty-card/slots/:cardId", async (req, res) => {
     const currentGen = card.cardGeneration ?? 1;
 
     // Pending carry-overs from previous generation
-    const carryOverBookings = currentGen > 1
-      ? await Booking.find({
-          loyaltyCardId: cardId,
-          loyaltyCardGeneration: currentGen - 1,
-          completed: false,
-          ignored: { $ne: true },
-        }).populate("productId").sort({ createdAt: 1 }).lean()
-      : [];
+    const carryOverBookings = await getCarryOverBookings(cardId, currentGen);
 
     // All bookings for current generation
-    const currentGenBookings = await Booking.find({
-      loyaltyCardId: cardId,
-      loyaltyCardGeneration: currentGen,
-      ignored: { $ne: true },
-    }).populate("productId").sort({ createdAt: 1 }).lean();
+    const currentGenBookings = await getCurrentGenerationBookings(cardId, currentGen);
 
     type SlotStatus = "empty" | "pending" | "completed";
     interface Slot {

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireSuperAdmin } from "../middlewares/auth";
 import { DynamicPricing } from "../models/DynamicPricing";
 import { User } from "../models/User";
+import { findPartnerCoupon } from "../services/partnerCouponService";
 
 const router = Router();
 
@@ -311,36 +312,18 @@ router.get("/pricing/validate-coupon", async (req, res) => {
       return;
     }
 
-    // 2. Check influencer coupons (global — any plan)
-    const { Influencer } = await import("../models/Influencer");
-    const influencer = await Influencer.findOne({ coupon_code: code });
-    if (influencer && influencer.customer_discount_percentage > 0) {
-      const discountedNum = originalNum * (1 - influencer.customer_discount_percentage / 100);
+    // 2 & 3. Check partner coupons (influencer/ambassador — global, any plan)
+    const partnerCoupon = await findPartnerCoupon(code);
+    if (partnerCoupon) {
+      const discountedNum = originalNum * (1 - partnerCoupon.discountPercent / 100);
       res.json({
         valid: true,
-        type: "influencer",
+        type: partnerCoupon.type,
         discountedPrice: formatPrice(discountedNum),
         originalPrice,
-        discountPercent: influencer.customer_discount_percentage,
+        discountPercent: partnerCoupon.discountPercent,
         savings: formatPrice(originalNum - discountedNum),
-        partnerName: influencer.name,
-      });
-      return;
-    }
-
-    // 3. Check ambassador referral codes (global — any plan)
-    const { Ambassador } = await import("../models/Ambassador");
-    const ambassador = await Ambassador.findOne({ referral_code: code });
-    if (ambassador && ambassador.customer_discount_percentage > 0) {
-      const discountedNum = originalNum * (1 - ambassador.customer_discount_percentage / 100);
-      res.json({
-        valid: true,
-        type: "ambassador",
-        discountedPrice: formatPrice(discountedNum),
-        originalPrice,
-        discountPercent: ambassador.customer_discount_percentage,
-        savings: formatPrice(originalNum - discountedNum),
-        partnerName: ambassador.name,
+        partnerName: partnerCoupon.partnerName,
       });
       return;
     }
