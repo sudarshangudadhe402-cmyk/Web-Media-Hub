@@ -25,6 +25,7 @@ interface DynamicPlan {
 interface PricingData {
   plans: DynamicPlan[];
   storeTypes: string[];
+  categories: string[];
 }
 
 export interface SelectedPlan {
@@ -90,7 +91,9 @@ async function fetchPricing(): Promise<PricingData> {
   const storeTypes = (data.storeTypes ?? []).map((st: unknown) =>
     typeof st === "string" ? st : (st as { name: string }).name
   );
-  return { ...data, storeTypes };
+  // categories come as plain strings from the API
+  const categories: string[] = data.categories ?? [];
+  return { ...data, storeTypes, categories };
 }
 
 // ── Plan Card (Jio style) ─────────────────────────────────────────────────────
@@ -214,15 +217,16 @@ export default function DynamicPricingOverlay({ onBack, onSelectPlan }: Props) {
     queryKey: ["dynamic-pricing-public"],
     queryFn: fetchPricing,
     staleTime: 60_000,
-    placeholderData: { plans: [], storeTypes: [] },
+    placeholderData: { plans: [], storeTypes: [], categories: [] },
   });
 
   const allPlans = data?.plans ?? [];
-  const allStoreTypes = data?.storeTypes ?? [];
+  const allCategories = data?.categories ?? [];
 
   const filteredPlans = useMemo(() => {
     let plans = allPlans;
     if (activeStore !== "all") {
+      // plans.storeTypes contains category names (e.g. "Clothing store")
       plans = plans.filter((p) => (p.storeTypes ?? []).includes(activeStore));
     }
     if (search.trim()) {
@@ -482,8 +486,8 @@ export default function DynamicPricingOverlay({ onBack, onSelectPlan }: Props) {
         </div>
       </div>
 
-      {/* Store filter chips */}
-      {allStoreTypes.length > 0 && (
+      {/* Category filter chips */}
+      {allCategories.length > 0 && (
         <div className="px-4 pb-2 shrink-0">
           <div className="flex items-center gap-2 overflow-x-auto" style={{ paddingBottom: "2px" }}>
             <button
@@ -500,21 +504,21 @@ export default function DynamicPricingOverlay({ onBack, onSelectPlan }: Props) {
             >
               All
             </button>
-            {allStoreTypes.map((st) => (
+            {allCategories.map((cat) => (
               <button
-                key={st}
-                onClick={() => setActiveStore(st === activeStore ? "all" : st)}
+                key={cat}
+                onClick={() => setActiveStore(cat === activeStore ? "all" : cat)}
                 className="flex-none text-sm font-semibold transition-all"
                 style={{
                   padding: "6px 16px",
                   borderRadius: "999px",
-                  border: `1.5px solid ${activeStore === st ? GOLD_BG : BORDER}`,
-                  background: activeStore === st ? GOLD_BG : "white",
-                  color: activeStore === st ? "white" : HINT,
+                  border: `1.5px solid ${activeStore === cat ? GOLD_BG : BORDER}`,
+                  background: activeStore === cat ? GOLD_BG : "white",
+                  color: activeStore === cat ? "white" : HINT,
                   whiteSpace: "nowrap",
                 }}
               >
-                {st}
+                {cat}
               </button>
             ))}
           </div>

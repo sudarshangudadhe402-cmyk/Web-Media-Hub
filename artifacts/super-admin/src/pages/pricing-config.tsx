@@ -54,10 +54,15 @@ function daysToHuman(days: number | null): string {
 }
 
 // ── API calls ─────────────────────────────────────────────────────────────────
+function normalizeStoreTypes(raw: unknown[]): string[] {
+  return raw.map((st) => (typeof st === "string" ? st : (st as { name: string }).name));
+}
+
 async function fetchPricing(): Promise<PricingData> {
   const res = await fetch("/api/pricing");
   if (!res.ok) throw new Error("Failed to fetch pricing");
-  return res.json();
+  const data = await res.json();
+  return { ...data, storeTypes: normalizeStoreTypes(data.storeTypes ?? []) };
 }
 
 async function createPlan(data: Omit<Plan, "id">): Promise<Plan> {
@@ -110,7 +115,7 @@ async function addStoreType(name: string): Promise<string[]> {
     body: JSON.stringify({ name }),
   });
   if (!res.ok) throw new Error("Failed to add store type");
-  return (await res.json()).storeTypes;
+  return normalizeStoreTypes((await res.json()).storeTypes ?? []);
 }
 
 async function removeStoreType(name: string): Promise<string[]> {
@@ -118,7 +123,7 @@ async function removeStoreType(name: string): Promise<string[]> {
     method: "DELETE", headers: authHeaders(),
   });
   if (!res.ok) throw new Error("Failed to remove store type");
-  return (await res.json()).storeTypes;
+  return normalizeStoreTypes((await res.json()).storeTypes ?? []);
 }
 
 // ── Feature List Editor ───────────────────────────────────────────────────────
