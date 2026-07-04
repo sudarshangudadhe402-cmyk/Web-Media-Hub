@@ -101,7 +101,7 @@ router.post("/payments/verify-and-register", async (req: any, res) => {
       razorpay_signature,
       email, password, storeName, whatsapp,
       plan, planName, planPrice, planPeriod, planBadge, planColor,
-      couponCode, ref_admin,
+      couponCode, ref_admin, storeType,
     } = req.body;
 
     // 1. Verify Razorpay signature
@@ -163,6 +163,7 @@ router.post("/payments/verify-and-register", async (req: any, res) => {
       subscriptionEndDate: end,
       coupon_code: couponCode ? String(couponCode).toUpperCase() : "",
       signup_source: couponCode ? "INFLUENCER" : "ORGANIC",
+      storeType: storeType ?? "",
     });
 
     // 5. Notification

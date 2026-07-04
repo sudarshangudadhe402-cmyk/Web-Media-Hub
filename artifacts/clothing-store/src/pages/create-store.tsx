@@ -62,10 +62,12 @@ const BORDER = "#E8E0D0";
 const HINT = "#9A9485";
 const LABEL = "#1A1A1A";
 
-/* ─── Categories ─── */
-const CATEGORIES = [
-  { key: "fashion_clothing", label: "Fashion & Clothing Store", icon: Shirt, desc: "Sell clothes, accessories & fashion items" },
-];
+/* ─── Category icon fallback ─── */
+function categoryIcon(cat: string) {
+  const lower = cat.toLowerCase();
+  if (lower.includes("fashion") || lower.includes("cloth")) return Shirt;
+  return Store;
+}
 
 /* ─── Steps ─── */
 const STEPS = [
@@ -88,11 +90,33 @@ export default function CreateStore() {
   const [checking,     setChecking]     = useState(false);
   const [dupePopup,    setDupePopup]    = useState<DupePopup | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedStoreType, setSelectedStoreType] = useState<string | null>(null);
+  const [apiCategories, setApiCategories] = useState<string[]>([]);
+  const [apiStoreTypes, setApiStoreTypes] = useState<{name: string; category: string}[]>([]);
+  const [apiLoading, setApiLoading] = useState(true);
+  const [apiError, setApiError] = useState(false);
   const [submitting,     setSubmitting]     = useState(false);
   const [submitError,    setSubmitError]    = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [rzpLoading,     setRzpLoading]     = useState(false);
   const [refAdmin,       setRefAdmin]       = useState<string>("");
+
+  /* Fetch dynamic categories + store types from API */
+  function fetchPricing() {
+    setApiLoading(true);
+    setApiError(false);
+    fetch("/api/pricing")
+      .then(r => r.ok ? r.json() : Promise.reject("not-ok"))
+      .then(d => {
+        setApiCategories(d.categories ?? []);
+        setApiStoreTypes((d.storeTypes ?? []).map((s: any) =>
+          typeof s === "string" ? { name: s, category: "" } : s
+        ));
+        setApiLoading(false);
+      })
+      .catch(() => { setApiError(true); setApiLoading(false); });
+  }
+  useEffect(() => { fetchPricing(); }, []);
 
   /* Capture ?ref= param from URL at mount */
   useEffect(() => {
@@ -177,6 +201,7 @@ export default function CreateStore() {
                   planColor: selectedPlan?.color ?? "",
                   couponCode: selectedPlan?.couponCode ?? null,
                   ref_admin: refAdmin,
+                  storeType: selectedStoreType ?? "",
                 }),
               });
               const verifyData = await verifyRes.json();
@@ -404,64 +429,136 @@ export default function CreateStore() {
                 <div className="px-6 pb-6 space-y-3">
                   <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color:HINT }}>Available Categories</p>
 
-                  {CATEGORIES.map(cat => {
-                    const isSelected = selectedCategory === cat.key;
+                  {apiLoading ? (
+                    <div className="flex flex-col items-center gap-2 py-6">
+                      <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: GOLD_BG, borderTopColor: "transparent" }} />
+                      <p className="text-xs" style={{ color:HINT }}>Loading categories…</p>
+                    </div>
+                  ) : apiError ? (
+                    <div className="flex flex-col items-center gap-3 py-6 text-center">
+                      <p className="text-sm font-medium" style={{ color:"#E05A5A" }}>Couldn't load categories</p>
+                      <button onClick={fetchPricing} className="text-xs font-semibold px-4 py-2 rounded-lg"
+                        style={{ background: LABEL, color: "white" }}>Retry</button>
+                    </div>
+                  ) : apiCategories.length === 0 ? (
+                    <p className="text-xs text-center py-4" style={{ color:"#C5BFB5" }}>
+                      No categories available yet. Please check back later.
+                    </p>
+                  ) : apiCategories.map(cat => {
+                    const isSelected = selectedCategory === cat;
+                    const CatIcon = categoryIcon(cat);
+                    const typesForCat = apiStoreTypes.filter(s => s.category === cat);
                     return (
-                      <motion.button
-                        key={cat.key}
-                        type="button"
-                        onClick={() => setSelectedCategory(cat.key)}
-                        whileHover={{ scale:1.012 }}
-                        whileTap={{ scale:0.97 }}
-                        className="w-full flex items-center gap-4 text-left transition-all"
-                        style={{
-                          padding:"16px 18px",
-                          borderRadius:"14px",
-                          border: isSelected ? `2px solid ${GOLD_BG}` : `2px solid ${BORDER}`,
-                          background: isSelected ? `${GOLD_BG}10` : "#FDFCF9",
-                          boxShadow: isSelected ? `0 4px 16px rgba(212,160,23,0.18)` : "none",
-                        }}
-                      >
-                        <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-                          style={{ background: isSelected ? LABEL : "#F0EBE1" }}>
-                          <cat.icon className="w-6 h-6" style={{ color: isSelected ? "white" : HINT }} />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-bold text-sm" style={{ color:LABEL }}>{cat.label}</p>
-                          <p className="text-xs mt-0.5" style={{ color:HINT }}>{cat.desc}</p>
-                        </div>
-                        <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0"
-                          style={{ borderColor: isSelected ? GOLD_BG : BORDER, background: isSelected ? GOLD_BG : "transparent" }}>
-                          {isSelected && <Check className="w-3 h-3 text-white" />}
-                        </div>
-                      </motion.button>
+                      <div key={cat}>
+                        <motion.button
+                          type="button"
+                          onClick={() => {
+                            setSelectedCategory(cat);
+                            setSelectedStoreType(null);
+                          }}
+                          whileHover={{ scale:1.012 }}
+                          whileTap={{ scale:0.97 }}
+                          className="w-full flex items-center gap-4 text-left transition-all"
+                          style={{
+                            padding:"16px 18px",
+                            borderRadius: isSelected && typesForCat.length > 0 ? "14px 14px 0 0" : "14px",
+                            border: isSelected ? `2px solid ${GOLD_BG}` : `2px solid ${BORDER}`,
+                            borderBottom: isSelected && typesForCat.length > 0 ? "none" : undefined,
+                            background: isSelected ? `${GOLD_BG}10` : "#FDFCF9",
+                            boxShadow: isSelected ? `0 4px 16px rgba(212,160,23,0.18)` : "none",
+                          }}
+                        >
+                          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: isSelected ? LABEL : "#F0EBE1" }}>
+                            <CatIcon className="w-6 h-6" style={{ color: isSelected ? "white" : HINT }} />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-bold text-sm" style={{ color:LABEL }}>{cat}</p>
+                          </div>
+                          <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0"
+                            style={{ borderColor: isSelected ? GOLD_BG : BORDER, background: isSelected ? GOLD_BG : "transparent" }}>
+                            {isSelected && <Check className="w-3 h-3 text-white" />}
+                          </div>
+                        </motion.button>
+
+                        {/* Store types — shown below selected category */}
+                        {isSelected && typesForCat.length > 0 && (
+                          <div style={{
+                            border: `2px solid ${GOLD_BG}`,
+                            borderTop: "none",
+                            borderRadius: "0 0 14px 14px",
+                            background: "#FDFCF9",
+                            padding: "12px",
+                          }}>
+                            <p className="text-[10px] font-bold uppercase tracking-wider mb-2 px-1" style={{ color:HINT }}>
+                              Select Store Type
+                            </p>
+                            <div className="grid grid-cols-2 gap-2">
+                              {typesForCat.map(st => {
+                                const isSel = selectedStoreType === st.name;
+                                return (
+                                  <motion.button
+                                    key={st.name}
+                                    type="button"
+                                    onClick={() => setSelectedStoreType(st.name)}
+                                    whileHover={{ scale: 1.03 }}
+                                    whileTap={{ scale: 0.97 }}
+                                    className="text-left transition-all"
+                                    style={{
+                                      padding: "12px 14px",
+                                      borderRadius: "10px",
+                                      border: isSel ? `2px solid ${GOLD_BG}` : `2px solid ${BORDER}`,
+                                      background: isSel ? `${GOLD_BG}18` : "#FFFFFF",
+                                      boxShadow: isSel ? `0 2px 8px rgba(212,160,23,0.15)` : "none",
+                                    }}
+                                  >
+                                    <p className="font-semibold text-xs" style={{ color: isSel ? GOLD_BG : LABEL }}>
+                                      {st.name}
+                                    </p>
+                                  </motion.button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
 
-                  <p className="text-xs text-center py-2" style={{ color:"#C5BFB5" }}>More categories coming soon</p>
-
                   {/* Continue button */}
-                  <motion.button
-                    type="button"
-                    disabled={!selectedCategory}
-                    onClick={() => selectedCategory && goTo(1)}
-                    whileHover={selectedCategory ? {scale:1.012} : {}}
-                    whileTap={selectedCategory ? {scale:0.97} : {}}
-                    className="w-full flex items-center justify-center gap-2 font-bold text-white"
-                    style={{
-                      height:"52px", borderRadius:"14px",
-                      background: selectedCategory ? LABEL : "#C5BFB5",
-                      fontSize:"15px", cursor: selectedCategory ? "pointer" : "not-allowed",
-                      boxShadow: selectedCategory ? "0 4px 16px rgba(0,0,0,0.18)" : "none",
-                      transition:"all 0.2s",
-                    }}
-                  >
-                    Continue <ChevronRight className="w-4 h-4" />
-                  </motion.button>
-
-                  {!selectedCategory && (
-                    <p className="text-center text-xs" style={{ color:"#BBAA99" }}>Select a category to continue</p>
-                  )}
+                  {(() => {
+                    const canContinue = !!selectedCategory && (
+                      apiStoreTypes.filter(s => s.category === selectedCategory).length === 0
+                        ? true
+                        : !!selectedStoreType
+                    );
+                    return (
+                      <>
+                        <motion.button
+                          type="button"
+                          disabled={!canContinue}
+                          onClick={() => canContinue && goTo(1)}
+                          whileHover={canContinue ? {scale:1.012} : {}}
+                          whileTap={canContinue ? {scale:0.97} : {}}
+                          className="w-full flex items-center justify-center gap-2 font-bold text-white"
+                          style={{
+                            height:"52px", borderRadius:"14px",
+                            background: canContinue ? LABEL : "#C5BFB5",
+                            fontSize:"15px", cursor: canContinue ? "pointer" : "not-allowed",
+                            boxShadow: canContinue ? "0 4px 16px rgba(0,0,0,0.18)" : "none",
+                            transition:"all 0.2s",
+                          }}
+                        >
+                          Continue <ChevronRight className="w-4 h-4" />
+                        </motion.button>
+                        {!canContinue && (
+                          <p className="text-center text-xs" style={{ color:"#BBAA99" }}>
+                            {!selectedCategory ? "Select a category to continue" : "Select a store type to continue"}
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             </motion.div>

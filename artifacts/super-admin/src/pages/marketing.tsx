@@ -518,6 +518,7 @@ function DashboardTab() {
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<string[]>([]);
   const [storeTypes, setStoreTypes] = useState<StoreTypeObj[]>([]);
+  const [storeTypeCounts, setStoreTypeCounts] = useState<Record<string, number>>({});
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [showCatModal, setShowCatModal] = useState(false);
   const [showTypeModal, setShowTypeModal] = useState(false);
@@ -541,6 +542,7 @@ function DashboardTab() {
         );
         setCategories(cats);
         setStoreTypes(types);
+        setStoreTypeCounts(pData.storeTypeCounts ?? {});
         if (cats.length > 0) setActiveCategory(prev => prev && cats.includes(prev) ? prev : cats[0]);
       }
     } catch { toast({ title: "Failed to load dashboard", variant: "destructive" }); }
@@ -616,12 +618,17 @@ function DashboardTab() {
               </p>
             ) : (
               <div className="divide-y divide-gray-100">
-                {visibleTypes.map(st => (
-                  <div key={st.name} className="flex items-center justify-between py-3">
-                    <span className="text-sm text-gray-800">{st.name}</span>
-                    <span className="text-sm font-semibold text-gray-700">0</span>
-                  </div>
-                ))}
+                {visibleTypes.map(st => {
+                  // Key: "name::category" with fallback to plain name (legacy admins without category)
+                  const countKey = `${st.name}::${st.category}`;
+                  const count = (storeTypeCounts[countKey] ?? 0) + (storeTypeCounts[st.name] ?? 0);
+                  return (
+                    <div key={st.name} className="flex items-center justify-between py-3">
+                      <span className="text-sm text-gray-800">{st.name}</span>
+                      <span className="text-sm font-semibold text-gray-700">{count}</span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireSuperAdmin } from "../middlewares/auth";
 import { DynamicPricing } from "../models/DynamicPricing";
+import { User } from "../models/User";
 
 const router = Router();
 
@@ -49,7 +50,23 @@ router.get("/pricing", async (req, res) => {
       );
     }
 
-    res.json({ plans: plans.map(planToJson), categories: doc.categories, storeTypes: doc.storeTypes });
+    // Build name→category lookup from pricing doc
+    const typeToCategory: Record<string, string> = {};
+    for (const st of doc.storeTypes as any[]) {
+      if (st.name) typeToCategory[st.name] = st.category ?? "";
+    }
+    // Count admins per store type, keyed "name::category" to avoid cross-category collisions
+    const adminDocs = await User.find({ role: "admin", storeType: { $ne: "" } }).select("storeType").lean();
+    const storeTypeCounts: Record<string, number> = {};
+    for (const a of adminDocs) {
+      const t = (a as any).storeType as string;
+      if (!t) continue;
+      const cat = typeToCategory[t] ?? "";
+      const key = cat ? `${t}::${cat}` : t;
+      storeTypeCounts[key] = (storeTypeCounts[key] ?? 0) + 1;
+    }
+
+    res.json({ plans: plans.map(planToJson), categories: doc.categories, storeTypes: doc.storeTypes, storeTypeCounts });
   } catch (err) {
     (req as any).log?.error({ err }, "Get pricing error");
     res.status(500).json({ error: "Internal server error" });

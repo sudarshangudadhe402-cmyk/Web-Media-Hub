@@ -158,6 +158,7 @@ router.get("/admins", requireSuperAdmin, async (req, res) => {
         planColor: a.planColor ?? "",
         subscriptionStartDate: a.subscriptionStartDate ? a.subscriptionStartDate.toISOString() : null,
         subscriptionEndDate: a.subscriptionEndDate ? a.subscriptionEndDate.toISOString() : null,
+        storeType: a.storeType ?? "",
         createdAt: a.createdAt.toISOString(),
       }))
     );
