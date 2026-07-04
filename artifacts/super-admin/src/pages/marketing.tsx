@@ -312,17 +312,24 @@ function CategoryModal({ open, onClose, onSaved, categories }: {
                       </button>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-between group">
+                    <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-800">{cat}</span>
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => startEdit(cat)} className="p-1.5 rounded hover:bg-purple-50 text-purple-500">
-                          <Edit2 size={13} />
-                        </button>
-                        <button onClick={() => deleteCat(cat)} disabled={deletingCat === cat}
-                          className="p-1.5 rounded hover:bg-red-50 text-red-400 disabled:opacity-50">
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="p-1.5 rounded hover:bg-purple-50 text-purple-500">
+                            <Edit2 size={13} />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => startEdit(cat)}>
+                            <Edit2 size={13} className="mr-2" /> Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive" disabled={deletingCat === cat}
+                            onClick={() => deleteCat(cat)}>
+                            <Trash2 size={13} className="mr-2" /> Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   )}
                 </div>
@@ -468,17 +475,24 @@ function StoreTypeModal({ open, onClose, onSaved, categories, storeTypes }: {
                             </div>
                           </div>
                         ) : (
-                          <div className="flex items-center justify-between group">
+                          <div className="flex items-center justify-between">
                             <span className="text-sm text-gray-800">{st.name}</span>
-                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={() => startEdit(st)} className="p-1.5 rounded hover:bg-orange-50 text-orange-400">
-                                <Edit2 size={13} />
-                              </button>
-                              <button onClick={() => deleteType(st)} disabled={deletingType === st.name}
-                                className="p-1.5 rounded hover:bg-red-50 text-red-400 disabled:opacity-50">
-                                <Trash2 size={13} />
-                              </button>
-                            </div>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className="p-1.5 rounded hover:bg-orange-50 text-orange-400">
+                                  <Edit2 size={13} />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => startEdit(st)}>
+                                  <Edit2 size={13} className="mr-2" /> Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive" disabled={deletingType === st.name}
+                                  onClick={() => deleteType(st)}>
+                                  <Trash2 size={13} className="mr-2" /> Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         )}
                       </div>
