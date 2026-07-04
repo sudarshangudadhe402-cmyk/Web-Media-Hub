@@ -219,23 +219,206 @@ function DateFilterBar({ range, setRange, from, setFrom, to, setTo }: any) {
   );
 }
 
+/* ── STORE CATEGORY & TYPE MODALS ── */
+type StoreTypeObj = { name: string; category: string };
+
+function CategoryModal({ open, onClose, onSaved, editing }: {
+  open: boolean; onClose: () => void; onSaved: () => void; editing: string | null;
+}) {
+  const [name, setName] = useState(editing ?? "");
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { setName(editing ?? ""); }, [editing]);
+
+  async function save() {
+    if (!name.trim()) return;
+    setSaving(true);
+    try {
+      let r: Response;
+      if (editing) {
+        r = await fetch(`${BASE}/pricing/categories/${encodeURIComponent(editing)}`, {
+          method: "PUT", headers: authHeaders(), body: JSON.stringify({ name: name.trim() }),
+        });
+      } else {
+        r = await fetch(`${BASE}/pricing/categories`, {
+          method: "POST", headers: authHeaders(), body: JSON.stringify({ name: name.trim() }),
+        });
+      }
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error || "Failed"); }
+      toast({ title: editing ? "Category renamed" : "Category added" });
+      onSaved(); onClose();
+    } catch (e: any) {
+      toast({ title: e.message, variant: "destructive" });
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{editing ? "Edit Category" : "Add Store Category"}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-2">
+          <Input placeholder="Category name" value={name} onChange={e => setName(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && save()} autoFocus />
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button onClick={save} disabled={saving || !name.trim()} className="bg-purple-600 hover:bg-purple-700 text-white">
+              {saving ? "Saving…" : editing ? "Save" : "Add"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function StoreTypeModal({ open, onClose, onSaved, editing, categories }: {
+  open: boolean; onClose: () => void; onSaved: () => void;
+  editing: StoreTypeObj | null; categories: string[];
+}) {
+  const [name, setName] = useState(editing?.name ?? "");
+  const [category, setCategory] = useState(editing?.category ?? categories[0] ?? "");
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setName(editing?.name ?? "");
+    setCategory(editing?.category ?? categories[0] ?? "");
+  }, [editing, categories]);
+
+  async function save() {
+    if (!name.trim() || !category) return;
+    setSaving(true);
+    try {
+      let r: Response;
+      if (editing) {
+        r = await fetch(`${BASE}/pricing/store-types/${encodeURIComponent(editing.name)}`, {
+          method: "PUT", headers: authHeaders(), body: JSON.stringify({ name: name.trim(), category }),
+        });
+      } else {
+        r = await fetch(`${BASE}/pricing/store-types`, {
+          method: "POST", headers: authHeaders(), body: JSON.stringify({ name: name.trim(), category }),
+        });
+      }
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error || "Failed"); }
+      toast({ title: editing ? "Store type updated" : "Store type added" });
+      onSaved(); onClose();
+    } catch (e: any) {
+      toast({ title: e.message, variant: "destructive" });
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{editing ? "Edit Store Type" : "Add Store Type"}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-2">
+          <div>
+            <label className="text-sm font-medium text-muted-foreground mb-1 block">Store Type Name</label>
+            <Input placeholder="e.g. Clothing Store" value={name} onChange={e => setName(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && save()} autoFocus />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-muted-foreground mb-1 block">Select Category</label>
+            {categories.length === 0 ? (
+              <p className="text-sm text-destructive">Add a category first.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {categories.map(cat => (
+                  <button key={cat} type="button"
+                    onClick={() => setCategory(cat)}
+                    className={`px-3 py-1 rounded-full text-sm border transition-all ${category === cat
+                      ? "bg-orange-500 text-white border-orange-500"
+                      : "border-muted-foreground/30 text-muted-foreground hover:border-orange-400"}`}>
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button onClick={save} disabled={saving || !name.trim() || !category || categories.length === 0}
+              className="bg-orange-500 hover:bg-orange-600 text-white">
+              {saving ? "Saving…" : editing ? "Save" : "Add"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /* ── DASHBOARD ── */
 function DashboardTab() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [storeTypes, setStoreTypes] = useState<StoreTypeObj[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [showCatModal, setShowCatModal] = useState(false);
+  const [editingCat, setEditingCat] = useState<string | null>(null);
+  const [showTypeModal, setShowTypeModal] = useState(false);
+  const [editingType, setEditingType] = useState<StoreTypeObj | null>(null);
   const { toast } = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await fetch(`${BASE}/marketing/dashboard?range=all`, { headers: authHeaders() });
-      if (!r.ok) throw new Error("Server error");
-      setData(await r.json());
+      const [dashR, pricingR] = await Promise.all([
+        fetch(`${BASE}/marketing/dashboard?range=all`, { headers: authHeaders() }),
+        fetch(`${BASE}/pricing`, { headers: authHeaders() }),
+      ]);
+      if (!dashR.ok) throw new Error("Server error");
+      const dashData = await dashR.json();
+      setData(dashData);
+      if (pricingR.ok) {
+        const pData = await pricingR.json();
+        const cats: string[] = pData.categories ?? [];
+        const types: StoreTypeObj[] = (pData.storeTypes ?? []).map((s: any) =>
+          typeof s === "string" ? { name: s, category: "" } : s
+        );
+        setCategories(cats);
+        setStoreTypes(types);
+        if (cats.length > 0) setActiveCategory(prev => prev && cats.includes(prev) ? prev : cats[0]);
+      }
     } catch { toast({ title: "Failed to load dashboard", variant: "destructive" }); }
     finally { setLoading(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  async function deleteCategory(cat: string) {
+    if (!confirm(`Delete category "${cat}"? All store types under it will also be removed.`)) return;
+    try {
+      const r = await fetch(`${BASE}/pricing/categories/${encodeURIComponent(cat)}`, {
+        method: "DELETE", headers: authHeaders(),
+      });
+      if (!r.ok) throw new Error("Failed to delete");
+      toast({ title: "Category deleted" });
+      load();
+    } catch (e: any) { toast({ title: e.message, variant: "destructive" }); }
+  }
+
+  async function deleteStoreType(name: string) {
+    if (!confirm(`Delete store type "${name}"?`)) return;
+    try {
+      const r = await fetch(`${BASE}/pricing/store-types/${encodeURIComponent(name)}`, {
+        method: "DELETE", headers: authHeaders(),
+      });
+      if (!r.ok) throw new Error("Failed to delete");
+      toast({ title: "Store type deleted" });
+      load();
+    } catch (e: any) { toast({ title: e.message, variant: "destructive" }); }
+  }
+
+  const visibleTypes = activeCategory
+    ? storeTypes.filter(s => s.category === activeCategory)
+    : [];
 
   if (loading) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
   if (!data) return null;
@@ -249,6 +432,103 @@ function DashboardTab() {
         <StatCard title="Total Revenue" value={fmtRs(data.totalRevenue)} icon={DollarSign} color="bg-purple-500" />
         <StatCard title="This Month" value={fmtRs(data.monthlyRevenue)} icon={TrendingUp} color="bg-orange-500" />
       </div>
+
+      {/* Dashed divider */}
+      <div className="border-t border-dashed border-gray-300" />
+
+      {/* Add Category / Add Store Type buttons */}
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          onClick={() => { setEditingCat(null); setShowCatModal(true); }}
+          className="flex items-center justify-between px-4 py-3 rounded-xl border border-purple-200 bg-white hover:bg-purple-50 transition-colors group">
+          <span className="text-sm font-semibold text-purple-600">Add Store Category</span>
+          <span className="w-7 h-7 rounded-full border-2 border-purple-500 flex items-center justify-center text-purple-500 group-hover:bg-purple-500 group-hover:text-white transition-colors">
+            <Plus size={14} />
+          </span>
+        </button>
+        <button
+          onClick={() => { setEditingType(null); setShowTypeModal(true); }}
+          className="flex items-center justify-between px-4 py-3 rounded-xl border border-orange-200 bg-white hover:bg-orange-50 transition-colors group">
+          <span className="text-sm font-semibold text-orange-500">Add Store Type</span>
+          <span className="w-7 h-7 rounded-full border-2 border-orange-500 flex items-center justify-center text-orange-500 group-hover:bg-orange-500 group-hover:text-white transition-colors">
+            <Plus size={14} />
+          </span>
+        </button>
+      </div>
+
+      {/* Category tabs + store types */}
+      {categories.length > 0 && (
+        <div>
+          {/* Tabs row */}
+          <div className="flex gap-0 border-b border-gray-200 overflow-x-auto">
+            {categories.map(cat => (
+              <div key={cat} className="relative flex items-center group">
+                <button
+                  onClick={() => setActiveCategory(cat)}
+                  className={`px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors ${
+                    activeCategory === cat
+                      ? "text-purple-600 border-b-2 border-purple-600"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}>
+                  {cat}
+                </button>
+                {/* Edit/Delete on tab */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="opacity-0 group-hover:opacity-100 transition-opacity mr-1 p-0.5 rounded hover:bg-gray-100">
+                      <MoreVertical size={13} className="text-gray-400" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={() => { setEditingCat(cat); setShowCatModal(true); }}>
+                      <Edit2 size={13} className="mr-2" /> Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="text-destructive" onClick={() => deleteCategory(cat)}>
+                      <Trash2 size={13} className="mr-2" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            ))}
+          </div>
+
+          {/* Store types list */}
+          <div className="mt-4">
+            <p className="text-sm font-bold text-purple-600 mb-3">Store Type</p>
+            {visibleTypes.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                No store types yet. Click "Add Store Type" to add one.
+              </p>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {visibleTypes.map(st => (
+                  <div key={st.name} className="flex items-center justify-between py-3 group">
+                    <span className="text-sm text-gray-800">{st.name}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-semibold text-gray-700">0</span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-gray-100">
+                            <MoreVertical size={14} className="text-gray-400" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => { setEditingType(st); setShowTypeModal(true); }}>
+                            <Edit2 size={13} className="mr-2" /> Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive" onClick={() => deleteStoreType(st.name)}>
+                            <Trash2 size={13} className="mr-2" /> Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Top Influencers */}
       {data.topInfluencers?.length > 0 && (
@@ -283,6 +563,20 @@ function DashboardTab() {
         </Card>
       )}
 
+      {/* Modals */}
+      <CategoryModal
+        open={showCatModal}
+        onClose={() => setShowCatModal(false)}
+        onSaved={load}
+        editing={editingCat}
+      />
+      <StoreTypeModal
+        open={showTypeModal}
+        onClose={() => setShowTypeModal(false)}
+        onSaved={load}
+        editing={editingType}
+        categories={categories}
+      />
     </div>
   );
 }

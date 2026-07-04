@@ -133,12 +133,41 @@ router.post("/pricing/categories", requireSuperAdmin, async (req, res) => {
   }
 });
 
+// PUT /api/pricing/categories/:name — rename category
+router.put("/pricing/categories/:name", requireSuperAdmin, async (req, res) => {
+  try {
+    const oldName = decodeURIComponent(req.params.name);
+    const { name: newName } = req.body;
+    if (!newName?.trim()) { res.status(400).json({ error: "New category name required" }); return; }
+    const doc = await getOrCreate();
+    const idx = (doc.categories as string[]).indexOf(oldName);
+    if (idx === -1) { res.status(404).json({ error: "Category not found" }); return; }
+    const trimmed = newName.trim();
+    (doc.categories as string[])[idx] = trimmed;
+    // Update storeTypes that belong to this category
+    for (const st of doc.storeTypes as any[]) {
+      if (st.category === oldName) st.category = trimmed;
+    }
+    // Update plans
+    for (const plan of doc.plans as any[]) {
+      plan.categories = (plan.categories as string[]).map((c: string) => c === oldName ? trimmed : c);
+    }
+    await doc.save();
+    res.json({ categories: doc.categories });
+  } catch (err) {
+    (req as any).log?.error({ err }, "Rename category error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // DELETE /api/pricing/categories/:name — remove category
 router.delete("/pricing/categories/:name", requireSuperAdmin, async (req, res) => {
   try {
     const cat = decodeURIComponent(req.params.name);
     const doc = await getOrCreate();
     (doc as any).categories = (doc.categories as string[]).filter((c) => c !== cat);
+    // Remove store types belonging to this category
+    (doc as any).storeTypes = (doc.storeTypes as any[]).filter((s: any) => s.category !== cat);
     for (const plan of doc.plans as any[]) {
       plan.categories = (plan.categories as string[]).filter((c: string) => c !== cat);
     }
@@ -150,15 +179,21 @@ router.delete("/pricing/categories/:name", requireSuperAdmin, async (req, res) =
   }
 });
 
-// POST /api/pricing/store-types — add store type
+// POST /api/pricing/store-types — add store type (requires name + category)
 router.post("/pricing/store-types", requireSuperAdmin, async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, category } = req.body;
     if (!name?.trim()) { res.status(400).json({ error: "Store type name required" }); return; }
+    if (!category?.trim()) { res.status(400).json({ error: "Category is required for store type" }); return; }
     const doc = await getOrCreate();
-    const st = name.trim();
-    if (!(doc.storeTypes as string[]).includes(st)) {
-      (doc.storeTypes as string[]).push(st);
+    const stName = name.trim();
+    const stCat = category.trim();
+    if (!(doc.categories as string[]).includes(stCat)) {
+      res.status(400).json({ error: "Category does not exist" }); return;
+    }
+    const exists = (doc.storeTypes as any[]).some((s: any) => s.name === stName && s.category === stCat);
+    if (!exists) {
+      (doc.storeTypes as any[]).push({ name: stName, category: stCat });
       await doc.save();
     }
     res.json({ storeTypes: doc.storeTypes });
@@ -168,15 +203,35 @@ router.post("/pricing/store-types", requireSuperAdmin, async (req, res) => {
   }
 });
 
+// PUT /api/pricing/store-types/:name — edit store type
+router.put("/pricing/store-types/:name", requireSuperAdmin, async (req, res) => {
+  try {
+    const oldName = decodeURIComponent(req.params.name);
+    const { name: newName, category } = req.body;
+    const doc = await getOrCreate();
+    const st = (doc.storeTypes as any[]).find((s: any) => s.name === oldName);
+    if (!st) { res.status(404).json({ error: "Store type not found" }); return; }
+    if (newName?.trim()) st.name = newName.trim();
+    if (category?.trim()) {
+      if (!(doc.categories as string[]).includes(category.trim())) {
+        res.status(400).json({ error: "Category does not exist" }); return;
+      }
+      st.category = category.trim();
+    }
+    await doc.save();
+    res.json({ storeTypes: doc.storeTypes });
+  } catch (err) {
+    (req as any).log?.error({ err }, "Edit store type error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // DELETE /api/pricing/store-types/:name — remove store type
 router.delete("/pricing/store-types/:name", requireSuperAdmin, async (req, res) => {
   try {
     const st = decodeURIComponent(req.params.name);
     const doc = await getOrCreate();
-    (doc as any).storeTypes = (doc.storeTypes as string[]).filter((s) => s !== st);
-    for (const plan of doc.plans as any[]) {
-      plan.storeTypes = (plan.storeTypes as string[]).filter((s: string) => s !== st);
-    }
+    (doc as any).storeTypes = (doc.storeTypes as any[]).filter((s: any) => s.name !== st);
     await doc.save();
     res.json({ storeTypes: doc.storeTypes });
   } catch (err) {
