@@ -1,4 +1,4 @@
-import { Search, X, SlidersHorizontal, ShoppingBag, Heart, Camera, Box, Star } from "lucide-react";
+import { Search, X, SlidersHorizontal, ShoppingBag, Heart, Camera, Box } from "lucide-react";
 import { useState } from "react";
 
 
@@ -39,9 +39,6 @@ function discountPct(p: PublicProduct) {
     : 0;
 }
 
-function pseudoRating(likeCount: number) {
-  return (4.0 + (likeCount % 10) / 10).toFixed(1);
-}
 
 export default function ShopTab({
   products,
@@ -73,7 +70,7 @@ export default function ShopTab({
       );
     }
     if (activeCategory !== "all") {
-      list = list.filter((p) => p.functionCategory === activeCategory);
+      list = list.filter((p) => p.functionCategory === activeCategory || p.productType === activeCategory);
     }
     if (sortBy === "most-liked") {
       list = list.filter((p) => (likeCounts[p.id] ?? p.likeCount) > 0);
@@ -227,13 +224,6 @@ export default function ShopTab({
                           <span className="text-xs font-bold text-red-500">-{disc}%</span>
                         </>
                       )}
-                    </div>
-
-                    {/* Star rating */}
-                    <div className="flex items-center gap-1 mt-1">
-                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                      <span className="text-xs font-semibold text-gray-700">{pseudoRating(count)}</span>
-                      <span className="text-xs text-gray-400">({count})</span>
                     </div>
 
                     {/* Action buttons */}
