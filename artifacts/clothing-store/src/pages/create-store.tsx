@@ -488,7 +488,7 @@ export default function CreateStore() {
                                   <motion.button
                                     key={st.name}
                                     type="button"
-                                    onClick={() => setSelectedStoreType(st.name)}
+                                    onClick={() => setSelectedStoreType(prev => prev === st.name ? null : st.name)}
                                     whileTap={{ scale: 0.98 }}
                                     className="w-full flex items-center justify-between text-left transition-all"
                                     style={{

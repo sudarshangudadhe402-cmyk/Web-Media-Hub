@@ -14,7 +14,7 @@ import {
 } from "recharts";
 import {
   TrendingUp, Users, DollarSign, Activity, Plus, Trash2, Edit2,
-  Download, Search, ChevronLeft, ChevronRight, X, Check, RefreshCw, Link2, QrCode, MoreVertical,
+  Download, Search, ChevronLeft, ChevronRight, X, Check, RefreshCw, Link2, QrCode, MoreVertical, ArrowLeft,
 } from "lucide-react";
 
 function partnerLink(type: "influencer" | "ambassador" | "referral", code: string) {
@@ -222,8 +222,8 @@ function DateFilterBar({ range, setRange, from, setFrom, to, setTo }: any) {
 /* ── STORE CATEGORY & TYPE MODALS ── */
 type StoreTypeObj = { name: string; category: string };
 
-function CategoryModal({ open, onClose, onSaved, categories }: {
-  open: boolean; onClose: () => void; onSaved: () => void; categories: string[];
+function CategoryPage({ onClose, onSaved, categories }: {
+  onClose: () => void; onSaved: () => void; categories: string[];
 }) {
   const [name, setName] = useState("");
   const [editingCat, setEditingCat] = useState<string | null>(null);
@@ -279,45 +279,50 @@ function CategoryModal({ open, onClose, onSaved, categories }: {
   }
 
   return (
-    <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-sm max-h-[85vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>Add Store Category</DialogTitle>
-        </DialogHeader>
-        <div className="flex gap-2 pt-1">
+    <div className="fixed inset-0 z-50 bg-background flex flex-col">
+      {/* Top bar */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b bg-white shrink-0">
+        <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+          <ArrowLeft size={18} className="text-gray-600" />
+        </button>
+        <h2 className="font-bold text-base text-gray-900">Add Store Category</h2>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex gap-2">
           <Input placeholder="Category name" value={name} onChange={e => setName(e.target.value)}
             onKeyDown={e => e.key === "Enter" && add()} autoFocus />
-          <Button onClick={add} disabled={saving || !name.trim()} className="shrink-0 bg-purple-600 hover:bg-purple-700 text-white px-4">
+          <Button onClick={add} disabled={saving || !name.trim()} className="shrink-0 bg-purple-600 hover:bg-purple-700 text-white px-5">
             {saving ? "…" : "Add"}
           </Button>
         </div>
 
-        {/* Existing categories list */}
         {categories.length > 0 && (
-          <div className="mt-4 flex-1 overflow-y-auto">
+          <div>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Added Categories</p>
-            <div className="divide-y divide-gray-100 border rounded-lg overflow-hidden">
+            <div className="divide-y divide-gray-100 border rounded-lg overflow-hidden bg-white">
               {categories.map(cat => (
-                <div key={cat} className="px-3 py-2 bg-white">
+                <div key={cat} className="px-4 py-3">
                   {editingCat === cat ? (
                     <div className="flex gap-2 items-center">
                       <Input value={editName} onChange={e => setEditName(e.target.value)}
                         onKeyDown={e => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") cancelEdit(); }}
-                        className="h-7 text-sm flex-1" autoFocus />
+                        className="h-8 text-sm flex-1" autoFocus />
                       <button onClick={saveEdit} disabled={saving} className="text-purple-600 hover:text-purple-800 p-1">
-                        <Check size={14} />
+                        <Check size={15} />
                       </button>
                       <button onClick={cancelEdit} className="text-gray-400 hover:text-gray-600 p-1">
-                        <X size={14} />
+                        <X size={15} />
                       </button>
                     </div>
                   ) : (
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-800">{cat}</span>
+                      <span className="text-sm text-gray-800 font-medium">{cat}</span>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button className="p-1.5 rounded hover:bg-purple-50 text-purple-500">
-                            <Edit2 size={13} />
+                            <Edit2 size={14} />
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -337,17 +342,13 @@ function CategoryModal({ open, onClose, onSaved, categories }: {
             </div>
           </div>
         )}
-
-        <div className="pt-3 flex justify-end">
-          <Button variant="outline" onClick={onClose}>Done</Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
 
-function StoreTypeModal({ open, onClose, onSaved, categories, storeTypes }: {
-  open: boolean; onClose: () => void; onSaved: () => void;
+function StoreTypePage({ onClose, onSaved, categories, storeTypes }: {
+  onClose: () => void; onSaved: () => void;
   categories: string[]; storeTypes: StoreTypeObj[];
 }) {
   const [name, setName] = useState("");
@@ -410,27 +411,35 @@ function StoreTypeModal({ open, onClose, onSaved, categories, storeTypes }: {
   }
 
   return (
-    <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-sm max-h-[85vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>Add Store Type</DialogTitle>
-        </DialogHeader>
+    <div className="fixed inset-0 z-50 bg-background flex flex-col">
+      {/* Top bar */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b bg-white shrink-0">
+        <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+          <ArrowLeft size={18} className="text-gray-600" />
+        </button>
+        <h2 className="font-bold text-base text-gray-900">Add Store Type</h2>
+      </div>
 
-        <div className="space-y-3 pt-1">
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="space-y-3">
           <Input placeholder="Store type name" value={name} onChange={e => setName(e.target.value)}
             onKeyDown={e => e.key === "Enter" && add()} autoFocus />
           {categories.length === 0 ? (
-            <p className="text-sm text-destructive">Add a category first.</p>
+            <p className="text-sm text-destructive">Add a category first before adding store types.</p>
           ) : (
-            <div className="flex flex-wrap gap-2">
-              {categories.map(cat => (
-                <button key={cat} type="button" onClick={() => setCategory(cat)}
-                  className={`px-3 py-1 rounded-full text-sm border transition-all ${category === cat
-                    ? "bg-orange-500 text-white border-orange-500"
-                    : "border-muted-foreground/30 text-muted-foreground hover:border-orange-400"}`}>
-                  {cat}
-                </button>
-              ))}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Select Category</p>
+              <div className="flex flex-wrap gap-2">
+                {categories.map(cat => (
+                  <button key={cat} type="button" onClick={() => setCategory(cat)}
+                    className={`px-3 py-1.5 rounded-full text-sm border font-medium transition-all ${category === cat
+                      ? "bg-orange-500 text-white border-orange-500"
+                      : "border-gray-200 text-gray-600 hover:border-orange-400"}`}>
+                    {cat}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           <Button onClick={add} disabled={saving || !name.trim() || !category || categories.length === 0}
@@ -439,22 +448,21 @@ function StoreTypeModal({ open, onClose, onSaved, categories, storeTypes }: {
           </Button>
         </div>
 
-        {/* Existing store types grouped by category */}
         {storeTypes.length > 0 && (
-          <div className="mt-4 flex-1 overflow-y-auto">
+          <div>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Added Store Types</p>
             <div className="space-y-3">
               {categories.filter(cat => storeTypes.some(s => s.category === cat)).map(cat => (
                 <div key={cat}>
-                  <p className="text-xs font-semibold text-orange-500 mb-1 px-1">{cat}</p>
-                  <div className="divide-y divide-gray-100 border rounded-lg overflow-hidden">
+                  <p className="text-xs font-semibold text-orange-500 mb-1.5 px-1">{cat}</p>
+                  <div className="divide-y divide-gray-100 border rounded-lg overflow-hidden bg-white">
                     {storeTypes.filter(s => s.category === cat).map(st => (
-                      <div key={st.name} className="px-3 py-2 bg-white">
+                      <div key={st.name} className="px-4 py-3">
                         {editingType?.name === st.name ? (
                           <div className="space-y-2">
                             <Input value={editName} onChange={e => setEditName(e.target.value)}
                               onKeyDown={e => { if (e.key === "Escape") cancelEdit(); }}
-                              className="h-7 text-sm" autoFocus />
+                              className="h-8 text-sm" autoFocus />
                             <div className="flex flex-wrap gap-1">
                               {categories.map(c => (
                                 <button key={c} type="button" onClick={() => setEditCat(c)}
@@ -476,11 +484,11 @@ function StoreTypeModal({ open, onClose, onSaved, categories, storeTypes }: {
                           </div>
                         ) : (
                           <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-800">{st.name}</span>
+                            <span className="text-sm text-gray-800 font-medium">{st.name}</span>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <button className="p-1.5 rounded hover:bg-orange-50 text-orange-400">
-                                  <Edit2 size={13} />
+                                  <Edit2 size={14} />
                                 </button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
@@ -503,12 +511,8 @@ function StoreTypeModal({ open, onClose, onSaved, categories, storeTypes }: {
             </div>
           </div>
         )}
-
-        <div className="pt-3 flex justify-end">
-          <Button variant="outline" onClick={onClose}>Done</Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
 
@@ -668,20 +672,22 @@ function DashboardTab() {
         </Card>
       )}
 
-      {/* Modals */}
-      <CategoryModal
-        open={showCatModal}
-        onClose={() => setShowCatModal(false)}
-        onSaved={load}
-        categories={categories}
-      />
-      <StoreTypeModal
-        open={showTypeModal}
-        onClose={() => setShowTypeModal(false)}
-        onSaved={load}
-        categories={categories}
-        storeTypes={storeTypes}
-      />
+      {/* Full-page overlays */}
+      {showCatModal && (
+        <CategoryPage
+          onClose={() => setShowCatModal(false)}
+          onSaved={load}
+          categories={categories}
+        />
+      )}
+      {showTypeModal && (
+        <StoreTypePage
+          onClose={() => setShowTypeModal(false)}
+          onSaved={load}
+          categories={categories}
+          storeTypes={storeTypes}
+        />
+      )}
     </div>
   );
 }
