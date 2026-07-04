@@ -18,26 +18,14 @@ const DynamicPlanSchema = new Schema(
     durationDays: { type: Number, default: null },
     features: { type: [String], default: [] },
     coupons: { type: [CouponSchema], default: [] },
-    categories: { type: [String], default: [] },
-    storeTypes: { type: [String], default: [] },
   },
   { timestamps: true }
-);
-
-const StoreTypeSchema = new Schema(
-  {
-    name: { type: String, required: true },
-    category: { type: String, required: true },
-  },
-  { _id: false }
 );
 
 const DynamicPricingSchema = new Schema(
   {
     _id: { type: String, default: "pricing-v2" },
     plans: { type: [DynamicPlanSchema], default: [] },
-    categories: { type: [String], default: [] },
-    storeTypes: { type: [StoreTypeSchema], default: [] },
   },
   { timestamps: true }
 );

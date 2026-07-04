@@ -18,14 +18,10 @@ interface DynamicPlan {
   price: string;
   durationDays: number | null;
   features: string[];
-  storeTypes: string[];
-  categories: string[];
 }
 
 interface PricingData {
   plans: DynamicPlan[];
-  storeTypes: string[];
-  categories: string[];
 }
 
 export interface SelectedPlan {
@@ -78,29 +74,17 @@ function planToPeriod(days: number | null): string {
 }
 
 function planToTagline(plan: DynamicPlan): string {
-  const store = (plan.storeTypes ?? []).length > 0 ? `Best for ${(plan.storeTypes ?? []).join(", ")}` : "";
-  const validity = plan.durationDays ? `${plan.durationDays}-day plan` : "Lifetime access";
-  return store ? `${validity} · ${store}` : validity;
+  return plan.durationDays ? `${plan.durationDays}-day plan` : "Lifetime access";
 }
 
 async function fetchPricing(): Promise<PricingData> {
   const res = await fetch("/api/pricing");
   if (!res.ok) throw new Error("Failed to fetch pricing");
-  const data = await res.json();
-  // API returns storeTypes as [{name, category}] objects — normalize to strings
-  const storeTypes = (data.storeTypes ?? []).map((st: unknown) =>
-    typeof st === "string" ? st : (st as { name: string }).name
-  );
-  // categories come as plain strings from the API
-  const categories: string[] = data.categories ?? [];
-  return { ...data, storeTypes, categories };
+  return res.json();
 }
 
 // ── Plan Card (Jio style) ─────────────────────────────────────────────────────
 function PlanCard({ plan, onSelect }: { plan: DynamicPlan; onSelect: () => void }) {
-  const storeDisplay = (plan.storeTypes ?? []).length > 0
-    ? (plan.storeTypes ?? []).join(", ")
-    : "All Stores";
   const validityDisplay = plan.durationDays ? `${plan.durationDays} days` : "Lifetime";
   const PREVIEW = 2;
   const visibleFeatures = plan.features.slice(0, PREVIEW);
@@ -139,15 +123,11 @@ function PlanCard({ plan, onSelect }: { plan: DynamicPlan; onSelect: () => void 
           )}
         </div>
 
-        {/* Validity + Data */}
+        {/* Validity */}
         <div className="flex gap-5 flex-1 pt-0.5">
           <div>
             <p className="text-[9px] uppercase tracking-wide font-semibold" style={{ color: HINT }}>Validity</p>
             <p className="text-sm font-bold mt-0.5" style={{ color: LABEL }}>{validityDisplay}</p>
-          </div>
-          <div>
-            <p className="text-[9px] uppercase tracking-wide font-semibold" style={{ color: HINT }}>Store</p>
-            <p className="text-sm font-bold mt-0.5 truncate max-w-[100px]" style={{ color: LABEL }}>{storeDisplay}</p>
           </div>
         </div>
 
@@ -175,7 +155,6 @@ function PlanCard({ plan, onSelect }: { plan: DynamicPlan; onSelect: () => void 
 // ── Main Overlay ──────────────────────────────────────────────────────────────
 export default function DynamicPricingOverlay({ onBack, onSelectPlan }: Props) {
   const [search, setSearch] = useState("");
-  const [activeStore, setActiveStore] = useState("all");
   const [detailPlan, setDetailPlan] = useState<DynamicPlan | null>(null);
 
   // Coupon state
@@ -217,36 +196,24 @@ export default function DynamicPricingOverlay({ onBack, onSelectPlan }: Props) {
     queryKey: ["dynamic-pricing-public"],
     queryFn: fetchPricing,
     staleTime: 60_000,
-    placeholderData: { plans: [], storeTypes: [], categories: [] },
+    placeholderData: { plans: [] },
   });
 
   const allPlans = data?.plans ?? [];
-  const allCategories = data?.categories ?? [];
 
   const filteredPlans = useMemo(() => {
     let plans = allPlans;
-    if (activeStore !== "all") {
-      // Filter by plan.categories (current format).
-      // Also check plan.storeTypes for backward-compat with plans saved before the
-      // category system was introduced (those plans stored category names in storeTypes).
-      plans = plans.filter((p) =>
-        (p.categories ?? []).includes(activeStore) ||
-        (p.storeTypes ?? []).includes(activeStore)
-      );
-    }
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       plans = plans.filter(
         (p) =>
           p.price.toLowerCase().includes(q) ||
           p.name.toLowerCase().includes(q) ||
-          String(p.durationDays ?? "").includes(q) ||
-          (p.categories ?? []).some((s) => s.toLowerCase().includes(q)) ||
-          (p.storeTypes ?? []).some((s) => s.toLowerCase().includes(q))
+          String(p.durationDays ?? "").includes(q)
       );
     }
     return plans;
-  }, [allPlans, activeStore, search]);
+  }, [allPlans, search]);
 
   function handleSelect(plan: DynamicPlan) {
     const finalPrice =

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useToast } from "@/hooks/use-toast";
 import {
   Plus, Search, Tag, Trash2, ChevronDown, ChevronUp, X, Check,
-  Clock, Calendar, Pencil, BadgePlus, Layers, Store, ChevronRight,
+  Clock, Calendar, Pencil, BadgePlus, ChevronRight,
 } from "lucide-react";
 
 const TOKEN_KEY = "wmh_super_token";
@@ -32,20 +32,10 @@ interface Plan {
   durationDays: number | null;
   features: string[];
   coupons: PlanCoupon[];
-  categories: string[];
-  storeTypes: string[];
-}
-
-interface StoreTypeObj {
-  name: string;
-  category: string;
 }
 
 interface PricingData {
   plans: Plan[];
-  categories: string[];
-  storeTypes: string[];          // normalized name strings (for filter chips & plan form)
-  rawStoreTypes: StoreTypeObj[]; // full objects (for the store manager dialog)
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -60,22 +50,10 @@ function daysToHuman(days: number | null): string {
 }
 
 // ── API calls ─────────────────────────────────────────────────────────────────
-function normalizeStoreTypes(raw: unknown[]): string[] {
-  return raw.map((st) => (typeof st === "string" ? st : (st as { name: string }).name));
-}
-
 async function fetchPricing(): Promise<PricingData> {
   const res = await fetch("/api/pricing");
   if (!res.ok) throw new Error("Failed to fetch pricing");
-  const data = await res.json();
-  const rawStoreTypes: StoreTypeObj[] = (data.storeTypes ?? []).map((st: unknown) =>
-    typeof st === "string" ? { name: st, category: "" } : st as StoreTypeObj
-  );
-  return {
-    ...data,
-    storeTypes: rawStoreTypes.map((st) => st.name),
-    rawStoreTypes,
-  };
+  return res.json();
 }
 
 async function createPlan(data: Omit<Plan, "id">): Promise<Plan> {
@@ -101,42 +79,6 @@ async function updatePlan(id: string, data: Partial<Omit<Plan, "id">>): Promise<
 async function deletePlan(id: string): Promise<void> {
   const res = await fetch(`/api/pricing/plans/${id}`, { method: "DELETE", headers: authHeaders() });
   if (!res.ok) throw new Error("Failed to delete plan");
-}
-
-async function addCategory(name: string): Promise<string[]> {
-  const res = await fetch("/api/pricing/categories", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({ name }),
-  });
-  if (!res.ok) throw new Error("Failed to add category");
-  return (await res.json()).categories;
-}
-
-async function removeCategory(name: string): Promise<string[]> {
-  const res = await fetch(`/api/pricing/categories/${encodeURIComponent(name)}`, {
-    method: "DELETE", headers: authHeaders(),
-  });
-  if (!res.ok) throw new Error("Failed to remove category");
-  return (await res.json()).categories;
-}
-
-async function addStoreType({ name, category }: { name: string; category: string }): Promise<string[]> {
-  const res = await fetch("/api/pricing/store-types", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({ name, category }),
-  });
-  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e as any).error || "Failed to add store type"); }
-  return normalizeStoreTypes((await res.json()).storeTypes ?? []);
-}
-
-async function removeStoreType(name: string): Promise<string[]> {
-  const res = await fetch(`/api/pricing/store-types/${encodeURIComponent(name)}`, {
-    method: "DELETE", headers: authHeaders(),
-  });
-  if (!res.ok) throw new Error("Failed to remove store type");
-  return normalizeStoreTypes((await res.json()).storeTypes ?? []);
 }
 
 // ── Feature List Editor ───────────────────────────────────────────────────────
@@ -223,193 +165,6 @@ function CouponEditor({ coupons, onChange }: { coupons: PlanCoupon[]; onChange: 
   );
 }
 
-// ── Store Type Manager Dialog (name + category required) ─────────────────────
-function StoreTypeMgrDialog({
-  open, onClose, allCategories, rawStoreTypes, onAdd, onRemove, adding, removing,
-}: {
-  open: boolean; onClose: () => void;
-  allCategories: string[];
-  rawStoreTypes: StoreTypeObj[];
-  onAdd: (name: string, category: string) => void;
-  onRemove: (name: string) => void;
-  adding: boolean; removing: string | null;
-}) {
-  const [name, setName] = useState("");
-  const [category, setCategory] = useState("");
-
-  function handleAdd() {
-    const n = name.trim();
-    const c = category.trim();
-    if (!n || !c) return;
-    onAdd(n, c);
-    setName("");
-    setCategory("");
-  }
-
-  // Group by category for display
-  const grouped = allCategories.map((cat) => ({
-    cat,
-    types: rawStoreTypes.filter((st) => st.category === cat),
-  })).filter((g) => g.types.length > 0);
-  const uncategorized = rawStoreTypes.filter((st) => !st.category || !allCategories.includes(st.category));
-
-  return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Store className="h-5 w-5 text-orange-500" /> Store Types
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3 py-1">
-          {/* Add form */}
-          <div className="space-y-2 p-3 bg-orange-50 border border-orange-100 rounded-xl">
-            <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide">Add Store Type</p>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
-              placeholder="Store type name e.g. Men's wear"
-              className="h-9 text-sm"
-            />
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="">Select category…</option>
-              {allCategories.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-            <Button
-              size="sm"
-              className="h-9 px-4 text-white bg-orange-500 hover:bg-orange-600 w-full"
-              onClick={handleAdd}
-              disabled={adding || !name.trim() || !category.trim()}
-            >
-              {adding ? "Adding…" : "Add Store Type"}
-            </Button>
-          </div>
-
-          {/* Existing list */}
-          {rawStoreTypes.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No store types yet. Add one above.</p>
-          ) : (
-            <div className="space-y-3 max-h-64 overflow-y-auto">
-              {grouped.map(({ cat, types }) => (
-                <div key={cat}>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5 px-1">{cat}</p>
-                  <div className="space-y-1">
-                    {types.map((st) => (
-                      <div key={st.name} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2.5">
-                        <span className="flex-1 text-sm font-medium text-gray-700">{st.name}</span>
-                        <button type="button" onClick={() => onRemove(st.name)} disabled={removing === st.name}
-                          className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-40">
-                          {removing === st.name ? <span className="text-xs">…</span> : <X className="h-4 w-4" />}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-              {uncategorized.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5 px-1">Uncategorized</p>
-                  <div className="space-y-1">
-                    {uncategorized.map((st) => (
-                      <div key={st.name} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2.5">
-                        <span className="flex-1 text-sm font-medium text-gray-700">{st.name}</span>
-                        <button type="button" onClick={() => onRemove(st.name)} disabled={removing === st.name}
-                          className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-40">
-                          {removing === st.name ? <span className="text-xs">…</span> : <X className="h-4 w-4" />}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Close</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ── Generic Tag Manager Dialog ─────────────────────────────────────────────────
-function TagManagerDialog({
-  open, onClose, title, icon, items, onAdd, onRemove, adding, removing, color,
-}: {
-  open: boolean; onClose: () => void;
-  title: string; icon: React.ReactNode;
-  items: string[];
-  onAdd: (name: string) => void;
-  onRemove: (name: string) => void;
-  adding: boolean; removing: string | null;
-  color: string;
-}) {
-  const [input, setInput] = useState("");
-  function handleAdd() {
-    const t = input.trim();
-    if (!t) return;
-    onAdd(t);
-    setInput("");
-  }
-  const colorMap: Record<string, { btn: string; badge: string; tag: string }> = {
-    violet: { btn: "bg-violet-600 hover:bg-violet-700", badge: "bg-violet-600", tag: "bg-violet-50 text-violet-700 border-violet-200" },
-    orange: { btn: "bg-orange-500 hover:bg-orange-600", badge: "bg-orange-500", tag: "bg-orange-50 text-orange-700 border-orange-200" },
-  };
-  const c = colorMap[color] ?? colorMap.violet;
-
-  return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {icon} {title}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3 py-1">
-          <div className="flex gap-2">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
-              placeholder={`New ${title.toLowerCase()} name...`}
-              className="h-9 text-sm"
-            />
-            <Button size="sm" className={`h-9 px-4 text-white ${c.btn}`} onClick={handleAdd} disabled={adding}>
-              {adding ? "..." : "Add"}
-            </Button>
-          </div>
-          {items.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No items yet. Add one above.</p>
-          ) : (
-            <div className="space-y-1.5 max-h-56 overflow-y-auto">
-              {items.map((item) => (
-                <div key={item} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2.5">
-                  <span className="flex-1 text-sm font-medium text-gray-700">{item}</span>
-                  <button type="button" onClick={() => onRemove(item)} disabled={removing === item}
-                    className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-40">
-                    {removing === item ? <span className="text-xs">...</span> : <X className="h-4 w-4" />}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Close</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 // ── Add / Edit Plan Dialog ────────────────────────────────────────────────────
 const EMPTY_PLAN = (): Omit<Plan, "id"> => ({
   badgeText: "",
@@ -418,38 +173,26 @@ const EMPTY_PLAN = (): Omit<Plan, "id"> => ({
   durationDays: null,
   features: [],
   coupons: [],
-  categories: [],
-  storeTypes: [],
 });
 
 function PlanFormDialog({
-  open, onClose, onSave, saving, initial, allCategories, allStoreTypes, title,
+  open, onClose, onSave, saving, initial, title,
 }: {
   open: boolean; onClose: () => void;
   onSave: (data: Omit<Plan, "id">) => void;
   saving: boolean;
   initial?: Omit<Plan, "id">;
-  allCategories: string[];
-  allStoreTypes: string[];
   title: string;
 }) {
   const [draft, setDraft] = useState<Omit<Plan, "id">>(
     initial
-      ? { ...initial, coupons: [...initial.coupons], features: [...initial.features], categories: [...initial.categories], storeTypes: [...(initial.storeTypes ?? [])] }
+      ? { ...initial, coupons: [...initial.coupons], features: [...initial.features] }
       : EMPTY_PLAN()
   );
   const set = <K extends keyof Omit<Plan, "id">>(k: K, v: Omit<Plan, "id">[K]) => setDraft((prev) => ({ ...prev, [k]: v }));
 
   const priceNum = parseInt(draft.price.replace(/[₹,\s]/g, ""), 10);
   const formattedPrice = !isNaN(priceNum) && priceNum > 0 ? `₹${priceNum.toLocaleString("en-IN")}` : draft.price;
-
-  function toggleCategory(cat: string) {
-    set("categories", draft.categories.includes(cat) ? draft.categories.filter((c) => c !== cat) : [...draft.categories, cat]);
-  }
-
-  function toggleStoreType(st: string) {
-    set("storeTypes", (draft.storeTypes ?? []).includes(st) ? (draft.storeTypes ?? []).filter((s) => s !== st) : [...(draft.storeTypes ?? []), st]);
-  }
 
   function handleSave() {
     if (!draft.badgeText.trim() || !draft.name.trim() || !draft.price.trim()) return;
@@ -516,46 +259,6 @@ function PlanFormDialog({
             <CouponEditor coupons={draft.coupons} onChange={(c) => set("coupons", c)} />
           </div>
 
-          {/* Categories */}
-          {allCategories.length > 0 && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">7. Categories</label>
-              <div className="flex flex-wrap gap-2">
-                {allCategories.map((cat) => (
-                  <button key={cat} type="button" onClick={() => toggleCategory(cat)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
-                      draft.categories.includes(cat)
-                        ? "bg-violet-600 text-white border-violet-600"
-                        : "bg-gray-50 text-gray-600 border-gray-200 hover:border-violet-300"
-                    }`}>
-                    {draft.categories.includes(cat) && <Check className="inline h-3 w-3 mr-1" />}
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Store types */}
-          {allStoreTypes.length > 0 && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">8. Store (for "Data" field on card)</label>
-              <div className="flex flex-wrap gap-2">
-                {allStoreTypes.map((st) => (
-                  <button key={st} type="button" onClick={() => toggleStoreType(st)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
-                      (draft.storeTypes ?? []).includes(st)
-                        ? "bg-orange-500 text-white border-orange-500"
-                        : "bg-gray-50 text-gray-600 border-gray-200 hover:border-orange-300"
-                    }`}>
-                    {(draft.storeTypes ?? []).includes(st) && <Check className="inline h-3 w-3 mr-1" />}
-                    {st}
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-muted-foreground">Selected store shows in the "Data" field of the plan card.</p>
-            </div>
-          )}
         </div>
 
         <DialogFooter className="gap-2 pt-2">
@@ -607,22 +310,8 @@ function PlanDetailDialog({
                   {plan.durationDays ? `${plan.durationDays} days` : "Lifetime"}
                 </p>
               </div>
-              {(plan.storeTypes ?? []).length > 0 && (
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Store</p>
-                  <p className="text-sm font-bold text-gray-800 mt-0.5">{(plan.storeTypes ?? []).join(", ")}</p>
-                </div>
-              )}
             </div>
           </div>
-
-          {plan.categories.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {plan.categories.map((c) => (
-                <span key={c} className="px-2 py-0.5 rounded-full text-xs bg-violet-100 text-violet-700 font-medium border border-violet-200">{c}</span>
-              ))}
-            </div>
-          )}
 
           {plan.features.length > 0 && (
             <div className="space-y-2">
@@ -681,9 +370,6 @@ function PlanCard({ plan, onClick }: { plan: Plan; onClick: () => void }) {
   const PREVIEW_COUNT = 2;
   const visibleFeatures = plan.features.slice(0, PREVIEW_COUNT);
   const hasMore = plan.features.length > PREVIEW_COUNT;
-  const storeDisplay = (plan.storeTypes ?? []).length > 0
-    ? (plan.storeTypes ?? []).join(", ")
-    : "All Stores";
   const validityDisplay = plan.durationDays ? `${plan.durationDays} days` : "Lifetime";
 
   return (
@@ -692,7 +378,7 @@ function PlanCard({ plan, onClick }: { plan: Plan; onClick: () => void }) {
       onClick={onClick}
       className="w-full text-left bg-white border border-gray-200 rounded-xl px-4 py-3.5 hover:border-orange-300 hover:shadow-sm transition-all duration-150 active:scale-[0.99]"
     >
-      {/* Top row: Price | Validity | Data | Chevron */}
+      {/* Top row: Price | Validity | Chevron */}
       <div className="flex items-start gap-4">
         {/* Price */}
         <div className="flex-none min-w-[90px]">
@@ -704,15 +390,11 @@ function PlanCard({ plan, onClick }: { plan: Plan; onClick: () => void }) {
           )}
         </div>
 
-        {/* Validity + Data */}
+        {/* Validity */}
         <div className="flex gap-6 flex-1 pt-0.5">
           <div>
             <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold">Validity</p>
             <p className="text-sm font-bold text-gray-800 mt-0.5">{validityDisplay}</p>
-          </div>
-          <div>
-            <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold">Store</p>
-            <p className="text-sm font-bold text-gray-800 mt-0.5 truncate max-w-[110px]">{storeDisplay}</p>
           </div>
         </div>
 
@@ -747,51 +429,35 @@ function PlanCard({ plan, onClick }: { plan: Plan; onClick: () => void }) {
 export default function PricingConfig() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const storeScrollRef = useRef<HTMLDivElement>(null);
 
   const [search, setSearch] = useState("");
-  const [activeStore, setActiveStore] = useState("all");
   const [showAddPlan, setShowAddPlan] = useState(false);
-  const [showCategoryMgr, setShowCategoryMgr] = useState(false);
-  const [showStoreMgr, setShowStoreMgr] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
-
-  const [addingCategory, setAddingCategory] = useState(false);
-  const [removingCategory, setRemovingCategory] = useState<string | null>(null);
-  const [addingStore, setAddingStore] = useState(false);
-  const [removingStore, setRemovingStore] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery<PricingData>({
     queryKey: ["dynamic-pricing"],
     queryFn: fetchPricing,
     staleTime: 0, // always re-fetch on mount so normalized data is used immediately
-    placeholderData: { plans: [], categories: [], storeTypes: [], rawStoreTypes: [] },
+    placeholderData: { plans: [] },
   });
 
-  const allCategories = data?.categories ?? [];
-  const allStoreTypes = data?.storeTypes ?? [];
-  const allRawStoreTypes = data?.rawStoreTypes ?? [];
   const allPlans = data?.plans ?? [];
 
   // Filter plans
   const filteredPlans = useMemo(() => {
     let plans = allPlans;
-    if (activeStore !== "all") {
-      plans = plans.filter((p) => (p.storeTypes ?? []).includes(activeStore));
-    }
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       plans = plans.filter(
         (p) =>
           p.price.toLowerCase().includes(q) ||
           p.name.toLowerCase().includes(q) ||
-          String(p.durationDays ?? "").includes(q) ||
-          (p.storeTypes ?? []).some((s) => s.toLowerCase().includes(q))
+          String(p.durationDays ?? "").includes(q)
       );
     }
     return plans;
-  }, [allPlans, activeStore, search]);
+  }, [allPlans, search]);
 
   // ── Mutations ────────────────────────────────────────────────────────────────
   const createMutation = useMutation({
@@ -812,34 +478,6 @@ export default function PricingConfig() {
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const addCatMutation = useMutation({
-    mutationFn: addCategory,
-    onMutate: () => setAddingCategory(true),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["dynamic-pricing"] }); setAddingCategory(false); toast({ title: "Category added" }); },
-    onError: (e: Error) => { setAddingCategory(false); toast({ title: "Error", description: e.message, variant: "destructive" }); },
-  });
-
-  const removeCatMutation = useMutation({
-    mutationFn: removeCategory,
-    onMutate: (name) => setRemovingCategory(name),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["dynamic-pricing"] }); setRemovingCategory(null); toast({ title: "Category removed" }); },
-    onError: (e: Error) => { setRemovingCategory(null); toast({ title: "Error", description: e.message, variant: "destructive" }); },
-  });
-
-  const addStoreMutation = useMutation({
-    mutationFn: ({ name, category }: { name: string; category: string }) => addStoreType({ name, category }),
-    onMutate: () => setAddingStore(true),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["dynamic-pricing"] }); setAddingStore(false); toast({ title: "Store type added" }); },
-    onError: (e: Error) => { setAddingStore(false); toast({ title: "Error", description: e.message, variant: "destructive" }); },
-  });
-
-  const removeStoreMutation = useMutation({
-    mutationFn: removeStoreType,
-    onMutate: (name) => setRemovingStore(name),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["dynamic-pricing"] }); setRemovingStore(null); toast({ title: "Store removed" }); },
-    onError: (e: Error) => { setRemovingStore(null); toast({ title: "Error", description: e.message, variant: "destructive" }); },
-  });
-
   return (
     <div className="space-y-4">
       {/* ── Header ─────────────────────────────────────────────────────────── */}
@@ -849,22 +487,6 @@ export default function PricingConfig() {
           <p className="text-sm text-muted-foreground mt-0.5">{allPlans.length} plan{allPlans.length !== 1 ? "s" : ""} configured</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5 h-9 text-violet-700 border-violet-200 hover:bg-violet-50 hover:border-violet-400"
-            onClick={() => setShowCategoryMgr(true)}>
-            <Layers className="h-4 w-4" />
-            Category
-            {allCategories.length > 0 && (
-              <span className="ml-0.5 text-xs font-bold bg-violet-600 text-white px-1.5 py-0.5 rounded-full">{allCategories.length}</span>
-            )}
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5 h-9 text-orange-700 border-orange-200 hover:bg-orange-50 hover:border-orange-400"
-            onClick={() => setShowStoreMgr(true)}>
-            <Store className="h-4 w-4" />
-            Store
-            {allStoreTypes.length > 0 && (
-              <span className="ml-0.5 text-xs font-bold bg-orange-500 text-white px-1.5 py-0.5 rounded-full">{allStoreTypes.length}</span>
-            )}
-          </Button>
           <Button
             className="gap-2 h-9 px-4 text-sm font-bold bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white shadow-sm"
             onClick={() => setShowAddPlan(true)}>
@@ -890,34 +512,6 @@ export default function PricingConfig() {
         )}
       </div>
 
-      {/* ── Store filter chips ──────────────────────────────────────────────── */}
-      {allStoreTypes.length > 0 && (
-        <div ref={storeScrollRef} className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-          <button
-            onClick={() => setActiveStore("all")}
-            className={`flex-none px-4 py-1.5 rounded-full text-sm font-semibold border transition-all ${
-              activeStore === "all"
-                ? "bg-gray-900 text-white border-gray-900"
-                : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
-            }`}
-          >
-            All
-          </button>
-          {allStoreTypes.map((st) => (
-            <button key={st}
-              onClick={() => setActiveStore(st === activeStore ? "all" : st)}
-              className={`flex-none px-4 py-1.5 rounded-full text-sm font-semibold border transition-all ${
-                activeStore === st
-                  ? "bg-orange-500 text-white border-orange-500"
-                  : "bg-white text-gray-600 border-gray-200 hover:border-orange-300"
-              }`}
-            >
-              {st}
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* ── Plans list ─────────────────────────────────────────────────────── */}
       {isLoading ? (
         <div className="space-y-3">
@@ -931,14 +525,14 @@ export default function PricingConfig() {
             <BadgePlus className="h-8 w-8 text-orange-400" />
           </div>
           <h3 className="text-base font-semibold text-gray-700 mb-1">
-            {search || activeStore !== "all" ? "No plans found" : "No plans yet"}
+            {search ? "No plans found" : "No plans yet"}
           </h3>
           <p className="text-sm text-muted-foreground mb-4">
-            {search || activeStore !== "all"
-              ? "Try a different search or store filter"
+            {search
+              ? "Try a different search"
               : "Click Add Plan to create your first pricing plan"}
           </p>
-          {!search && activeStore === "all" && (
+          {!search && (
             <Button className="bg-gradient-to-r from-orange-500 to-pink-500 text-white gap-2" onClick={() => setShowAddPlan(true)}>
               <Plus className="h-4 w-4" /> Add First Plan
             </Button>
@@ -958,8 +552,6 @@ export default function PricingConfig() {
         onClose={() => setShowAddPlan(false)}
         onSave={(data) => createMutation.mutate(data)}
         saving={createMutation.isPending}
-        allCategories={allCategories}
-        allStoreTypes={allStoreTypes}
         title="Add Plan"
       />
 
@@ -970,8 +562,6 @@ export default function PricingConfig() {
           onSave={(data) => updateMutation.mutate({ id: editingPlan.id, data })}
           saving={updateMutation.isPending}
           initial={editingPlan}
-          allCategories={allCategories}
-          allStoreTypes={allStoreTypes}
           title="Save Changes"
         />
       )}
@@ -983,30 +573,6 @@ export default function PricingConfig() {
         onEdit={() => { setEditingPlan(selectedPlan); }}
         onDelete={() => selectedPlan && deleteMutation.mutate(selectedPlan.id)}
         deleting={deleteMutation.isPending}
-      />
-
-      <TagManagerDialog
-        open={showCategoryMgr}
-        onClose={() => setShowCategoryMgr(false)}
-        title="Categories"
-        icon={<Layers className="h-5 w-5 text-violet-600" />}
-        items={allCategories}
-        onAdd={(name) => addCatMutation.mutate(name)}
-        onRemove={(name) => removeCatMutation.mutate(name)}
-        adding={addingCategory}
-        removing={removingCategory}
-        color="violet"
-      />
-
-      <StoreTypeMgrDialog
-        open={showStoreMgr}
-        onClose={() => setShowStoreMgr(false)}
-        allCategories={allCategories}
-        rawStoreTypes={allRawStoreTypes}
-        onAdd={(name, category) => addStoreMutation.mutate({ name, category })}
-        onRemove={(name) => removeStoreMutation.mutate(name)}
-        adding={addingStore}
-        removing={removingStore}
       />
     </div>
   );
