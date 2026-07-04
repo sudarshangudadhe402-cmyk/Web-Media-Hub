@@ -1,4 +1,4 @@
-import { Search, X, SlidersHorizontal, ShoppingBag, Heart, Camera, Box } from "lucide-react";
+import { Search, X, SlidersHorizontal, ShoppingBag, Heart, Camera, Box, Star } from "lucide-react";
 import { useState } from "react";
 
 
@@ -37,6 +37,11 @@ function discountPct(p: PublicProduct) {
   return p.actualPrice > p.discountPrice
     ? Math.round(((p.actualPrice - p.discountPrice) / p.actualPrice) * 100)
     : 0;
+}
+
+function pseudoRating(p: PublicProduct) {
+  const seed = p.id.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  return (3.5 + (seed % 15) / 10).toFixed(1);
 }
 
 
@@ -213,6 +218,14 @@ export default function ShopTab({
                       >
                         <Heart className={`w-5 h-5 transition-colors ${liked ? "fill-red-500 text-red-500" : "text-gray-300"}`} />
                       </button>
+                    </div>
+
+                    {/* Star rating */}
+                    <div className="flex items-center gap-1 mt-0.5">
+                      {[1,2,3,4,5].map(s => (
+                        <Star key={s} className={`w-3 h-3 ${parseFloat(pseudoRating(p)) >= s ? "fill-amber-400 text-amber-400" : "text-gray-200"}`} />
+                      ))}
+                      <span className="text-[10px] text-gray-400 ml-0.5">{pseudoRating(p)}</span>
                     </div>
 
                     {/* Price */}

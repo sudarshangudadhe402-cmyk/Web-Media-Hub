@@ -1728,10 +1728,6 @@ export default function PublicStore() {
                 openProduct(data.products[0]);
               }
             }}
-            onTypeSelect={(type) => {
-              setShopInitCategory(type);
-              setTab("shop");
-            }}
           />
         )}
         {tab === "home" && selectedAdminCategory && (() => {
