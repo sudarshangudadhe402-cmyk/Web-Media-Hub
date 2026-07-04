@@ -108,10 +108,13 @@ export default function CreateStore() {
     fetch("/api/pricing")
       .then(r => r.ok ? r.json() : Promise.reject("not-ok"))
       .then(d => {
-        setApiCategories(d.categories ?? []);
-        setApiStoreTypes((d.storeTypes ?? []).map((s: any) =>
+        const cats: string[] = d.categories ?? [];
+        const types = (d.storeTypes ?? []).map((s: any) =>
           typeof s === "string" ? { name: s, category: "" } : s
-        ));
+        );
+        setApiCategories(cats);
+        setApiStoreTypes(types);
+        if (cats.length > 0) setSelectedCategory(prev => prev ?? cats[0]);
         setApiLoading(false);
       })
       .catch(() => { setApiError(true); setApiLoading(false); });
@@ -402,13 +405,13 @@ export default function CreateStore() {
               custom={dir}
               variants={{ hidden:(d:number)=>({opacity:0,x:d*36}), show:{opacity:1,x:0,transition:{duration:0.32,ease:"easeOut"}}, exit:(d:number)=>({opacity:0,x:d*-36,transition:{duration:0.22}}) }}
               initial="hidden" animate="show" exit="exit"
-              className="w-full max-w-md overflow-y-auto"
-              style={{ maxHeight:"100%" }}
+              className="w-full max-w-md"
+              style={{ paddingBottom: 88 }}
             >
               <div className="bg-white rounded-2xl overflow-hidden"
                 style={{ boxShadow:"0 10px 40px rgba(0,0,0,0.10)", border:`1px solid ${BORDER}` }}>
 
-                {/* Header — no logo icon, text moved up */}
+                {/* Header */}
                 <div className="px-6 pt-4 pb-3 text-center">
                   <p className="font-extrabold text-xs tracking-widest mb-0.5" style={{ color:GOLD }}>WEB MEDIA HUB</p>
                   <h1 className="text-2xl font-black mb-1" style={{ fontFamily:"'Playfair Display', Georgia, serif", color:LABEL }}>
@@ -423,8 +426,8 @@ export default function CreateStore() {
                 </div>
 
                 {/* Category + Types */}
-                <div className="px-6 pb-6 space-y-3">
-                  <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color:HINT }}>Available Categories</p>
+                <div className="px-6 pb-6 space-y-4">
+                  <p className="text-xs font-bold uppercase tracking-wider" style={{ color:HINT }}>Available Categories</p>
 
                   {apiLoading ? (
                     <div className="flex flex-col items-center gap-2 py-6">
@@ -443,42 +446,38 @@ export default function CreateStore() {
                     </p>
                   ) : (
                     <>
-                      {/* Single horizontal row of category pills */}
-                      <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth:"none" }}>
+                      {/* Plain text category tabs — horizontal row, no border/pill */}
+                      <div className="flex gap-5 overflow-x-auto" style={{ scrollbarWidth:"none" }}>
                         {apiCategories.map(cat => {
                           const isSelected = selectedCategory === cat;
                           return (
-                            <motion.button
+                            <button
                               key={cat}
                               type="button"
                               onClick={() => {
                                 setSelectedCategory(cat);
                                 setSelectedStoreType(null);
                               }}
-                              whileTap={{ scale: 0.95 }}
-                              className="flex items-center gap-2 shrink-0 font-semibold text-sm transition-all"
+                              className="shrink-0 font-bold text-sm pb-1.5 transition-all"
                               style={{
-                                padding: "10px 18px",
-                                borderRadius: "50px",
-                                border: isSelected ? `2px solid ${GOLD_BG}` : `2px solid ${BORDER}`,
-                                background: isSelected ? LABEL : "#FDFCF9",
-                                color: isSelected ? "white" : LABEL,
-                                boxShadow: isSelected ? `0 4px 14px rgba(212,160,23,0.22)` : "none",
+                                color: isSelected ? LABEL : "#B5AA9A",
+                                borderBottom: isSelected ? `2.5px solid ${GOLD_BG}` : "2.5px solid transparent",
+                                background: "none",
+                                padding: "0 0 6px 0",
                               }}
                             >
                               {cat}
-                              {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
-                            </motion.button>
+                            </button>
                           );
                         })}
                       </div>
 
-                      {/* Store types appear below when a category is selected */}
+                      {/* Store types — separate row-boxes below selected category */}
                       {selectedCategory && (() => {
                         const typesForCat = apiStoreTypes.filter(s => s.category === selectedCategory);
                         if (typesForCat.length === 0) return null;
                         return (
-                          <div className="mt-1">
+                          <div>
                             <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color:HINT }}>
                               Select Store Type
                             </p>
@@ -489,25 +488,24 @@ export default function CreateStore() {
                                   <motion.button
                                     key={st.name}
                                     type="button"
-                                    onClick={() => {
-                                      setSelectedStoreType(st.name);
-                                      setTimeout(() => goTo(1), 200);
-                                    }}
-                                    whileHover={{ scale: 1.012 }}
-                                    whileTap={{ scale: 0.97 }}
+                                    onClick={() => setSelectedStoreType(st.name)}
+                                    whileTap={{ scale: 0.98 }}
                                     className="w-full flex items-center justify-between text-left transition-all"
                                     style={{
                                       padding: "14px 18px",
                                       borderRadius: "12px",
                                       border: isSel ? `2px solid ${GOLD_BG}` : `2px solid ${BORDER}`,
-                                      background: isSel ? `${GOLD_BG}12` : "#FFFFFF",
+                                      background: isSel ? `${GOLD_BG}12` : "#FDFCF9",
                                       boxShadow: isSel ? `0 3px 10px rgba(212,160,23,0.15)` : "none",
                                     }}
                                   >
                                     <p className="font-semibold text-sm" style={{ color: isSel ? GOLD_BG : LABEL }}>
                                       {st.name}
                                     </p>
-                                    <ChevronRight className="w-4 h-4" style={{ color: isSel ? GOLD_BG : HINT }} />
+                                    <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0"
+                                      style={{ borderColor: isSel ? GOLD_BG : BORDER, background: isSel ? GOLD_BG : "transparent" }}>
+                                      {isSel && <Check className="w-3 h-3 text-white" />}
+                                    </div>
                                   </motion.button>
                                 );
                               })}
@@ -517,41 +515,47 @@ export default function CreateStore() {
                       })()}
                     </>
                   )}
-
-                  {/* Continue button — shown only if no store types (category-only flow) */}
-                  {(() => {
-                    const typesForCat = apiStoreTypes.filter(s => s.category === selectedCategory);
-                    const showButton = !!selectedCategory && typesForCat.length === 0 && !apiLoading && !apiError;
-                    if (!showButton && !(!selectedCategory && !apiLoading && !apiError)) return null;
-                    const canContinue = !!selectedCategory && typesForCat.length === 0;
-                    return (
-                      <>
-                        <motion.button
-                          type="button"
-                          disabled={!canContinue}
-                          onClick={() => canContinue && goTo(1)}
-                          whileHover={canContinue ? {scale:1.012} : {}}
-                          whileTap={canContinue ? {scale:0.97} : {}}
-                          className="w-full flex items-center justify-center gap-2 font-bold text-white"
-                          style={{
-                            height:"52px", borderRadius:"14px",
-                            background: canContinue ? LABEL : "#C5BFB5",
-                            fontSize:"15px", cursor: canContinue ? "pointer" : "not-allowed",
-                            boxShadow: canContinue ? "0 4px 16px rgba(0,0,0,0.18)" : "none",
-                            transition:"all 0.2s",
-                          }}
-                        >
-                          Continue <ChevronRight className="w-4 h-4" />
-                        </motion.button>
-                        {!canContinue && (
-                          <p className="text-center text-xs" style={{ color:"#BBAA99" }}>
-                            Select a category to continue
-                          </p>
-                        )}
-                      </>
-                    );
-                  })()}
                 </div>
+              </div>
+
+              {/* ── Continue button — fixed at bottom of screen always ── */}
+              <div
+                className="fixed left-0 right-0 bottom-0 px-4 pb-5 pt-3 z-30"
+                style={{ background: `linear-gradient(to top, ${BG} 80%, transparent)` }}
+              >
+                {(() => {
+                  const typesForCat = apiStoreTypes.filter(s => s.category === selectedCategory);
+                  const canContinue = !!selectedCategory && (typesForCat.length === 0 || !!selectedStoreType);
+                  return (
+                    <>
+                      <motion.button
+                        type="button"
+                        disabled={!canContinue}
+                        onClick={() => canContinue && goTo(1)}
+                        whileHover={canContinue ? {scale:1.012} : {}}
+                        whileTap={canContinue ? {scale:0.97} : {}}
+                        className="w-full flex items-center justify-center gap-2 font-bold text-white max-w-md mx-auto"
+                        style={{
+                          height:"52px", borderRadius:"14px",
+                          background: canContinue ? LABEL : "#C5BFB5",
+                          fontSize:"15px", cursor: canContinue ? "pointer" : "not-allowed",
+                          boxShadow: canContinue ? "0 4px 16px rgba(0,0,0,0.18)" : "none",
+                          transition:"all 0.2s",
+                          display:"flex",
+                        }}
+                      >
+                        Continue <ChevronRight className="w-4 h-4" />
+                      </motion.button>
+                      {!canContinue && (
+                        <p className="text-center text-xs mt-1.5" style={{ color:"#BBAA99" }}>
+                          {!selectedCategory
+                            ? "Select a category to continue"
+                            : "Select a store type to continue"}
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </motion.div>
           )}
