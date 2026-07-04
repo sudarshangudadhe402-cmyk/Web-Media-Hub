@@ -1,36 +1,46 @@
-# [Project name]
+# Web Media Hub
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A multi-store clothing management platform. Store owners create and manage their online clothing stores; customers browse products, manage wishlists, and book appointments.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/api-server run dev` — run the API server
+- `pnpm --filter @workspace/clothing-store run dev` — run the customer-facing store
+- `pnpm --filter @workspace/super-admin run dev` — run the super-admin panel
 - `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+
+## Required Secrets
+
+| Secret | Description |
+|---|---|
+| `MONGODB_URI` | MongoDB connection string |
+| `SESSION_SECRET` | JWT signing secret (also read as `JWT_SECRET`) |
+| `SUPER_ADMIN_ACCESS_CODE` | Required access code for super-admin login |
+| `VITE_GATE_CODE` | Frontend gate code for super-admin panel |
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- **API:** Express 5, MongoDB (Mongoose)
+- **Frontend:** React 19, Vite 7, Tailwind CSS 4, Wouter, TanStack Query
+- **Validation:** Zod, OpenAPI spec-first with Orval codegen
+- **Build:** esbuild (API), Vite (frontends)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/api-server/` — Express API, MongoDB models in `src/models/`
+- `artifacts/clothing-store/` — Customer-facing store (preview: `/`)
+- `artifacts/super-admin/` — Platform admin panel (preview: `/super-admin/`)
+- `lib/api-spec/openapi.yaml` — Source-of-truth API contract
+- `lib/api-client-react/` — Generated React hooks (run codegen to update)
+- `lib/pricing/` — Shared pricing components
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
-
-## Product
-
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Spec-first API: `openapi.yaml` drives all generated client hooks and Zod schemas via Orval. Always update the spec before adding API endpoints.
+- MongoDB is the primary database. The `lib/db` Drizzle/Postgres setup is a placeholder (schema is empty) — not in active use.
+- JWTs are signed with `SESSION_SECRET`. Super-admin tokens expire in 4h; store-owner tokens in 7d.
 
 ## User preferences
 
@@ -38,8 +48,10 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- `SUPER_ADMIN_ACCESS_CODE` is required at API startup — the server will refuse to boot without it.
+- Vite dev server reads `PORT` and `BASE_PATH` from env; both have safe defaults if unset.
+- After changing the OpenAPI spec, run `pnpm --filter @workspace/api-spec run codegen` to regenerate client hooks.
 
 ## Pointers
 
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
