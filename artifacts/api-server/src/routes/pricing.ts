@@ -5,11 +5,22 @@ import { DynamicPricing } from "../models/DynamicPricing";
 const router = Router();
 
 async function getOrCreate() {
-  let doc = await DynamicPricing.findById("pricing-v2");
-  if (!doc) {
-    doc = await DynamicPricing.create({ _id: "pricing-v2", plans: [], categories: [], storeTypes: [] });
+  // Use lean() first to avoid Mongoose validation error when old docs have storeTypes as strings
+  const raw = await DynamicPricing.findById("pricing-v2").lean() as any;
+  if (!raw) {
+    return await DynamicPricing.create({ _id: "pricing-v2", plans: [], categories: [], storeTypes: [] });
   }
-  return doc;
+
+  // Migrate storeTypes from legacy string[] to { name, category }[] format
+  const types: any[] = raw.storeTypes ?? [];
+  if (types.some((s: any) => typeof s === "string")) {
+    const migrated = types.map((s: any) =>
+      typeof s === "string" ? { name: s, category: "" } : s
+    );
+    await DynamicPricing.updateOne({ _id: "pricing-v2" }, { $set: { storeTypes: migrated } });
+  }
+
+  return (await DynamicPricing.findById("pricing-v2"))!;
 }
 
 // GET /api/pricing — list plans + categories + storeTypes
