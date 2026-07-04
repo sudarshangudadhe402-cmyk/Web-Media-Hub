@@ -239,7 +239,7 @@ function CategoryPage({ onClose, onSaved, categories }: {
     if (!name.trim()) return;
     setSaving(true);
     try {
-      const r = await fetch(`${BASE}/pricing/categories`, {
+      const r = await fetch(`${BASE}/marketing/categories`, {
         method: "POST", headers: authHeaders(), body: JSON.stringify({ name: name.trim() }),
       });
       if (!r.ok) { const e = await r.json(); throw new Error(e.error || "Failed"); }
@@ -254,7 +254,7 @@ function CategoryPage({ onClose, onSaved, categories }: {
     if (!editName.trim() || !editingCat) return;
     setSaving(true);
     try {
-      const r = await fetch(`${BASE}/pricing/categories/${encodeURIComponent(editingCat)}`, {
+      const r = await fetch(`${BASE}/marketing/categories/${encodeURIComponent(editingCat)}`, {
         method: "PUT", headers: authHeaders(), body: JSON.stringify({ name: editName.trim() }),
       });
       if (!r.ok) { const e = await r.json(); throw new Error(e.error || "Failed"); }
@@ -268,7 +268,7 @@ function CategoryPage({ onClose, onSaved, categories }: {
   async function deleteCat(cat: string) {
     setDeletingCat(cat);
     try {
-      const r = await fetch(`${BASE}/pricing/categories/${encodeURIComponent(cat)}`, {
+      const r = await fetch(`${BASE}/marketing/categories/${encodeURIComponent(cat)}`, {
         method: "DELETE", headers: authHeaders(),
       });
       if (!r.ok) throw new Error("Failed to delete");
@@ -371,7 +371,7 @@ function StoreTypePage({ onClose, onSaved, categories, storeTypes }: {
     if (!name.trim() || !category) return;
     setSaving(true);
     try {
-      const r = await fetch(`${BASE}/pricing/store-types`, {
+      const r = await fetch(`${BASE}/marketing/store-types`, {
         method: "POST", headers: authHeaders(), body: JSON.stringify({ name: name.trim(), category }),
       });
       if (!r.ok) { const e = await r.json(); throw new Error(e.error || "Failed"); }
@@ -386,7 +386,7 @@ function StoreTypePage({ onClose, onSaved, categories, storeTypes }: {
     if (!editName.trim() || !editingType) return;
     setSaving(true);
     try {
-      const r = await fetch(`${BASE}/pricing/store-types/${encodeURIComponent(editingType.name)}`, {
+      const r = await fetch(`${BASE}/marketing/store-types/${encodeURIComponent(editingType.name)}`, {
         method: "PUT", headers: authHeaders(), body: JSON.stringify({ name: editName.trim(), category: editCat }),
       });
       if (!r.ok) { const e = await r.json(); throw new Error(e.error || "Failed"); }
@@ -400,7 +400,7 @@ function StoreTypePage({ onClose, onSaved, categories, storeTypes }: {
   async function deleteType(st: StoreTypeObj) {
     setDeletingType(st.name);
     try {
-      const r = await fetch(`${BASE}/pricing/store-types/${encodeURIComponent(st.name)}`, {
+      const r = await fetch(`${BASE}/marketing/store-types/${encodeURIComponent(st.name)}`, {
         method: "DELETE", headers: authHeaders(),
       });
       if (!r.ok) throw new Error("Failed to delete");
@@ -531,22 +531,22 @@ function DashboardTab() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [dashR, pricingR] = await Promise.all([
+      const [dashR, catR] = await Promise.all([
         fetch(`${BASE}/marketing/dashboard?range=all`, { headers: authHeaders() }),
-        fetch(`${BASE}/pricing`, { headers: authHeaders() }),
+        fetch(`${BASE}/marketing/categories-config`, { headers: authHeaders() }),
       ]);
       if (!dashR.ok) throw new Error("Server error");
       const dashData = await dashR.json();
       setData(dashData);
-      if (pricingR.ok) {
-        const pData = await pricingR.json();
-        const cats: string[] = pData.categories ?? [];
-        const types: StoreTypeObj[] = (pData.storeTypes ?? []).map((s: any) =>
+      if (catR.ok) {
+        const cData = await catR.json();
+        const cats: string[] = cData.categories ?? [];
+        const types: StoreTypeObj[] = (cData.storeTypes ?? []).map((s: any) =>
           typeof s === "string" ? { name: s, category: "" } : s
         );
         setCategories(cats);
         setStoreTypes(types);
-        setStoreTypeCounts(pData.storeTypeCounts ?? {});
+        setStoreTypeCounts(cData.storeTypeCounts ?? {});
         if (cats.length > 0) setActiveCategory(prev => prev && cats.includes(prev) ? prev : cats[0]);
       }
     } catch { toast({ title: "Failed to load dashboard", variant: "destructive" }); }

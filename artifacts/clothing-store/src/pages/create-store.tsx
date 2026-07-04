@@ -101,11 +101,11 @@ export default function CreateStore() {
   const [rzpLoading,     setRzpLoading]     = useState(false);
   const [refAdmin,       setRefAdmin]       = useState<string>("");
 
-  /* Fetch dynamic categories + store types from API */
+  /* Fetch marketing (Growth & Marketing Analytics) categories + store types from API — independent from pricing categories */
   function fetchPricing() {
     setApiLoading(true);
     setApiError(false);
-    fetch("/api/pricing")
+    fetch("/api/marketing/categories-config")
       .then(r => r.ok ? r.json() : Promise.reject("not-ok"))
       .then(d => {
         const cats: string[] = d.categories ?? [];

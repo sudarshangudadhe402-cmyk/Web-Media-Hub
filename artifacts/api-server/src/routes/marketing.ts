@@ -6,8 +6,17 @@ import { Ambassador } from "../models/Ambassador";
 import { ReferralCode } from "../models/ReferralCode";
 import { MarketingSourceConfig } from "../models/MarketingSourceConfig";
 import { BuiltinSourceSetting } from "../models/BuiltinSourceSetting";
+import { MarketingCategoryConfig } from "../models/MarketingCategoryConfig";
 
 const router = Router();
+
+async function getOrCreateCategoryConfig() {
+  const raw = await MarketingCategoryConfig.findById("marketing-categories-v1").lean() as any;
+  if (!raw) {
+    return await MarketingCategoryConfig.create({ _id: "marketing-categories-v1", categories: [], storeTypes: [] });
+  }
+  return (await MarketingCategoryConfig.findById("marketing-categories-v1"))!;
+}
 
 const SOURCES = [
   "ORGANIC","GOOGLE_AD","FACEBOOK_AD","INSTAGRAM_AD",
@@ -470,6 +479,123 @@ router.patch("/marketing/sources/builtin/:key", requireSuperAdmin, async (req: A
       { upsert: true, new: true }
     );
     res.json(setting);
+  } catch { res.status(500).json({ error: "Failed" }); }
+});
+
+/* ── MARKETING STORE CATEGORIES (independent from Pricing categories) ── */
+/* GET /api/marketing/categories-config — public: used by "Choose your shop" page pre-login */
+router.get("/marketing/categories-config", async (_req, res: Response): Promise<void> => {
+  try {
+    const doc = await getOrCreateCategoryConfig();
+
+    const typeToCategory: Record<string, string> = {};
+    for (const st of doc.storeTypes as any[]) {
+      if (st.name) typeToCategory[st.name] = st.category ?? "";
+    }
+    const adminDocs = await User.find({ role: "admin", storeType: { $ne: "" } }).select("storeType").lean();
+    const storeTypeCounts: Record<string, number> = {};
+    for (const a of adminDocs) {
+      const t = (a as any).storeType as string;
+      if (!t) continue;
+      const cat = typeToCategory[t] ?? "";
+      const key = cat ? `${t}::${cat}` : t;
+      storeTypeCounts[key] = (storeTypeCounts[key] ?? 0) + 1;
+    }
+
+    res.json({ categories: doc.categories, storeTypes: doc.storeTypes, storeTypeCounts });
+  } catch {
+    res.status(500).json({ error: "Failed" });
+  }
+});
+
+/* POST /api/marketing/categories — add category */
+router.post("/marketing/categories", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { name } = req.body;
+    const cat = (name ?? "").trim();
+    if (!cat) { res.status(400).json({ error: "name required" }); return; }
+    const doc = await getOrCreateCategoryConfig();
+    if (!(doc.categories as string[]).includes(cat)) {
+      (doc.categories as string[]).push(cat);
+      await doc.save();
+    }
+    res.json({ categories: doc.categories });
+  } catch { res.status(500).json({ error: "Failed" }); }
+});
+
+/* PUT /api/marketing/categories/:name — rename category */
+router.put("/marketing/categories/:name", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const oldName = req.params.name;
+    const trimmed = (req.body.name ?? "").trim();
+    if (!trimmed) { res.status(400).json({ error: "name required" }); return; }
+    const doc = await getOrCreateCategoryConfig();
+    const idx = (doc.categories as string[]).indexOf(oldName);
+    if (idx === -1) { res.status(404).json({ error: "Not found" }); return; }
+    (doc.categories as string[])[idx] = trimmed;
+    for (const st of doc.storeTypes as any[]) {
+      if (st.category === oldName) st.category = trimmed;
+    }
+    await doc.save();
+    res.json({ categories: doc.categories });
+  } catch { res.status(500).json({ error: "Failed" }); }
+});
+
+/* DELETE /api/marketing/categories/:name — remove category */
+router.delete("/marketing/categories/:name", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const cat = req.params.name;
+    const doc = await getOrCreateCategoryConfig();
+    (doc as any).categories = (doc.categories as string[]).filter((c) => c !== cat);
+    (doc as any).storeTypes = (doc.storeTypes as any[]).filter((s: any) => s.category !== cat);
+    await doc.save();
+    res.json({ categories: doc.categories });
+  } catch { res.status(500).json({ error: "Failed" }); }
+});
+
+/* POST /api/marketing/store-types — add store type (requires name + category) */
+router.post("/marketing/store-types", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const stName = (req.body.name ?? "").trim();
+    const stCat = (req.body.category ?? "").trim();
+    if (!stName || !stCat) { res.status(400).json({ error: "name and category required" }); return; }
+    const doc = await getOrCreateCategoryConfig();
+    if (!(doc.categories as string[]).includes(stCat)) { res.status(400).json({ error: "Category does not exist" }); return; }
+    const exists = (doc.storeTypes as any[]).some((s: any) => s.name === stName && s.category === stCat);
+    if (!exists) {
+      (doc.storeTypes as any[]).push({ name: stName, category: stCat });
+      await doc.save();
+    }
+    res.json({ storeTypes: doc.storeTypes });
+  } catch { res.status(500).json({ error: "Failed" }); }
+});
+
+/* PUT /api/marketing/store-types/:name — edit store type */
+router.put("/marketing/store-types/:name", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const oldName = req.params.name;
+    const { name, category } = req.body;
+    const doc = await getOrCreateCategoryConfig();
+    const st = (doc.storeTypes as any[]).find((s: any) => s.name === oldName);
+    if (!st) { res.status(404).json({ error: "Not found" }); return; }
+    if (typeof name === "string" && name.trim()) st.name = name.trim();
+    if (typeof category === "string" && category.trim()) {
+      if (!(doc.categories as string[]).includes(category.trim())) { res.status(400).json({ error: "Category does not exist" }); return; }
+      st.category = category.trim();
+    }
+    await doc.save();
+    res.json({ storeTypes: doc.storeTypes });
+  } catch { res.status(500).json({ error: "Failed" }); }
+});
+
+/* DELETE /api/marketing/store-types/:name — remove store type */
+router.delete("/marketing/store-types/:name", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const st = req.params.name;
+    const doc = await getOrCreateCategoryConfig();
+    (doc as any).storeTypes = (doc.storeTypes as any[]).filter((s: any) => s.name !== st);
+    await doc.save();
+    res.json({ storeTypes: doc.storeTypes });
   } catch { res.status(500).json({ error: "Failed" }); }
 });
 
