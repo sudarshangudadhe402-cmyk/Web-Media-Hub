@@ -222,7 +222,6 @@ router.post("/auth/logout", requireDb, requireAuth, async (req: AuthRequest, res
     let sessionIdToRemove: string | undefined;
     try {
       const jwt = await import("jsonwebtoken");
-      const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || "wmh-secret-key-2024";
       const decoded = jwt.default.decode(token) as { sessionId?: string } | null;
       sessionIdToRemove = decoded?.sessionId;
     } catch {
