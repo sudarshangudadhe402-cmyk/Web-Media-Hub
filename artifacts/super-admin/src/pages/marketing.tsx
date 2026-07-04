@@ -222,131 +222,276 @@ function DateFilterBar({ range, setRange, from, setFrom, to, setTo }: any) {
 /* ── STORE CATEGORY & TYPE MODALS ── */
 type StoreTypeObj = { name: string; category: string };
 
-function CategoryModal({ open, onClose, onSaved, editing }: {
-  open: boolean; onClose: () => void; onSaved: () => void; editing: string | null;
+function CategoryModal({ open, onClose, onSaved, categories }: {
+  open: boolean; onClose: () => void; onSaved: () => void; categories: string[];
 }) {
-  const [name, setName] = useState(editing ?? "");
+  const [name, setName] = useState("");
+  const [editingCat, setEditingCat] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [deletingCat, setDeletingCat] = useState<string | null>(null);
 
-  useEffect(() => { setName(editing ?? ""); }, [editing]);
+  function startEdit(cat: string) { setEditingCat(cat); setEditName(cat); }
+  function cancelEdit() { setEditingCat(null); setEditName(""); }
 
-  async function save() {
+  async function add() {
     if (!name.trim()) return;
     setSaving(true);
     try {
-      let r: Response;
-      if (editing) {
-        r = await fetch(`${BASE}/pricing/categories/${encodeURIComponent(editing)}`, {
-          method: "PUT", headers: authHeaders(), body: JSON.stringify({ name: name.trim() }),
-        });
-      } else {
-        r = await fetch(`${BASE}/pricing/categories`, {
-          method: "POST", headers: authHeaders(), body: JSON.stringify({ name: name.trim() }),
-        });
-      }
+      const r = await fetch(`${BASE}/pricing/categories`, {
+        method: "POST", headers: authHeaders(), body: JSON.stringify({ name: name.trim() }),
+      });
       if (!r.ok) { const e = await r.json(); throw new Error(e.error || "Failed"); }
-      toast({ title: editing ? "Category renamed" : "Category added" });
-      onSaved(); onClose();
-    } catch (e: any) {
-      toast({ title: e.message, variant: "destructive" });
-    } finally { setSaving(false); }
+      toast({ title: "Category added" });
+      setName("");
+      onSaved();
+    } catch (e: any) { toast({ title: e.message, variant: "destructive" }); }
+    finally { setSaving(false); }
+  }
+
+  async function saveEdit() {
+    if (!editName.trim() || !editingCat) return;
+    setSaving(true);
+    try {
+      const r = await fetch(`${BASE}/pricing/categories/${encodeURIComponent(editingCat)}`, {
+        method: "PUT", headers: authHeaders(), body: JSON.stringify({ name: editName.trim() }),
+      });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error || "Failed"); }
+      toast({ title: "Category renamed" });
+      cancelEdit();
+      onSaved();
+    } catch (e: any) { toast({ title: e.message, variant: "destructive" }); }
+    finally { setSaving(false); }
+  }
+
+  async function deleteCat(cat: string) {
+    setDeletingCat(cat);
+    try {
+      const r = await fetch(`${BASE}/pricing/categories/${encodeURIComponent(cat)}`, {
+        method: "DELETE", headers: authHeaders(),
+      });
+      if (!r.ok) throw new Error("Failed to delete");
+      toast({ title: "Category deleted" });
+      onSaved();
+    } catch (e: any) { toast({ title: e.message, variant: "destructive" }); }
+    finally { setDeletingCat(null); }
   }
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-sm max-h-[85vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>{editing ? "Edit Category" : "Add Store Category"}</DialogTitle>
+          <DialogTitle>Add Store Category</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 pt-2">
+        <div className="flex gap-2 pt-1">
           <Input placeholder="Category name" value={name} onChange={e => setName(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && save()} autoFocus />
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button onClick={save} disabled={saving || !name.trim()} className="bg-purple-600 hover:bg-purple-700 text-white">
-              {saving ? "Saving…" : editing ? "Save" : "Add"}
-            </Button>
+            onKeyDown={e => e.key === "Enter" && add()} autoFocus />
+          <Button onClick={add} disabled={saving || !name.trim()} className="shrink-0 bg-purple-600 hover:bg-purple-700 text-white px-4">
+            {saving ? "…" : "Add"}
+          </Button>
+        </div>
+
+        {/* Existing categories list */}
+        {categories.length > 0 && (
+          <div className="mt-4 flex-1 overflow-y-auto">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Added Categories</p>
+            <div className="divide-y divide-gray-100 border rounded-lg overflow-hidden">
+              {categories.map(cat => (
+                <div key={cat} className="px-3 py-2 bg-white">
+                  {editingCat === cat ? (
+                    <div className="flex gap-2 items-center">
+                      <Input value={editName} onChange={e => setEditName(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") cancelEdit(); }}
+                        className="h-7 text-sm flex-1" autoFocus />
+                      <button onClick={saveEdit} disabled={saving} className="text-purple-600 hover:text-purple-800 p-1">
+                        <Check size={14} />
+                      </button>
+                      <button onClick={cancelEdit} className="text-gray-400 hover:text-gray-600 p-1">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between group">
+                      <span className="text-sm text-gray-800">{cat}</span>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => startEdit(cat)} className="p-1.5 rounded hover:bg-purple-50 text-purple-500">
+                          <Edit2 size={13} />
+                        </button>
+                        <button onClick={() => deleteCat(cat)} disabled={deletingCat === cat}
+                          className="p-1.5 rounded hover:bg-red-50 text-red-400 disabled:opacity-50">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
+        )}
+
+        <div className="pt-3 flex justify-end">
+          <Button variant="outline" onClick={onClose}>Done</Button>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
 
-function StoreTypeModal({ open, onClose, onSaved, editing, categories }: {
+function StoreTypeModal({ open, onClose, onSaved, categories, storeTypes }: {
   open: boolean; onClose: () => void; onSaved: () => void;
-  editing: StoreTypeObj | null; categories: string[];
+  categories: string[]; storeTypes: StoreTypeObj[];
 }) {
-  const [name, setName] = useState(editing?.name ?? "");
-  const [category, setCategory] = useState(editing?.category ?? categories[0] ?? "");
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState(categories[0] ?? "");
+  const [editingType, setEditingType] = useState<StoreTypeObj | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editCat, setEditCat] = useState("");
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [deletingType, setDeletingType] = useState<string | null>(null);
 
   useEffect(() => {
-    setName(editing?.name ?? "");
-    setCategory(editing?.category ?? categories[0] ?? "");
-  }, [editing, categories]);
+    if (!category && categories.length > 0) setCategory(categories[0]);
+  }, [categories]);
 
-  async function save() {
+  function startEdit(st: StoreTypeObj) { setEditingType(st); setEditName(st.name); setEditCat(st.category); }
+  function cancelEdit() { setEditingType(null); setEditName(""); setEditCat(""); }
+
+  async function add() {
     if (!name.trim() || !category) return;
     setSaving(true);
     try {
-      let r: Response;
-      if (editing) {
-        r = await fetch(`${BASE}/pricing/store-types/${encodeURIComponent(editing.name)}`, {
-          method: "PUT", headers: authHeaders(), body: JSON.stringify({ name: name.trim(), category }),
-        });
-      } else {
-        r = await fetch(`${BASE}/pricing/store-types`, {
-          method: "POST", headers: authHeaders(), body: JSON.stringify({ name: name.trim(), category }),
-        });
-      }
+      const r = await fetch(`${BASE}/pricing/store-types`, {
+        method: "POST", headers: authHeaders(), body: JSON.stringify({ name: name.trim(), category }),
+      });
       if (!r.ok) { const e = await r.json(); throw new Error(e.error || "Failed"); }
-      toast({ title: editing ? "Store type updated" : "Store type added" });
-      onSaved(); onClose();
-    } catch (e: any) {
-      toast({ title: e.message, variant: "destructive" });
-    } finally { setSaving(false); }
+      toast({ title: "Store type added" });
+      setName("");
+      onSaved();
+    } catch (e: any) { toast({ title: e.message, variant: "destructive" }); }
+    finally { setSaving(false); }
+  }
+
+  async function saveEdit() {
+    if (!editName.trim() || !editingType) return;
+    setSaving(true);
+    try {
+      const r = await fetch(`${BASE}/pricing/store-types/${encodeURIComponent(editingType.name)}`, {
+        method: "PUT", headers: authHeaders(), body: JSON.stringify({ name: editName.trim(), category: editCat }),
+      });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error || "Failed"); }
+      toast({ title: "Store type updated" });
+      cancelEdit();
+      onSaved();
+    } catch (e: any) { toast({ title: e.message, variant: "destructive" }); }
+    finally { setSaving(false); }
+  }
+
+  async function deleteType(st: StoreTypeObj) {
+    setDeletingType(st.name);
+    try {
+      const r = await fetch(`${BASE}/pricing/store-types/${encodeURIComponent(st.name)}`, {
+        method: "DELETE", headers: authHeaders(),
+      });
+      if (!r.ok) throw new Error("Failed to delete");
+      toast({ title: "Store type deleted" });
+      onSaved();
+    } catch (e: any) { toast({ title: e.message, variant: "destructive" }); }
+    finally { setDeletingType(null); }
   }
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-sm max-h-[85vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>{editing ? "Edit Store Type" : "Add Store Type"}</DialogTitle>
+          <DialogTitle>Add Store Type</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 pt-2">
-          <div>
-            <label className="text-sm font-medium text-muted-foreground mb-1 block">Store Type Name</label>
-            <Input placeholder="e.g. Clothing Store" value={name} onChange={e => setName(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && save()} autoFocus />
+
+        <div className="space-y-3 pt-1">
+          <Input placeholder="Store type name" value={name} onChange={e => setName(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && add()} autoFocus />
+          {categories.length === 0 ? (
+            <p className="text-sm text-destructive">Add a category first.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {categories.map(cat => (
+                <button key={cat} type="button" onClick={() => setCategory(cat)}
+                  className={`px-3 py-1 rounded-full text-sm border transition-all ${category === cat
+                    ? "bg-orange-500 text-white border-orange-500"
+                    : "border-muted-foreground/30 text-muted-foreground hover:border-orange-400"}`}>
+                  {cat}
+                </button>
+              ))}
+            </div>
+          )}
+          <Button onClick={add} disabled={saving || !name.trim() || !category || categories.length === 0}
+            className="w-full bg-orange-500 hover:bg-orange-600 text-white">
+            {saving ? "Adding…" : "Add Store Type"}
+          </Button>
+        </div>
+
+        {/* Existing store types grouped by category */}
+        {storeTypes.length > 0 && (
+          <div className="mt-4 flex-1 overflow-y-auto">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Added Store Types</p>
+            <div className="space-y-3">
+              {categories.filter(cat => storeTypes.some(s => s.category === cat)).map(cat => (
+                <div key={cat}>
+                  <p className="text-xs font-semibold text-orange-500 mb-1 px-1">{cat}</p>
+                  <div className="divide-y divide-gray-100 border rounded-lg overflow-hidden">
+                    {storeTypes.filter(s => s.category === cat).map(st => (
+                      <div key={st.name} className="px-3 py-2 bg-white">
+                        {editingType?.name === st.name ? (
+                          <div className="space-y-2">
+                            <Input value={editName} onChange={e => setEditName(e.target.value)}
+                              onKeyDown={e => { if (e.key === "Escape") cancelEdit(); }}
+                              className="h-7 text-sm" autoFocus />
+                            <div className="flex flex-wrap gap-1">
+                              {categories.map(c => (
+                                <button key={c} type="button" onClick={() => setEditCat(c)}
+                                  className={`px-2 py-0.5 rounded-full text-xs border transition-all ${editCat === c
+                                    ? "bg-orange-500 text-white border-orange-500"
+                                    : "border-gray-200 text-gray-500 hover:border-orange-300"}`}>
+                                  {c}
+                                </button>
+                              ))}
+                            </div>
+                            <div className="flex gap-2">
+                              <button onClick={saveEdit} disabled={saving} className="text-orange-500 hover:text-orange-700 p-1">
+                                <Check size={14} />
+                              </button>
+                              <button onClick={cancelEdit} className="text-gray-400 hover:text-gray-600 p-1">
+                                <X size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between group">
+                            <span className="text-sm text-gray-800">{st.name}</span>
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => startEdit(st)} className="p-1.5 rounded hover:bg-orange-50 text-orange-400">
+                                <Edit2 size={13} />
+                              </button>
+                              <button onClick={() => deleteType(st)} disabled={deletingType === st.name}
+                                className="p-1.5 rounded hover:bg-red-50 text-red-400 disabled:opacity-50">
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-          <div>
-            <label className="text-sm font-medium text-muted-foreground mb-1 block">Select Category</label>
-            {categories.length === 0 ? (
-              <p className="text-sm text-destructive">Add a category first.</p>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {categories.map(cat => (
-                  <button key={cat} type="button"
-                    onClick={() => setCategory(cat)}
-                    className={`px-3 py-1 rounded-full text-sm border transition-all ${category === cat
-                      ? "bg-orange-500 text-white border-orange-500"
-                      : "border-muted-foreground/30 text-muted-foreground hover:border-orange-400"}`}>
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button onClick={save} disabled={saving || !name.trim() || !category || categories.length === 0}
-              className="bg-orange-500 hover:bg-orange-600 text-white">
-              {saving ? "Saving…" : editing ? "Save" : "Add"}
-            </Button>
-          </div>
+        )}
+
+        <div className="pt-3 flex justify-end">
+          <Button variant="outline" onClick={onClose}>Done</Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -361,9 +506,7 @@ function DashboardTab() {
   const [storeTypes, setStoreTypes] = useState<StoreTypeObj[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [showCatModal, setShowCatModal] = useState(false);
-  const [editingCat, setEditingCat] = useState<string | null>(null);
   const [showTypeModal, setShowTypeModal] = useState(false);
-  const [editingType, setEditingType] = useState<StoreTypeObj | null>(null);
   const { toast } = useToast();
 
   const load = useCallback(async () => {
@@ -392,30 +535,6 @@ function DashboardTab() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function deleteCategory(cat: string) {
-    if (!confirm(`Delete category "${cat}"? All store types under it will also be removed.`)) return;
-    try {
-      const r = await fetch(`${BASE}/pricing/categories/${encodeURIComponent(cat)}`, {
-        method: "DELETE", headers: authHeaders(),
-      });
-      if (!r.ok) throw new Error("Failed to delete");
-      toast({ title: "Category deleted" });
-      load();
-    } catch (e: any) { toast({ title: e.message, variant: "destructive" }); }
-  }
-
-  async function deleteStoreType(name: string) {
-    if (!confirm(`Delete store type "${name}"?`)) return;
-    try {
-      const r = await fetch(`${BASE}/pricing/store-types/${encodeURIComponent(name)}`, {
-        method: "DELETE", headers: authHeaders(),
-      });
-      if (!r.ok) throw new Error("Failed to delete");
-      toast({ title: "Store type deleted" });
-      load();
-    } catch (e: any) { toast({ title: e.message, variant: "destructive" }); }
-  }
-
   const visibleTypes = activeCategory
     ? storeTypes.filter(s => s.category === activeCategory)
     : [];
@@ -439,7 +558,7 @@ function DashboardTab() {
       {/* Add Category / Add Store Type buttons */}
       <div className="grid grid-cols-2 gap-3">
         <button
-          onClick={() => { setEditingCat(null); setShowCatModal(true); }}
+          onClick={() => setShowCatModal(true)}
           className="flex items-center justify-between px-4 py-3 rounded-xl border border-purple-200 bg-white hover:bg-purple-50 transition-colors group">
           <span className="text-sm font-semibold text-purple-600">Add Store Category</span>
           <span className="w-7 h-7 rounded-full border-2 border-purple-500 flex items-center justify-center text-purple-500 group-hover:bg-purple-500 group-hover:text-white transition-colors">
@@ -447,7 +566,7 @@ function DashboardTab() {
           </span>
         </button>
         <button
-          onClick={() => { setEditingType(null); setShowTypeModal(true); }}
+          onClick={() => setShowTypeModal(true)}
           className="flex items-center justify-between px-4 py-3 rounded-xl border border-orange-200 bg-white hover:bg-orange-50 transition-colors group">
           <span className="text-sm font-semibold text-orange-500">Add Store Type</span>
           <span className="w-7 h-7 rounded-full border-2 border-orange-500 flex items-center justify-center text-orange-500 group-hover:bg-orange-500 group-hover:text-white transition-colors">
@@ -462,33 +581,15 @@ function DashboardTab() {
           {/* Tabs row */}
           <div className="flex gap-0 border-b border-gray-200 overflow-x-auto">
             {categories.map(cat => (
-              <div key={cat} className="relative flex items-center group">
-                <button
-                  onClick={() => setActiveCategory(cat)}
-                  className={`px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors ${
-                    activeCategory === cat
-                      ? "text-purple-600 border-b-2 border-purple-600"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}>
-                  {cat}
-                </button>
-                {/* Edit/Delete on tab */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="opacity-0 group-hover:opacity-100 transition-opacity mr-1 p-0.5 rounded hover:bg-gray-100">
-                      <MoreVertical size={13} className="text-gray-400" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    <DropdownMenuItem onClick={() => { setEditingCat(cat); setShowCatModal(true); }}>
-                      <Edit2 size={13} className="mr-2" /> Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="text-destructive" onClick={() => deleteCategory(cat)}>
-                      <Trash2 size={13} className="mr-2" /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+              <button key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className={`px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors ${
+                  activeCategory === cat
+                    ? "text-purple-600 border-b-2 border-purple-600"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}>
+                {cat}
+              </button>
             ))}
           </div>
 
@@ -502,26 +603,9 @@ function DashboardTab() {
             ) : (
               <div className="divide-y divide-gray-100">
                 {visibleTypes.map(st => (
-                  <div key={st.name} className="flex items-center justify-between py-3 group">
+                  <div key={st.name} className="flex items-center justify-between py-3">
                     <span className="text-sm text-gray-800">{st.name}</span>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-semibold text-gray-700">0</span>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-gray-100">
-                            <MoreVertical size={14} className="text-gray-400" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => { setEditingType(st); setShowTypeModal(true); }}>
-                            <Edit2 size={13} className="mr-2" /> Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive" onClick={() => deleteStoreType(st.name)}>
-                            <Trash2 size={13} className="mr-2" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
+                    <span className="text-sm font-semibold text-gray-700">0</span>
                   </div>
                 ))}
               </div>
@@ -568,14 +652,14 @@ function DashboardTab() {
         open={showCatModal}
         onClose={() => setShowCatModal(false)}
         onSaved={load}
-        editing={editingCat}
+        categories={categories}
       />
       <StoreTypeModal
         open={showTypeModal}
         onClose={() => setShowTypeModal(false)}
         onSaved={load}
-        editing={editingType}
         categories={categories}
+        storeTypes={storeTypes}
       />
     </div>
   );
