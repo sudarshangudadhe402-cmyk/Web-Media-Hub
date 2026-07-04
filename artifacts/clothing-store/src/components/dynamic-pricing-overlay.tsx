@@ -85,7 +85,12 @@ function planToTagline(plan: DynamicPlan): string {
 async function fetchPricing(): Promise<PricingData> {
   const res = await fetch("/api/pricing");
   if (!res.ok) throw new Error("Failed to fetch pricing");
-  return res.json();
+  const data = await res.json();
+  // API returns storeTypes as [{name, category}] objects — normalize to strings
+  const storeTypes = (data.storeTypes ?? []).map((st: unknown) =>
+    typeof st === "string" ? st : (st as { name: string }).name
+  );
+  return { ...data, storeTypes };
 }
 
 // ── Plan Card (Jio style) ─────────────────────────────────────────────────────
