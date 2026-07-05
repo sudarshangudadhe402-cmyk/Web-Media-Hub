@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useToast } from "@/hooks/use-toast";
 import {
   Plus, Search, Tag, Trash2, ChevronDown, ChevronUp, X, Check,
-  Clock, Calendar, Pencil, BadgePlus, ChevronRight,
+  Clock, Calendar, Pencil, BadgePlus, ChevronRight, GripVertical,
 } from "lucide-react";
 
 const TOKEN_KEY = "wmh_super_token";
@@ -79,6 +79,16 @@ async function updatePlan(id: string, data: Partial<Omit<Plan, "id">>): Promise<
 async function deletePlan(id: string): Promise<void> {
   const res = await fetch(`/api/pricing/plans/${id}`, { method: "DELETE", headers: authHeaders() });
   if (!res.ok) throw new Error("Failed to delete plan");
+}
+
+async function reorderPlans(ids: string[]): Promise<PricingData> {
+  const res = await fetch("/api/pricing/plans/reorder", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ ids }),
+  });
+  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e as any).error || "Failed to reorder plans"); }
+  return res.json();
 }
 
 // ── Feature List Editor ───────────────────────────────────────────────────────
@@ -366,62 +376,115 @@ function PlanDetailDialog({
 }
 
 // ── Jio-style Plan Card ───────────────────────────────────────────────────────
-function PlanCard({ plan, onClick }: { plan: Plan; onClick: () => void }) {
+function PlanCard({
+  plan, onClick, reorderable, dragHandleProps, isDragging, onMoveUp, onMoveDown, canMoveUp, canMoveDown,
+}: {
+  plan: Plan; onClick: () => void;
+  reorderable?: boolean;
+  dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
+  isDragging?: boolean;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+}) {
   const PREVIEW_COUNT = 2;
   const visibleFeatures = plan.features.slice(0, PREVIEW_COUNT);
   const hasMore = plan.features.length > PREVIEW_COUNT;
   const validityDisplay = plan.durationDays ? `${plan.durationDays} days` : "Lifetime";
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="w-full text-left bg-white border border-gray-200 rounded-xl px-4 py-3.5 hover:border-orange-300 hover:shadow-sm transition-all duration-150 active:scale-[0.99]"
+    <div
+      className={`w-full bg-white border rounded-xl px-2 py-2 flex items-center gap-1 transition-all duration-150 ${
+        isDragging ? "border-orange-400 shadow-md opacity-70" : "border-gray-200 hover:border-orange-300 hover:shadow-sm"
+      }`}
     >
-      {/* Top row: Price | Validity | Chevron */}
-      <div className="flex items-start gap-4">
-        {/* Price */}
-        <div className="flex-none min-w-[90px]">
-          <p className="text-xl font-extrabold text-gray-900 leading-tight">{plan.price}</p>
-          {plan.badgeText && (
-            <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-orange-100 text-orange-700 border border-orange-200 leading-none">
-              {plan.badgeText}
-            </span>
-          )}
-        </div>
-
-        {/* Validity */}
-        <div className="flex gap-6 flex-1 pt-0.5">
-          <div>
-            <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold">Validity</p>
-            <p className="text-sm font-bold text-gray-800 mt-0.5">{validityDisplay}</p>
+      {reorderable && (
+        <div className="flex flex-col items-center shrink-0 gap-0.5">
+          <div
+            {...dragHandleProps}
+            className="cursor-grab active:cursor-grabbing p-1.5 rounded hover:bg-gray-100 text-gray-400"
+            title="Drag to reorder"
+          >
+            <GripVertical className="h-4 w-4" />
+          </div>
+          <div className="flex flex-col -mt-1">
+            <button
+              type="button"
+              onClick={onMoveUp}
+              disabled={!canMoveUp}
+              className="text-gray-300 hover:text-orange-500 disabled:opacity-30 disabled:hover:text-gray-300"
+              title="Move up"
+            >
+              <ChevronUp className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={onMoveDown}
+              disabled={!canMoveDown}
+              className="text-gray-300 hover:text-orange-500 disabled:opacity-30 disabled:hover:text-gray-300"
+              title="Move down"
+            >
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
+      )}
 
-        {/* Chevron */}
-        <ChevronRight className="h-5 w-5 text-gray-300 shrink-0 mt-1" />
-      </div>
-
-      {/* Features row */}
-      {(visibleFeatures.length > 0 || hasMore) && (
-        <div className="mt-3 border-t border-gray-100 pt-2.5">
-          <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">
-            {visibleFeatures.join(" • ")}
-            {hasMore && (
-              <span className="ml-1 text-orange-500 font-semibold inline-flex items-center gap-0.5">
-                See more <ChevronDown className="h-3 w-3" />
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex-1 min-w-0 text-left px-2 py-1.5 active:scale-[0.99] transition-transform"
+      >
+        {/* Top row: Price | Validity | Chevron */}
+        <div className="flex items-start gap-4">
+          {/* Price */}
+          <div className="flex-none min-w-[90px]">
+            <p className="text-xl font-extrabold text-gray-900 leading-tight">{plan.price}</p>
+            {plan.badgeText && (
+              <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-orange-100 text-orange-700 border border-orange-200 leading-none">
+                {plan.badgeText}
               </span>
             )}
-          </p>
-        </div>
-      )}
+          </div>
 
-      {plan.features.length === 0 && (
-        <div className="mt-2.5 border-t border-gray-100 pt-2">
-          <p className="text-xs text-gray-300 italic">No features added</p>
+          {/* Validity + Name */}
+          <div className="flex gap-6 flex-1 pt-0.5 min-w-0">
+            <div>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold">Validity</p>
+              <p className="text-sm font-bold text-gray-800 mt-0.5">{validityDisplay}</p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold">Name</p>
+              <p className="text-sm font-bold text-gray-800 mt-0.5 truncate">{plan.name}</p>
+            </div>
+          </div>
+
+          {/* Chevron */}
+          <ChevronRight className="h-5 w-5 text-gray-300 shrink-0 mt-1" />
         </div>
-      )}
-    </button>
+
+        {/* Features row */}
+        {(visibleFeatures.length > 0 || hasMore) && (
+          <div className="mt-3 border-t border-gray-100 pt-2.5">
+            <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">
+              {visibleFeatures.join(" • ")}
+              {hasMore && (
+                <span className="ml-1 text-orange-500 font-semibold inline-flex items-center gap-0.5">
+                  See more <ChevronDown className="h-3 w-3" />
+                </span>
+              )}
+            </p>
+          </div>
+        )}
+
+        {plan.features.length === 0 && (
+          <div className="mt-2.5 border-t border-gray-100 pt-2">
+            <p className="text-xs text-gray-300 italic">No features added</p>
+          </div>
+        )}
+      </button>
+    </div>
   );
 }
 
@@ -434,6 +497,9 @@ export default function PricingConfig() {
   const [showAddPlan, setShowAddPlan] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
+  const [orderedPlans, setOrderedPlans] = useState<Plan[]>([]);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const { data, isLoading } = useQuery<PricingData>({
     queryKey: ["dynamic-pricing"],
@@ -444,9 +510,16 @@ export default function PricingConfig() {
 
   const allPlans = data?.plans ?? [];
 
-  // Filter plans
+  // Keep local reorderable copy in sync with server data
+  useMemo(() => {
+    setOrderedPlans(allPlans);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(allPlans.map((p) => p.id))]);
+
+  // Filter plans (search disables drag reordering since indices no longer map to full order)
+  const isSearching = !!search.trim();
   const filteredPlans = useMemo(() => {
-    let plans = allPlans;
+    let plans = orderedPlans;
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       plans = plans.filter(
@@ -457,7 +530,36 @@ export default function PricingConfig() {
       );
     }
     return plans;
-  }, [allPlans, search]);
+  }, [orderedPlans, search]);
+
+  const reorderMutation = useMutation({
+    mutationFn: reorderPlans,
+    onSuccess: (data) => { queryClient.setQueryData(["dynamic-pricing"], data); },
+    onError: (e: Error) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+      setOrderedPlans(allPlans);
+    },
+  });
+
+  function commitOrder(next: Plan[]) {
+    setOrderedPlans(next);
+    reorderMutation.mutate(next.map((p) => p.id));
+  }
+
+  function moveTo(fromIndex: number, toIndex: number) {
+    if (toIndex < 0 || toIndex >= orderedPlans.length || fromIndex === toIndex) return;
+    const next = [...orderedPlans];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    commitOrder(next);
+  }
+
+  function handleDrop(index: number) {
+    if (dragIndex === null || dragIndex === index) { setDragIndex(null); setDragOverIndex(null); return; }
+    moveTo(dragIndex, index);
+    setDragIndex(null);
+    setDragOverIndex(null);
+  }
 
   // ── Mutations ────────────────────────────────────────────────────────────────
   const createMutation = useMutation({
@@ -540,8 +642,32 @@ export default function PricingConfig() {
         </div>
       ) : (
         <div className="space-y-2.5">
-          {filteredPlans.map((plan) => (
-            <PlanCard key={plan.id} plan={plan} onClick={() => setSelectedPlan(plan)} />
+          {isSearching && (
+            <p className="text-xs text-muted-foreground italic">Clear search to drag &amp; reorder plans</p>
+          )}
+          {filteredPlans.map((plan, index) => (
+            <div
+              key={plan.id}
+              onDragOver={(e) => { if (!isSearching) { e.preventDefault(); setDragOverIndex(index); } }}
+              onDrop={(e) => { if (!isSearching) { e.preventDefault(); handleDrop(index); } }}
+              className={!isSearching && dragOverIndex === index && dragIndex !== null && dragIndex !== index ? "outline outline-2 outline-orange-300 rounded-xl" : ""}
+            >
+              <PlanCard
+                plan={plan}
+                onClick={() => setSelectedPlan(plan)}
+                reorderable={!isSearching}
+                isDragging={dragIndex === index}
+                canMoveUp={index > 0}
+                canMoveDown={index < filteredPlans.length - 1}
+                onMoveUp={() => moveTo(index, index - 1)}
+                onMoveDown={() => moveTo(index, index + 1)}
+                dragHandleProps={{
+                  draggable: true,
+                  onDragStart: () => setDragIndex(index),
+                  onDragEnd: () => { setDragIndex(null); setDragOverIndex(null); },
+                }}
+              />
+            </div>
           ))}
         </div>
       )}

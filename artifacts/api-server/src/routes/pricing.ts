@@ -19,7 +19,7 @@ router.get("/pricing", async (req, res) => {
     const doc = await getOrCreate();
     const search = (req.query.search as string)?.trim().toLowerCase();
 
-    let plans = doc.plans as any[];
+    let plans = (doc.plans as any[]).slice().sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
 
     if (search) {
       plans = plans.filter(
@@ -46,6 +46,7 @@ router.post("/pricing/plans", requireSuperAdmin, async (req, res) => {
       return;
     }
     const doc = await getOrCreate();
+    const maxOrder = (doc.plans as any[]).reduce((max: number, p: any) => Math.max(max, p.order ?? 0), -1);
     (doc.plans as any[]).push({
       badgeText: badgeText.trim(),
       name: name.trim(),
@@ -53,6 +54,7 @@ router.post("/pricing/plans", requireSuperAdmin, async (req, res) => {
       durationDays: durationDays ?? null,
       features: Array.isArray(features) ? features : [],
       coupons: Array.isArray(coupons) ? coupons : [],
+      order: maxOrder + 1,
     });
     await doc.save();
     const created = (doc.plans as any[])[(doc.plans as any[]).length - 1];
@@ -82,6 +84,34 @@ router.put("/pricing/plans/:id", requireSuperAdmin, async (req, res) => {
     res.json(planToJson(plan));
   } catch (err) {
     (req as any).log?.error({ err }, "Update plan error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// PUT /api/pricing/plans/reorder — reorder plans (super admin)
+router.put("/pricing/plans/reorder", requireSuperAdmin, async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      res.status(400).json({ error: "ids array is required" });
+      return;
+    }
+    const doc = await getOrCreate();
+    const plans = doc.plans as any[];
+
+    const orderMap = new Map<string, number>();
+    ids.forEach((id: string, index: number) => orderMap.set(String(id), index));
+
+    for (const plan of plans) {
+      const newOrder = orderMap.get(String(plan._id));
+      if (newOrder !== undefined) plan.order = newOrder;
+    }
+
+    await doc.save();
+    const sorted = plans.slice().sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
+    res.json({ plans: sorted.map(planToJson) });
+  } catch (err) {
+    (req as any).log?.error({ err }, "Reorder plans error");
     res.status(500).json({ error: "Internal server error" });
   }
 });

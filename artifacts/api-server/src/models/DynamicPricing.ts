@@ -18,6 +18,7 @@ const DynamicPlanSchema = new Schema(
     durationDays: { type: Number, default: null },
     features: { type: [String], default: [] },
     coupons: { type: [CouponSchema], default: [] },
+    order: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
