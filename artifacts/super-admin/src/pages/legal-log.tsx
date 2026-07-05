@@ -64,7 +64,7 @@ const POLICIES = [
   {
     title: "Privacy Policy",
     sections: [
-      { heading: "1. Information We Store", text: "The platform collects and stores the following types of information: admin account credentials and profile information, all product information uploaded by admins including images and descriptions, loyalty card data linked to your store, and Virtual Try-On related information when that feature is used." },
+      { heading: "1. Information We Store", text: "The platform collects and stores the following types of information: admin account credentials and profile information, all product information uploaded by admins including images and descriptions, and Virtual Try-On related information when that feature is used." },
       { heading: "2. Analytics", text: "We may use anonymized analytics data to monitor platform performance, identify technical issues, and improve the overall user experience for all admins and their customers." },
       { heading: "3. Data Security", text: "Web Media Hub implements reasonable and industry-standard security measures to protect all stored data from unauthorized access, disclosure, alteration, or destruction. However, no digital system is completely immune to security risks." },
       { heading: "4. No Data Selling", text: "Your admin data and store data will never be sold, rented, or traded to any third party under any circumstances." },

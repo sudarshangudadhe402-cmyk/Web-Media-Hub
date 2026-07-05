@@ -5,7 +5,6 @@ import { Store } from "../models/Store";
 import { Notification } from "../models/Notification";
 import { AuthRequest, requireAuth } from "../middlewares/auth";
 import { requireDb } from "../middlewares/dbCheck";
-import { getCardSnapshot, advanceGenerationIfFull } from "../services/loyaltyService";
 
 const router = Router();
 
@@ -57,9 +56,6 @@ function formatBooking(b: InstanceType<typeof Booking>) {
     ignored: b.ignored,
     seenByAdmin: b.seenByAdmin,
     tryOnImage: b.tryOnImage ?? null,
-    loyaltyCardApplied: b.loyaltyCardApplied ?? false,
-    loyaltyCardId: b.loyaltyCardId ?? null,
-    loyaltyCardGeneration: b.loyaltyCardGeneration ?? null,
     completed: b.completed ?? false,
     completedAt: b.completedAt ? b.completedAt.toISOString() : null,
     createdAt: b.createdAt.toISOString(),
@@ -117,23 +113,12 @@ router.get("/bookings/completed", requireAuth, async (req: AuthRequest, res) => 
 
 router.post("/bookings", async (req, res) => {
   try {
-    const { productId, customerName, customerPhone, customerAddress, selectedSize, tryOnImage, loyaltyCardApplied, loyaltyCardId } = req.body;
+    const { productId, customerName, customerPhone, customerAddress, selectedSize, tryOnImage } = req.body;
 
     const product = await Product.findById(productId);
     if (!product) {
       res.status(404).json({ error: "Product not found" });
       return;
-    }
-
-    let loyaltyCardGeneration: number | undefined;
-    let cardApplied = false;
-
-    if (loyaltyCardApplied && loyaltyCardId) {
-      const snapshot = await getCardSnapshot(loyaltyCardId);
-      if (snapshot) {
-        loyaltyCardGeneration = snapshot.generation;
-        cardApplied = true;
-      }
     }
 
     const booking = await Booking.create({
@@ -143,14 +128,9 @@ router.post("/bookings", async (req, res) => {
       customerAddress,
       selectedSize,
       tryOnImage: tryOnImage || undefined,
-      loyaltyCardApplied: !!loyaltyCardApplied,
-      loyaltyCardId: loyaltyCardId || undefined,
-      loyaltyCardGeneration,
     });
 
-    const notifMessage = loyaltyCardApplied
-      ? `🎫 Loyalty Card booking for "${product.name}" by ${customerName}`
-      : tryOnImage
+    const notifMessage = tryOnImage
       ? `🪞 Virtual Try-On booking for "${product.name}" by ${customerName}`
       : `New booking for "${product.name}" by ${customerName}`;
 
@@ -161,12 +141,6 @@ router.post("/bookings", async (req, res) => {
       storeId: product.storeId ?? undefined,
     });
 
-    let cardRefreshed = false;
-
-    if (cardApplied && loyaltyCardGeneration !== undefined) {
-      cardRefreshed = await advanceGenerationIfFull(loyaltyCardId, loyaltyCardGeneration);
-    }
-
     res.status(201).json({
       id: String(booking._id),
       productId: String(booking.productId),
@@ -176,11 +150,7 @@ router.post("/bookings", async (req, res) => {
       customerAddress: booking.customerAddress,
       selectedSize: booking.selectedSize,
       ignored: booking.ignored,
-      loyaltyCardApplied: booking.loyaltyCardApplied,
-      loyaltyCardId: booking.loyaltyCardId ?? null,
-      loyaltyCardGeneration: booking.loyaltyCardGeneration ?? null,
       createdAt: booking.createdAt.toISOString(),
-      cardRefreshed,
     });
   } catch (err) {
     req.log.error({ err }, "Create booking error");

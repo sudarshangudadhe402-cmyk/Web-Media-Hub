@@ -9,9 +9,6 @@ export interface IBooking extends Document {
   ignored: boolean;
   seenByAdmin: boolean;
   tryOnImage?: string;
-  loyaltyCardApplied: boolean;
-  loyaltyCardId?: string;
-  loyaltyCardGeneration?: number;
   completed: boolean;
   completedAt?: Date;
   createdAt: Date;
@@ -27,9 +24,6 @@ const BookingSchema = new Schema<IBooking>(
     ignored: { type: Boolean, default: false },
     seenByAdmin: { type: Boolean, default: false },
     tryOnImage: { type: String },
-    loyaltyCardApplied: { type: Boolean, default: false },
-    loyaltyCardId: { type: String },
-    loyaltyCardGeneration: { type: Number },
     completed: { type: Boolean, default: false },
     completedAt: { type: Date },
   },

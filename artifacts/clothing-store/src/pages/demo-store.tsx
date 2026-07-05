@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Package, BookOpen, Video, Store,
   Lock, X, Menu, ChevronRight, AlertTriangle,
-  CreditCard, CalendarCheck, ChevronLeft, ShoppingBag,
+  CalendarCheck, ChevronLeft, ShoppingBag,
   MessageCircle, Heart, TrendingDown, Tags, Plus,
   Search, CheckCircle2, BookMarked, CheckCheck,
   TrendingUp, CheckCircle, Clock, Users,
@@ -36,7 +36,7 @@ const DEMO_BOOKINGS = [
     image: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400&q=80",
     customerName: "Priya Sharma", customerPhone: "9876543210",
     customerAddress: "14, Rose Garden, Lucknow, UP",
-    selectedSize: "M", loyaltyCardApplied: false, seenByAdmin: false,
+    selectedSize: "M", seenByAdmin: false,
     createdAt: "2026-06-18T09:15:00Z", discountPrice: 4500, actualPrice: 6000,
     productType: "Top", functionCategory: "Sarees",
   },
@@ -45,7 +45,7 @@ const DEMO_BOOKINGS = [
     image: "https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=400&q=80",
     customerName: "Ananya Mehta", customerPhone: "8765432109",
     customerAddress: "7, Shanti Nagar, Jaipur, RJ",
-    selectedSize: "L", loyaltyCardApplied: false, seenByAdmin: true,
+    selectedSize: "L", seenByAdmin: true,
     createdAt: "2026-06-17T14:30:00Z", discountPrice: 12500, actualPrice: 16000,
     productType: "Full Outfit", functionCategory: "Lehengas",
   },
@@ -54,7 +54,7 @@ const DEMO_BOOKINGS = [
     image: "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=400&q=80",
     customerName: "Kavya Reddy", customerPhone: "7654321098",
     customerAddress: "22, MG Road, Hyderabad, TS",
-    selectedSize: "XL", loyaltyCardApplied: true, seenByAdmin: true,
+    selectedSize: "XL", seenByAdmin: true,
     createdAt: "2026-06-17T11:00:00Z", discountPrice: 8200, actualPrice: 11000,
     productType: "Full Outfit", functionCategory: "Lehengas",
   },
@@ -63,7 +63,7 @@ const DEMO_BOOKINGS = [
     image: "https://images.unsplash.com/photo-1485968579580-b6d095142e6e?w=400&q=80",
     customerName: "Sneha Patel", customerPhone: "6543210987",
     customerAddress: "9, Navrangpura, Ahmedabad, GJ",
-    selectedSize: "M", loyaltyCardApplied: false, seenByAdmin: true,
+    selectedSize: "M", seenByAdmin: true,
     createdAt: "2026-06-16T16:45:00Z", discountPrice: 6800, actualPrice: 9000,
     productType: "Full Outfit", functionCategory: "Gowns",
   },
@@ -72,7 +72,7 @@ const DEMO_BOOKINGS = [
     image: "https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=400&q=80",
     customerName: "Ritu Agarwal", customerPhone: "5432109876",
     customerAddress: "3, Civil Lines, Delhi, DL",
-    selectedSize: "S", loyaltyCardApplied: false, seenByAdmin: true,
+    selectedSize: "S", seenByAdmin: true,
     createdAt: "2026-06-15T10:20:00Z", discountPrice: 2100, actualPrice: 2800,
     productType: "Full Outfit", functionCategory: "Suits",
   },
@@ -184,12 +184,9 @@ function LockedPage({ title, icon: Icon }: { title: string; icon: React.ElementT
 function DemoDashboard({ onBlock }: { onBlock: () => void }) {
   const [dashView, setDashView] = useState<DashView>("summary");
   const [selectedBooking, setSelectedBooking] = useState<typeof DEMO_BOOKINGS[0] | null>(null);
-  const [bookingTab, setBookingTab] = useState<"all" | "loyalty" | "completed">("all");
+  const [bookingTab, setBookingTab] = useState<"all" | "completed">("all");
 
-  const visibleBookings = bookingTab === "loyalty"
-    ? DEMO_BOOKINGS.filter(b => b.loyaltyCardApplied)
-    : bookingTab === "completed" ? []
-    : DEMO_BOOKINGS;
+  const visibleBookings = bookingTab === "completed" ? [] : DEMO_BOOKINGS;
 
   /* ── Booking Detail ── */
   if (dashView === "detail" && selectedBooking) {
@@ -227,10 +224,7 @@ function DemoDashboard({ onBlock }: { onBlock: () => void }) {
             <CardContent className="pt-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-gray-800 text-sm">Customer Details</h3>
-                {b.loyaltyCardApplied && (
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(34,197,94,0.12)", color: "#16a34a", border: "1px solid rgba(34,197,94,0.3)" }}>🎫 Loyalty Card</span>
-                )}
-              </div>
+                </div>
               <div className="space-y-2.5">
                 <div className="flex items-center gap-3"><span className="text-xs text-gray-400 w-16 shrink-0">Name</span><span className="text-sm font-semibold text-gray-900">{b.customerName}</span></div>
                 <div className="flex items-center gap-3">
@@ -265,7 +259,6 @@ function DemoDashboard({ onBlock }: { onBlock: () => void }) {
 
   /* ── Booking List ── */
   if (dashView === "bookings") {
-    const loyaltyCount = DEMO_BOOKINGS.filter(b => b.loyaltyCardApplied).length;
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2">
@@ -277,19 +270,18 @@ function DemoDashboard({ onBlock }: { onBlock: () => void }) {
 
         <div className="relative rounded-xl p-1 bg-gray-100">
           <div className="absolute top-1 bottom-1 rounded-lg bg-white shadow-sm transition-all" style={{
-            width: "calc(33.333% - 4px)",
-            left: bookingTab === "all" ? "4px" : bookingTab === "loyalty" ? "calc(33.333%)" : "calc(66.666%)",
+            width: "calc(50% - 4px)",
+            left: bookingTab === "all" ? "4px" : "calc(50%)",
             transition: "left 0.3s cubic-bezier(0.4,0,0.2,1)",
           }} />
           <div className="relative flex">
             {([
               { key: "all", label: "All Booking", icon: <BookMarked className="w-3.5 h-3.5" />, count: DEMO_BOOKINGS.length },
-              { key: "loyalty", label: "Loyalty Card", icon: <CreditCard className="w-3.5 h-3.5" />, count: loyaltyCount },
               { key: "completed", label: "Complete", icon: <CheckCheck className="w-3.5 h-3.5" />, count: 0 },
             ] as const).map(({ key, label, icon, count }) => (
               <button key={key} onClick={() => setBookingTab(key)}
                 className="flex-1 py-2 text-[11px] font-bold z-10 flex flex-col items-center gap-0.5 rounded-lg"
-                style={{ color: bookingTab === key ? (key === "completed" ? "#16a34a" : key === "loyalty" ? "#7c3aed" : "#1d4ed8") : "#9ca3af" }}
+                style={{ color: bookingTab === key ? (key === "completed" ? "#16a34a" : "#1d4ed8") : "#9ca3af" }}
               >
                 {icon}{label}<span className="text-[10px] font-extrabold">({count})</span>
               </button>
@@ -320,9 +312,6 @@ function DemoDashboard({ onBlock }: { onBlock: () => void }) {
                   <p className="text-xs text-gray-600 mt-1 font-medium">{bk.customerName}</p>
                   <p className="text-xs text-gray-400">{bk.customerPhone}</p>
                   <p className="text-[10px] text-gray-300 mt-1">{new Date(bk.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
-                  {bk.loyaltyCardApplied && (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full mt-1" style={{ background: "rgba(34,197,94,0.12)", color: "#16a34a", border: "1px solid rgba(34,197,94,0.25)" }}>🎫 Loyalty Card</span>
-                  )}
                 </div>
                 <div className="flex-shrink-0 mt-auto pb-0.5 flex flex-col items-center gap-0.5">
                   <svg width="22" height="14" viewBox="0 0 22 14" fill="none">
@@ -402,16 +391,6 @@ function DemoDashboard({ onBlock }: { onBlock: () => void }) {
         </CardContent>
       </Card>
 
-      <Card className="cursor-pointer hover:border-green-400 transition-colors border-green-200" onClick={onBlock}>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium text-green-700">Digital Loyalty Card</CardTitle>
-          <CreditCard className="h-4 w-4 text-green-500" />
-        </CardHeader>
-        <CardContent>
-          <p className="text-xs text-muted-foreground">Manage loyalty card requests from customers</p>
-          <p className="text-xs text-green-600 font-semibold mt-1">Click to manage →</p>
-        </CardContent>
-      </Card>
     </div>
   );
 }

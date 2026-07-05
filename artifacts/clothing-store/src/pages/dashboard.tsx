@@ -1,11 +1,10 @@
 import { useGetDashboardSummary, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Package, Tags, CalendarCheck, MessageCircle, ChevronLeft, ShoppingBag, CreditCard, CheckCircle, X, Clock, BookMarked, CheckCheck, Search, User } from "lucide-react";
-import { LoyaltyCardVisual } from "@/components/loyalty-card-visual";
+import { CalendarCheck, MessageCircle, ChevronLeft, ShoppingBag, BookMarked, CheckCheck, Search, User } from "lucide-react";
 import { useLocation } from "wouter";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect } from "react";
 
 interface AdminBooking {
   id: string;
@@ -26,21 +25,9 @@ interface AdminBooking {
   ignored: boolean;
   seenByAdmin: boolean;
   tryOnImage: string | null;
-  loyaltyCardApplied: boolean;
   completed: boolean;
   completedAt: string | null;
   createdAt: string;
-}
-
-interface LoyaltyCardItem {
-  id: string;
-  customerName: string;
-  mobileNumber: string;
-  password: string;
-  status: string;
-  requestedAt: string;
-  approvedAt: string | null;
-  rejectedAt: string | null;
 }
 
 interface CustomerAccountItem {
@@ -50,7 +37,7 @@ interface CustomerAccountItem {
   createdAt: string;
 }
 
-type View = "summary" | "bookings" | "detail" | "loyaltycards" | "customeraccounts";
+type View = "summary" | "bookings" | "detail" | "customeraccounts";
 
 export default function Dashboard() {
   const { data: summary, isLoading } = useGetDashboardSummary();
@@ -58,14 +45,10 @@ export default function Dashboard() {
   const queryClient = useQueryClient();
   const [view, setView] = useState<View>("summary");
   const [selectedBooking, setSelectedBooking] = useState<AdminBooking | null>(null);
-  const [loyaltyCards, setLoyaltyCards] = useState<{ requested: LoyaltyCardItem[]; approved: LoyaltyCardItem[]; rejected: LoyaltyCardItem[] } | null>(null);
-  const [loyaltyCardsLoading, setLoyaltyCardsLoading] = useState(false);
-  const [loyaltyTab, setLoyaltyTab] = useState<"requested" | "approved" | "rejected">("requested");
-  const [lcSearch, setLcSearch] = useState("");
   const [customerAccounts, setCustomerAccounts] = useState<CustomerAccountItem[] | null>(null);
   const [customerAccountsLoading, setCustomerAccountsLoading] = useState(false);
   const [caSearch, setCaSearch] = useState("");
-  const [adminBookingTab, setAdminBookingTab] = useState<"all" | "loyalty" | "completed">("all");
+  const [adminBookingTab, setAdminBookingTab] = useState<"all" | "completed">("all");
   const [completedBookings, setCompletedBookings] = useState<AdminBooking[]>([]);
   const [completedBookingsLoading, setCompletedBookingsLoading] = useState(false);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
@@ -110,58 +93,6 @@ export default function Dashboard() {
   }, [view]);
 
   useEffect(() => {
-    if (view !== "loyaltycards") return;
-    setLoyaltyCardsLoading(true);
-    const token = localStorage.getItem("wmh_token");
-    fetch("/api/loyalty-cards", { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setLoyaltyCards(d); })
-      .catch(() => {})
-      .finally(() => setLoyaltyCardsLoading(false));
-    fetch("/api/loyalty-cards/mark-seen", {
-      method: "PATCH",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
-      .then(() => {
-        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
-      })
-      .catch(() => {});
-  }, [view]);
-
-  useEffect(() => {
-    if (!lcSearch.trim() || !loyaltyCards || view !== "loyaltycards") return;
-    const q = lcSearch.trim().toLowerCase();
-    const matches = (tab: "requested" | "approved" | "rejected") =>
-      (loyaltyCards[tab] ?? []).some(c =>
-        c.customerName.toLowerCase().includes(q) || c.mobileNumber.includes(q)
-      );
-    if (!matches(loyaltyTab)) {
-      const found = (["requested", "approved", "rejected"] as const).find(
-        t => t !== loyaltyTab && matches(t)
-      );
-      if (found) setLoyaltyTab(found);
-    }
-  }, [lcSearch, loyaltyCards]);
-
-  async function approveLoyaltyCard(card: LoyaltyCardItem, adminWhatsapp: string) {
-    const token = localStorage.getItem("wmh_token");
-    const res = await fetch(`/api/loyalty-cards/${card.id}/approve`, {
-      method: "PATCH",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (res.ok) {
-      const msg = `Congratulations 🎉 Your Loyalty card is approved , Team ${summary?.storeName ?? ""}`.trim();
-      const waLink = `https://wa.me/${card.mobileNumber.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`;
-      window.open(waLink, "_blank");
-      const t = localStorage.getItem("wmh_token");
-      fetch("/api/loyalty-cards", { headers: t ? { Authorization: `Bearer ${t}` } : {} })
-        .then(r => r.ok ? r.json() : null)
-        .then(d => { if (d) setLoyaltyCards(d); })
-        .catch(() => {});
-    }
-  }
-
-  useEffect(() => {
     if (adminBookingTab !== "completed" || view !== "bookings") return;
     setCompletedBookingsLoading(true);
     const token = localStorage.getItem("wmh_token");
@@ -189,21 +120,6 @@ export default function Dashboard() {
     setCompleteLoading(false);
   }
 
-  async function rejectLoyaltyCard(card: LoyaltyCardItem) {
-    const token = localStorage.getItem("wmh_token");
-    const res = await fetch(`/api/loyalty-cards/${card.id}/reject`, {
-      method: "PATCH",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (res.ok) {
-      const t = localStorage.getItem("wmh_token");
-      fetch("/api/loyalty-cards", { headers: t ? { Authorization: `Bearer ${t}` } : {} })
-        .then(r => r.ok ? r.json() : null)
-        .then(d => { if (d) setLoyaltyCards(d); })
-        .catch(() => {});
-    }
-  }
-
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -227,13 +143,10 @@ export default function Dashboard() {
   if (!summary) return null;
 
   const unseenCount = (summary as any).unseenBookings ?? 0;
-  const unseenLoyaltyCount = (summary as any).unseenLoyaltyCards ?? 0;
 
   /* ── BOOKING LIST ── */
   if (view === "bookings") {
-    const loyaltyTabCount = bookings?.filter(b => b.loyaltyCardApplied).length ?? 0;
     const visibleBookings =
-      adminBookingTab === "loyalty" ? (bookings ?? []).filter(b => b.loyaltyCardApplied) :
       adminBookingTab === "completed" ? completedBookings :
       (bookings ?? []);
     const isLoading2 = adminBookingTab === "completed" ? completedBookingsLoading : bookingsLoading;
@@ -247,27 +160,26 @@ export default function Dashboard() {
           <h1 className="text-xl font-bold tracking-tight">Bookings</h1>
         </div>
 
-        {/* 3-tab filter */}
+        {/* 2-tab filter */}
         <div className="relative rounded-xl p-1 bg-gray-100">
           <div
             className="absolute top-1 bottom-1 rounded-lg bg-white shadow-sm transition-all"
             style={{
-              width: "calc(33.333% - 4px)",
-              left: adminBookingTab === "all" ? "4px" : adminBookingTab === "loyalty" ? "calc(33.333%)" : "calc(66.666%)",
+              width: "calc(50% - 4px)",
+              left: adminBookingTab === "all" ? "4px" : "calc(50%)",
               transition: "left 0.3s cubic-bezier(0.4,0,0.2,1)",
             }}
           />
           <div className="relative flex">
             {([
-              { key: "all", label: "All Booking", icon: <BookMarked className="w-3.5 h-3.5" />, count: bookings?.length ?? 0 },
-              { key: "loyalty", label: "Loyalty Card", icon: <CreditCard className="w-3.5 h-3.5" />, count: loyaltyTabCount },
-              { key: "completed", label: "Complete", icon: <CheckCheck className="w-3.5 h-3.5" />, count: completedBookings.length },
-            ] as const).map(({ key, label, icon, count }) => (
+              { key: "all" as const, label: "All Bookings", icon: <BookMarked className="w-3.5 h-3.5" />, count: bookings?.length ?? 0 },
+              { key: "completed" as const, label: "Completed", icon: <CheckCheck className="w-3.5 h-3.5" />, count: completedBookings.length },
+            ]).map(({ key, label, icon, count }) => (
               <button
                 key={key}
                 onClick={() => setAdminBookingTab(key)}
                 className="flex-1 py-2 text-[11px] font-bold z-10 flex flex-col items-center gap-0.5 rounded-lg"
-                style={{ color: adminBookingTab === key ? (key === "completed" ? "#16a34a" : key === "loyalty" ? "#7c3aed" : "#1d4ed8") : "#9ca3af" }}
+                style={{ color: adminBookingTab === key ? (key === "completed" ? "#16a34a" : "#1d4ed8") : "#9ca3af" }}
               >
                 {icon}
                 {label}
@@ -327,11 +239,6 @@ export default function Dashboard() {
                   <p className="text-[10px] text-gray-300 mt-1">
                     {new Date(bk.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                   </p>
-                  {bk.loyaltyCardApplied && (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full mt-1" style={{ background: "rgba(34,197,94,0.12)", color: "#16a34a", border: "1px solid rgba(34,197,94,0.25)" }}>
-                      🎫 Loyalty Card
-                    </span>
-                  )}
                   {bk.completed && bk.completedAt && (
                     <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full mt-1" style={{ background: "rgba(34,197,94,0.1)", color: "#15803d", border: "1px solid rgba(34,197,94,0.3)" }}>
                       ✅ Completed · {new Date(bk.completedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
@@ -420,11 +327,6 @@ export default function Dashboard() {
               {selectedBooking.tryOnImage && (
                 <span className="text-[11px] bg-red-50 text-red-600 border border-red-300 px-2 py-0.5 rounded-full font-bold">
                   🪞 Virtual Try-On
-                </span>
-              )}
-              {selectedBooking.loyaltyCardApplied && (
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full ml-1" style={{ background: "rgba(34,197,94,0.12)", color: "#16a34a", border: "1px solid rgba(34,197,94,0.3)" }}>
-                  🎫 Loyalty Card
                 </span>
               )}
             </div>
@@ -623,211 +525,6 @@ export default function Dashboard() {
     );
   }
 
-  /* ── LOYALTY CARDS VIEW ── */
-  if (view === "loyaltycards") {
-    const tabs: { key: "requested" | "approved" | "rejected"; label: string; icon: ReactNode }[] = [
-      { key: "requested", label: "Requested", icon: <Clock className="w-3.5 h-3.5" /> },
-      { key: "approved", label: "Approved", icon: <CheckCircle className="w-3.5 h-3.5" /> },
-      { key: "rejected", label: "Rejected", icon: <X className="w-3.5 h-3.5" /> },
-    ];
-    const allCurrentCards = loyaltyCards?.[loyaltyTab] ?? [];
-    const searchQ = lcSearch.trim().toLowerCase();
-    const currentCards = searchQ
-      ? allCurrentCards.filter(c =>
-          c.customerName.toLowerCase().includes(searchQ) ||
-          c.mobileNumber.includes(searchQ)
-        )
-      : allCurrentCards;
-
-    const notFoundAnywhere = searchQ && loyaltyCards
-      ? !(["requested", "approved", "rejected"] as const).some(tab =>
-          (loyaltyCards[tab] ?? []).some(c =>
-            c.customerName.toLowerCase().includes(searchQ) || c.mobileNumber.includes(searchQ)
-          )
-        )
-      : false;
-
-    const tabLabel = (tab: string) =>
-      tab === "approved" ? "Approved ✅" : tab === "rejected" ? "Rejected ❌" : "Pending ⏳";
-    const statusColor = (tab: string) =>
-      tab === "approved" ? "#16a34a" : tab === "rejected" ? "#ef4444" : "#2563eb";
-    const statusBg = (tab: string) =>
-      tab === "approved" ? "rgba(34,197,94,0.1)" : tab === "rejected" ? "rgba(239,68,68,0.1)" : "rgba(37,99,235,0.08)";
-
-    return (
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <button onClick={() => setView("summary")} className="p-1.5 rounded-full hover:bg-gray-100">
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <h1 className="text-xl font-bold tracking-tight">Digital Loyalty Cards</h1>
-        </div>
-
-        {/* Top loyalty card — dynamic with store details */}
-        <LoyaltyCardVisual
-          storeName={(summary as any).storeName ?? ""}
-          address={(summary as any).storeAddress ?? ""}
-          phone={(summary as any).storePhone ?? ""}
-        />
-
-        {/* 3 tabs */}
-        <div className="grid grid-cols-3 gap-2">
-          {tabs.map(({ key, label, icon }) => (
-            <button
-              key={key}
-              onClick={() => { setLoyaltyTab(key); setLcSearch(""); }}
-              className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border-2 text-xs font-bold transition-all ${
-                loyaltyTab === key
-                  ? key === "approved" ? "border-green-500 bg-green-50 text-green-700"
-                    : key === "rejected" ? "border-red-400 bg-red-50 text-red-600"
-                    : "border-blue-500 bg-blue-50 text-blue-700"
-                  : "border-gray-200 bg-white text-gray-400"
-              }`}
-            >
-              {icon}
-              {label}
-              <span className="text-sm font-extrabold">{loyaltyCards?.[key]?.length ?? 0}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Search bar */}
-        <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border-2 bg-white"
-          style={{ borderColor: lcSearch ? "#2563eb" : "#e5e7eb" }}>
-          <Search className="w-4 h-4 flex-shrink-0" style={{ color: lcSearch ? "#2563eb" : "#9ca3af" }} />
-          <input
-            type="text"
-            value={lcSearch}
-            onChange={e => setLcSearch(e.target.value)}
-            placeholder="Search by name or number — across all sections"
-            className="flex-1 text-sm text-gray-800 placeholder-gray-400 focus:outline-none bg-transparent"
-          />
-          {lcSearch && (
-            <button onClick={() => setLcSearch("")} className="text-gray-400 hover:text-gray-600">
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-
-        {/* Auto-switch banner */}
-        {searchQ && currentCards.length > 0 && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold"
-            style={{ background: statusBg(loyaltyTab), color: statusColor(loyaltyTab) }}>
-            <Search className="w-3.5 h-3.5 flex-shrink-0" />
-            <span>Card found in: <strong>{tabLabel(loyaltyTab)}</strong> section</span>
-          </div>
-        )}
-
-        {/* Not found anywhere banner */}
-        {notFoundAnywhere && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-red-50 text-red-500">
-            <X className="w-3.5 h-3.5 flex-shrink-0" />
-            <span>No card found in any section — please check the name or number</span>
-          </div>
-        )}
-
-        {loyaltyCardsLoading ? (
-          <div className="space-y-2">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="rounded-xl border border-gray-100 p-3 flex gap-3 bg-white">
-                <div className="w-24 h-14 bg-gray-100 rounded-lg animate-pulse flex-shrink-0" />
-                <div className="flex-1 space-y-2 py-1">
-                  <div className="h-3 bg-gray-200 rounded animate-pulse w-3/4" />
-                  <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : currentCards.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 text-center text-gray-400">
-            <Search className="w-10 h-10 mb-2 opacity-20" />
-            <p className="text-sm font-medium">
-              {searchQ ? `No results for "${searchQ}"` : `No ${loyaltyTab} loyalty cards`}
-            </p>
-            {searchQ && <p className="text-xs mt-1 opacity-70">Try a different name or number</p>}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {currentCards.map((card) => (
-              <div key={card.id} className="rounded-xl border border-gray-100 overflow-hidden" style={{ background: "transparent" }}>
-                {/* Compact row: mini card image + info side by side */}
-                <div className="flex gap-2.5 p-2">
-                  {/* Mini loyalty card — dynamic store details */}
-                  <LoyaltyCardVisual
-                    storeName={(summary as any).storeName ?? ""}
-                    address={(summary as any).storeAddress ?? ""}
-                    phone={(summary as any).storePhone ?? ""}
-                    mini
-                  />
-                  {/* Info */}
-                  <div className="flex-1 min-w-0 py-0.5">
-                    <div className="flex items-start justify-between gap-1">
-                      <p className="font-bold text-gray-900 text-sm leading-tight truncate">{card.customerName}</p>
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
-                        style={{ background: statusBg(loyaltyTab), color: statusColor(loyaltyTab) }}>
-                        {loyaltyTab === "approved" ? "✅ Active" : loyaltyTab === "rejected" ? "❌ Rejected" : "⏳ Pending"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-0.5">{card.mobileNumber}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <p className="text-[10px] text-gray-400">
-                        {new Date(card.requestedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "2-digit" })}
-                      </p>
-                      {card.approvedAt && (
-                        <p className="text-[10px] text-green-600">
-                          · Approved {new Date(card.approvedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-                        </p>
-                      )}
-                      {card.rejectedAt && (
-                        <p className="text-[10px] text-red-500">
-                          · Rejected {new Date(card.rejectedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Action buttons — compact */}
-                {loyaltyTab === "requested" && (
-                  <div className="flex gap-1.5 px-2 pb-2">
-                    <button
-                      onClick={() => approveLoyaltyCard(card, "")}
-                      className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-green-500 text-white text-xs font-bold hover:bg-green-600 transition-colors"
-                    >
-                      <CheckCircle className="w-3.5 h-3.5" />
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => rejectLoyaltyCard(card)}
-                      className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-red-500 text-white text-xs font-bold hover:bg-red-600 transition-colors"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                      Reject
-                    </button>
-                  </div>
-                )}
-
-                {loyaltyTab === "approved" && (
-                  <div className="px-2 pb-2">
-                    <a
-                      href={`https://wa.me/${card.mobileNumber.replace(/\D/g, "")}?text=${encodeURIComponent(`Congratulations 🎉 Your Loyalty card is approved , Team ${summary?.storeName ?? ""}`.trim())}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-1.5 w-full py-1.5 rounded-lg bg-[#25D366] text-white text-xs font-bold"
-                    >
-                      <MessageCircle className="w-3.5 h-3.5" />
-                      Send WhatsApp
-                    </a>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
-
   /* ── SUMMARY (default) ── */
   return (
     <div className="space-y-6">
@@ -901,30 +598,6 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* Digital Loyalty Card section */}
-      <Card
-        className="relative cursor-pointer hover:border-green-400 transition-colors border-green-200"
-        onClick={() => { setLoyaltyTab("requested"); setView("loyaltycards"); }}
-      >
-        {unseenLoyaltyCount > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 flex h-3 w-3 z-10">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75" />
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500 border-2 border-white" />
-          </span>
-        )}
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium text-green-700">Digital Loyalty Card</CardTitle>
-          <CreditCard className="h-4 w-4 text-green-500" />
-        </CardHeader>
-        <CardContent>
-          <p className="text-xs text-muted-foreground">Manage loyalty card requests from customers</p>
-          {unseenLoyaltyCount > 0 ? (
-            <p className="text-xs text-rose-500 font-semibold mt-1">{unseenLoyaltyCount} new request{unseenLoyaltyCount > 1 ? "s" : ""}</p>
-          ) : (
-            <p className="text-xs text-green-600 font-semibold mt-1">Click to manage →</p>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

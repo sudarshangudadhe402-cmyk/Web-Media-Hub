@@ -164,12 +164,6 @@ export default function ProfileTab({
                 </span>
               </div>
             </div>
-            <div className="px-4 pb-3">
-              <div className="rounded-xl px-3 py-2 flex items-center gap-2" style={{ background: "rgba(255,255,255,0.05)" }}>
-                <span className="text-lg">🎫</span>
-                <p className="text-xs text-white/60">Your loyalty card uses this account's number and password</p>
-              </div>
-            </div>
           </div>
         ) : (
           /* Sign up / Sign in card */
@@ -179,7 +173,7 @@ export default function ProfileTab({
                 <User className="w-4 h-4 text-gray-900" />
                 <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Store Account</p>
               </div>
-              <p className="text-xs text-gray-400 pb-3">Create an account to access your loyalty card — verified by email OTP</p>
+              <p className="text-xs text-gray-400 pb-3">Create an account to manage your bookings — verified by email OTP</p>
               {/* tab switcher */}
               <div className="relative rounded-xl p-0.5 mb-0" style={{ background: "#f5f5f5" }}>
                 <div

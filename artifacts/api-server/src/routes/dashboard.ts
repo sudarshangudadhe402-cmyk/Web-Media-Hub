@@ -4,7 +4,6 @@ import { Booking } from "../models/Booking";
 import { Notification } from "../models/Notification";
 import { Store } from "../models/Store";
 import { StoreVisitor } from "../models/StoreVisitor";
-import { LoyaltyCard } from "../models/LoyaltyCard";
 import { CustomerAccount } from "../models/CustomerAccount";
 import { AuthRequest, requireAuth } from "../middlewares/auth";
 import { requireDb } from "../middlewares/dbCheck";
@@ -66,7 +65,7 @@ router.get("/dashboard/summary", requireAuth, async (req: AuthRequest, res) => {
       ? (await Product.find({ storeId }).select("_id").lean()).map((p) => String(p._id))
       : [];
 
-    const [activeBookings, unseenBookings, recentBookingsDocs, unseenLoyaltyCards] = await Promise.all([
+    const [activeBookings, unseenBookings, recentBookingsDocs] = await Promise.all([
       myProductIds.length > 0
         ? Booking.countDocuments({ ignored: false, productId: { $in: myProductIds } })
         : Promise.resolve(0),
@@ -79,9 +78,6 @@ router.get("/dashboard/summary", requireAuth, async (req: AuthRequest, res) => {
             .sort({ createdAt: -1 })
             .limit(5)
         : Promise.resolve([]),
-      storeId
-        ? LoyaltyCard.countDocuments({ storeId, status: "requested", seenByAdmin: { $ne: true } })
-        : Promise.resolve(0),
     ]);
 
     const recentBookings = recentBookingsDocs.map((b) => {
@@ -121,7 +117,6 @@ router.get("/dashboard/summary", requireAuth, async (req: AuthRequest, res) => {
       customerAccountCount,
       activeBookings,
       unseenBookings,
-      unseenLoyaltyCards,
       unreadNotifications,
       recentBookings,
       storeName: store?.name ?? "",

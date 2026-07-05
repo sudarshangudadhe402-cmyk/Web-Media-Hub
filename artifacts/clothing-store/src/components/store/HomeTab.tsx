@@ -1,4 +1,4 @@
-import { Search, X, ShoppingBag, Heart, Zap, Camera, CreditCard, BookOpen, ChevronRight, CalendarDays, MapPin, Info, Box } from "lucide-react";
+import { Search, X, ShoppingBag, Heart, Zap, Camera, BookOpen, ChevronRight, CalendarDays, MapPin, Info, Box } from "lucide-react";
 import { useState } from "react";
 
 interface PublicProduct {
@@ -43,7 +43,6 @@ const FEATURES = [
   { icon: Camera, label: "Virtual Try-On", desc: "See before you buy" },
   { icon: Box, label: "3D Model", desc: "View products in 3D" },
   { icon: BookOpen, label: "Easy Booking", desc: "Book in seconds" },
-  { icon: CreditCard, label: "Loyalty Card", desc: "Earn rewards" },
   { icon: ShoppingBag, label: "Digital Catalog", desc: "Browse anytime" },
 ];
 
@@ -423,7 +422,6 @@ export default function HomeTab({
                   { label: "Virtual Try-On", Icon: Camera },
                   { label: "3D Model View", Icon: Box },
                   { label: "Online Booking", Icon: CalendarDays },
-                  { label: "Loyalty Card", Icon: CreditCard },
                   { label: "All details about separate product", Icon: Info },
                   { label: "Store information", Icon: MapPin },
                 ].map(({ label, Icon }) => (

@@ -59,8 +59,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const dashboardHasDot =
     isAdmin &&
-    (((dashSummary as any)?.unseenBookings ?? 0) > 0 ||
-      ((dashSummary as any)?.unseenLoyaltyCards ?? 0) > 0);
+    ((dashSummary as any)?.unseenBookings ?? 0) > 0;
 
   const unreadCount = notifications.filter(n => !n.read).length;
 

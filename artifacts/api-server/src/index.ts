@@ -6,7 +6,7 @@ import { User } from "./models/User";
 import { Store } from "./models/Store";
 import { Product } from "./models/Product";
 import { CustomerAccount } from "./models/CustomerAccount";
-import { LoyaltyCard } from "./models/LoyaltyCard";
+
 
 // ─── Global crash handlers — prevent silent server death ─────────────────────
 process.on("uncaughtException", (err) => {
@@ -85,24 +85,6 @@ async function migratePasswordsToHash() {
       logger.info({ count: customerMigrated }, "Migrated CustomerAccount plain-text passwords to bcrypt");
     if (customerLowCost > 0)
       logger.warn({ count: customerLowCost }, "CustomerAccount: low-cost bcrypt hashes found — will upgrade lazily on next login");
-
-    // ── LoyaltyCard ───────────────────────────────────────────────────────────
-    let cardMigrated = 0;
-    let cardLowCost = 0;
-    const cardCursor = LoyaltyCard.find({}).cursor();
-    for await (const lc of cardCursor) {
-      if (!lc.password.startsWith("$2")) {
-        const hash = await bcrypt.hash(lc.password, BCRYPT_MIN_ROUNDS);
-        await LoyaltyCard.updateOne({ _id: lc._id }, { $set: { password: hash } });
-        cardMigrated++;
-      } else if (getBcryptRounds(lc.password) < BCRYPT_MIN_ROUNDS) {
-        cardLowCost++;
-      }
-    }
-    if (cardMigrated > 0)
-      logger.info({ count: cardMigrated }, "Migrated LoyaltyCard plain-text passwords to bcrypt");
-    if (cardLowCost > 0)
-      logger.warn({ count: cardLowCost }, "LoyaltyCard: low-cost bcrypt hashes found — will upgrade lazily on next login");
 
     // ── User (admin/super_admin) ──────────────────────────────────────────────
     let userMigrated = 0;

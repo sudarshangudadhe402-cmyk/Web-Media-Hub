@@ -4,9 +4,8 @@ import {
   MapPin, Clock, CalendarDays, MessageCircle, Heart, ShoppingBag,
   ChevronLeft, X, Camera, Loader2, RefreshCw,
   CheckCircle2, TrendingDown, Download, Share2,
-  CreditCard, CheckCircle, AlertCircle, Edit2, Trash2, Box,
+  AlertCircle, Edit2, Trash2, Box,
 } from "lucide-react";
-import { LoyaltyCardVisual } from "@/components/loyalty-card-visual";
 import { useState, useRef, useEffect, useMemo } from "react";
 
 import BottomNavbar, { TabType } from "@/components/store/BottomNavbar";
@@ -59,14 +58,6 @@ interface SavedBooking {
   whatsapp: string;
   selectedSize: string;
   bookedAt: string;
-  addedToLoyaltyCard?: boolean;
-}
-
-interface LoyaltyCardInfo {
-  id: string;
-  name: string;
-  mobile: string;
-  status: "requested" | "approved" | "rejected";
 }
 
 interface ReviewItem {
@@ -80,7 +71,7 @@ interface ReviewItem {
   updatedAt: string;
 }
 
-type ViewType = "browse" | "product" | "tryon" | "booking" | "loyaltycard" | "loyaltycardapply";
+type ViewType = "browse" | "product" | "tryon" | "booking";
 
 function discount(p: PublicProduct) {
   return p.actualPrice > p.discountPrice
@@ -159,35 +150,6 @@ export default function PublicStore() {
   });
   const [seenStatus, setSeenStatus] = useState<Record<string, boolean>>({});
   const [completedStatus, setCompletedStatus] = useState<Record<string, boolean>>({});
-
-  const [loyaltyCardInfo, setLoyaltyCardInfo] = useState<LoyaltyCardInfo | null>(() => {
-    try { return JSON.parse(localStorage.getItem(`wmh_loyalty_${slug}`) || "null"); }
-    catch { return null; }
-  });
-  const [loyaltyCardForm, setLoyaltyCardForm] = useState({ name: "", mobile: "", password: "" });
-  const [loyaltyCardLoading, setLoyaltyCardLoading] = useState(false);
-  const [loyaltyCardError, setLoyaltyCardError] = useState<string | null>(null);
-  const [loyaltyApplyForm, setLoyaltyApplyForm] = useState({ name: "", mobile: "", password: "" });
-  const [loyaltyApplyLoading, setLoyaltyApplyLoading] = useState(false);
-  const [loyaltyApplyError, setLoyaltyApplyError] = useState<string | null>(null);
-  const [useAccountCard, setUseAccountCard] = useState(false);
-  const [loyaltyApplied, setLoyaltyApplied] = useState(false);
-  const [loyaltyAppliedCardId, setLoyaltyAppliedCardId] = useState<string | null>(null);
-
-  type LoyaltySlot = { status: "empty" | "pending" | "completed"; bookingId?: string; productName?: string; isCarryOver?: boolean };
-  const [loyaltySlots, setLoyaltySlots] = useState<LoyaltySlot[]>([]);
-  const [loyaltySlotsLoading, setLoyaltySlotsLoading] = useState(false);
-  const [cardRefreshNotif, setCardRefreshNotif] = useState(false);
-
-  const [lcTab, setLcTab] = useState<"registration" | "login">("registration");
-  const [lcLoginForm, setLcLoginForm] = useState({ name: "", password: "" });
-  const [lcLoginLoading, setLcLoginLoading] = useState(false);
-  const [lcLoginError, setLcLoginError] = useState<string | null>(null);
-  const [lcLoginAttempts, setLcLoginAttempts] = useState(0);
-  const [lcForgotVisible, setLcForgotVisible] = useState(false);
-  const [lcForgotForm, setLcForgotForm] = useState({ name: "", mobile: "", password: "" });
-  const [lcForgotLoading, setLcForgotLoading] = useState(false);
-  const [lcForgotError, setLcForgotError] = useState<string | null>(null);
 
   const [customerAccount, setCustomerAccount] = useState<CustomerAccountInfo | null>(() => {
     try { return JSON.parse(localStorage.getItem(`wmh_account_${slug}`) || "null"); }
@@ -272,35 +234,6 @@ export default function PublicStore() {
     });
   }, [tab]);
 
-  useEffect(() => {
-    if (!loyaltyCardInfo?.id) return;
-    fetch(`/api/public/loyalty-card/status/${loyaltyCardInfo.id}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (d && d.status !== loyaltyCardInfo.status) {
-          const updated = { ...loyaltyCardInfo, status: d.status as LoyaltyCardInfo["status"] };
-          setLoyaltyCardInfo(updated);
-          localStorage.setItem(`wmh_loyalty_${slug}`, JSON.stringify(updated));
-        }
-      })
-      .catch(() => {});
-  }, [view, tab]);
-
-  function fetchLoyaltySlots(cardId: string) {
-    setLoyaltySlotsLoading(true);
-    fetch(`/api/public/loyalty-card/slots/${cardId}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setLoyaltySlots(d.slots ?? []); })
-      .catch(() => {})
-      .finally(() => setLoyaltySlotsLoading(false));
-  }
-
-  useEffect(() => {
-    if (view === "loyaltycard" && loyaltyCardInfo?.id && loyaltyCardInfo.status === "approved") {
-      fetchLoyaltySlots(loyaltyCardInfo.id);
-    }
-  }, [view, loyaltyCardInfo?.id, loyaltyCardInfo?.status]);
-
   const categories = useMemo(() => {
     if (!data) return [];
     const types: string[] = [];
@@ -357,9 +290,7 @@ export default function PublicStore() {
   }
 
   function goBack() {
-    if (view === "loyaltycardapply") setView("booking");
-    else if (view === "loyaltycard") { setView("browse"); setTab("mybookings"); }
-    else if (view === "tryon" || view === "booking") setView("product");
+    if (view === "tryon" || view === "booking") setView("product");
     else { setView("browse"); setSelectedProduct(null); }
   }
 
@@ -372,8 +303,6 @@ export default function PublicStore() {
     setBookingForm({ name: "", city: "", whatsapp: "" });
     setSelectedSize(selectedProduct?.sizes[0] ?? "");
     setBookingSuccess(false);
-    setLoyaltyApplied(false);
-    setLoyaltyAppliedCardId(null);
     setView("booking");
   }
 
@@ -382,8 +311,6 @@ export default function PublicStore() {
     setBookingForm({ name: "", city: "", whatsapp: "" });
     setSelectedSize(selectedProduct?.sizes[0] ?? "");
     setBookingSuccess(false);
-    setLoyaltyApplied(false);
-    setLoyaltyAppliedCardId(null);
     setView("booking");
   }
 
@@ -410,56 +337,6 @@ export default function PublicStore() {
         await navigator.share({ files: [file], title: "Virtual Try-On", text: `Check out my virtual try-on for ${selectedProduct?.name}!` });
       } else { saveTryOnImage(); }
     } catch {}
-  }
-
-  async function submitLoyaltyCardRequest() {
-    const { name } = loyaltyCardForm;
-    if (!name.trim() || !customerAccount) return;
-    const mobile = customerAccount.mobileNumber;
-    const password = customerAccount.password;
-    setLoyaltyCardLoading(true);
-    setLoyaltyCardError(null);
-    try {
-      const res = await fetch("/api/public/loyalty-card/request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storeSlug: slug, customerName: name.trim(), mobileNumber: mobile, password }),
-      });
-      const d = await res.json();
-      if (!res.ok) { setLoyaltyCardError(d.error || "Request failed"); return; }
-      const info: LoyaltyCardInfo = { id: d.id, name: d.customerName, mobile: d.mobileNumber, status: "requested" };
-      setLoyaltyCardInfo(info);
-      localStorage.setItem(`wmh_loyalty_${slug}`, JSON.stringify(info));
-    } catch { setLoyaltyCardError("Something went wrong. Please try again."); }
-    finally { setLoyaltyCardLoading(false); }
-  }
-
-  async function lcLoginSubmit() {
-    const { name, password } = lcLoginForm;
-    if (!name.trim() || !password) return;
-    setLcLoginLoading(true);
-    setLcLoginError(null);
-    try {
-      const res = await fetch("/api/public/loyalty-card/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storeSlug: slug, customerName: name.trim(), password }),
-      });
-      const d = await res.json();
-      if (!res.ok) {
-        const attempts = lcLoginAttempts + 1;
-        setLcLoginAttempts(attempts);
-        setLcLoginError(d.error || "Wrong name or password");
-        if (attempts >= 3) setLcForgotVisible(true);
-        return;
-      }
-      const info: LoyaltyCardInfo = { id: d.id, name: d.customerName, mobile: d.mobileNumber, status: d.status };
-      setLoyaltyCardInfo(info);
-      localStorage.setItem(`wmh_loyalty_${slug}`, JSON.stringify(info));
-      setLcLoginAttempts(0);
-      setLcForgotVisible(false);
-    } catch { setLcLoginError("Something went wrong. Please try again."); }
-    finally { setLcLoginLoading(false); }
   }
 
   async function handleSendOtp(email: string, mobile: string, password: string, purpose: "signup" | "signin") {
@@ -527,53 +404,6 @@ export default function PublicStore() {
     setSignUpError(null);
     setSignInError(null);
     setOtpError(null);
-  }
-
-  async function lcRecoverSubmit() {
-    const { name, mobile, password } = lcForgotForm;
-    if (!name.trim() || !mobile || !password) return;
-    setLcForgotLoading(true);
-    setLcForgotError(null);
-    try {
-      const res = await fetch("/api/public/loyalty-card/recover", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storeSlug: slug, customerName: name.trim(), mobileNumber: mobile, password }),
-      });
-      const d = await res.json();
-      if (!res.ok) { setLcForgotError(d.error || "Details not found"); return; }
-      const info: LoyaltyCardInfo = { id: d.id, name: d.customerName, mobile: d.mobileNumber, status: d.status };
-      setLoyaltyCardInfo(info);
-      localStorage.setItem(`wmh_loyalty_${slug}`, JSON.stringify(info));
-      setLcForgotVisible(false);
-    } catch { setLcForgotError("Something went wrong. Please try again."); }
-    finally { setLcForgotLoading(false); }
-  }
-
-  async function verifyAndApplyLoyaltyCard() {
-    if (useAccountCard && loyaltyCardInfo) {
-      setLoyaltyApplied(true);
-      setLoyaltyAppliedCardId(loyaltyCardInfo.id);
-      setView("booking");
-      return;
-    }
-    const { name, mobile, password } = loyaltyApplyForm;
-    if (!name.trim() || !mobile || !password) return;
-    setLoyaltyApplyLoading(true);
-    setLoyaltyApplyError(null);
-    try {
-      const res = await fetch("/api/public/loyalty-card/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storeSlug: slug, customerName: name.trim(), mobileNumber: mobile, password }),
-      });
-      const d = await res.json();
-      if (!res.ok) { setLoyaltyApplyError(d.error || "Loyalty card doesn't exist"); return; }
-      setLoyaltyApplied(true);
-      setLoyaltyAppliedCardId(d.cardId);
-      setView("booking");
-    } catch { setLoyaltyApplyError("Something went wrong. Please try again."); }
-    finally { setLoyaltyApplyLoading(false); }
   }
 
   async function generateTryOn() {
@@ -659,8 +489,6 @@ export default function PublicStore() {
           customerAddress: bookingForm.city,
           selectedSize,
           tryOnImage: tryOnBookingImage || undefined,
-          loyaltyCardApplied: loyaltyApplied,
-          loyaltyCardId: loyaltyAppliedCardId || undefined,
         }),
       });
       if (res.ok) {
@@ -675,11 +503,7 @@ export default function PublicStore() {
           whatsapp: bookingForm.whatsapp,
           selectedSize,
           bookedAt: new Date().toISOString(),
-          addedToLoyaltyCard: loyaltyApplied,
         };
-        const appliedCardId = loyaltyAppliedCardId;
-        setLoyaltyApplied(false);
-        setLoyaltyAppliedCardId(null);
         const updated = [saved, ...myBookings];
         setMyBookings(updated);
         localStorage.setItem(`wmh_bookings_${slug}`, JSON.stringify(updated));
@@ -689,13 +513,6 @@ export default function PublicStore() {
           city: bookingForm.city,
           savedAt: Date.now(),
         }));
-        if (bk.cardRefreshed) {
-          setCardRefreshNotif(true);
-          if (appliedCardId) fetchLoyaltySlots(appliedCardId);
-          setTimeout(() => setCardRefreshNotif(false), 6000);
-        } else if (appliedCardId) {
-          fetchLoyaltySlots(appliedCardId);
-        }
         setBookingSuccess(true);
       }
     } catch {}
@@ -759,379 +576,6 @@ export default function PublicStore() {
     : null;
 
   /* ═══════════════════════════════════════
-     LOYALTY CARD VIEW
-  ═══════════════════════════════════════ */
-  if (view === "loyaltycard") {
-    const lcFormValid =
-      loyaltyCardForm.name.trim().length >= 3 &&
-      !/\d/.test(loyaltyCardForm.name) &&
-      /^\d{10}$/.test(loyaltyCardForm.mobile) &&
-      !/^(\d)\1{9}$/.test(loyaltyCardForm.mobile) &&
-      /^\d{10}$/.test(loyaltyCardForm.password) &&
-      !loyaltyCardLoading;
-
-    const lcLoginValid =
-      lcLoginForm.name.trim().length >= 2 &&
-      /^\d{10}$/.test(lcLoginForm.password) &&
-      !lcLoginLoading;
-
-    return (
-      <div className="min-h-screen flex flex-col" style={{ background: "#f8f8f8", fontFamily: "'Inter', sans-serif" }}>
-        <div className="sticky top-0 z-20 flex items-center gap-3 px-4 py-3 border-b" style={{ background: "#ffffff", borderColor: "#f0f0f0" }}>
-          <button
-            onClick={() => {
-              setView("browse");
-              setTab("mybookings");
-              setLcTab("registration");
-              setLcLoginForm({ name: "", password: "" });
-              setLcLoginError(null);
-              setLcLoginAttempts(0);
-              setLcForgotVisible(false);
-            }}
-            className="p-1.5 rounded-full hover:bg-gray-100"
-          >
-            <ChevronLeft className="w-5 h-5 text-gray-900" />
-          </button>
-          <span className="font-black text-gray-900" style={{ fontFamily: "'Montserrat', sans-serif" }}>Loyalty Card</span>
-        </div>
-
-        <div className="flex-1 p-4 overflow-hidden">
-          {loyaltyCardInfo ? (
-            <div className="flex flex-col items-center">
-              <div className="w-full mb-6" style={{ borderRadius: 20, border: loyaltyCardInfo.status === "approved" ? "2px solid rgba(34,197,94,0.45)" : "1px solid #f0f0f0" }}>
-                <LoyaltyCardVisual storeName={data.name} address={data.address} phone={data.whatsappNumber} />
-              </div>
-
-              {loyaltyCardInfo.status === "approved" ? (
-                <div className="w-full flex flex-col gap-4">
-                  {cardRefreshNotif && (
-                    <div className="w-full rounded-2xl px-4 py-3 flex items-center gap-3 animate-pulse" style={{ background: "linear-gradient(135deg,#16a34a,#22c55e)", boxShadow: "0 4px 20px rgba(34,197,94,0.4)" }}>
-                      <span className="text-2xl">🎉</span>
-                      <div>
-                        <p className="text-white font-bold text-sm">Card is Refreshed!</p>
-                        <p className="text-green-100 text-xs">Your loyalty card has been renewed. New cycle started!</p>
-                      </div>
-                    </div>
-                  )}
-                  <div className="w-full rounded-2xl p-4" style={{ background: "#fff", border: "1px solid rgba(34,197,94,0.2)" }}>
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-sm font-bold text-gray-800" style={{ fontFamily: "'Montserrat', sans-serif" }}>Booking Progress</p>
-                      <div className="flex items-center gap-3 text-[10px] text-gray-400">
-                        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-yellow-400" />Pending</span>
-                        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-green-500" />Done</span>
-                        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-gray-200" />Empty</span>
-                      </div>
-                    </div>
-                    {loyaltySlotsLoading ? (
-                      <div className="grid grid-cols-5 gap-3">
-                        {Array.from({ length: 10 }).map((_, i) => (
-                          <div key={i} className="flex flex-col items-center gap-1">
-                            <div className="w-10 h-10 rounded-full animate-pulse bg-gray-200" />
-                            <span className="text-[9px] text-gray-300">{i + 1}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-5 gap-3">
-                        {(loyaltySlots.length === 10 ? loyaltySlots : Array.from({ length: 10 }).map((_, i) => loyaltySlots[i] ?? { status: "empty" as const })).map((slot, i) => (
-                          <div key={i} className="flex flex-col items-center gap-1">
-                            <div
-                              className="w-10 h-10 rounded-full flex items-center justify-center transition-all"
-                              style={{
-                                background: slot.status === "completed" ? "#22c55e" : slot.status === "pending" ? "#fbbf24" : "#e5e7eb",
-                                border: slot.status === "completed" ? "2.5px solid #16a34a" : slot.status === "pending" ? "2.5px solid #d97706" : "2px solid #d1d5db",
-                                boxShadow: slot.status === "completed" ? "0 2px 8px rgba(34,197,94,0.35)" : slot.status === "pending" ? "0 2px 8px rgba(251,191,36,0.4)" : "none",
-                              }}
-                            >
-                              {slot.status === "completed" && <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M1.5 6L6 10.5L14.5 1.5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-                              {slot.status === "pending" && <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="3" fill="white" /></svg>}
-                            </div>
-                            <span className="text-[9px] font-semibold" style={{ color: slot.status === "empty" ? "#d1d5db" : slot.status === "completed" ? "#16a34a" : "#d97706" }}>{i + 1}</span>
-                            {slot.isCarryOver && <span className="text-[8px] text-orange-400 font-bold leading-none">carry</span>}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <div className="mt-3 flex justify-between items-center">
-                      <p className="text-[10px] text-gray-400">{loyaltySlots.filter(s => s.status === "completed").length} completed · {loyaltySlots.filter(s => s.status === "pending").length} pending</p>
-                      <p className="text-[10px] font-bold text-green-500">{loyaltySlots.filter(s => s.status !== "empty").length}/10</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-center text-center gap-1 py-2">
-                    <p className="text-sm font-semibold text-gray-500">Name: {loyaltyCardInfo.name}</p>
-                    <p className="text-xs text-gray-400">{loyaltyCardInfo.mobile}</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center text-center gap-3 py-4">
-                  <div className="w-20 h-20 rounded-2xl flex items-center justify-center bg-gray-50">
-                    <CreditCard className="w-10 h-10 text-gray-300" />
-                  </div>
-                  <p className="text-base font-bold text-gray-900" style={{ fontFamily: "'Montserrat', sans-serif" }}>Request Submitted</p>
-                  <p className="text-xs text-gray-400 px-4 text-center">Your Loyalty Card request is submitted, please wait for approval by admin</p>
-                </div>
-              )}
-
-              <button
-                onClick={() => {
-                  setLoyaltyCardInfo(null);
-                  localStorage.removeItem(`wmh_loyalty_${slug}`);
-                  setLcTab("login");
-                }}
-                className="mt-6 text-xs text-gray-400 underline"
-              >
-                Switch account
-              </button>
-            </div>
-          ) : (
-            <>
-          {/* Account fields locked popup */}
-          {showAccountFieldsPopup && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-6" onClick={() => setShowAccountFieldsPopup(false)}>
-              <div className="w-full max-w-sm bg-white rounded-3xl p-6 space-y-4" onClick={e => e.stopPropagation()}>
-                <div className="flex items-center justify-center w-14 h-14 rounded-2xl mx-auto" style={{ background: "rgba(239,68,68,0.1)" }}>
-                  <span className="text-2xl">🔒</span>
-                </div>
-                <div className="text-center space-y-2">
-                  <p className="font-black text-gray-900 text-base" style={{ fontFamily: "'Montserrat', sans-serif" }}>Loyalty card & account have same number and password</p>
-                  <p className="text-xs text-gray-400 leading-relaxed">Your loyalty card uses the same mobile number and password as your store account. These fields cannot be changed.</p>
-                </div>
-                <button onClick={() => setShowAccountFieldsPopup(false)} className="w-full font-bold py-3 rounded-2xl text-sm" style={{ background: "#000000", color: "white", fontFamily: "'Montserrat', sans-serif" }}>
-                  Got it
-                </button>
-              </div>
-            </div>
-          )}
-            
-              <div className="mb-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <CreditCard className="w-5 h-5 text-black" />
-                  <p className="font-black text-gray-900 text-base" style={{ fontFamily: "'Montserrat', sans-serif" }}>Digital Loyalty Card</p>
-                </div>
-                <div style={{ borderRadius: 20, border: "1px solid #f0f0f0", overflow: "hidden" }}>
-                  <LoyaltyCardVisual storeName={data.name} address={data.address} phone={data.whatsappNumber} />
-                </div>
-              </div>
-
-              <div className="relative rounded-2xl p-1 mb-5" style={{ background: "#f5f5f5" }}>
-                <div
-                  className="absolute top-1 bottom-1 rounded-xl transition-all"
-                  style={{
-                    width: "calc(50% - 4px)",
-                    left: lcTab === "registration" ? "4px" : "calc(50%)",
-                    background: "#000000",
-                    transition: "left 0.35s cubic-bezier(0.4,0,0.2,1)",
-                  }}
-                />
-                <div className="relative flex">
-                  <button onClick={() => { setLcTab("registration"); setLcLoginError(null); }} className="flex-1 py-3 text-sm font-bold z-10 transition-colors rounded-xl" style={{ color: lcTab === "registration" ? "#fff" : "rgba(0,0,0,0.45)", fontFamily: "'Montserrat', sans-serif" }}>
-                    Registration
-                  </button>
-                  <button onClick={() => { setLcTab("login"); setLoyaltyCardError(null); }} className="flex-1 py-3 text-sm font-bold z-10 transition-colors rounded-xl" style={{ color: lcTab === "login" ? "#fff" : "rgba(0,0,0,0.45)", fontFamily: "'Montserrat', sans-serif" }}>
-                    Login
-                  </button>
-                </div>
-              </div>
-
-              <div style={{ overflow: "hidden" }}>
-                <div style={{ display: "flex", width: "200%", transform: `translateX(${lcTab === "registration" ? "0%" : "-50%"})`, transition: "transform 0.35s cubic-bezier(0.4,0,0.2,1)" }}>
-                  <div style={{ width: "50%", paddingRight: "8px" }}>
-                    {!customerAccount ? (
-                      <div className="flex flex-col items-center text-center gap-4 py-4">
-                        <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: "#f5f5f5" }}>
-                          <CreditCard className="w-8 h-8 text-gray-300" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-gray-900" style={{ fontFamily: "'Montserrat', sans-serif" }}>Account Required</p>
-                          <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">Please create a store account first to request a loyalty card. Go to <strong>Profile</strong> tab to sign up.</p>
-                        </div>
-                        <button
-                          onClick={() => { setView("browse"); setTab("profile"); }}
-                          className="w-full font-bold py-3 rounded-2xl text-sm"
-                          style={{ background: "#000000", color: "white", fontFamily: "'Montserrat', sans-serif" }}
-                        >
-                          Go to Profile
-                        </button>
-                      </div>
-                    ) : (
-                    <div className="space-y-4">
-                      {loyaltyCardError && (
-                        <div className="flex items-start gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)" }}>
-                          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-500" />
-                          <p className="text-xs text-red-500">{loyaltyCardError}</p>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)" }}>
-                        <span className="text-base">🔒</span>
-                        <p className="text-xs text-green-700">Your account number and password are used for the loyalty card</p>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Customer Name *</label>
-                        <input
-                          type="text"
-                          value={loyaltyCardForm.name}
-                          onChange={(e) => setLoyaltyCardForm(f => ({ ...f, name: e.target.value }))}
-                          placeholder="Enter your real name"
-                          className="w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-300 focus:outline-none border"
-                          style={{ background: "#ffffff", borderColor: "#e8e8e8" }}
-                        />
-                        <p className="text-[10px] text-gray-400 mt-1">Real name only — fake names not allowed</p>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Mobile Number</label>
-                        <div className="relative" onClick={() => setShowAccountFieldsPopup(true)}>
-                          <input
-                            type="tel"
-                            readOnly
-                            value={customerAccount.mobileNumber}
-                            className="w-full rounded-xl px-4 py-3 text-sm font-semibold text-gray-500 focus:outline-none border cursor-not-allowed"
-                            style={{ background: "#f5f5f5", borderColor: "#e8e8e8" }}
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-base">🔒</span>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Password</label>
-                        <div className="relative" onClick={() => setShowAccountFieldsPopup(true)}>
-                          <input
-                            type="password"
-                            readOnly
-                            value={customerAccount ? "1234567890" : ""}
-                            className="w-full rounded-xl px-4 py-3 text-sm font-semibold text-gray-500 focus:outline-none border cursor-not-allowed"
-                            style={{ background: "#f5f5f5", borderColor: "#e8e8e8" }}
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-base">🔒</span>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          if (!customerAccount) return;
-                          setLoyaltyCardForm(f => ({
-                            ...f,
-                            mobile: customerAccount.mobileNumber,
-                            password: "",
-                          }));
-                          submitLoyaltyCardRequest();
-                        }}
-                        disabled={!(loyaltyCardForm.name.trim().length >= 3 && !/\d/.test(loyaltyCardForm.name) && !loyaltyCardLoading)}
-                        className="w-full font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 transition-all"
-                        style={{
-                          background: (loyaltyCardForm.name.trim().length >= 3 && !/\d/.test(loyaltyCardForm.name) && !loyaltyCardLoading) ? "#000000" : "#e5e7eb",
-                          color: (loyaltyCardForm.name.trim().length >= 3 && !/\d/.test(loyaltyCardForm.name) && !loyaltyCardLoading) ? "white" : "#9ca3af",
-                          fontFamily: "'Montserrat', sans-serif"
-                        }}
-                      >
-                        {loyaltyCardLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                        Request Card
-                      </button>
-                    </div>
-                    )}
-                  </div>
-
-                  <div style={{ width: "50%", paddingLeft: "8px" }}>
-                    <div className="space-y-4">
-                      {lcLoginError && (
-                        <div className="flex items-start gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)" }}>
-                          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-500" />
-                          <p className="text-xs text-red-500">{lcLoginError}</p>
-                        </div>
-                      )}
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Name or Number *</label>
-                        <input type="text" inputMode="text" value={lcLoginForm.name} onChange={(e) => setLcLoginForm(f => ({ ...f, name: e.target.value }))} placeholder="Enter name or 10-digit mobile" className="w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-300 focus:outline-none border" style={{ background: "#ffffff", borderColor: "#e8e8e8" }} />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Password *</label>
-                        <input type="password" inputMode="numeric" maxLength={10} value={lcLoginForm.password} onChange={(e) => setLcLoginForm(f => ({ ...f, password: e.target.value.replace(/\D/g, "").slice(0, 10) }))} placeholder="10-digit password" className="w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-300 focus:outline-none border" style={{ background: "#ffffff", borderColor: "#e8e8e8" }} />
-                      </div>
-                      <button onClick={lcLoginSubmit} disabled={!lcLoginValid} className="w-full font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 transition-all" style={{ background: lcLoginValid ? "#000000" : "#e5e7eb", color: lcLoginValid ? "white" : "#9ca3af", fontFamily: "'Montserrat', sans-serif" }}>
-                        {lcLoginLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                        Login
-                      </button>
-                      {waLink && (
-                        <a href={`${waLink}?text=${encodeURIComponent(`Hay team ${data.name}\n\nI unfortunately lost my loyalty card password , please find & sent me my loyalty card password\n\nName : ${lcLoginForm.name.trim() || "fill this"}\nMobile number: fill this\n\nPlease find my loyalty card In your account and sent me my loyalty card password`)}`} target="_blank" rel="noopener noreferrer" className="block w-full text-center text-xs py-2.5 rounded-xl font-semibold" style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)" }}>
-                          Forgot Password?
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  /* ═══════════════════════════════════════
-     LOYALTY CARD APPLY VIEW
-  ═══════════════════════════════════════ */
-  if (view === "loyaltycardapply" && selectedProduct) {
-    const hasAccountCard = !!loyaltyCardInfo;
-    const formDisabled = useAccountCard && hasAccountCard;
-    const lcApplyValid = formDisabled ? true : loyaltyApplyForm.name.trim().length >= 2 && /^\d{10}$/.test(loyaltyApplyForm.mobile) && /^\d{10}$/.test(loyaltyApplyForm.password) && !loyaltyApplyLoading;
-
-    return (
-      <div className="min-h-screen flex flex-col" style={{ background: "#f8f8f8", fontFamily: "'Inter', sans-serif" }}>
-        <div className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 border-b" style={{ background: "#ffffff", borderColor: "#f0f0f0" }}>
-          <button onClick={() => setView("booking")} className="p-1.5 rounded-full hover:bg-gray-100">
-            <ChevronLeft className="w-5 h-5 text-gray-900" />
-          </button>
-          <span className="font-black text-gray-900" style={{ fontFamily: "'Montserrat', sans-serif" }}>Add to Loyalty Card</span>
-        </div>
-        <div className="flex-1 p-4 space-y-4">
-          {hasAccountCard && (
-            <button onClick={() => setUseAccountCard(v => !v)} className="w-full flex items-center gap-3 rounded-2xl px-4 py-3.5 transition-all" style={{ background: useAccountCard ? "rgba(34,197,94,0.08)" : "#ffffff", border: useAccountCard ? "2px solid #22c55e" : "2px solid #f0f0f0" }}>
-              <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 transition-all" style={{ background: useAccountCard ? "#22c55e" : "#f0f0f0", border: useAccountCard ? "2px solid #22c55e" : "2px solid #e0e0e0" }}>
-                {useAccountCard && <svg width="13" height="10" viewBox="0 0 13 10" fill="none"><path d="M1 5L4.5 8.5L12 1" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-              </div>
-              <div className="flex-1 text-left">
-                <p className="text-sm font-bold" style={{ color: useAccountCard ? "#16a34a" : "#374151" }}>Loyalty card save in account</p>
-                <p className="text-xs mt-0.5" style={{ color: useAccountCard ? "#22c55e" : "#9ca3af" }}>{useAccountCard ? `✅ Using: ${loyaltyCardInfo!.name} · ${loyaltyCardInfo!.mobile}` : "Tick to use your saved loyalty card"}</p>
-              </div>
-              <CreditCard className="w-5 h-5 flex-shrink-0" style={{ color: useAccountCard ? "#22c55e" : "#d1d5db" }} />
-            </button>
-          )}
-          <div className="rounded-xl px-4 py-3 text-sm text-gray-500" style={{ background: "#ffffff", border: "1px solid #f0f0f0" }}>
-            {formDisabled ? "Your saved loyalty card will be used for this booking." : "Enter your Loyalty Card details to link this product booking."}
-          </div>
-          {loyaltyApplyError && !formDisabled && (
-            <div className="flex items-start gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)" }}>
-              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-500" />
-              <p className="text-sm font-semibold text-red-500">{loyaltyApplyError}</p>
-            </div>
-          )}
-          <div style={{ opacity: formDisabled ? 0.35 : 1, pointerEvents: formDisabled ? "none" : "auto", transition: "opacity 0.2s" }}>
-            <div className="space-y-4">
-              {[
-                { label: "Name", key: "name" as const, type: "text", placeholder: "Your loyalty card name" },
-              ].map(({ label, key, type, placeholder }) => (
-                <div key={key}>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">{label}</label>
-                  <input type={type} value={loyaltyApplyForm[key]} onChange={(e) => setLoyaltyApplyForm(f => ({ ...f, [key]: e.target.value }))} placeholder={placeholder} className="w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-300 focus:outline-none border" style={{ background: "#ffffff", borderColor: "#e8e8e8" }} disabled={formDisabled} />
-                </div>
-              ))}
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Mobile Number</label>
-                <input type="tel" inputMode="numeric" maxLength={10} value={loyaltyApplyForm.mobile} onChange={(e) => setLoyaltyApplyForm(f => ({ ...f, mobile: e.target.value.replace(/\D/g, "").slice(0, 10) }))} placeholder="10-digit mobile number" className="w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-300 focus:outline-none border" style={{ background: "#ffffff", borderColor: "#e8e8e8" }} disabled={formDisabled} />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Password</label>
-                <input type="password" inputMode="numeric" maxLength={10} value={loyaltyApplyForm.password} onChange={(e) => setLoyaltyApplyForm(f => ({ ...f, password: e.target.value.replace(/\D/g, "").slice(0, 10) }))} placeholder="10-digit loyalty card password" className="w-full rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-300 focus:outline-none border" style={{ background: "#ffffff", borderColor: "#e8e8e8" }} disabled={formDisabled} />
-              </div>
-            </div>
-          </div>
-          <button onClick={verifyAndApplyLoyaltyCard} disabled={!lcApplyValid} className="w-full font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 transition-all" style={{ background: lcApplyValid ? "#22c55e" : "#e5e7eb", color: lcApplyValid ? "white" : "#9ca3af", fontFamily: "'Montserrat', sans-serif" }}>
-            {loyaltyApplyLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {formDisabled ? "Use This Card" : "Done"}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  /* ═══════════════════════════════════════
      BOOKING FORM VIEW
   ═══════════════════════════════════════ */
   if (view === "booking" && selectedProduct) {
@@ -1165,17 +609,6 @@ export default function PublicStore() {
             </div>
           </div>
 
-          {loyaltyApplied ? (
-            <div className="flex items-center gap-2 rounded-2xl px-4 py-3 mb-4" style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.3)" }}>
-              <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-              <p className="text-sm font-semibold text-green-600">Product added to Loyalty Card</p>
-            </div>
-          ) : (
-            <button onClick={() => { setLoyaltyApplyForm({ name: "", mobile: "", password: "" }); setLoyaltyApplyError(null); setUseAccountCard(false); setView("loyaltycardapply"); }} className="w-full flex items-center justify-center gap-2 mb-4 py-3.5 rounded-2xl text-sm font-bold border-2 transition-colors" style={{ borderColor: "#22c55e", color: "#22c55e", background: "transparent" }}>
-              <CreditCard className="w-4 h-4" />
-              Add to Loyalty Card
-            </button>
-          )}
 
           {selectedProduct.sizes.length > 0 && (
             <div className="mb-5">
@@ -1844,8 +1277,6 @@ export default function PublicStore() {
             myBookings={myBookings}
             seenStatus={seenStatus}
             completedStatus={completedStatus}
-            loyaltyCardInfo={loyaltyCardInfo}
-            onOpenLoyaltyCard={() => { setLoyaltyCardError(null); setView("loyaltycard"); }}
           />
         )}
         {tab === "wishlist" && (

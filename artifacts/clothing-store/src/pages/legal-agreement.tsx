@@ -56,7 +56,7 @@ const STEPS = [
         <p>This Privacy Policy explains how <strong>Web Media Hub</strong> collects, uses, and protects the information associated with your admin account and store operations.</p>
         <div>
           <h3 className="font-semibold text-foreground mb-2">1. Information We Store</h3>
-          <p>The platform collects and stores the following types of information: admin account credentials and profile information, all product information uploaded by admins including images and descriptions, loyalty card data linked to your store, and Virtual Try-On related information when that feature is used.</p>
+          <p>The platform collects and stores the following types of information: admin account credentials and profile information, all product information uploaded by admins including images and descriptions, and Virtual Try-On related information when that feature is used.</p>
         </div>
         <div>
           <h3 className="font-semibold text-foreground mb-2">2. Analytics</h3>
