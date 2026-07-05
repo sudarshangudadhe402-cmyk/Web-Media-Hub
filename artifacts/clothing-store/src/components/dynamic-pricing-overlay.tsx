@@ -272,12 +272,6 @@ export default function DynamicPricingOverlay({ onBack, onSelectPlan }: Props) {
                       {detailPlan.durationDays ? `${detailPlan.durationDays} days` : "Lifetime"}
                     </p>
                   </div>
-                  {(detailPlan.storeTypes ?? []).length > 0 && (
-                    <div className="mt-2">
-                      <p className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: HINT }}>Store</p>
-                      <p className="text-sm font-bold" style={{ color: LABEL }}>{(detailPlan.storeTypes ?? []).join(", ")}</p>
-                    </div>
-                  )}
                 </div>
               </div>
               <p className="text-sm mt-2" style={{ color: HINT }}>{detailPlan.name}</p>
@@ -459,45 +453,6 @@ export default function DynamicPricingOverlay({ onBack, onSelectPlan }: Props) {
         </div>
       </div>
 
-      {/* Category filter chips */}
-      {allCategories.length > 0 && (
-        <div className="px-4 pb-2 shrink-0">
-          <div className="flex items-center gap-2 overflow-x-auto" style={{ paddingBottom: "2px" }}>
-            <button
-              onClick={() => setActiveStore("all")}
-              className="flex-none text-sm font-semibold transition-all"
-              style={{
-                padding: "6px 16px",
-                borderRadius: "999px",
-                border: `1.5px solid ${activeStore === "all" ? LABEL : BORDER}`,
-                background: activeStore === "all" ? LABEL : "white",
-                color: activeStore === "all" ? "white" : HINT,
-                whiteSpace: "nowrap",
-              }}
-            >
-              All
-            </button>
-            {allCategories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setActiveStore(cat === activeStore ? "all" : cat)}
-                className="flex-none text-sm font-semibold transition-all"
-                style={{
-                  padding: "6px 16px",
-                  borderRadius: "999px",
-                  border: `1.5px solid ${activeStore === cat ? GOLD_BG : BORDER}`,
-                  background: activeStore === cat ? GOLD_BG : "white",
-                  color: activeStore === cat ? "white" : HINT,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Plans list */}
       <div className="flex-1 overflow-y-auto px-4 pb-6">
         {isLoading ? (
@@ -510,10 +465,10 @@ export default function DynamicPricingOverlay({ onBack, onSelectPlan }: Props) {
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <Tag className="w-10 h-10 mb-3" style={{ color: "#D1D5DB" }} />
             <p className="font-semibold text-sm mb-1" style={{ color: LABEL }}>
-              {search || activeStore !== "all" ? "No plans found" : "No plans available"}
+              {search ? "No plans found" : "No plans available"}
             </p>
             <p className="text-xs" style={{ color: HINT }}>
-              {search || activeStore !== "all" ? "Try a different search or store" : "Plans will appear here once added"}
+              {search ? "Try a different search" : "Plans will appear here once added"}
             </p>
           </div>
         ) : (
