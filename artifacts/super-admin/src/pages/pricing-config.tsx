@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -199,6 +199,18 @@ function PlanFormDialog({
       ? { ...initial, coupons: [...initial.coupons], features: [...initial.features] }
       : EMPTY_PLAN()
   );
+
+  // Reset draft every time dialog opens (avoids stale features/fields from previous session)
+  useEffect(() => {
+    if (open) {
+      setDraft(
+        initial
+          ? { ...initial, coupons: [...initial.coupons], features: [...initial.features] }
+          : EMPTY_PLAN()
+      );
+    }
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const set = <K extends keyof Omit<Plan, "id">>(k: K, v: Omit<Plan, "id">[K]) => setDraft((prev) => ({ ...prev, [k]: v }));
 
   const priceNum = parseInt(draft.price.replace(/[₹,\s]/g, ""), 10);

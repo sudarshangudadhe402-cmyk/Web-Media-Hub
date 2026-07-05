@@ -65,30 +65,8 @@ router.post("/pricing/plans", requireSuperAdmin, async (req, res) => {
   }
 });
 
-// PUT /api/pricing/plans/:id — update plan
-router.put("/pricing/plans/:id", requireSuperAdmin, async (req, res) => {
-  try {
-    const doc = await getOrCreate();
-    const plan = (doc.plans as any[]).find((p: any) => String(p._id) === req.params.id);
-    if (!plan) { res.status(404).json({ error: "Plan not found" }); return; }
-
-    const { badgeText, name, price, durationDays, features, coupons } = req.body;
-    if (badgeText !== undefined) plan.badgeText = badgeText;
-    if (name !== undefined) plan.name = name;
-    if (price !== undefined) plan.price = price;
-    if (durationDays !== undefined) plan.durationDays = durationDays;
-    if (features !== undefined) plan.features = features;
-    if (coupons !== undefined) plan.coupons = coupons;
-
-    await doc.save();
-    res.json(planToJson(plan));
-  } catch (err) {
-    (req as any).log?.error({ err }, "Update plan error");
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
 // PUT /api/pricing/plans/reorder — reorder plans (super admin)
+// NOTE: must be registered BEFORE /plans/:id or Express matches "reorder" as an id
 router.put("/pricing/plans/reorder", requireSuperAdmin, async (req, res) => {
   try {
     const { ids } = req.body;
@@ -112,6 +90,29 @@ router.put("/pricing/plans/reorder", requireSuperAdmin, async (req, res) => {
     res.json({ plans: sorted.map(planToJson) });
   } catch (err) {
     (req as any).log?.error({ err }, "Reorder plans error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// PUT /api/pricing/plans/:id — update plan
+router.put("/pricing/plans/:id", requireSuperAdmin, async (req, res) => {
+  try {
+    const doc = await getOrCreate();
+    const plan = (doc.plans as any[]).find((p: any) => String(p._id) === req.params.id);
+    if (!plan) { res.status(404).json({ error: "Plan not found" }); return; }
+
+    const { badgeText, name, price, durationDays, features, coupons } = req.body;
+    if (badgeText !== undefined) plan.badgeText = badgeText;
+    if (name !== undefined) plan.name = name;
+    if (price !== undefined) plan.price = price;
+    if (durationDays !== undefined) plan.durationDays = durationDays;
+    if (features !== undefined) plan.features = features;
+    if (coupons !== undefined) plan.coupons = coupons;
+
+    await doc.save();
+    res.json(planToJson(plan));
+  } catch (err) {
+    (req as any).log?.error({ err }, "Update plan error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
