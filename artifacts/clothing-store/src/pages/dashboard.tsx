@@ -37,7 +37,7 @@ interface CustomerAccountItem {
   createdAt: string;
 }
 
-type View = "summary" | "bookings" | "detail" | "customeraccounts";
+type View = "summary" | "bookings" | "detail" | "customeraccounts" | "chat";
 
 export default function Dashboard() {
   const { data: summary, isLoading } = useGetDashboardSummary();
@@ -143,6 +143,29 @@ export default function Dashboard() {
   if (!summary) return null;
 
   const unseenCount = (summary as any).unseenBookings ?? 0;
+
+  /* ── CHAT (blank placeholder) ── */
+  if (view === "chat") {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <button onClick={() => setView("summary")} className="p-1.5 rounded-full hover:bg-gray-100">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <h1 className="text-xl font-bold tracking-tight">Customer's Chat</h1>
+        </div>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center gap-4">
+          <div className="w-20 h-20 rounded-2xl flex items-center justify-center" style={{ background: "rgba(168,85,247,0.1)" }}>
+            <MessageCircle className="w-10 h-10 text-purple-400" />
+          </div>
+          <div>
+            <p className="text-base font-bold text-gray-900">Coming Soon</p>
+            <p className="text-xs text-gray-400 mt-1">Chat feature will be available here</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   /* ── BOOKING LIST ── */
   if (view === "bookings") {
@@ -575,6 +598,23 @@ export default function Dashboard() {
           ) : (
             <p className="text-xs text-muted-foreground mt-1">Click to view all</p>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Customer's Chat section */}
+      <Card
+        className="cursor-pointer hover:border-purple-400 transition-colors border-purple-200"
+        onClick={() => setView("chat")}
+      >
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-sm font-medium text-purple-700">Customer's Chat</CardTitle>
+          <MessageCircle className="h-4 w-4 text-purple-500" />
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-xs text-muted-foreground">Chat with your customers</p>
+            <p className="text-xs text-purple-600 font-semibold">Click to open →</p>
+          </div>
         </CardContent>
       </Card>
 
