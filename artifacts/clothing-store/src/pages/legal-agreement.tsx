@@ -91,7 +91,7 @@ const STEPS = [
         <p>This Refund Policy outlines the terms under which subscription or platform fees paid to <strong>Web Media Hub</strong> may be reviewed for refund consideration.</p>
         <div>
           <h3 className="font-semibold text-foreground mb-2">1. Nature of Fees</h3>
-          <p>All subscription fees, onboarding fees, or any other charges paid to Web Media Hub are in exchange for access to the software platform and its associated features and services.</p>
+          <p>All subscription fees, onboarding fees, or any other charges paid to Web Media Hub are in exchange for access to the software platform's admin account and its associated features and services.</p>
         </div>
         <div>
           <h3 className="font-semibold text-foreground mb-2">2. Non-Refundable Policy</h3>
@@ -137,15 +137,19 @@ const STEPS = [
           <p>The Virtual Try-On feature uses AI-generated image processing to provide a visual preview only. These are computer-generated simulations and the actual appearance, fit, color, or texture of real products may differ significantly from the AI-generated previews.</p>
         </div>
         <div>
-          <h3 className="font-semibold text-foreground mb-2">4. Customer Claims</h3>
+          <h3 className="font-semibold text-foreground mb-2">4. 3D Model Feature</h3>
+          <p>The 3D Model feature allows customers to view a three-dimensional representation of products for a better visual understanding. These 3D models are generated for preview purposes only and may not perfectly replicate the exact dimensions, texture, color accuracy, or physical appearance of the actual product. Web Media Hub is not responsible for any discrepancies between the 3D model preview and the real product.</p>
+        </div>
+        <div>
+          <h3 className="font-semibold text-foreground mb-2">5. Customer Claims</h3>
           <p>Web Media Hub is not liable for any claims, complaints, demands, or legal actions made by customers against store owners or admins. All such matters are strictly between the admin and their customers.</p>
         </div>
         <div>
-          <h3 className="font-semibold text-foreground mb-2">5. Product Accuracy</h3>
+          <h3 className="font-semibold text-foreground mb-2">6. Product Accuracy</h3>
           <p>The platform is not responsible for the accuracy, completeness, or performance of any product listed by an admin. All product information, quality claims, and performance representations are the sole responsibility of the admin.</p>
         </div>
         <div>
-          <h3 className="font-semibold text-foreground mb-2">6. Third-Party Actions</h3>
+          <h3 className="font-semibold text-foreground mb-2">7. Third-Party Actions</h3>
           <p>Web Media Hub is not responsible for the actions, conduct, or inactions of any third party, including but not limited to customers, payment processors, delivery services, or any other external service providers used by store admins.</p>
         </div>
       </div>
