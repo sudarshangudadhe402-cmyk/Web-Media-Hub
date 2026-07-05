@@ -15,6 +15,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import {
   Shield,
@@ -35,6 +41,8 @@ import {
   CheckCircle2,
   Link as LinkIcon,
   Pencil,
+  Gift,
+  UserCheck,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -146,6 +154,27 @@ export default function Admins() {
 
   const [linkInput, setLinkInput] = useState("");
   const [isEditingLink, setIsEditingLink] = useState(false);
+
+  const { data: referralData, isLoading: referralLoading } = useQuery({
+    queryKey: ["referral-rewards"],
+    queryFn: async () => {
+      const res = await authFetch("/api/admins/referral-rewards");
+      if (!res.ok) return { referrals: [] };
+      return res.json() as Promise<{
+        referrals: Array<{
+          id: string;
+          rewardCode: string;
+          date: string;
+          referrerUsername: string;
+          referrer: { email: string; adminNumber: string; storeName: string; userId: string } | null;
+          referredEmail: string;
+          referredStoreName: string;
+          referredPlan: string;
+        }>;
+      }>;
+    },
+    staleTime: 30_000,
+  });
 
   const { data: globalLinkData, refetch: refetchGlobalLink } = useQuery({
     queryKey: ["settings", "global-link"],
@@ -348,48 +377,61 @@ export default function Admins() {
 
       {/* ── Global Link Section ── */}
       <div>
-        <div className="flex items-center gap-2 mb-4">
-          <LinkIcon className="w-5 h-5 text-primary" />
-          <h2 className="text-lg font-semibold">Global Link</h2>
+        <div className="flex items-center gap-2 mb-3">
+          <LinkIcon className="w-4 h-4 text-primary" />
+          <h2 className="text-base font-semibold">Global Link</h2>
         </div>
 
         {globalLink && !isEditingLink ? (
           <Card className="border-primary/20">
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-start gap-2">
-                <LinkIcon className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+            <CardContent className="p-3">
+              {/* Link row: icon + clickable link + copy button */}
+              <div className="flex items-center gap-2">
+                <LinkIcon className="w-3.5 h-3.5 text-primary shrink-0" />
                 <a
                   href={globalLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 text-sm text-primary font-medium underline underline-offset-2 break-all"
+                  className="flex-1 text-sm text-primary font-medium underline underline-offset-2 break-all line-clamp-1"
                 >
                   {globalLink}
                 </a>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2.5 gap-1 text-xs shrink-0"
+                  onClick={() => { navigator.clipboard.writeText(globalLink); toast({ title: "Link copied!" }); }}
+                >
+                  <Copy className="w-3 h-3" /> Copy
+                </Button>
               </div>
-              <div className="flex gap-2 pt-1">
-                <Button size="sm" variant="outline" className="flex-1 gap-1.5"
-                  onClick={() => { navigator.clipboard.writeText(globalLink); toast({ title: "Link copied!" }); }}>
-                  <Copy className="w-3.5 h-3.5" /> Copy
-                </Button>
-                <Button size="sm" variant="outline" className="flex-1 gap-1.5"
-                  onClick={() => window.open(globalLink, "_blank")}>
-                  <ExternalLink className="w-3.5 h-3.5" /> Open
-                </Button>
-                <Button size="sm" variant="outline" className="flex-1 gap-1.5"
-                  onClick={() => { setLinkInput(globalLink); setIsEditingLink(true); }}>
-                  <Pencil className="w-3.5 h-3.5" /> Edit
-                </Button>
-                <Button size="sm" variant="outline" className="gap-1.5 text-red-600 border-red-200 hover:bg-red-50"
-                  onClick={() => deleteGlobalLink.mutate()} disabled={deleteGlobalLink.isPending}>
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
+              {/* Pencil dropdown: edit or delete */}
+              <div className="flex justify-end mt-1.5">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground">
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-36">
+                    <DropdownMenuItem onClick={() => { setLinkInput(globalLink); setIsEditingLink(true); }}>
+                      <Pencil className="w-3.5 h-3.5 mr-2" /> Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-red-600 focus:text-red-600"
+                      onClick={() => deleteGlobalLink.mutate()}
+                      disabled={deleteGlobalLink.isPending}
+                    >
+                      <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </CardContent>
           </Card>
         ) : (
           <Card className="border-dashed border-2">
-            <CardContent className="p-4 space-y-3">
+            <CardContent className="p-3 space-y-2">
               <p className="text-sm text-muted-foreground">
                 {isEditingLink ? "Update the global link:" : "Paste a link to show on all admin pages:"}
               </p>
@@ -398,23 +440,111 @@ export default function Admins() {
                   value={linkInput}
                   onChange={(e) => setLinkInput(e.target.value)}
                   placeholder="https://example.com/..."
-                  className="flex-1"
+                  className="flex-1 h-9"
                 />
                 <Button
                   onClick={() => { const t = linkInput.trim(); if (!t) return; saveGlobalLink.mutate(t); }}
                   disabled={saveGlobalLink.isPending || !linkInput.trim()}
-                  className="bg-primary text-primary-foreground"
+                  className="bg-primary text-primary-foreground h-9"
                 >
                   {saveGlobalLink.isPending ? "Saving..." : isEditingLink ? "Update" : "Save"}
                 </Button>
                 {isEditingLink && (
-                  <Button variant="outline" onClick={() => { setIsEditingLink(false); setLinkInput(""); }}>
+                  <Button variant="outline" className="h-9" onClick={() => { setIsEditingLink(false); setLinkInput(""); }}>
                     Cancel
                   </Button>
                 )}
               </div>
             </CardContent>
           </Card>
+        )}
+      </div>
+
+      {/* ── Referral Reward Section ── */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <Gift className="w-4 h-4 text-purple-500" />
+          <h2 className="text-base font-semibold">Referral Reward</h2>
+          {referralData?.referrals?.length ? (
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(168,85,247,0.12)", color: "#9333ea" }}>
+              {referralData.referrals.length}
+            </span>
+          ) : null}
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">
+          Jab kisi admin ne apna referral link bheja aur us link se naya admin bana — unka reward code yahan milega.
+        </p>
+
+        {referralLoading ? (
+          <div className="space-y-2">
+            {[1, 2].map((i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
+          </div>
+        ) : !referralData?.referrals?.length ? (
+          <Card className="border-dashed">
+            <CardContent className="py-8 text-center text-muted-foreground">
+              <Gift className="w-8 h-8 mx-auto mb-2 opacity-20" />
+              <p className="text-sm">Abhi tak koi referral nahi hua.</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-2.5">
+            {referralData.referrals.map((r) => (
+              <Card key={r.id} className="border-purple-100 bg-gradient-to-br from-purple-50/60 to-white">
+                <CardContent className="p-4">
+                  {/* Reward code — prominent */}
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-purple-500">Reward Code</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-extrabold text-base text-purple-700 tracking-widest bg-purple-100 px-3 py-0.5 rounded-lg">
+                        {r.rewardCode}
+                      </span>
+                      <Button
+                        size="sm" variant="ghost"
+                        className="h-7 w-7 p-0 text-purple-400 hover:text-purple-700"
+                        onClick={() => { navigator.clipboard.writeText(r.rewardCode); toast({ title: "Code copied!" }); }}
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Referrer admin */}
+                    <div className="rounded-lg bg-white border border-purple-100 p-2.5">
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-purple-400 mb-1 flex items-center gap-1">
+                        <UserCheck className="w-2.5 h-2.5" /> Referrer (Reward milega)
+                      </p>
+                      <p className="text-xs font-bold text-gray-800 truncate">
+                        {r.referrer?.storeName || r.referrerUsername}
+                      </p>
+                      {r.referrer?.storeName && (
+                        <p className="text-[10px] text-muted-foreground truncate">@{r.referrerUsername}</p>
+                      )}
+                      {r.referrer?.adminNumber && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5">📞 {r.referrer.adminNumber}</p>
+                      )}
+                    </div>
+
+                    {/* Referred (new) admin */}
+                    <div className="rounded-lg bg-white border border-purple-100 p-2.5">
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-blue-400 mb-1 flex items-center gap-1">
+                        <Store className="w-2.5 h-2.5" /> Naya Admin (Refer hua)
+                      </p>
+                      <p className="text-xs font-bold text-gray-800 truncate">
+                        {r.referredStoreName}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground truncate">{r.referredEmail}</p>
+                      {r.referredPlan && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5">📦 {r.referredPlan}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] text-muted-foreground text-right mt-2">{fmtDate(r.date)}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         )}
       </div>
 
