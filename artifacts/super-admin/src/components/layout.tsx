@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 const navItems = [
-  { path: "/admins", name: "Admin History", icon: Users },
+  { path: "/admins", name: "Admins list", icon: Users },
   { path: "/pricing-config", name: "Pricing Plans", icon: Tag },
   { path: "/revenue", name: "Revenue & Growth", icon: TrendingUp },
   { path: "/marketing", name: "Growth & Marketing", icon: BarChart2 },

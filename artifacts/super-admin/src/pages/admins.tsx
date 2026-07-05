@@ -370,10 +370,6 @@ export default function Admins() {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-12">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Admin History</h1>
-        <p className="text-muted-foreground text-sm mt-1">All admin accounts created so far</p>
-      </div>
 
       {/* ── Global Link Section ── */}
       <div>
@@ -471,10 +467,6 @@ export default function Admins() {
             </span>
           ) : null}
         </div>
-        <p className="text-xs text-muted-foreground mb-3">
-          Jab kisi admin ne apna referral link bheja aur us link se naya admin bana — unka reward code yahan milega.
-        </p>
-
         {referralLoading ? (
           <div className="space-y-2">
             {[1, 2].map((i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
@@ -487,7 +479,7 @@ export default function Admins() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-2.5">
+          <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
             {referralData.referrals.map((r) => (
               <Card key={r.id} className="border-purple-100 bg-gradient-to-br from-purple-50/60 to-white">
                 <CardContent className="p-4">
@@ -546,6 +538,12 @@ export default function Admins() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* ── Admin List heading ── */}
+      <div className="flex items-center gap-2">
+        <Users className="w-4 h-4 text-muted-foreground" />
+        <h2 className="text-base font-semibold">Admin List</h2>
       </div>
 
       {/* Store name search */}
