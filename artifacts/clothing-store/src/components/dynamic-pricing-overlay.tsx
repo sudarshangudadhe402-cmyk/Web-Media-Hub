@@ -123,11 +123,15 @@ function PlanCard({ plan, onSelect }: { plan: DynamicPlan; onSelect: () => void 
           )}
         </div>
 
-        {/* Validity */}
+        {/* Validity + Name */}
         <div className="flex gap-5 flex-1 pt-0.5">
           <div>
             <p className="text-[9px] uppercase tracking-wide font-semibold" style={{ color: HINT }}>Validity</p>
             <p className="text-sm font-bold mt-0.5" style={{ color: LABEL }}>{validityDisplay}</p>
+          </div>
+          <div>
+            <p className="text-[9px] uppercase tracking-wide font-semibold" style={{ color: HINT }}>Name</p>
+            <p className="text-sm font-bold mt-0.5 truncate max-w-[100px]" style={{ color: LABEL }}>{plan.name}</p>
           </div>
         </div>
 
@@ -433,7 +437,7 @@ export default function DynamicPricingOverlay({ onBack, onSelectPlan }: Props) {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by price, days, or store..."
+            placeholder="Search by price, days, or name..."
             className="w-full outline-none text-sm font-medium"
             style={{
               height: "44px",
