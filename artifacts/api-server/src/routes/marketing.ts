@@ -135,7 +135,14 @@ router.get("/marketing/dashboard", requireSuperAdmin, async (req: AuthRequest, r
 
     const totalAdmins = allAdmins.length;
     const totalPayingAdmins = allAdmins.filter(a => parsePlanPrice(a.planPrice) > 0).length;
-    const totalRevenue = allAdmins.reduce((sum, a) => sum + parsePlanPrice(a.planPrice), 0);
+
+    // Total Revenue — actual cumulative money collected (first-time signup payment +
+    // every renewal charge), from the real payment event ledger. This replaces the old
+    // "current plan price × admin" snapshot, which understated revenue for admins who
+    // had already renewed one or more times.
+    const revenueQuery = dateFilter ? { createdAt: dateFilter } : {};
+    const allRevenuePayments = await RevenuePayment.find(revenueQuery).select("amount").lean();
+    const totalRevenue = allRevenuePayments.reduce((sum, p) => sum + (p.amount || 0), 0);
 
     // Monthly data (last 12 months)
     const now = new Date();
