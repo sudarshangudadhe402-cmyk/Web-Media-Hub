@@ -32,6 +32,7 @@ const formSchema = z.object({
   email: z.string().min(1,"Email is required").email("Enter a valid email address")
     .refine((e) => !isSpamEmail(e), "Spam/temporary emails not allowed"),
   password: z.string().min(8,"Min 8 characters")
+    .regex(/^[a-zA-Z0-9]+$/, "Special characters aur emojis allowed nahi hain")
     .regex(/[A-Z]/,"Must contain 1 uppercase letter")
     .regex(/[0-9]/,"Must contain 1 number"),
   storeName: z.string().min(2,"Min 2 characters").max(60,"Store name too long"),
@@ -610,6 +611,10 @@ export default function CreateStore() {
                     <FieldRow icon={<Lock className="w-4 h-4" style={{ color: HINT }} />} label="Password" error={errors.password?.message}>
                       <input type={showPassword?"text":"password"} placeholder="••••••••••" autoComplete="new-password"
                         {...form.register("password")}
+                        onChange={(e) => {
+                          const filtered = e.target.value.replace(/[^a-zA-Z0-9]/g, "");
+                          form.setValue("password", filtered, { shouldValidate: true });
+                        }}
                         className="flex-1 outline-none text-sm font-medium bg-transparent" style={{ color: LABEL }} />
                       <button type="button" tabIndex={-1} onClick={()=>setShowPassword(p=>!p)}
                         className="shrink-0 hover:opacity-60 transition-opacity" style={{ color: HINT }}>
@@ -630,7 +635,7 @@ export default function CreateStore() {
                         </span>
                       </div>
                     )}
-                    {!errors.password && <p className="text-xs" style={{ color: HINT }}>Min 8 chars, 1 uppercase, 1 number</p>}
+                    {!errors.password && <p className="text-xs" style={{ color: HINT }}>Min 8 chars, 1 uppercase, 1 number (special chars/emojis nahi)</p>}
                   </div>
 
                   {/* Store Name */}
