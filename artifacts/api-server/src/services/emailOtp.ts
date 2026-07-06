@@ -146,7 +146,7 @@ export async function sendOtpEmail(
   toEmail: string,
   otp: string,
   storeName: string,
-  purpose: "signup" | "signin" | "admin-creation" | "admin-forgot-password" | "cancel-autopay"
+  purpose: "signup" | "signin" | "admin-creation" | "admin-forgot-password" | "cancel-autopay" | "reactivate-autopay"
 ) {
   let subject = "";
   let headingText = "";
@@ -175,6 +175,10 @@ export async function sendOtpEmail(
     subject = `${otp} — Confirm AutoPay cancellation on Web Media Hub`;
     headingText = "Cancel AutoPay";
     bodyText = `Use the OTP below to <strong>confirm cancellation of AutoPay</strong> for <strong>${safeStoreName}</strong> on <strong>Web Media Hub</strong>. This code is valid for <strong>10 minutes</strong>. If you didn't request this, ignore this email — your AutoPay will remain active.`;
+  } else if (purpose === "reactivate-autopay") {
+    subject = `${otp} — Confirm AutoPay reactivation on Web Media Hub`;
+    headingText = "Reactivate AutoPay";
+    bodyText = `Use the OTP below to <strong>confirm reactivation of AutoPay</strong> for <strong>${safeStoreName}</strong> on <strong>Web Media Hub</strong>. This code is valid for <strong>10 minutes</strong>. If you didn't request this, ignore this email — your AutoPay will remain cancelled.`;
   }
 
   const html = `
