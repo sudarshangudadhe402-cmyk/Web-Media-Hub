@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -63,6 +63,15 @@ const BORDER = "#E8E0D0";
 const HINT = "#9A9485";
 const LABEL = "#1A1A1A";
 
+/* ─── Price helpers ─── */
+function parseRupees(str: string | undefined | null): number {
+  const n = parseFloat(String(str ?? "").replace(/[^\d.]/g, ""));
+  return isNaN(n) ? 0 : n;
+}
+function formatRupees(n: number): string {
+  return `₹${Math.round(n).toLocaleString("en-IN")}`;
+}
+
 /* ─── Category icon fallback ─── */
 function categoryIcon(cat: string) {
   const lower = cat.toLowerCase();
@@ -108,6 +117,17 @@ export default function CreateStore() {
     const p = plan.period.toLowerCase();
     return !p.includes("lifetime") && !p.includes("one-time") && !p.includes("forever");
   }
+
+  /* Payment breakdown for the plan currently selected (today's payment) */
+  const paymentBreakdown = useMemo(() => {
+    if (!selectedPlan) return null;
+    const original = parseRupees(selectedPlan.originalPrice || selectedPlan.price);
+    const effective = parseRupees(selectedPlan.price);
+    const discount = Math.max(0, original - effective);
+    const charges = Math.round(effective * 0.02);
+    const total = effective + charges;
+    return { original, effective, discount, charges, total };
+  }, [selectedPlan]);
 
   /* Fetch marketing (Growth & Marketing Analytics) categories + store types from API — independent from pricing categories */
   function fetchPricing() {
@@ -884,10 +904,10 @@ export default function CreateStore() {
                 </div>
 
                 {/* RIGHT — Razorpay Payment */}
-                <div className="flex flex-col sm:w-1/2 p-6 items-center justify-center text-center gap-4">
-                  <div className="w-20 h-20 rounded-2xl flex items-center justify-center"
+                <div className="flex flex-col sm:w-1/2 p-6 items-center justify-start text-center gap-3">
+                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
                     style={{ background: "#FFF8EC", border: `2px dashed ${GOLD}` }}>
-                    <CreditCard className="w-9 h-9" style={{ color: GOLD }} />
+                    <CreditCard className="w-7 h-7" style={{ color: GOLD }} />
                   </div>
 
                   <div>
@@ -897,55 +917,44 @@ export default function CreateStore() {
                     </p>
                   </div>
 
-                  {/* AutoPay info box — shown for recurring plans */}
-                  {selectedPlan && isRecurring(selectedPlan) && (
+                  {/* Payment breakdown */}
+                  {selectedPlan && paymentBreakdown && (
                     <div className="w-full rounded-2xl overflow-hidden"
                       style={{ border: `1.5px solid ${GOLD}40`, background: `${GOLD_BG}08` }}>
-                      {/* Header */}
-                      <div className="flex items-center gap-2 px-4 py-2.5"
-                        style={{ background: `${GOLD_BG}18`, borderBottom: `1px solid ${GOLD}25` }}>
-                        <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
-                          style={{ background: GOLD_BG }}>
-                          <CheckCircle className="w-3 h-3 text-white" />
-                        </div>
-                        <p className="text-xs font-extrabold tracking-wide" style={{ color: GOLD_BG }}>
-                          AutoPay Enabled
-                        </p>
-                      </div>
-
-                      {/* Pricing breakdown */}
                       <div className="px-4 py-3 space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold" style={{ color: HINT }}>Today (first payment)</span>
+                          <span className="text-xs font-semibold" style={{ color: HINT }}>Plan original price</span>
                           <span className="text-sm font-extrabold" style={{ color: LABEL }}>
-                            {selectedPlan.price}
-                            {selectedPlan.couponCode && (
-                              <span className="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                                style={{ background: "#DCFCE7", color: "#16A34A" }}>COUPON</span>
-                            )}
+                            {formatRupees(paymentBreakdown.original)}
                           </span>
                         </div>
-                        {selectedPlan.originalPrice && selectedPlan.originalPrice !== selectedPlan.price && (
+                        {paymentBreakdown.discount > 0 && (
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold" style={{ color: HINT }}>From 2nd renewal (auto)</span>
-                            <span className="text-sm font-extrabold" style={{ color: GOLD_BG }}>
-                              {selectedPlan.originalPrice}
-                              <span className="text-[10px] font-medium ml-0.5" style={{ color: HINT }}>{selectedPlan.period.replace(/\d+-day plan/, "").trim() || "/cycle"}</span>
+                            <span className="text-xs font-semibold" style={{ color: HINT }}>
+                              You got discount
+                              {selectedPlan.couponCode && (
+                                <span className="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                                  style={{ background: "#DCFCE7", color: "#16A34A" }}>COUPON</span>
+                              )}
+                            </span>
+                            <span className="text-sm font-extrabold" style={{ color: "#16A34A" }}>
+                              -{formatRupees(paymentBreakdown.discount)}
                             </span>
                           </div>
                         )}
-                        {(!selectedPlan.originalPrice || selectedPlan.originalPrice === selectedPlan.price) && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold" style={{ color: HINT }}>Auto-renews at</span>
-                            <span className="text-sm font-extrabold" style={{ color: GOLD_BG }}>
-                              {selectedPlan.price}
-                              <span className="text-[10px] font-medium ml-0.5" style={{ color: HINT }}>/cycle</span>
-                            </span>
-                          </div>
-                        )}
-                        <p className="text-[10px] leading-relaxed text-center pt-0.5" style={{ color: "#9CA3AF" }}>
-                          You'll set up autopay after your first payment. Cancel anytime.
-                        </p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold" style={{ color: HINT }}>Payment charges (2%)</span>
+                          <span className="text-sm font-extrabold" style={{ color: LABEL }}>
+                            +{formatRupees(paymentBreakdown.charges)}
+                          </span>
+                        </div>
+                        <div className="h-px my-1" style={{ background: `${GOLD}30` }} />
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-extrabold uppercase tracking-wide" style={{ color: GOLD_BG }}>Total payable</span>
+                          <span className="text-base font-extrabold" style={{ color: GOLD_BG }}>
+                            {formatRupees(paymentBreakdown.total)}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -993,13 +1002,19 @@ export default function CreateStore() {
                         <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Setting up AutoPay…</>
                       ) : rzpLoading || submitting ? (
                         <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Processing…</>
-                      ) : selectedPlan && isRecurring(selectedPlan) ? (
-                        <><CreditCard className="w-4 h-4" /> Pay &amp; Enable AutoPay</>
+                      ) : selectedPlan && paymentBreakdown ? (
+                        <><CreditCard className="w-4 h-4" /> Pay {formatRupees(paymentBreakdown.total)}</>
                       ) : (
                         <><CreditCard className="w-4 h-4" /> Pay Now</>
                       )}
                     </motion.button>
                   </div>
+
+                  {selectedPlan && isRecurring(selectedPlan) && (
+                    <p className="text-[11px] leading-relaxed" style={{ color: "#9CA3AF" }}>
+                      You don't need to do renewal on end of subscription, it will be automatically done via AutoPay.
+                    </p>
+                  )}
 
                   {!selectedPlan && (
                     <p className="text-xs" style={{ color: "#BBAA99" }}>Please select a plan first</p>

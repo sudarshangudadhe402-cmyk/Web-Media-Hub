@@ -60,12 +60,15 @@ router.post("/payments/create-order", async (req: any, res) => {
     }
 
     const { planPrice, planName, email } = req.body;
-    const amountRupees = parsePrice(planPrice);
-    if (!amountRupees || amountRupees <= 0) {
+    const basePriceRupees = parsePrice(planPrice);
+    if (!basePriceRupees || basePriceRupees <= 0) {
       res.status(400).json({ error: "Invalid plan price" });
       return;
     }
 
+    // 2% payment gateway charge applied on top of the (possibly discounted) plan price
+    const paymentCharge = Math.round(basePriceRupees * 0.02);
+    const amountRupees = basePriceRupees + paymentCharge;
     const amountPaise = Math.round(amountRupees * 100);
 
     const Razorpay = (await import("razorpay")).default;
@@ -282,11 +285,15 @@ router.post("/payments/create-subscription", async (req: any, res) => {
     }
 
     // ── All plan data comes from the server-stored user record ─────────────
-    const amountRupees = parsePrice(user.originalPlanPrice || user.planPrice);
-    if (!amountRupees || amountRupees <= 0) {
+    const basePlanRupees = parsePrice(user.originalPlanPrice || user.planPrice);
+    if (!basePlanRupees || basePlanRupees <= 0) {
       res.status(400).json({ error: "Could not determine plan price for autopay." });
       return;
     }
+
+    // Every autopay renewal also collects a 2% payment gateway charge on top of the plan price
+    const renewalPaymentCharge = Math.round(basePlanRupees * 0.02);
+    const amountRupees = basePlanRupees + renewalPaymentCharge;
 
     const periodDays = parsePeriodDays(user.planPeriod);
     const { rzpPeriod, interval } = daysToPeriod(periodDays);
@@ -295,7 +302,7 @@ router.post("/payments/create-subscription", async (req: any, res) => {
     const Razorpay = (await import("razorpay")).default;
     const instance = new Razorpay({ key_id: rzp.key_id, key_secret: rzp.key_secret });
 
-    // Create Razorpay Plan at original (non-discounted) price
+    // Create Razorpay Plan at original (non-discounted) price + 2% payment charges
     const plan = await (instance.plans.create as any)({
       period: rzpPeriod,
       interval,
@@ -303,7 +310,7 @@ router.post("/payments/create-subscription", async (req: any, res) => {
         name: user.planName || "Store Plan",
         amount: Math.round(amountRupees * 100),
         currency: "INR",
-        description: `${user.planName || "Store Plan"} — Web Media Hub AutoPay`,
+        description: `${user.planName || "Store Plan"} — Web Media Hub AutoPay (incl. 2% payment charges)`,
       },
     });
 
