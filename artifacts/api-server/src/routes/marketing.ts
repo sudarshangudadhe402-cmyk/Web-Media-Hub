@@ -7,6 +7,7 @@ import { ReferralCode } from "../models/ReferralCode";
 import { MarketingSourceConfig } from "../models/MarketingSourceConfig";
 import { BuiltinSourceSetting } from "../models/BuiltinSourceSetting";
 import { MarketingCategoryConfig } from "../models/MarketingCategoryConfig";
+import { RevenuePayment } from "../models/RevenuePayment";
 
 const router = Router();
 
@@ -159,6 +160,22 @@ router.get("/marketing/dashboard", requireSuperAdmin, async (req: AuthRequest, r
     const thisMonthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
     const monthlyRevenueValue = monthlyMap[thisMonthKey]?.revenue ?? 0;
 
+    // New Signups Revenue vs Renewals Revenue — tracked separately from the
+    // real payment event ledger (RevenuePayment), keyed by when the money was
+    // actually collected, not by the admin's original signup date. This fixes
+    // "This Month" showing ₹0 after a renewal even though revenue came in today.
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const thisMonthPayments = await RevenuePayment.find({
+      createdAt: { $gte: monthStart, $lt: monthEnd },
+    }).select("type amount").lean();
+    const newSignupsRevenue = thisMonthPayments
+      .filter(p => p.type === "signup")
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
+    const renewalsRevenue = thisMonthPayments
+      .filter(p => p.type === "renewal")
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
+
     // By source — includes custom sources
     const bySource = allKnownKeys.map(source => {
       const group = allAdmins.filter(a => (a.signup_source || "ORGANIC") === source);
@@ -212,6 +229,8 @@ router.get("/marketing/dashboard", requireSuperAdmin, async (req: AuthRequest, r
       totalPayingAdmins,
       totalRevenue,
       monthlyRevenue: monthlyRevenueValue,
+      newSignupsRevenue,
+      renewalsRevenue,
       bySource,
       bySourceMonthly,
       monthlySignups,

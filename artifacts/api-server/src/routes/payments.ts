@@ -6,6 +6,7 @@ import { Notification } from "../models/Notification";
 import { Influencer } from "../models/Influencer";
 import { Ambassador } from "../models/Ambassador";
 import { OtpCode } from "../models/OtpCode";
+import { RevenuePayment } from "../models/RevenuePayment";
 import { sendOtpEmail } from "../services/emailOtp";
 import { requireAuth, AuthRequest } from "../middlewares/auth";
 
@@ -183,6 +184,17 @@ router.post("/payments/verify-and-register", async (req: any, res) => {
       autopaySetupToken: setupToken,
       autopaySetupTokenExpiry: setupTokenExpiry,
     });
+
+    // 4b. Record revenue event — first-time signup payment
+    const createdUser = await User.findOne({ email: emailLower }).select("_id");
+    if (createdUser) {
+      await RevenuePayment.create({
+        adminId: String(createdUser._id),
+        type: "signup",
+        amount: parsePrice(planPrice),
+        planName: planName ?? plan ?? "",
+      });
+    }
 
     // 5. Notification
     await Notification.create({
@@ -558,6 +570,14 @@ router.post("/payments/razorpay-webhook", async (req: any, res) => {
           failedPaymentCount: 0,
         }
       );
+
+      // Record revenue event — autopay renewal charge
+      await RevenuePayment.create({
+        adminId: String(user._id),
+        type: "renewal",
+        amount: parsePrice(user.originalPlanPrice || user.planPrice),
+        planName: user.planName || "",
+      });
     } else if (event === "payment.failed") {
       const user = await User.findOne({ razorpaySubscriptionId: subscriptionId });
       if (!user) {

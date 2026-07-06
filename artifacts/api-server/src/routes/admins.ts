@@ -5,6 +5,7 @@ import { Product } from "../models/Product";
 import { requireSuperAdmin } from "../middlewares/auth";
 import { DynamicPricing } from "../models/DynamicPricing";
 import { StoreRequest } from "../models/StoreRequest";
+import { RevenuePayment } from "../models/RevenuePayment";
 
 const router = Router();
 
@@ -243,6 +244,18 @@ router.patch("/admins/:id/renew-subscription", requireSuperAdmin, async (req, re
     admin.subscriptionEndDate = end;
     admin.isActive = true;
     await admin.save();
+
+    // Record revenue event — manual renewal by super-admin
+    const renewalAmount = parseFloat(String(admin.planPrice).replace(/[^\d.]/g, "")) || 0;
+    if (renewalAmount > 0) {
+      await RevenuePayment.create({
+        adminId: String(admin._id),
+        type: "renewal",
+        amount: renewalAmount,
+        planName: admin.planName || "",
+      });
+    }
+
     res.json({
       id: String(admin._id),
       subscriptionStartDate: admin.subscriptionStartDate?.toISOString() ?? null,

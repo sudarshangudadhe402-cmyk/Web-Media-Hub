@@ -565,11 +565,12 @@ function DashboardTab() {
   return (
     <div className="space-y-6">
       {/* Stats — always all-time cumulative */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard title="Total Admins" value={fmt(data.totalAdmins)} icon={Users} color="bg-blue-500" />
         <StatCard title="Paying Admins" value={fmt(data.totalPayingAdmins)} sub={`${data.totalAdmins > 0 ? Math.round(data.totalPayingAdmins/data.totalAdmins*100) : 0}% conversion`} icon={Activity} color="bg-green-500" />
         <StatCard title="Total Revenue" value={fmtRs(data.totalRevenue)} icon={DollarSign} color="bg-purple-500" />
-        <StatCard title="This Month" value={fmtRs(data.monthlyRevenue)} icon={TrendingUp} color="bg-orange-500" />
+        <StatCard title="New Signups Revenue" value={fmtRs(data.newSignupsRevenue)} sub="This month" icon={TrendingUp} color="bg-orange-500" />
+        <StatCard title="Renewals Revenue" value={fmtRs(data.renewalsRevenue)} sub="This month" icon={RefreshCw} color="bg-teal-500" />
       </div>
 
       {/* Dashed divider */}

@@ -2,3 +2,4 @@
 - [Openapi/orval hook removal checklist](openapi-hook-removal.md) — after deleting routes, always grep frontend for the generated hook names across ALL artifacts, not just the ones you edited.
 - [Razorpay payment charge surcharge](razorpay-payment-charge-surcharge.md) — 2% payment gateway charge is computed server-side from base plan price, never trusted from client, for both first payment and autopay renewals.
 - [Legacy pricing system removed](legacy-pricing-system.md) — only DynamicPricing (pricing-v2) is live now; planKey on User stores a DynamicPricing plan subdocument _id.
+- [Revenue tracking ledger](revenue-tracking-ledger.md) — "this month" revenue split (signup vs renewal) comes from a RevenuePayment event log, not User.createdAt; new payment paths must log to it.
