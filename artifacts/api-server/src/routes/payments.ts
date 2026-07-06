@@ -420,7 +420,10 @@ router.post("/payments/razorpay-webhook", async (req: any, res) => {
 
     const body = JSON.parse(rawBody) as any;
     const { event, payload } = body ?? {};
-    const subscriptionId: string | undefined = payload?.subscription?.entity?.id;
+    // subscription.* events nest the id under payload.subscription.entity.id;
+    // payment.failed events (for subscription charges) carry it on payload.payment.entity.subscription_id
+    const subscriptionId: string | undefined =
+      payload?.subscription?.entity?.id || payload?.payment?.entity?.subscription_id;
     const paymentId: string | undefined = payload?.payment?.entity?.id;
 
     if (!event || !subscriptionId) {
@@ -452,8 +455,45 @@ router.post("/payments/razorpay-webhook", async (req: any, res) => {
           subscriptionEndDate: newEnd,
           autopayStatus: "active",
           lastWebhookPaymentId: paymentId ?? "",
+          // Successful charge resets the consecutive-failure counter
+          failedPaymentCount: 0,
         }
       );
+    } else if (event === "payment.failed") {
+      const user = await User.findOne({ razorpaySubscriptionId: subscriptionId });
+      if (!user) {
+        res.json({ ok: true });
+        return;
+      }
+
+      const newFailedCount = (user.failedPaymentCount || 0) + 1;
+      req.log?.warn(
+        { subscriptionId, paymentId, failedPaymentCount: newFailedCount },
+        "Autopay payment failed"
+      );
+
+      if (newFailedCount >= 2) {
+        // 2 consecutive failures — stop autopay so no further charges are attempted.
+        const rzp = getRazorpay();
+        if (rzp) {
+          try {
+            const Razorpay = (await import("razorpay")).default;
+            const instance = new Razorpay({ key_id: rzp.key_id, key_secret: rzp.key_secret });
+            await (instance.subscriptions.cancel as any)(subscriptionId, false);
+          } catch (cancelErr) {
+            req.log?.error({ err: cancelErr, subscriptionId }, "Failed to cancel Razorpay subscription after repeated failures");
+          }
+        }
+        await User.updateOne(
+          { razorpaySubscriptionId: subscriptionId },
+          { autopayStatus: "cancelled", failedPaymentCount: newFailedCount }
+        );
+      } else {
+        await User.updateOne(
+          { razorpaySubscriptionId: subscriptionId },
+          { failedPaymentCount: newFailedCount }
+        );
+      }
     } else if (event === "subscription.authenticated") {
       await User.updateOne({ razorpaySubscriptionId: subscriptionId }, { autopayStatus: "active" });
     } else if (event === "subscription.cancelled" || event === "subscription.halted") {
