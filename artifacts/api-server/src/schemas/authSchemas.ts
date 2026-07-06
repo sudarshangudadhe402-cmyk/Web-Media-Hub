@@ -81,11 +81,22 @@ export const ForgotPasswordResetSchema = z.object({
     .regex(/^\d+$/, "Password must be digits only"),
 });
 
-const customerPasswordField = z.string().min(6).max(128).transform(stripHtml);
+const customerPasswordField = z
+  .string()
+  .min(6)
+  .max(20)
+  .regex(/^\d+$/, "Password must contain numbers only");
+
+const customerNameField = z
+  .string()
+  .min(2)
+  .max(60)
+  .regex(/^[a-zA-Z\u0080-\uFFFF\s'-]+$/, "Name must contain only letters")
+  .transform((v) => v.trim());
 
 export const CustomerSendOtpSchema = z.object({
   storeSlug: slugField,
-  name: safeString(100).optional(),
+  name: customerNameField.optional(),
   email: emailField,
   password: customerPasswordField,
   purpose: purposeField,
@@ -93,7 +104,7 @@ export const CustomerSendOtpSchema = z.object({
 
 export const CustomerVerifySignupSchema = z.object({
   storeSlug: slugField,
-  name: safeString(100),
+  name: customerNameField,
   email: emailField,
   password: customerPasswordField,
   otp: otpField,

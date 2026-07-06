@@ -81,9 +81,11 @@ export default function ProfileTab({
   const openDaySet = new Set((data.openDays ?? "").split(",").map((d) => d.trim()).filter(Boolean));
 
   const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+  const isValidName = (n: string) => /^[a-zA-Z\u0080-\uFFFF\s'-]+$/.test(n.trim()) && n.trim().length >= 2;
+  const isValidPassword = (p: string) => /^\d{6,20}$/.test(p);
 
-  const suFormValid = suName.trim().length >= 2 && isValidEmail(suEmail) && suPassword.length >= 6;
-  const siFormValid = isValidEmail(siEmail) && siPassword.length >= 6;
+  const suFormValid = isValidName(suName) && isValidEmail(suEmail) && isValidPassword(suPassword);
+  const siFormValid = isValidEmail(siEmail) && isValidPassword(siPassword);
 
   function startResendTimer() {
     setResendCountdown(30);
