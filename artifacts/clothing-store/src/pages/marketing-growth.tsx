@@ -978,7 +978,7 @@ export default function MarketingGrowth() {
               <p>Contact <strong>Web Media Hub support</strong> to redeem your coins for a free AI Promotional Video.</p>
             </div>
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-700">
-              ⚠️ Reward is <strong>not applicable</strong> on the ₹999/month plan.
+              ⚠️ Reward is <strong>not applicable</strong> on the starter/trial plan.
             </div>
             <Button className="w-full" onClick={() => setClaimHelpOpen(false)}>Got it</Button>
           </div>

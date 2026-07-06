@@ -35,7 +35,6 @@ export default defineConfig({
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),
       "@assets": path.resolve(import.meta.dirname, "..", "..", "attached_assets"),
-      "@workspace/pricing": path.resolve(import.meta.dirname, "../../lib/pricing/src/index.ts"),
       "framer-motion": path.resolve(import.meta.dirname, "node_modules/framer-motion"),
       "lucide-react": path.resolve(import.meta.dirname, "node_modules/lucide-react"),
     },

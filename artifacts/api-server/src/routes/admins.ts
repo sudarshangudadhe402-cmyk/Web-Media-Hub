@@ -3,8 +3,7 @@ import { User } from "../models/User";
 import { Store } from "../models/Store";
 import { Product } from "../models/Product";
 import { requireSuperAdmin } from "../middlewares/auth";
-import { PricingSettings } from "../models/PricingSettings";
-import { DEFAULT_PRICING_CONFIG } from "./settings";
+import { DynamicPricing } from "../models/DynamicPricing";
 import { StoreRequest } from "../models/StoreRequest";
 
 const router = Router();
@@ -33,13 +32,13 @@ function calcSubscriptionDates(
   return { start: null, end: null };
 }
 
-async function getPricingPlans() {
-  try {
-    const s = await PricingSettings.findById("pricing");
-    return (s?.plans ?? DEFAULT_PRICING_CONFIG) as typeof DEFAULT_PRICING_CONFIG;
-  } catch {
-    return DEFAULT_PRICING_CONFIG;
-  }
+async function findDynamicPlanById(planKey: string): Promise<{ durationDays: number | null } | null> {
+  if (!planKey) return null;
+  const doc = await DynamicPricing.findById("pricing-v2").lean();
+  const plans = (doc as any)?.plans ?? [];
+  const plan = plans.find((p: any) => String(p._id) === planKey);
+  if (!plan) return null;
+  return { durationDays: plan.durationDays ?? null };
 }
 
 // ── Referral rewards: admins who referred others via referral link ────────────
@@ -233,10 +232,9 @@ router.patch("/admins/:id/renew-subscription", requireSuperAdmin, async (req, re
     const admin = await User.findById(req.params.id);
     if (!admin) { res.status(404).json({ error: "Admin not found" }); return; }
 
-    const pricingPlans = await getPricingPlans();
     const planKey = admin.planKey || "";
-    const planCfg = planKey ? (pricingPlans as any)[planKey] : null;
-    const subscriptionDays: number | null = planCfg?.subscriptionDays ?? null;
+    const planCfg = await findDynamicPlanById(planKey);
+    const subscriptionDays: number | null = planCfg?.durationDays ?? null;
 
     const { start, end } = calcSubscriptionDates(subscriptionDays, admin.planPeriod ?? "");
     if (!end) { res.status(400).json({ error: "This plan does not have a subscription period" }); return; }
