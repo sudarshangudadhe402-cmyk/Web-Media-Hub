@@ -1,7 +1,7 @@
 import { useGetDashboardSummary, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CalendarCheck, MessageCircle, ChevronLeft, ShoppingBag, BookMarked, CheckCheck, Search, User } from "lucide-react";
+import { CalendarCheck, MessageCircle, ChevronLeft, ShoppingBag, BookMarked, CheckCheck, Search, User, Mail } from "lucide-react";
 import { useLocation } from "wouter";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
@@ -32,8 +32,8 @@ interface AdminBooking {
 
 interface CustomerAccountItem {
   id: string;
-  mobileNumber: string;
-  password: string;
+  name: string;
+  email: string;
   createdAt: string;
 }
 
@@ -467,7 +467,7 @@ export default function Dashboard() {
   if (view === "customeraccounts") {
     const searchQ = caSearch.trim().toLowerCase();
     const visibleAccounts = (customerAccounts ?? []).filter(a =>
-      !searchQ || a.mobileNumber.includes(searchQ)
+      !searchQ || a.name.toLowerCase().includes(searchQ) || a.email.toLowerCase().includes(searchQ)
     );
 
     return (
@@ -486,7 +486,7 @@ export default function Dashboard() {
             type="text"
             value={caSearch}
             onChange={e => setCaSearch(e.target.value)}
-            placeholder="Search by mobile number"
+            placeholder="Search by name or email"
             className="flex-1 text-sm text-gray-800 placeholder-gray-400 focus:outline-none bg-transparent"
           />
           {caSearch && (
@@ -520,24 +520,20 @@ export default function Dashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-bold text-gray-900 text-sm">{acc.mobileNumber}</p>
+                      <p className="font-bold text-gray-900 text-sm">{acc.name}</p>
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(37,99,235,0.08)", color: "#2563eb" }}>Active</span>
                     </div>
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className="text-xs text-gray-400">Password: <span className="font-bold text-gray-700">{acc.password}</span></span>
-                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">{acc.email}</p>
                     <p className="text-[10px] text-gray-300 mt-0.5">
                       Joined {new Date(acc.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                     </p>
                   </div>
                   <a
-                    href={`https://wa.me/${acc.mobileNumber.replace(/\D/g, "")}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href={`mailto:${acc.email}`}
                     className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-lg flex-shrink-0"
-                    style={{ background: "#25D366", color: "white" }}
+                    style={{ background: "rgba(37,99,235,0.1)", color: "#2563eb" }}
                   >
-                    <MessageCircle className="w-3.5 h-3.5" />
+                    <Mail className="w-3.5 h-3.5" />
                   </a>
                 </div>
               </div>

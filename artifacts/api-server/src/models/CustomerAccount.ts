@@ -3,7 +3,8 @@ import bcrypt from "bcryptjs";
 
 export interface ICustomerAccount extends Document {
   storeId: string;
-  mobileNumber: string;
+  name: string;
+  email: string;
   password: string;
   source?: string;
   campaign?: string;
@@ -23,7 +24,8 @@ function getBcryptRounds(hash: string): number {
 const CustomerAccountSchema = new Schema<ICustomerAccount>(
   {
     storeId: { type: String, required: true },
-    mobileNumber: { type: String, required: true },
+    name: { type: String, required: true },
+    email: { type: String, required: true },
     password: { type: String, required: true },
     source: { type: String },
     campaign: { type: String },
@@ -32,7 +34,7 @@ const CustomerAccountSchema = new Schema<ICustomerAccount>(
   { timestamps: true }
 );
 
-CustomerAccountSchema.index({ storeId: 1, mobileNumber: 1 }, { unique: true });
+CustomerAccountSchema.index({ storeId: 1, email: 1 }, { unique: true });
 
 CustomerAccountSchema.pre("save", async function () {
   if (!this.isModified("password")) return;

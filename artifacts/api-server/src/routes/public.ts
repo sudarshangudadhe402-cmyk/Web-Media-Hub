@@ -224,7 +224,7 @@ router.get("/public/reviews/:productId", async (req, res) => {
     res.json(reviews.map(r => ({
       id: String(r._id),
       customerId: r.customerId,
-      maskedMobile: r.maskedMobile,
+      customerName: r.customerName,
       text: r.text,
       likeCount: r.likes.length,
       likes: r.likes,
@@ -250,12 +250,12 @@ router.post("/public/reviews", ipRateLimit(5, 60_000), async (req, res) => {
     if (!account) { res.status(403).json({ error: "Invalid customer account" }); return; }
     const existing = await Review.findOne({ productId, customerId });
     if (existing) { res.status(409).json({ error: "You already reviewed this product" }); return; }
-    const maskedMobile = "User ***" + account.mobileNumber.slice(-4);
-    const review = await Review.create({ productId, storeId, customerId, maskedMobile, text: text.trim(), likes: [] });
+    const customerName = account.name || "Customer";
+    const review = await Review.create({ productId, storeId, customerId, customerName, text: text.trim(), likes: [] });
     res.status(201).json({
       id: String(review._id),
       customerId: review.customerId,
-      maskedMobile: review.maskedMobile,
+      customerName: review.customerName,
       text: review.text,
       likeCount: 0,
       likes: [],

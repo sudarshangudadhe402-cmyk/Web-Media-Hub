@@ -15,7 +15,8 @@ interface StoreData {
 
 export interface CustomerAccountInfo {
   id: string;
-  mobileNumber: string;
+  name: string;
+  email: string;
   password: string;
   createdAt: string;
 }
@@ -23,10 +24,10 @@ export interface CustomerAccountInfo {
 interface ProfileTabProps {
   data: StoreData;
   customerAccount: CustomerAccountInfo | null;
-  onSignUp: (email: string, mobile: string, password: string, otp: string) => Promise<void>;
-  onSignIn: (email: string, mobile: string, password: string, otp: string) => Promise<void>;
+  onSignUp: (name: string, email: string, password: string, otp: string) => Promise<void>;
+  onSignIn: (email: string, password: string, otp: string) => Promise<void>;
   onLogout: () => void;
-  onSendOtp: (email: string, mobile: string, password: string, purpose: "signup" | "signin") => Promise<void>;
+  onSendOtp: (name: string, email: string, password: string, purpose: "signup" | "signin") => Promise<void>;
   signUpLoading: boolean;
   signInLoading: boolean;
   otpLoading: boolean;
@@ -56,8 +57,8 @@ export default function ProfileTab({
   const [accountTab, setAccountTab] = useState<"signup" | "signin">("signup");
 
   // Signup form
+  const [suName, setSuName] = useState("");
   const [suEmail, setSuEmail] = useState("");
-  const [suMobile, setSuMobile] = useState("");
   const [suPassword, setSuPassword] = useState("");
   const [showSuPwd, setShowSuPwd] = useState(false);
   const [suOtpSent, setSuOtpSent] = useState(false);
@@ -65,7 +66,6 @@ export default function ProfileTab({
 
   // Signin form
   const [siEmail, setSiEmail] = useState("");
-  const [siMobile, setSiMobile] = useState("");
   const [siPassword, setSiPassword] = useState("");
   const [showSiPwd, setShowSiPwd] = useState(false);
   const [siOtpSent, setSiOtpSent] = useState(false);
@@ -80,11 +80,10 @@ export default function ProfileTab({
   };
   const openDaySet = new Set((data.openDays ?? "").split(",").map((d) => d.trim()).filter(Boolean));
 
-  const isValidMobile = (m: string) => /^\d{10}$/.test(m) && !/^(\d)\1{9}$/.test(m);
   const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
-  const suFormValid = isValidEmail(suEmail) && isValidMobile(suMobile) && /^\d{10}$/.test(suPassword);
-  const siFormValid = isValidEmail(siEmail) && isValidMobile(siMobile) && /^\d{10}$/.test(siPassword);
+  const suFormValid = suName.trim().length >= 2 && isValidEmail(suEmail) && suPassword.length >= 6;
+  const siFormValid = isValidEmail(siEmail) && siPassword.length >= 6;
 
   function startResendTimer() {
     setResendCountdown(30);
@@ -97,10 +96,10 @@ export default function ProfileTab({
   }
 
   async function handleSendOtp(purpose: "signup" | "signin") {
+    const name = purpose === "signup" ? suName : "";
     const email = purpose === "signup" ? suEmail : siEmail;
-    const mobile = purpose === "signup" ? suMobile : siMobile;
     const password = purpose === "signup" ? suPassword : siPassword;
-    await onSendOtp(email, mobile, password, purpose);
+    await onSendOtp(name, email, password, purpose);
     if (purpose === "signup") setSuOtpSent(true);
     else setSiOtpSent(true);
     startResendTimer();
@@ -108,9 +107,9 @@ export default function ProfileTab({
 
   async function handleVerify(purpose: "signup" | "signin") {
     if (purpose === "signup") {
-      await onSignUp(suEmail, suMobile, suPassword, suOtp);
+      await onSignUp(suName, suEmail, suPassword, suOtp);
     } else {
-      await onSignIn(siEmail, siMobile, siPassword, siOtp);
+      await onSignIn(siEmail, siPassword, siOtp);
     }
   }
 
@@ -152,8 +151,9 @@ export default function ProfileTab({
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-white font-black text-base" style={{ fontFamily: "'Montserrat', sans-serif" }}>
-                  {customerAccount.mobileNumber}
+                  {customerAccount.name}
                 </p>
+                <p className="text-white/50 text-xs mt-0.5">{customerAccount.email}</p>
                 <p className="text-white/40 text-xs mt-0.5">
                   Member since {new Date(customerAccount.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                 </p>
@@ -209,6 +209,20 @@ export default function ProfileTab({
                   /* Signup Step 1 — fill details */
                   <>
                     <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Full Name</label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                        <input
+                          type="text"
+                          value={suName}
+                          onChange={e => setSuName(e.target.value)}
+                          placeholder="Enter your full name"
+                          className="w-full rounded-xl pl-9 pr-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none border"
+                          style={{ borderColor: "#e8e8e8" }}
+                        />
+                      </div>
+                    </div>
+                    <div>
                       <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Email Address</label>
                       <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
@@ -225,28 +239,13 @@ export default function ProfileTab({
                       <p className="text-[10px] text-gray-400 mt-1">OTP will be sent to this email</p>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Mobile Number</label>
-                      <input
-                        type="tel"
-                        inputMode="numeric"
-                        maxLength={10}
-                        value={suMobile}
-                        onChange={e => setSuMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                        placeholder="10-digit mobile number"
-                        className="w-full rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none border"
-                        style={{ borderColor: "#e8e8e8" }}
-                      />
-                    </div>
-                    <div>
                       <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Password</label>
                       <div className="relative">
                         <input
                           type={showSuPwd ? "text" : "password"}
-                          inputMode="numeric"
-                          maxLength={10}
                           value={suPassword}
-                          onChange={e => setSuPassword(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                          placeholder="10-digit numeric password"
+                          onChange={e => setSuPassword(e.target.value)}
+                          placeholder="Min 6 characters"
                           className="w-full rounded-xl px-3 py-2.5 pr-10 text-sm text-gray-900 placeholder-gray-300 focus:outline-none border"
                           style={{ borderColor: "#e8e8e8" }}
                         />
@@ -254,7 +253,7 @@ export default function ProfileTab({
                           {showSuPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
-                      <p className="text-[10px] text-gray-400 mt-1">Must be exactly 10 digits</p>
+                      <p className="text-[10px] text-gray-400 mt-1">Minimum 6 characters</p>
                     </div>
                     <button
                       onClick={() => handleSendOtp("signup")}
@@ -340,28 +339,13 @@ export default function ProfileTab({
                       </div>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Mobile Number</label>
-                      <input
-                        type="tel"
-                        inputMode="numeric"
-                        maxLength={10}
-                        value={siMobile}
-                        onChange={e => setSiMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                        placeholder="10-digit mobile number"
-                        className="w-full rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none border"
-                        style={{ borderColor: "#e8e8e8" }}
-                      />
-                    </div>
-                    <div>
                       <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Password</label>
                       <div className="relative">
                         <input
                           type={showSiPwd ? "text" : "password"}
-                          inputMode="numeric"
-                          maxLength={10}
                           value={siPassword}
-                          onChange={e => setSiPassword(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                          placeholder="10-digit numeric password"
+                          onChange={e => setSiPassword(e.target.value)}
+                          placeholder="Enter your password"
                           className="w-full rounded-xl px-3 py-2.5 pr-10 text-sm text-gray-900 placeholder-gray-300 focus:outline-none border"
                           style={{ borderColor: "#e8e8e8" }}
                         />
@@ -479,7 +463,7 @@ export default function ProfileTab({
             )}
             {data.openingTime && (
               <div className="flex items-start gap-3 px-4 py-3.5">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#f5f5f5" }}>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "#f5f5f5" }}>
                   <Clock className="w-4 h-4 text-gray-600" />
                 </div>
                 <div>
@@ -494,29 +478,25 @@ export default function ProfileTab({
                   <CalendarDays className="w-4 h-4 text-gray-600" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Open Days</p>
-                  <div className="flex gap-1.5 flex-wrap">
-                    {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((abbr) => {
-                      const isOpen = openDaySet.has(DAY_FULL[abbr]);
-                      return (
-                        <span key={abbr} className="text-[10px] font-bold px-2 py-1 rounded-lg"
-                          style={isOpen ? { background: "#000000", color: "white" } : { background: "#f0f0f0", color: "#d0d0d0" }}>
-                          {abbr}
-                        </span>
-                      );
-                    })}
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Open Days</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(day => (
+                      <span key={day} className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: openDaySet.has(day) ? "#000" : "#f5f5f5", color: openDaySet.has(day) ? "#fff" : "#ccc" }}>
+                        {day}
+                      </span>
+                    ))}
                   </div>
                 </div>
               </div>
             )}
-            {data.whatsappNumber && (
+            {data.whatsappNumber && waLink && (
               <div className="flex items-start gap-3 px-4 py-3.5">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#f5f5f5" }}>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "#f5f5f5" }}>
                   <Phone className="w-4 h-4 text-gray-600" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">WhatsApp</p>
-                  <p className="text-sm text-gray-800 font-medium">{data.whatsappNumber}</p>
+                  <a href={waLink} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-green-600">{data.whatsappNumber}</a>
                 </div>
               </div>
             )}
@@ -524,59 +504,26 @@ export default function ProfileTab({
         </div>
 
         {data.description && (
-          <div className="rounded-2xl p-4" style={{ background: "#ffffff", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
-            <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">About Store</p>
-            <p className="text-sm text-gray-600 leading-relaxed">{data.description}</p>
+          <div className="rounded-2xl overflow-hidden" style={{ background: "#ffffff", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+            <div className="px-4 py-3 border-b" style={{ borderColor: "#f0f0f0" }}>
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-400">About</p>
+            </div>
+            <div className="px-4 py-3">
+              <p className="text-sm text-gray-700 leading-relaxed">{data.description}</p>
+            </div>
           </div>
         )}
 
-        <div className="rounded-2xl p-4" style={{ background: "#ffffff", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
-          <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Why Shop With Us</p>
-          <div className="space-y-3">
-            {[
-              { icon: "🪞", title: "Virtual Try-On", desc: "See how clothes look on you before booking" },
-              { icon: "🧊", title: "3D Model", desc: "Explore products in full 3D before you buy" },
-              { icon: "🎫", title: "Loyalty Card", desc: "Earn rewards on every purchase" },
-              { icon: "⚡", title: "Easy Booking", desc: "Book in seconds, pay at store" },
-              { icon: "📱", title: "Digital Catalog", desc: "Browse full collection anytime, anywhere" },
-            ].map(({ icon, title, desc }) => (
-              <div key={title} className="flex items-center gap-3">
-                <span className="text-xl">{icon}</span>
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">{title}</p>
-                  <p className="text-xs text-gray-400">{desc}</p>
-                </div>
-              </div>
-            ))}
+        <div className="rounded-2xl overflow-hidden" style={{ background: "#ffffff", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+          <div className="px-4 py-3 border-b" style={{ borderColor: "#f0f0f0" }}>
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Security</p>
+          </div>
+          <div className="px-4 py-3 flex items-start gap-3">
+            <Shield className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-gray-400 leading-relaxed">Your account is secured with email OTP verification. We never store your password in plain text.</p>
           </div>
         </div>
 
-        <div className="rounded-2xl p-4 flex items-center gap-4" style={{ background: "#000000" }}>
-          <div className="flex flex-col items-center">
-            <Star className="w-6 h-6 text-yellow-400 fill-yellow-400" />
-            <p className="text-white font-black text-xl">4.8</p>
-            <p className="text-white/50 text-[10px]">Rating</p>
-          </div>
-          <div className="w-px h-12 bg-white/10" />
-          <div className="flex-1">
-            <p className="text-white font-bold text-sm">Trusted Store</p>
-            <p className="text-white/50 text-xs mt-0.5">Powered by Web Media Hub</p>
-          </div>
-          <Shield className="w-8 h-8 text-white/20" />
-        </div>
-
-        {waLink && (
-          <a href={waLink} target="_blank" rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2.5 w-full py-4 rounded-2xl font-bold text-sm"
-            style={{ background: "#25D366", color: "white", fontFamily: "'Montserrat', sans-serif" }}>
-            <MessageCircle className="w-5 h-5" />
-            Chat on WhatsApp
-          </a>
-        )}
-
-        <p className="text-center text-xs text-gray-300 pb-2">
-          Powered by <span className="font-bold text-gray-400">Web Media Hub</span>
-        </p>
       </div>
     </div>
   );

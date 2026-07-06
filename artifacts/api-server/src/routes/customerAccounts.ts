@@ -16,13 +16,6 @@ import {
 
 const router = Router();
 
-function isValidMobile(mobile: string): boolean {
-  if (!/^\d{10}$/.test(mobile)) return false;
-  if (/^(\d)\1{9}$/.test(mobile)) return false;
-  const spam = ["1234567890", "0123456789", "9876543210", "1111111111", "0000000000"];
-  return !spam.includes(mobile);
-}
-
 function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
@@ -34,25 +27,20 @@ function isValidEmail(email: string): boolean {
 /* ── SEND OTP ── */
 router.post("/public/customer-account/send-otp", validate(CustomerSendOtpSchema), async (req, res) => {
   try {
-    const { storeSlug, email, mobileNumber, password, purpose } = req.body;
+    const { storeSlug, name, email, password, purpose } = req.body;
 
-    if (!storeSlug || !email || !mobileNumber || !password || !purpose) {
+    if (!storeSlug || !email || !password || !purpose) {
       res.status(400).json({ error: "All fields are required" });
+      return;
+    }
+
+    if (purpose === "signup" && (!name || name.trim().length < 2)) {
+      res.status(400).json({ error: "Please enter your full name" });
       return;
     }
 
     if (!isValidEmail(email)) {
       res.status(400).json({ error: "Please enter a valid email address" });
-      return;
-    }
-
-    if (!isValidMobile(mobileNumber)) {
-      res.status(400).json({ error: "Please enter a valid 10-digit mobile number" });
-      return;
-    }
-
-    if (!/^\d{10}$/.test(password)) {
-      res.status(400).json({ error: "Password must be exactly 10 digits" });
       return;
     }
 
@@ -65,13 +53,13 @@ router.post("/public/customer-account/send-otp", validate(CustomerSendOtpSchema)
     const storeId = String(store._id);
 
     if (purpose === "signup") {
-      const existing = await CustomerAccount.findOne({ storeId, mobileNumber });
+      const existing = await CustomerAccount.findOne({ storeId, email });
       if (existing) {
         res.status(409).json({ error: "Unable to process request. Please try again.", code: "already_exists" });
         return;
       }
     } else if (purpose === "signin") {
-      const account = await CustomerAccount.findOne({ storeId, mobileNumber });
+      const account = await CustomerAccount.findOne({ storeId, email });
       if (!account) {
         res.status(401).json({ error: "Incorrect email or password.", code: "not_found" });
         return;
@@ -108,9 +96,9 @@ router.post("/public/customer-account/send-otp", validate(CustomerSendOtpSchema)
 /* ── VERIFY OTP + SIGNUP ── */
 router.post("/public/customer-account/verify-signup", validate(CustomerVerifySignupSchema), async (req, res) => {
   try {
-    const { storeSlug, email, mobileNumber, password, otp } = req.body;
+    const { storeSlug, name, email, password, otp } = req.body;
 
-    if (!storeSlug || !email || !mobileNumber || !password || !otp) {
+    if (!storeSlug || !name || !email || !password || !otp) {
       res.status(400).json({ error: "All fields are required" });
       return;
     }
@@ -140,7 +128,7 @@ router.post("/public/customer-account/verify-signup", validate(CustomerVerifySig
       return;
     }
 
-    const existing = await CustomerAccount.findOne({ storeId, mobileNumber });
+    const existing = await CustomerAccount.findOne({ storeId, email });
     if (existing) {
       res.status(409).json({ error: "Unable to complete registration. Please try again.", code: "already_exists" });
       return;
@@ -152,10 +140,8 @@ router.post("/public/customer-account/verify-signup", validate(CustomerVerifySig
     const source = typeof req.body.source === "string" ? req.body.source.slice(0, 50) : undefined;
     const campaign = typeof req.body.campaign === "string" ? req.body.campaign.slice(0, 100) : undefined;
 
-    const account = await CustomerAccount.create({ storeId, mobileNumber, password, source, campaign });
+    const account = await CustomerAccount.create({ storeId, name: name.trim(), email, password, source, campaign });
 
-    // Increment trackedCount (account opens) on the matching campaign.
-    // Don't filter by isActive — attribution should be counted even if the campaign was later deactivated.
     if (source && campaign) {
       MarketingCampaign.findOneAndUpdate(
         { storeId, source, campaignSlug: campaign },
@@ -167,7 +153,8 @@ router.post("/public/customer-account/verify-signup", validate(CustomerVerifySig
 
     res.status(201).json({
       id: String(account._id),
-      mobileNumber: account.mobileNumber,
+      name: account.name,
+      email: account.email,
       createdAt: account.createdAt,
     });
   } catch (err) {
@@ -178,9 +165,9 @@ router.post("/public/customer-account/verify-signup", validate(CustomerVerifySig
 /* ── VERIFY OTP + SIGNIN ── */
 router.post("/public/customer-account/verify-signin", validate(CustomerVerifySigninSchema), async (req, res) => {
   try {
-    const { storeSlug, email, mobileNumber, password, otp } = req.body;
+    const { storeSlug, email, password, otp } = req.body;
 
-    if (!storeSlug || !email || !mobileNumber || !password || !otp) {
+    if (!storeSlug || !email || !password || !otp) {
       res.status(400).json({ error: "All fields are required" });
       return;
     }
@@ -210,7 +197,7 @@ router.post("/public/customer-account/verify-signin", validate(CustomerVerifySig
       return;
     }
 
-    const account = await CustomerAccount.findOne({ storeId, mobileNumber });
+    const account = await CustomerAccount.findOne({ storeId, email });
     if (!account) {
       res.status(401).json({ error: "Account verification failed", code: "wrong_password" });
       return;
@@ -231,12 +218,12 @@ router.post("/public/customer-account/verify-signin", validate(CustomerVerifySig
     otpDoc.used = true;
     await otpDoc.save();
 
-    // Update last activity timestamp on successful signin
     CustomerAccount.updateOne({ _id: account._id }, { $set: { lastActivityAt: new Date() } }).catch(() => {});
 
     res.json({
       id: String(account._id),
-      mobileNumber: account.mobileNumber,
+      name: account.name,
+      email: account.email,
       createdAt: account.createdAt,
     });
   } catch (err) {
@@ -259,7 +246,8 @@ router.get("/customer-accounts", requireAuth, async (req: AuthRequest, res) => {
 
     res.json(accounts.map(a => ({
       id: String(a._id),
-      mobileNumber: a.mobileNumber,
+      name: a.name,
+      email: a.email,
       createdAt: a.createdAt,
     })));
   } catch (err) {

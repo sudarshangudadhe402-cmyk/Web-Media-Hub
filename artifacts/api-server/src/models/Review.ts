@@ -4,7 +4,7 @@ export interface IReview extends Document {
   productId: string;
   storeId: string;
   customerId: string;
-  maskedMobile: string;
+  customerName: string;
   text: string;
   likes: string[];
   createdAt: Date;
@@ -16,7 +16,7 @@ const ReviewSchema = new Schema<IReview>(
     productId: { type: String, required: true },
     storeId: { type: String, required: true },
     customerId: { type: String, required: true },
-    maskedMobile: { type: String, required: true },
+    customerName: { type: String, required: true },
     text: { type: String, required: true, maxlength: 500 },
     likes: { type: [String], default: [] },
   },

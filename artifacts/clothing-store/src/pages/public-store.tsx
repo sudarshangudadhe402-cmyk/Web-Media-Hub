@@ -63,7 +63,7 @@ interface SavedBooking {
 interface ReviewItem {
   id: string;
   customerId: string;
-  maskedMobile: string;
+  customerName: string;
   text: string;
   likeCount: number;
   likes: string[];
@@ -339,7 +339,7 @@ export default function PublicStore() {
     } catch {}
   }
 
-  async function handleSendOtp(email: string, mobile: string, password: string, purpose: "signup" | "signin") {
+  async function handleSendOtp(name: string, email: string, password: string, purpose: "signup" | "signin") {
     setOtpLoading(true);
     setOtpError(null);
     setSignUpError(null);
@@ -348,7 +348,7 @@ export default function PublicStore() {
       const res = await fetch("/api/public/customer-account/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storeSlug: slug, email, mobileNumber: mobile, password, purpose }),
+        body: JSON.stringify({ storeSlug: slug, name: name || undefined, email, password, purpose }),
       });
       const d = await res.json();
       if (!res.ok) { setOtpError(d.error || "Failed to send OTP"); throw new Error(d.error); }
@@ -358,7 +358,7 @@ export default function PublicStore() {
     } finally { setOtpLoading(false); }
   }
 
-  async function handleAccountSignUp(email: string, mobile: string, password: string, otp: string) {
+  async function handleAccountSignUp(name: string, email: string, password: string, otp: string) {
     setSignUpLoading(true);
     setSignUpError(null);
     try {
@@ -367,11 +367,11 @@ export default function PublicStore() {
       const res = await fetch("/api/public/customer-account/verify-signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storeSlug: slug, email, mobileNumber: mobile, password, otp, source: tracking.source ?? undefined, campaign: tracking.campaign ?? undefined }),
+        body: JSON.stringify({ storeSlug: slug, name, email, password, otp, source: tracking.source ?? undefined, campaign: tracking.campaign ?? undefined }),
       });
       const d = await res.json();
       if (!res.ok) { setSignUpError(d.error || "Verification failed"); return; }
-      const acc: CustomerAccountInfo = { id: d.id, mobileNumber: d.mobileNumber, password, createdAt: d.createdAt };
+      const acc: CustomerAccountInfo = { id: d.id, name: d.name, email: d.email, password, createdAt: d.createdAt };
       setCustomerAccount(acc);
       localStorage.setItem(`wmh_account_${slug}`, JSON.stringify(acc));
       setSignUpError(null);
@@ -379,18 +379,18 @@ export default function PublicStore() {
     finally { setSignUpLoading(false); }
   }
 
-  async function handleAccountSignIn(email: string, mobile: string, password: string, otp: string) {
+  async function handleAccountSignIn(email: string, password: string, otp: string) {
     setSignInLoading(true);
     setSignInError(null);
     try {
       const res = await fetch("/api/public/customer-account/verify-signin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storeSlug: slug, email, mobileNumber: mobile, password, otp }),
+        body: JSON.stringify({ storeSlug: slug, email, password, otp }),
       });
       const d = await res.json();
       if (!res.ok) { setSignInError(d.error || "Verification failed"); return; }
-      const acc: CustomerAccountInfo = { id: d.id, mobileNumber: d.mobileNumber, password, createdAt: d.createdAt };
+      const acc: CustomerAccountInfo = { id: d.id, name: d.name, email: d.email, password, createdAt: d.createdAt };
       setCustomerAccount(acc);
       localStorage.setItem(`wmh_account_${slug}`, JSON.stringify(acc));
       setSignInError(null);
@@ -950,11 +950,11 @@ export default function PublicStore() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black text-white shrink-0" style={{ background: isOwn ? "#22c55e" : "#9ca3af" }}>
-                              {review.maskedMobile.slice(-2)}
+                              {review.customerName.slice(0, 2).toUpperCase()}
                             </div>
                             <div>
                               <p className="text-xs font-bold text-gray-800">
-                                {review.maskedMobile}
+                                {review.customerName}
                                 {isOwn && <span className="ml-1 text-green-600 font-semibold">(You)</span>}
                               </p>
                               <p className="text-[10px] text-gray-400">

@@ -81,19 +81,21 @@ export const ForgotPasswordResetSchema = z.object({
     .regex(/^\d+$/, "Password must be digits only"),
 });
 
+const customerPasswordField = z.string().min(6).max(128).transform(stripHtml);
+
 export const CustomerSendOtpSchema = z.object({
   storeSlug: slugField,
+  name: safeString(100).optional(),
   email: emailField,
-  mobileNumber: mobileField,
-  password: z.string().regex(/^\d{10}$/, "Password must be 10 digits"),
+  password: customerPasswordField,
   purpose: purposeField,
 });
 
 export const CustomerVerifySignupSchema = z.object({
   storeSlug: slugField,
+  name: safeString(100),
   email: emailField,
-  mobileNumber: mobileField,
-  password: z.string().regex(/^\d{10}$/, "Password must be 10 digits"),
+  password: customerPasswordField,
   otp: otpField,
   source: safeString(50).optional(),
   campaign: safeString(100).optional(),
@@ -102,7 +104,6 @@ export const CustomerVerifySignupSchema = z.object({
 export const CustomerVerifySigninSchema = z.object({
   storeSlug: slugField,
   email: emailField,
-  mobileNumber: mobileField,
-  password: z.string().regex(/^\d{10}$/, "Password must be 10 digits"),
+  password: customerPasswordField,
   otp: otpField,
 });
