@@ -5,6 +5,9 @@ import { StoreRequest } from "../models/StoreRequest";
 import { Notification } from "../models/Notification";
 import { Influencer } from "../models/Influencer";
 import { Ambassador } from "../models/Ambassador";
+import { OtpCode } from "../models/OtpCode";
+import { sendOtpEmail } from "../services/emailOtp";
+import { requireAuth, AuthRequest } from "../middlewares/auth";
 
 const router = Router();
 
@@ -386,6 +389,95 @@ router.post("/payments/verify-subscription-auth", async (req: any, res) => {
   } catch (err) {
     req.log?.error({ err }, "Verify subscription auth error");
     res.status(500).json({ error: "Failed to verify subscription authentication." });
+  }
+});
+
+// ── POST /api/payments/autopay/send-cancel-otp ────────────────────────────────
+// Sends an OTP to the logged-in store owner's email to confirm AutoPay cancellation
+router.post("/payments/autopay/send-cancel-otp", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const user = req.user!;
+    if (!user.razorpaySubscriptionId || user.autopayStatus !== "active") {
+      res.status(400).json({ error: "AutoPay is not currently active on this account." });
+      return;
+    }
+
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await OtpCode.create({
+      email: user.email.toLowerCase().trim(),
+      storeId: String(user._id),
+      code,
+      purpose: "cancel-autopay",
+      expiresAt,
+    });
+
+    await sendOtpEmail(user.email, code, user.planName || "your store", "cancel-autopay");
+
+    res.json({ success: true, email: user.email });
+  } catch (err) {
+    (req as any).log?.error({ err }, "Send cancel-autopay OTP error");
+    res.status(500).json({ error: "Failed to send verification code." });
+  }
+});
+
+// ── POST /api/payments/autopay/cancel ─────────────────────────────────────────
+// Verifies the OTP and cancels the Razorpay AutoPay subscription
+router.post("/payments/autopay/cancel", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const user = req.user!;
+    const { otp } = req.body;
+    if (!otp) {
+      res.status(400).json({ error: "OTP is required." });
+      return;
+    }
+
+    if (!user.razorpaySubscriptionId || user.autopayStatus !== "active") {
+      res.status(400).json({ error: "AutoPay is not currently active on this account." });
+      return;
+    }
+
+    const emailLower = user.email.toLowerCase().trim();
+    const record = await OtpCode.findOne({
+      email: emailLower,
+      purpose: "cancel-autopay",
+      used: false,
+    }).sort({ createdAt: -1 });
+
+    if (
+      !record ||
+      new Date() > record.expiresAt ||
+      record.code.length !== String(otp).length ||
+      !crypto.timingSafeEqual(Buffer.from(record.code), Buffer.from(String(otp)))
+    ) {
+      res.status(400).json({ error: "Invalid or expired OTP." });
+      return;
+    }
+
+    record.used = true;
+    await record.save();
+
+    const rzp = getRazorpay();
+    if (rzp) {
+      try {
+        const Razorpay = (await import("razorpay")).default;
+        const instance = new Razorpay({ key_id: rzp.key_id, key_secret: rzp.key_secret });
+        // Cancel at cycle end so the customer keeps access until subscriptionEndDate
+        await (instance.subscriptions.cancel as any)(user.razorpaySubscriptionId, true);
+      } catch (cancelErr) {
+        (req as any).log?.error({ err: cancelErr }, "Failed to cancel Razorpay subscription");
+        res.status(502).json({ error: "Failed to cancel AutoPay with payment gateway. Please try again." });
+        return;
+      }
+    }
+
+    await User.updateOne({ _id: user._id }, { autopayStatus: "cancelled" });
+
+    res.json({ success: true });
+  } catch (err) {
+    (req as any).log?.error({ err }, "Cancel autopay error");
+    res.status(500).json({ error: "Failed to cancel AutoPay." });
   }
 });
 

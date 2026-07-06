@@ -126,6 +126,11 @@ export default function MyStore() {
   const logoSrc = `${import.meta.env.BASE_URL ?? "/"}wmh-logo.png`;
   const [circularLogoSrc, setCircularLogoSrc] = useState<string>(logoSrc);
 
+  const [cancelStep, setCancelStep] = useState<"idle" | "otp" | "sending" | "verifying">("idle");
+  const [cancelOtp, setCancelOtp] = useState("");
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [cancelSentTo, setCancelSentTo] = useState("");
+
   useEffect(() => {
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -228,6 +233,66 @@ export default function MyStore() {
       }
     }, "image/png");
   }, [buildStyledCanvas, toast]);
+
+  const handleSendCancelOtp = useCallback(async () => {
+    setCancelError(null);
+    setCancelStep("sending");
+    try {
+      const token = localStorage.getItem("wmh_token");
+      const res = await fetch("/api/payments/autopay/send-cancel-otp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCancelError(data.error ?? "Failed to send verification code.");
+        setCancelStep("idle");
+        return;
+      }
+      setCancelSentTo(data.email ?? user?.email ?? "");
+      setCancelOtp("");
+      setCancelStep("otp");
+    } catch {
+      setCancelError("Network error. Please try again.");
+      setCancelStep("idle");
+    }
+  }, [user]);
+
+  const handleVerifyCancelOtp = useCallback(async () => {
+    if (!cancelOtp.trim()) {
+      setCancelError("Please enter the OTP sent to your email.");
+      return;
+    }
+    setCancelError(null);
+    setCancelStep("verifying");
+    try {
+      const token = localStorage.getItem("wmh_token");
+      const res = await fetch("/api/payments/autopay/cancel", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ otp: cancelOtp.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCancelError(data.error ?? "Failed to cancel AutoPay.");
+        setCancelStep("otp");
+        return;
+      }
+      toast({ title: "AutoPay cancelled", description: "Your subscription will not auto-renew after the current period ends." });
+      setCancelStep("idle");
+      setCancelOtp("");
+      queryClient.invalidateQueries();
+    } catch {
+      setCancelError("Network error. Please try again.");
+      setCancelStep("otp");
+    }
+  }, [cancelOtp, toast, queryClient]);
 
   useEffect(() => {
     if (store && !initializedRef.current) {
@@ -451,28 +516,97 @@ export default function MyStore() {
               {/* Plan Card */}
               {user?.planName && (
                 <div
-                  className="rounded-xl border px-4 py-3 space-y-1"
+                  className="rounded-xl border px-4 py-3 flex items-start justify-between gap-3"
                   style={{
                     borderColor: user.planColor ? user.planColor + "55" : undefined,
                     background: user.planColor ? user.planColor + "11" : undefined,
                   }}
                 >
-                  <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: user.planColor || "#888" }}>
-                    {user.planBadge}
-                  </p>
-                  <p className="font-bold text-sm">{user.planName}</p>
-                  {user.planPrice && (
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-lg font-extrabold" style={{ color: user.planColor || undefined }}>
-                        {user.planPrice}
-                      </span>
-                      {user.planPeriod && (
-                        <span className="text-xs text-muted-foreground">{user.planPeriod}</span>
-                      )}
-                    </div>
+                  <div className="space-y-1 min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: user.planColor || "#888" }}>
+                      {user.planBadge}
+                    </p>
+                    <p className="font-bold text-sm">{user.planName}</p>
+                    {user.planPrice && (
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-lg font-extrabold" style={{ color: user.planColor || undefined }}>
+                          {user.planPrice}
+                        </span>
+                        {user.planPeriod && (
+                          <span className="text-xs text-muted-foreground">{user.planPeriod}</span>
+                        )}
+                      </div>
+                    )}
+                    {user.subscriptionEndDate && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Valid till {new Date(user.subscriptionEndDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                      </p>
+                    )}
+                  </div>
+
+                  {user.autopayStatus === "active" && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 text-xs text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                      onClick={() => { setCancelError(null); handleSendCancelOtp(); }}
+                      disabled={cancelStep === "sending"}
+                    >
+                      {cancelStep === "sending" ? "Sending…" : "Cancel AutoPay"}
+                    </Button>
+                  )}
+                  {user.autopayStatus === "cancelled" && (
+                    <span className="shrink-0 text-[10px] font-semibold text-red-500 bg-red-50 border border-red-200 rounded-full px-2 py-1">
+                      AutoPay Cancelled
+                    </span>
                   )}
                 </div>
               )}
+
+              {/* Cancel AutoPay — OTP verification dialog */}
+              <Dialog open={cancelStep === "otp" || cancelStep === "verifying"} onOpenChange={(open) => { if (!open) { setCancelStep("idle"); setCancelOtp(""); setCancelError(null); } }}>
+                <DialogContent className="max-w-sm">
+                  <DialogHeader>
+                    <DialogTitle>Cancel AutoPay</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      We've sent a 6-digit OTP to <span className="font-medium text-foreground">{cancelSentTo}</span>. Enter it below to confirm cancellation. Your store stays active until the current billing period ends — it just won't auto-renew.
+                    </p>
+                    <Input
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="Enter OTP"
+                      value={cancelOtp}
+                      onChange={(e) => setCancelOtp(e.target.value.replace(/\D/g, ""))}
+                      className="text-center tracking-[0.3em] font-semibold"
+                    />
+                    {cancelError && <p className="text-xs text-red-600">{cancelError}</p>}
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs"
+                        onClick={handleSendCancelOtp}
+                        disabled={cancelStep === "verifying"}
+                      >
+                        Resend OTP
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        className="flex-1"
+                        onClick={handleVerifyCancelOtp}
+                        disabled={cancelStep === "verifying"}
+                      >
+                        {cancelStep === "verifying" ? "Cancelling…" : "Confirm Cancellation"}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
 
               {/* Info rows */}
               <div className="divide-y divide-border rounded-xl border overflow-hidden">

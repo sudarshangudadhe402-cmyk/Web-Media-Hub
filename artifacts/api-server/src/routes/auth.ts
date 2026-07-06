@@ -260,6 +260,10 @@ router.get("/auth/me", requireDb, requireAuth, async (req: AuthRequest, res) => 
     planPeriod: user.planPeriod ?? "",
     planBadge: user.planBadge ?? "",
     planColor: user.planColor ?? "",
+    subscriptionStartDate: user.subscriptionStartDate ? user.subscriptionStartDate.toISOString() : null,
+    subscriptionEndDate: user.subscriptionEndDate ? user.subscriptionEndDate.toISOString() : null,
+    autopayStatus: user.autopayStatus ?? "none",
+    razorpaySubscriptionId: user.razorpaySubscriptionId ?? "",
   });
 });
 

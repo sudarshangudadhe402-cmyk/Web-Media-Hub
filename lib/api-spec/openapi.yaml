@@ -617,6 +617,11 @@ components:
           type: ["string", "null"]
         subscriptionEndDate:
           type: ["string", "null"]
+        autopayStatus:
+          type: string
+          enum: [none, pending, active, cancelled]
+        razorpaySubscriptionId:
+          type: string
         createdAt:
           type: string
 

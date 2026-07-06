@@ -37,6 +37,16 @@ export const UserRole = {
   admin: 'admin',
 } as const;
 
+export type UserAutopayStatus = typeof UserAutopayStatus[keyof typeof UserAutopayStatus];
+
+
+export const UserAutopayStatus = {
+  none: 'none',
+  pending: 'pending',
+  active: 'active',
+  cancelled: 'cancelled',
+} as const;
+
 export interface User {
   id: string;
   username: string;
@@ -53,6 +63,8 @@ export interface User {
   subscriptionStartDate?: string | null;
   /** @nullable */
   subscriptionEndDate?: string | null;
+  autopayStatus?: UserAutopayStatus;
+  razorpaySubscriptionId?: string;
   createdAt?: string;
 }
 

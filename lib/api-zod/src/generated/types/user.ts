@@ -5,6 +5,7 @@
  * Web Media Hub - Multi-store clothing management API
  * OpenAPI spec version: 0.1.0
  */
+import type { UserAutopayStatus } from './userAutopayStatus';
 import type { UserRole } from './userRole';
 
 export interface User {
@@ -23,5 +24,7 @@ export interface User {
   subscriptionStartDate?: string | null;
   /** @nullable */
   subscriptionEndDate?: string | null;
+  autopayStatus?: UserAutopayStatus;
+  razorpaySubscriptionId?: string;
   createdAt?: string;
 }

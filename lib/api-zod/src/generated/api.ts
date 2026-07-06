@@ -40,6 +40,8 @@ export const LoginResponse = zod.object({
   "planColor": zod.string().optional(),
   "subscriptionStartDate": zod.string().nullish(),
   "subscriptionEndDate": zod.string().nullish(),
+  "autopayStatus": zod.enum(['none', 'pending', 'active', 'cancelled']).optional(),
+  "razorpaySubscriptionId": zod.string().optional(),
   "createdAt": zod.string().optional()
 })
 })
@@ -62,6 +64,8 @@ export const GetMeResponse = zod.object({
   "planColor": zod.string().optional(),
   "subscriptionStartDate": zod.string().nullish(),
   "subscriptionEndDate": zod.string().nullish(),
+  "autopayStatus": zod.enum(['none', 'pending', 'active', 'cancelled']).optional(),
+  "razorpaySubscriptionId": zod.string().optional(),
   "createdAt": zod.string().optional()
 })
 
@@ -89,6 +93,8 @@ export const ChangePasswordResponse = zod.object({
   "planColor": zod.string().optional(),
   "subscriptionStartDate": zod.string().nullish(),
   "subscriptionEndDate": zod.string().nullish(),
+  "autopayStatus": zod.enum(['none', 'pending', 'active', 'cancelled']).optional(),
+  "razorpaySubscriptionId": zod.string().optional(),
   "createdAt": zod.string().optional()
 })
 
@@ -467,6 +473,8 @@ export const ListAdminsResponseItem = zod.object({
   "planColor": zod.string().optional(),
   "subscriptionStartDate": zod.string().nullish(),
   "subscriptionEndDate": zod.string().nullish(),
+  "autopayStatus": zod.enum(['none', 'pending', 'active', 'cancelled']).optional(),
+  "razorpaySubscriptionId": zod.string().optional(),
   "createdAt": zod.string().optional()
 })
 export const ListAdminsResponse = zod.array(ListAdminsResponseItem)

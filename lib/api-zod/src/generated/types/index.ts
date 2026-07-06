@@ -36,4 +36,5 @@ export * from './store';
 export * from './storeInput';
 export * from './storeUpdate';
 export * from './user';
+export * from './userAutopayStatus';
 export * from './userRole';
