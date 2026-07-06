@@ -29,6 +29,14 @@ export interface IUser extends Document {
   utm_source: string;
   source_confirmed: boolean;
   storeType: string;
+  // Razorpay autopay
+  razorpaySubscriptionId: string;
+  razorpayPlanId: string;
+  autopayStatus: "none" | "pending" | "active" | "cancelled";
+  originalPlanPrice: string;
+  autopaySetupToken: string;
+  autopaySetupTokenExpiry: Date | null;
+  lastWebhookPaymentId: string; // idempotency key for subscription.charged events
   createdAt: Date;
   comparePassword(candidate: string): Promise<boolean>;
   needsRehash(): boolean;
@@ -73,6 +81,14 @@ const UserSchema = new Schema<IUser>(
     utm_source: { type: String, default: "" },
     source_confirmed: { type: Boolean, default: false },
     storeType: { type: String, default: "" },
+    // Razorpay autopay
+    razorpaySubscriptionId: { type: String, default: "" },
+    razorpayPlanId: { type: String, default: "" },
+    autopayStatus: { type: String, enum: ["none", "pending", "active", "cancelled"], default: "none" },
+    originalPlanPrice: { type: String, default: "" },
+    autopaySetupToken: { type: String, default: "" },
+    autopaySetupTokenExpiry: { type: Date, default: null },
+    lastWebhookPaymentId: { type: String, default: "" },
   },
   { timestamps: true }
 );

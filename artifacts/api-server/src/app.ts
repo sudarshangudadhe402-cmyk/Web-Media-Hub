@@ -69,6 +69,10 @@ app.use(
   })
 );
 
+// Raw body capture for Razorpay webhook HMAC verification.
+// Must come BEFORE express.json() so the request stream isn't consumed twice.
+app.use("/api/payments/razorpay-webhook", express.raw({ type: "*/*" }));
+
 // Limit body size — 50 MB for 3D model uploads, 10 MB for image uploads, 1 MB for everything else
 app.use((req: Request, res: Response, next: NextFunction) => {
   const isModelUpload = req.path.includes("/upload-model");

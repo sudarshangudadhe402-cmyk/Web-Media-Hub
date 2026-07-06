@@ -148,6 +148,14 @@ router.post("/payments/verify-and-register", async (req: any, res) => {
     const autoUsername = `admin_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const { start, end } = calcSubscriptionDates(planPeriod ?? "");
 
+    const {
+      originalPlanPrice: rawOriginalPrice,
+    } = req.body;
+
+    // Generate a short-lived token for the autopay setup step
+    const setupToken = crypto.randomBytes(32).toString("hex");
+    const setupTokenExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
     await User.create({
       username: autoUsername,
       email: emailLower,
@@ -164,6 +172,10 @@ router.post("/payments/verify-and-register", async (req: any, res) => {
       coupon_code: couponCode ? String(couponCode).toUpperCase() : "",
       signup_source: couponCode ? "INFLUENCER" : "ORGANIC",
       storeType: storeType ?? "",
+      originalPlanPrice: rawOriginalPrice ? String(rawOriginalPrice) : (planPrice ?? ""),
+      autopayStatus: "none",
+      autopaySetupToken: setupToken,
+      autopaySetupTokenExpiry: setupTokenExpiry,
     });
 
     // 5. Notification
@@ -182,10 +194,259 @@ router.post("/payments/verify-and-register", async (req: any, res) => {
       }
     }
 
-    res.json({ success: true, email: emailLower, storeName });
+    res.json({ success: true, email: emailLower, storeName, autopaySetupToken: setupToken });
   } catch (err) {
     req.log?.error({ err }, "Verify and register error");
     res.status(500).json({ error: "Registration failed. Please contact support." });
+  }
+});
+
+// ── Helpers for subscription period ─────────────────────────────────────────
+
+/** Parse day count from planPeriod strings like "30-day plan", "365-day plan" */
+function parsePeriodDays(period: string): number {
+  const m = String(period).match(/(\d+)/);
+  if (m) return parseInt(m[1]);
+  const p = period.toLowerCase();
+  if (p.includes("year")) return 365;
+  if (p.includes("month")) return 30;
+  return 30;
+}
+
+/** Map a day count to the nearest Razorpay billing period */
+function daysToPeriod(days: number): { rzpPeriod: "monthly" | "yearly"; interval: number } {
+  if (days >= 300) return { rzpPeriod: "yearly", interval: 1 };
+  if (days >= 60) return { rzpPeriod: "monthly", interval: Math.max(1, Math.round(days / 30)) };
+  return { rzpPeriod: "monthly", interval: 1 };
+}
+
+// ── POST /api/payments/create-subscription ───────────────────────────────────
+// After first payment is verified: creates a Razorpay plan + subscription that
+// starts billing at the NEXT renewal date (mandate-only flow today, no charge).
+// Requires a short-lived autopaySetupToken issued by verify-and-register.
+router.post("/payments/create-subscription", async (req: any, res) => {
+  try {
+    const rzp = getRazorpay();
+    if (!rzp) {
+      res.status(503).json({ error: "Payment gateway not configured." });
+      return;
+    }
+
+    const { email, autopaySetupToken } = req.body;
+    if (!email || !autopaySetupToken) {
+      res.status(400).json({ error: "Missing required fields." });
+      return;
+    }
+
+    const emailLower = String(email).toLowerCase().trim();
+    const user = await User.findOne({ email: emailLower });
+    if (!user) {
+      res.status(404).json({ error: "User not found." });
+      return;
+    }
+
+    // ── Validate one-time setup token ─────────────────────────────────────
+    if (
+      !user.autopaySetupToken ||
+      user.autopaySetupToken !== String(autopaySetupToken) ||
+      !user.autopaySetupTokenExpiry ||
+      new Date() > user.autopaySetupTokenExpiry
+    ) {
+      res.status(403).json({ error: "Invalid or expired autopay setup token." });
+      return;
+    }
+
+    // ── Guard: only recurring plans have a renewal date ───────────────────
+    if (!user.subscriptionEndDate) {
+      res.status(400).json({ error: "This plan does not support autopay." });
+      return;
+    }
+
+    // ── All plan data comes from the server-stored user record ─────────────
+    const amountRupees = parsePrice(user.originalPlanPrice || user.planPrice);
+    if (!amountRupees || amountRupees <= 0) {
+      res.status(400).json({ error: "Could not determine plan price for autopay." });
+      return;
+    }
+
+    const periodDays = parsePeriodDays(user.planPeriod);
+    const { rzpPeriod, interval } = daysToPeriod(periodDays);
+    const start_at = Math.floor(user.subscriptionEndDate.getTime() / 1000);
+
+    const Razorpay = (await import("razorpay")).default;
+    const instance = new Razorpay({ key_id: rzp.key_id, key_secret: rzp.key_secret });
+
+    // Create Razorpay Plan at original (non-discounted) price
+    const plan = await (instance.plans.create as any)({
+      period: rzpPeriod,
+      interval,
+      item: {
+        name: user.planName || "Store Plan",
+        amount: Math.round(amountRupees * 100),
+        currency: "INR",
+        description: `${user.planName || "Store Plan"} — Web Media Hub AutoPay`,
+      },
+    });
+
+    // Create subscription starting at next renewal (mandate only today — no charge)
+    const totalCount = rzpPeriod === "yearly" ? 10 : 120;
+    const subscription = await (instance.subscriptions.create as any)({
+      plan_id: plan.id,
+      total_count: totalCount,
+      quantity: 1,
+      start_at,
+      customer_notify: 1,
+      notes: { email: emailLower, planName: user.planName || "" },
+    });
+
+    // Consume token (one-time use) and store subscription details
+    await User.updateOne(
+      { email: emailLower },
+      {
+        razorpaySubscriptionId: subscription.id,
+        razorpayPlanId: plan.id,
+        autopayStatus: "pending",
+        autopaySetupToken: "",
+        autopaySetupTokenExpiry: null,
+      }
+    );
+
+    res.json({
+      subscriptionId: subscription.id,
+      keyId: rzp.key_id,
+      currency: "INR",
+      nextBillingAt: user.subscriptionEndDate.toISOString(),
+    });
+  } catch (err) {
+    req.log?.error({ err }, "Create subscription error");
+    res.status(500).json({ error: "Failed to create subscription." });
+  }
+});
+
+// ── POST /api/payments/verify-subscription-auth ───────────────────────────────
+// Verifies Razorpay mandate authentication after subscription checkout
+router.post("/payments/verify-subscription-auth", async (req: any, res) => {
+  try {
+    const rzp = getRazorpay();
+    if (!rzp) {
+      res.status(503).json({ error: "Payment gateway not configured." });
+      return;
+    }
+
+    const { razorpay_payment_id, razorpay_subscription_id, razorpay_signature, email } = req.body;
+    if (!razorpay_payment_id || !razorpay_subscription_id || !razorpay_signature) {
+      res.status(400).json({ error: "Missing Razorpay fields." });
+      return;
+    }
+
+    const expectedSig = crypto
+      .createHmac("sha256", rzp.key_secret)
+      .update(`${razorpay_payment_id}|${razorpay_subscription_id}`)
+      .digest("hex");
+
+    if (expectedSig !== razorpay_signature) {
+      res.status(400).json({ error: "Subscription authentication signature mismatch." });
+      return;
+    }
+
+    if (email) {
+      await User.updateOne(
+        { email: String(email).toLowerCase().trim() },
+        { autopayStatus: "active" }
+      );
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    req.log?.error({ err }, "Verify subscription auth error");
+    res.status(500).json({ error: "Failed to verify subscription authentication." });
+  }
+});
+
+// ── POST /api/payments/razorpay-webhook ──────────────────────────────────────
+// Handles Razorpay subscription lifecycle events (charged, cancelled, halted).
+// Uses raw body (set up in app.ts) for HMAC verification.
+router.post("/payments/razorpay-webhook", async (req: any, res) => {
+  try {
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+
+    // Fail-closed: reject all webhook calls if secret is not configured in production
+    if (!webhookSecret) {
+      if (process.env.NODE_ENV === "production") {
+        req.log?.error("RAZORPAY_WEBHOOK_SECRET not set — rejecting webhook in production");
+        res.status(403).json({ error: "Webhook secret not configured." });
+        return;
+      }
+      req.log?.warn("RAZORPAY_WEBHOOK_SECRET not set — skipping signature check (dev mode only)");
+    }
+
+    // req.body is a Buffer (set by express.raw() in app.ts before JSON middleware)
+    const rawBody = Buffer.isBuffer(req.body) ? req.body.toString("utf8") : JSON.stringify(req.body);
+
+    if (webhookSecret) {
+      const signature = req.headers["x-razorpay-signature"] as string;
+      if (!signature) {
+        res.status(400).json({ error: "Missing webhook signature." });
+        return;
+      }
+      const expectedSig = crypto
+        .createHmac("sha256", webhookSecret)
+        .update(rawBody)
+        .digest("hex");
+      if (signature !== expectedSig) {
+        res.status(400).json({ error: "Invalid webhook signature." });
+        return;
+      }
+    }
+
+    const body = JSON.parse(rawBody) as any;
+    const { event, payload } = body ?? {};
+    const subscriptionId: string | undefined = payload?.subscription?.entity?.id;
+    const paymentId: string | undefined = payload?.payment?.entity?.id;
+
+    if (!event || !subscriptionId) {
+      res.json({ ok: true });
+      return;
+    }
+
+    if (event === "subscription.charged") {
+      const user = await User.findOne({ razorpaySubscriptionId: subscriptionId });
+      if (!user?.subscriptionEndDate) {
+        res.json({ ok: true });
+        return;
+      }
+
+      // Idempotency: skip if we already processed this payment event
+      if (paymentId && user.lastWebhookPaymentId === paymentId) {
+        req.log?.info({ paymentId }, "Webhook already processed — skipping duplicate");
+        res.json({ ok: true });
+        return;
+      }
+
+      // Extend subscription by exactly the plan's period (computed from stored planPeriod)
+      const days = parsePeriodDays(user.planPeriod);
+      const newEnd = new Date(user.subscriptionEndDate.getTime() + days * 24 * 60 * 60 * 1000);
+
+      await User.updateOne(
+        { razorpaySubscriptionId: subscriptionId },
+        {
+          subscriptionEndDate: newEnd,
+          autopayStatus: "active",
+          lastWebhookPaymentId: paymentId ?? "",
+        }
+      );
+    } else if (event === "subscription.authenticated") {
+      await User.updateOne({ razorpaySubscriptionId: subscriptionId }, { autopayStatus: "active" });
+    } else if (event === "subscription.cancelled" || event === "subscription.halted") {
+      await User.updateOne({ razorpaySubscriptionId: subscriptionId }, { autopayStatus: "cancelled" });
+    } else if (event === "subscription.pending" || event === "subscription.resumed") {
+      await User.updateOne({ razorpaySubscriptionId: subscriptionId }, { autopayStatus: "pending" });
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    req.log?.error({ err }, "Razorpay webhook error");
+    res.status(500).json({ error: "Webhook processing failed." });
   }
 });
 

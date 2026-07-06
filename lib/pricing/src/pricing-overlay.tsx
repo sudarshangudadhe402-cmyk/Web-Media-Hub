@@ -280,6 +280,7 @@ export default function PricingOverlay({ onBack, onSelectPlan, config }: Props) 
       badge: plan.displayBadge,
       name: plan.displayName,
       price: overridePrice ?? plan.price,
+      originalPrice: plan.price, // always the base plan price before any coupon
       period: plan.displayPeriod,
       tagline: plan.tagline,
       color: vis[planKey].accentColor,

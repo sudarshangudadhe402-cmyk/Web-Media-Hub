@@ -100,7 +100,14 @@ export default function CreateStore() {
   const [submitError,    setSubmitError]    = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [rzpLoading,     setRzpLoading]     = useState(false);
+  const [autopayLoading, setAutopayLoading] = useState(false);
   const [refAdmin,       setRefAdmin]       = useState<string>("");
+
+  function isRecurring(plan: SelectedPlan | null): boolean {
+    if (!plan) return false;
+    const p = plan.period.toLowerCase();
+    return !p.includes("lifetime") && !p.includes("one-time") && !p.includes("forever");
+  }
 
   /* Fetch marketing (Growth & Marketing Analytics) categories + store types from API — independent from pricing categories */
   function fetchPricing() {
@@ -139,8 +146,10 @@ export default function CreateStore() {
     const values = form.getValues();
     setSubmitError(null);
     setRzpLoading(true);
+    const recurring = isRecurring(selectedPlan);
+
     try {
-      // 1. Create Razorpay order
+      // 1. Create Razorpay order for first (possibly discounted) payment
       const orderRes = await fetch("/api/payments/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -156,7 +165,7 @@ export default function CreateStore() {
         return;
       }
 
-      // 2. Load Razorpay script if not already loaded
+      // 2. Load Razorpay checkout.js if not already present
       if (!(window as any).Razorpay) {
         await new Promise<void>((resolve, reject) => {
           const script = document.createElement("script");
@@ -167,8 +176,9 @@ export default function CreateStore() {
         });
       }
 
-      // 3. Open Razorpay checkout
       setRzpLoading(false);
+
+      // 3. First payment checkout (one-time order)
       await new Promise<void>((resolve, reject) => {
         const rzp = new (window as any).Razorpay({
           key: orderData.keyId,
@@ -183,7 +193,7 @@ export default function CreateStore() {
           },
           theme: { color: "#F5A623" },
           handler: async (response: any) => {
-            // 4. Verify payment + auto-create admin
+            // 4. Verify payment + register account
             setSubmitting(true);
             try {
               const verifyRes = await fetch("/api/payments/verify-and-register", {
@@ -204,6 +214,7 @@ export default function CreateStore() {
                   planBadge: selectedPlan?.badge ?? "",
                   planColor: selectedPlan?.color ?? "",
                   couponCode: selectedPlan?.couponCode ?? null,
+                  originalPlanPrice: selectedPlan?.originalPrice ?? selectedPlan?.price ?? "",
                   ref_admin: refAdmin,
                   storeType: selectedStoreType ?? "",
                 }),
@@ -215,6 +226,60 @@ export default function CreateStore() {
                 return;
               }
               sessionStorage.removeItem("wmh_ref_admin");
+
+              // 5. For recurring plans: set up AutoPay mandate (no charge today)
+              //    The subscription starts billing at next renewal at original plan price.
+              const autopayToken: string = verifyData.autopaySetupToken ?? "";
+              if (recurring && autopayToken) {
+                setSubmitting(false);
+                setAutopayLoading(true);
+                try {
+                  const subRes = await fetch("/api/payments/create-subscription", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      email: values.email.trim(),
+                      autopaySetupToken: autopayToken,
+                    }),
+                  });
+                  const subData = await subRes.json();
+                  if (subRes.ok && subData.subscriptionId) {
+                    // Open Razorpay subscription checkout — mandate only, no charge today
+                    await new Promise<void>((subResolve) => {
+                      const subRzp = new (window as any).Razorpay({
+                        key: subData.keyId,
+                        subscription_id: subData.subscriptionId,
+                        name: "Web Media Hub",
+                        description: `AutoPay Setup — ${selectedPlan?.name ?? ""}`,
+                        prefill: {
+                          email: values.email.trim(),
+                          contact: `+91${values.whatsapp.trim()}`,
+                        },
+                        theme: { color: "#F5A623" },
+                        handler: async (subResponse: any) => {
+                          try {
+                            await fetch("/api/payments/verify-subscription-auth", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                razorpay_payment_id: subResponse.razorpay_payment_id,
+                                razorpay_subscription_id: subResponse.razorpay_subscription_id,
+                                razorpay_signature: subResponse.razorpay_signature,
+                                email: values.email.trim(),
+                              }),
+                            });
+                          } catch { /* non-fatal — autopay can be re-enabled later */ }
+                          subResolve();
+                        },
+                        modal: { ondismiss: () => subResolve() },
+                      });
+                      subRzp.open();
+                    });
+                  }
+                } catch { /* autopay setup failure is non-fatal */ }
+                setAutopayLoading(false);
+              }
+
               setPaymentSuccess(true);
               goTo(3);
               resolve();
@@ -223,6 +288,7 @@ export default function CreateStore() {
               reject(new Error("Registration failed"));
             } finally {
               setSubmitting(false);
+              setAutopayLoading(false);
             }
           },
           modal: {
@@ -238,6 +304,7 @@ export default function CreateStore() {
       setSubmitError(err?.message ?? "Payment failed. Please try again.");
     } finally {
       setRzpLoading(false);
+      setAutopayLoading(false);
     }
   }
 
@@ -822,6 +889,7 @@ export default function CreateStore() {
                     style={{ background: "#FFF8EC", border: `2px dashed ${GOLD}` }}>
                     <CreditCard className="w-9 h-9" style={{ color: GOLD }} />
                   </div>
+
                   <div>
                     <p className="font-bold text-base mb-1" style={{ color: LABEL }}>Complete Payment</p>
                     <p className="text-sm leading-relaxed" style={{ color: HINT }}>
@@ -829,7 +897,60 @@ export default function CreateStore() {
                     </p>
                   </div>
 
-                  {/* Accepted payment icons */}
+                  {/* AutoPay info box — shown for recurring plans */}
+                  {selectedPlan && isRecurring(selectedPlan) && (
+                    <div className="w-full rounded-2xl overflow-hidden"
+                      style={{ border: `1.5px solid ${GOLD}40`, background: `${GOLD_BG}08` }}>
+                      {/* Header */}
+                      <div className="flex items-center gap-2 px-4 py-2.5"
+                        style={{ background: `${GOLD_BG}18`, borderBottom: `1px solid ${GOLD}25` }}>
+                        <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+                          style={{ background: GOLD_BG }}>
+                          <CheckCircle className="w-3 h-3 text-white" />
+                        </div>
+                        <p className="text-xs font-extrabold tracking-wide" style={{ color: GOLD_BG }}>
+                          AutoPay Enabled
+                        </p>
+                      </div>
+
+                      {/* Pricing breakdown */}
+                      <div className="px-4 py-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold" style={{ color: HINT }}>Today (first payment)</span>
+                          <span className="text-sm font-extrabold" style={{ color: LABEL }}>
+                            {selectedPlan.price}
+                            {selectedPlan.couponCode && (
+                              <span className="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                                style={{ background: "#DCFCE7", color: "#16A34A" }}>COUPON</span>
+                            )}
+                          </span>
+                        </div>
+                        {selectedPlan.originalPrice && selectedPlan.originalPrice !== selectedPlan.price && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold" style={{ color: HINT }}>From 2nd renewal (auto)</span>
+                            <span className="text-sm font-extrabold" style={{ color: GOLD_BG }}>
+                              {selectedPlan.originalPrice}
+                              <span className="text-[10px] font-medium ml-0.5" style={{ color: HINT }}>{selectedPlan.period.replace(/\d+-day plan/, "").trim() || "/cycle"}</span>
+                            </span>
+                          </div>
+                        )}
+                        {(!selectedPlan.originalPrice || selectedPlan.originalPrice === selectedPlan.price) && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold" style={{ color: HINT }}>Auto-renews at</span>
+                            <span className="text-sm font-extrabold" style={{ color: GOLD_BG }}>
+                              {selectedPlan.price}
+                              <span className="text-[10px] font-medium ml-0.5" style={{ color: HINT }}>/cycle</span>
+                            </span>
+                          </div>
+                        )}
+                        <p className="text-[10px] leading-relaxed text-center pt-0.5" style={{ color: "#9CA3AF" }}>
+                          You'll set up autopay after your first payment. Cancel anytime.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Accepted payment methods */}
                   <div className="flex items-center gap-2 flex-wrap justify-center">
                     {["UPI", "Card", "Net Banking", "Wallet"].map(m => (
                       <span key={m} className="text-[10px] font-bold px-2 py-0.5 rounded-full"
@@ -846,7 +967,8 @@ export default function CreateStore() {
                   )}
 
                   <div className="flex gap-3 w-full mt-1">
-                    <button type="button" onClick={() => goTo(1)} disabled={rzpLoading || submitting}
+                    <button type="button" onClick={() => goTo(1)}
+                      disabled={rzpLoading || submitting || autopayLoading}
                       className="flex items-center justify-center gap-2 font-semibold hover:opacity-80 transition-opacity disabled:opacity-40"
                       style={{ height:"48px", borderRadius:"12px", border:`2px solid ${LABEL}`, color:LABEL, background:"transparent", fontSize:"14px", width:"80px" }}>
                       <ArrowLeft className="w-4 h-4" />
@@ -854,21 +976,25 @@ export default function CreateStore() {
                     <motion.button
                       type="button"
                       onClick={handlePayNow}
-                      disabled={!selectedPlan || rzpLoading || submitting}
-                      whileHover={{ scale: selectedPlan && !rzpLoading ? 1.012 : 1 }}
+                      disabled={!selectedPlan || rzpLoading || submitting || autopayLoading}
+                      whileHover={{ scale: selectedPlan && !rzpLoading && !autopayLoading ? 1.012 : 1 }}
                       whileTap={{ scale: 0.97 }}
                       className="flex-1 flex items-center justify-center gap-2 font-bold text-white"
                       style={{
-                        height: "48px", borderRadius: "12px", fontSize: "15px",
-                        background: selectedPlan && !rzpLoading && !submitting
+                        height: "48px", borderRadius: "12px", fontSize: "14px",
+                        background: selectedPlan && !rzpLoading && !submitting && !autopayLoading
                           ? `linear-gradient(135deg, ${GOLD_BG}, #E8940A)`
                           : "#C5BFB5",
                         boxShadow: selectedPlan ? "0 4px 14px rgba(245,166,35,0.4)" : "none",
-                        cursor: selectedPlan && !rzpLoading ? "pointer" : "not-allowed",
+                        cursor: selectedPlan && !rzpLoading && !autopayLoading ? "pointer" : "not-allowed",
                       }}
                     >
-                      {rzpLoading || submitting ? (
+                      {autopayLoading ? (
+                        <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Setting up AutoPay…</>
+                      ) : rzpLoading || submitting ? (
                         <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Processing…</>
+                      ) : selectedPlan && isRecurring(selectedPlan) ? (
+                        <><CreditCard className="w-4 h-4" /> Pay &amp; Enable AutoPay</>
                       ) : (
                         <><CreditCard className="w-4 h-4" /> Pay Now</>
                       )}

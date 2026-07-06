@@ -24,7 +24,8 @@ export interface SelectedPlan {
   planKey: string;
   badge: string;
   name: string;
-  price: string;
+  price: string;        // effective price paid (may be coupon-discounted)
+  originalPrice: string; // plan's base price before any coupon
   period: string;
   tagline: string;
   color: string;

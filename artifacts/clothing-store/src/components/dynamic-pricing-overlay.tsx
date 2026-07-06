@@ -29,7 +29,8 @@ export interface SelectedPlan {
   planKey: string;
   badge: string;
   name: string;
-  price: string;
+  price: string;         // effective price paid (may be coupon-discounted)
+  originalPrice: string; // plan's base price before any coupon
   period: string;
   tagline: string;
   color: string;
@@ -230,6 +231,7 @@ export default function DynamicPricingOverlay({ onBack, onSelectPlan }: Props) {
       badge: plan.badgeText,
       name: plan.name,
       price: finalPrice,
+      originalPrice: plan.price, // always the base plan price, before coupon
       period: planToPeriod(plan.durationDays),
       tagline: planToTagline(plan),
       color: GOLD_BG,
