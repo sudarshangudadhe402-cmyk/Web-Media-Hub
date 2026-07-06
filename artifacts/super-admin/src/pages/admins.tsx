@@ -74,7 +74,8 @@ function fmtDate(iso: string | null | undefined) {
 }
 
 function SubscriptionBadge({ endDate, planPeriod }: { endDate: string | null | undefined; planPeriod?: string }) {
-  const isLifetime = !planPeriod?.toLowerCase().includes("month") && !planPeriod?.toLowerCase().includes("year");
+  // Primary signal: no end date means lifetime/one-time plan
+  const isLifetime = !endDate || planPeriod?.toLowerCase().includes("lifetime");
   if (isLifetime) {
     return (
       <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: "rgba(168,85,247,0.12)", color: "#9333ea" }}>
@@ -698,10 +699,8 @@ export default function Admins() {
             const subEnd = (selectedAdmin as any).subscriptionEndDate as string | null;
             const storeCreatedAt = (selectedAdmin as any).storeCreatedAt as string | null;
             const days = getDaysRemaining(subEnd);
-            const isLifetime =
-              planName?.toLowerCase().includes("lifetime") ||
-              planPrice?.includes("15,999") ||
-              (planPeriod ? !planPeriod.toLowerCase().includes("month") && !planPeriod.toLowerCase().includes("year") : false);
+            // Primary signal: lifetime plans have no subscriptionEndDate
+            const isLifetime = !subEnd || planPeriod?.toLowerCase().includes("lifetime");
             const isExpired = !isLifetime && subEnd && days !== null && days <= 0;
 
             return (

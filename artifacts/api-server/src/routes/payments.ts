@@ -203,14 +203,33 @@ router.post("/payments/verify-and-register", async (req: any, res) => {
 
 // ── Helpers for subscription period ─────────────────────────────────────────
 
-/** Parse day count from planPeriod strings like "30-day plan", "365-day plan" */
+/**
+ * Parse day count from planPeriod strings — handles all formats:
+ *   "/ 30 Days"  → 30    "/ 3 Months" → 90   "/ Year" → 365
+ *   "/ 2 Years"  → 730   "30-day plan" → 30   "Monthly Plan" → 30
+ */
 function parsePeriodDays(period: string): number {
-  const m = String(period).match(/(\d+)/);
-  if (m) return parseInt(m[1]);
-  const p = period.toLowerCase();
-  if (p.includes("year")) return 365;
-  if (p.includes("month")) return 30;
-  return 30;
+  const s = String(period).trim();
+
+  // "/ X Days" or "X days" (case-insensitive)
+  const daysM = s.match(/(\d+)\s*day/i);
+  if (daysM) return parseInt(daysM[1]);
+
+  // "/ X Months" or "X months"
+  const monthsM = s.match(/(\d+)\s*month/i);
+  if (monthsM) return parseInt(monthsM[1]) * 30;
+
+  // "/ X Years" or "X years"
+  const yearsM = s.match(/(\d+)\s*year/i);
+  if (yearsM) return parseInt(yearsM[1]) * 365;
+
+  // Bare "/ Year" or "Annual" (no count)
+  if (/year|annual/i.test(s)) return 365;
+
+  // Bare "/ Month" or "Monthly" (no count)
+  if (/month/i.test(s)) return 30;
+
+  return 30; // safe fallback
 }
 
 /** Map a day count to the nearest Razorpay billing period */
