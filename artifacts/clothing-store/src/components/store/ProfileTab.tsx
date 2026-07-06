@@ -81,11 +81,31 @@ export default function ProfileTab({
   const openDaySet = new Set((data.openDays ?? "").split(",").map((d) => d.trim()).filter(Boolean));
 
   const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
-  const isValidName = (n: string) => /^[a-zA-Z\u0080-\uFFFF\s'-]+$/.test(n.trim()) && n.trim().length >= 2;
+  const isValidName = (n: string) => /^[a-zA-Z\u0900-\u097F\s'-]+$/.test(n.trim()) && n.trim().length >= 2;
   const isValidPassword = (p: string) => /^\d{6,20}$/.test(p);
 
   const suFormValid = isValidName(suName) && isValidEmail(suEmail) && isValidPassword(suPassword);
   const siFormValid = isValidEmail(siEmail) && isValidPassword(siPassword);
+
+  const suNameError = suName.length > 0 && !isValidName(suName)
+    ? /\d/.test(suName) ? "Name me numbers allowed nahi hain"
+    : /[^\w\s'-\u0900-\u097F]/.test(suName) ? "Name me special characters ya emojis allowed nahi hain"
+    : suName.trim().length < 2 ? "Name kam se kam 2 characters ka hona chahiye"
+    : ""
+    : "";
+
+  const suPasswordError = suPassword.length > 0 && !isValidPassword(suPassword)
+    ? /[^0-9]/.test(suPassword) ? "Password me sirf numbers allowed hain (letters/symbols nahi)"
+    : suPassword.length < 6 ? "Password kam se kam 6 numbers ka hona chahiye"
+    : suPassword.length > 20 ? "Password zyada se zyada 20 numbers ka ho sakta hai"
+    : ""
+    : "";
+
+  const siPasswordError = siPassword.length > 0 && !isValidPassword(siPassword)
+    ? /[^0-9]/.test(siPassword) ? "Password me sirf numbers allowed hain"
+    : siPassword.length < 6 ? "Password kam se kam 6 numbers ka hona chahiye"
+    : ""
+    : "";
 
   function startResendTimer() {
     setResendCountdown(30);
@@ -217,12 +237,21 @@ export default function ProfileTab({
                         <input
                           type="text"
                           value={suName}
-                          onChange={e => setSuName(e.target.value)}
-                          placeholder="Enter your full name"
+                          onChange={e => {
+                            const val = e.target.value;
+                            const filtered = val.replace(/[0-9\u0660-\u0669\u06F0-\u06F9]/g, "");
+                            setSuName(filtered);
+                          }}
+                          placeholder="Apna pura naam likhein"
                           className="w-full rounded-xl pl-9 pr-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none border"
-                          style={{ borderColor: "#e8e8e8" }}
+                          style={{ borderColor: suNameError ? "#ef4444" : "#e8e8e8" }}
                         />
                       </div>
+                      {suNameError ? (
+                        <p className="text-[10px] text-red-500 mt-1 flex items-center gap-1">⚠ {suNameError}</p>
+                      ) : (
+                        <p className="text-[10px] text-gray-400 mt-1">Sirf asli naam (numbers ya special characters nahi)</p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Email Address</label>
@@ -245,17 +274,25 @@ export default function ProfileTab({
                       <div className="relative">
                         <input
                           type={showSuPwd ? "text" : "password"}
+                          inputMode="numeric"
                           value={suPassword}
-                          onChange={e => setSuPassword(e.target.value)}
-                          placeholder="Min 6 characters"
+                          onChange={e => {
+                            const filtered = e.target.value.replace(/[^0-9]/g, "").slice(0, 20);
+                            setSuPassword(filtered);
+                          }}
+                          placeholder="Sirf numbers (min 6 digits)"
                           className="w-full rounded-xl px-3 py-2.5 pr-10 text-sm text-gray-900 placeholder-gray-300 focus:outline-none border"
-                          style={{ borderColor: "#e8e8e8" }}
+                          style={{ borderColor: suPasswordError ? "#ef4444" : "#e8e8e8" }}
                         />
                         <button type="button" onClick={() => setShowSuPwd(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
                           {showSuPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
-                      <p className="text-[10px] text-gray-400 mt-1">Minimum 6 characters</p>
+                      {suPasswordError ? (
+                        <p className="text-[10px] text-red-500 mt-1 flex items-center gap-1">⚠ {suPasswordError}</p>
+                      ) : (
+                        <p className="text-[10px] text-gray-400 mt-1">Sirf numbers allowed — letters ya symbols nahi (6-20 digits)</p>
+                      )}
                     </div>
                     <button
                       onClick={() => handleSendOtp("signup")}
@@ -345,16 +382,23 @@ export default function ProfileTab({
                       <div className="relative">
                         <input
                           type={showSiPwd ? "text" : "password"}
+                          inputMode="numeric"
                           value={siPassword}
-                          onChange={e => setSiPassword(e.target.value)}
-                          placeholder="Enter your password"
+                          onChange={e => {
+                            const filtered = e.target.value.replace(/[^0-9]/g, "").slice(0, 20);
+                            setSiPassword(filtered);
+                          }}
+                          placeholder="Apna number password likhein"
                           className="w-full rounded-xl px-3 py-2.5 pr-10 text-sm text-gray-900 placeholder-gray-300 focus:outline-none border"
-                          style={{ borderColor: "#e8e8e8" }}
+                          style={{ borderColor: siPasswordError ? "#ef4444" : "#e8e8e8" }}
                         />
                         <button type="button" onClick={() => setShowSiPwd(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
                           {showSiPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
+                      {siPasswordError && (
+                        <p className="text-[10px] text-red-500 mt-1 flex items-center gap-1">⚠ {siPasswordError}</p>
+                      )}
                     </div>
                     <button
                       onClick={() => handleSendOtp("signin")}
