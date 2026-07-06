@@ -65,7 +65,7 @@ args = "PORT=20029 BASE_PATH=/super-admin/ pnpm --filter @workspace/super-admin 
 waitForPort = 20029
 
 [agent]
-stack = "PNPM_WORKSPACE"
+stack = "BEST_EFFORT_FALLBACK"
 expertMode = true
 
 [postMerge]
