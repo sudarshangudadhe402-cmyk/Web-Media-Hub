@@ -6,6 +6,7 @@ import { User } from "./models/User";
 import { Store } from "./models/Store";
 import { Product } from "./models/Product";
 import { CustomerAccount } from "./models/CustomerAccount";
+import { sendStoreDeactivatedEmail } from "./services/emailOtp";
 
 
 // ─── Global crash handlers — prevent silent server death ─────────────────────
@@ -158,12 +159,51 @@ async function startSubscriptionExpiryJob() {
   const run = async () => {
     try {
       const now = new Date();
-      const result = await User.updateMany(
+
+      // Find users that are about to be deactivated — fetch before bulk update so we have their data
+      const toDeactivate = await User.find({
+        role: "admin",
+        isActive: true,
+        subscriptionEndDate: { $lt: now, $ne: null },
+      }).lean();
+
+      if (toDeactivate.length === 0) return;
+
+      // Bulk deactivate
+      await User.updateMany(
         { role: "admin", isActive: true, subscriptionEndDate: { $lt: now, $ne: null } },
-        { $set: { isActive: false, sessionId: null } }
+        { $set: { isActive: false, activeSessions: [] } }
       );
-      if (result.modifiedCount > 0) {
-        logger.info({ count: result.modifiedCount }, "Auto-deactivated expired subscriptions");
+
+      logger.info({ count: toDeactivate.length }, "Auto-deactivated expired subscriptions");
+
+      // Send deactivation email to each — atomic claim via conditional update
+      for (const u of toDeactivate) {
+        if (!u.email) continue;
+
+        // Atomically claim the "send email" right — only proceeds if expiredEmailSent is still false.
+        // This prevents double-send if two server instances race (e.g., rolling restarts).
+        const claimed = await User.updateOne(
+          { _id: u._id, expiredEmailSent: { $ne: true } },
+          { $set: { expiredEmailSent: true } }
+        );
+        if (claimed.modifiedCount === 0) continue; // another instance already claimed it
+
+        // Fetch store name
+        let storeName = "";
+        try {
+          const store = await Store.findOne({ ownerId: String(u._id) }).lean();
+          storeName = (store as any)?.name ?? u.planName ?? "";
+        } catch { /* non-fatal */ }
+
+        // Send email — fire-and-forget
+        sendStoreDeactivatedEmail({
+          toEmail: u.email,
+          storeName,
+          planName: u.planName ?? "",
+        }).catch((emailErr) => {
+          logger.error({ err: emailErr, email: u.email }, "Failed to send deactivation email");
+        });
       }
     } catch (err) {
       logger.error({ err }, "Subscription expiry check error");

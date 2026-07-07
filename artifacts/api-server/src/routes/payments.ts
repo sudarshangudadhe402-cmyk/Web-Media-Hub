@@ -5,6 +5,11 @@ import { StoreRequest } from "../models/StoreRequest";
 import { Notification } from "../models/Notification";
 import { Influencer } from "../models/Influencer";
 import { Ambassador } from "../models/Ambassador";
+import { DynamicPricing } from "../models/DynamicPricing";
+import {
+  sendStoreCreatedEmail,
+  sendStoreReactivatedEmail,
+} from "../services/emailOtp";
 import { OtpCode } from "../models/OtpCode";
 import { RevenuePayment } from "../models/RevenuePayment";
 import { sendOtpEmail } from "../services/emailOtp";
@@ -169,6 +174,7 @@ router.post("/payments/verify-and-register", async (req: any, res) => {
       password,
       adminNumber: cleanPhone,
       role: "admin",
+      planKey: plan ?? "",   // plan id from DynamicPricing — used for feature lookup in emails
       planName: planName ?? plan ?? "",
       planPrice: planPrice ?? "",
       planPeriod: planPeriod ?? "",
@@ -202,6 +208,37 @@ router.post("/payments/verify-and-register", async (req: any, res) => {
       message: `Store "${storeName}" registered via Razorpay payment (${razorpay_payment_id})`,
       relatedId: String(request._id),
     });
+
+    // 6. Welcome email — fire-and-forget (non-blocking; failure must not break registration)
+    (async () => {
+      try {
+        // Fetch plan features from DynamicPricing using the plan key (plan id)
+        let planFeatures: string[] = [];
+        const planKey = plan ?? planName ?? "";
+        if (planKey) {
+          const pricing = await DynamicPricing.findById("pricing-v2").lean();
+          if (pricing) {
+            const found = (pricing as any).plans?.find(
+              (p: any) => String(p._id) === planKey || p.name === planKey
+            );
+            if (found?.features?.length) planFeatures = found.features;
+          }
+        }
+        await sendStoreCreatedEmail({
+          toEmail: emailLower,
+          password,
+          planName: planName ?? plan ?? "",
+          planPrice: planPrice ?? "",
+          planPeriod: planPeriod ?? "",
+          planBadge: planBadge ?? "",
+          storeName: storeName ?? "",
+          planFeatures,
+        });
+      } catch (emailErr) {
+        // Log but never throw — email failure is non-fatal
+        console.error("[welcome-email] Failed to send store created email:", emailErr);
+      }
+    })();
 
     // 6. Track coupon — increment total_signups on influencer or ambassador
     if (couponCode) {
@@ -486,6 +523,7 @@ router.post("/payments/renewal-verify", requireAuthForRenewal, async (req: AuthR
     adminUser.subscriptionEndDate = end;
     adminUser.isActive = true;
     adminUser.activeSessions = [];
+    adminUser.expiredEmailSent = false; // reset so next expiry cycle sends a fresh email
     await adminUser.save();
 
     await RevenuePayment.create({
@@ -494,6 +532,34 @@ router.post("/payments/renewal-verify", requireAuthForRenewal, async (req: AuthR
       amount: parsePrice(planPrice),
       planName: planName ?? adminUser.planName ?? "",
     });
+
+    // Manual renewal email — fire-and-forget
+    (async () => {
+      try {
+        let planFeatures: string[] = [];
+        const pricing = await DynamicPricing.findById("pricing-v2").lean();
+        if (pricing) {
+          const found = (pricing as any).plans?.find(
+            (p: any) => String(p._id) === (planKey ?? adminUser.planKey) || p.name === (planName ?? adminUser.planName)
+          );
+          if (found?.features?.length) planFeatures = found.features;
+        }
+        const { Store } = await import("../models/Store");
+        const store = await Store.findOne({ ownerId: String(adminUser._id) }).lean();
+        const storeName = (store as any)?.name ?? planName ?? adminUser.planName ?? "";
+        await sendStoreReactivatedEmail({
+          toEmail: adminUser.email,
+          storeName,
+          planName: planName ?? adminUser.planName ?? "",
+          planPrice: planPrice ?? adminUser.planPrice ?? "",
+          planPeriod: planPeriod ?? adminUser.planPeriod ?? "",
+          planBadge: planBadge ?? adminUser.planBadge ?? "",
+          planFeatures,
+        });
+      } catch (emailErr) {
+        console.error("[manual-renewal-email] Failed:", emailErr);
+      }
+    })();
 
     res.json({ success: true });
   } catch (err) {
@@ -804,6 +870,8 @@ router.post("/payments/razorpay-webhook", async (req: any, res) => {
           subscriptionEndDate: newEnd,
           autopayStatus: "active",
           lastWebhookPaymentId: paymentId ?? "",
+          isActive: true,
+          expiredEmailSent: false,
           // Successful charge resets the consecutive-failure counter
           failedPaymentCount: 0,
         }
@@ -816,6 +884,34 @@ router.post("/payments/razorpay-webhook", async (req: any, res) => {
         amount: parsePrice(user.originalPlanPrice || user.planPrice),
         planName: user.planName || "",
       });
+
+      // Renewal email — fire-and-forget
+      (async () => {
+        try {
+          let planFeatures: string[] = [];
+          const pricing = await DynamicPricing.findById("pricing-v2").lean();
+          if (pricing) {
+            const found = (pricing as any).plans?.find(
+              (p: any) => String(p._id) === user.planKey || p.name === user.planName
+            );
+            if (found?.features?.length) planFeatures = found.features;
+          }
+          const { Store } = await import("../models/Store");
+          const store = await Store.findOne({ ownerId: String(user._id) }).lean();
+          const storeName = (store as any)?.storeName ?? (store as any)?.name ?? user.planName ?? "";
+          await sendStoreReactivatedEmail({
+            toEmail: user.email,
+            storeName,
+            planName: user.planName ?? "",
+            planPrice: user.planPrice ?? "",
+            planPeriod: user.planPeriod ?? "",
+            planBadge: user.planBadge ?? "",
+            planFeatures,
+          });
+        } catch (emailErr) {
+          console.error("[renewal-email] Failed to send store reactivated email:", emailErr);
+        }
+      })();
     } else if (event === "payment.failed") {
       const user = await User.findOne({ razorpaySubscriptionId: subscriptionId });
       if (!user) {

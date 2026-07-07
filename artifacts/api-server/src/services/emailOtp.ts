@@ -27,8 +27,9 @@ export async function sendStoreCreatedEmail(params: {
   planPeriod: string;
   planBadge: string;
   storeName: string;
+  planFeatures?: string[];
 }) {
-  const { toEmail, password, planName, planPrice, planPeriod, planBadge, storeName } = params;
+  const { toEmail, password, planName, planPrice, planPeriod, planBadge, storeName, planFeatures } = params;
   const safeEmail = escapeHtml(toEmail);
   const safeStoreName = escapeHtml(storeName || "Your Store");
   const safePlan = escapeHtml(planName || "Starter");
@@ -68,14 +69,19 @@ export async function sendStoreCreatedEmail(params: {
       <div style="margin-bottom:24px;">
         <p style="font-size:11px;font-weight:700;color:#6b7280;letter-spacing:2px;text-transform:uppercase;margin:0 0 12px;">What's Included in Your Plan</p>
         <table style="width:100%;border-collapse:collapse;">
-          <tr><td style="padding:7px 0;font-size:13px;color:#374151;">✅&nbsp; Unlimited product listings</td></tr>
-          <tr><td style="padding:7px 0;font-size:13px;color:#374151;">✅&nbsp; Your own branded store URL</td></tr>
-          <tr><td style="padding:7px 0;font-size:13px;color:#374151;">✅&nbsp; Customer appointment bookings</td></tr>
-          <tr><td style="padding:7px 0;font-size:13px;color:#374151;">✅&nbsp; WhatsApp direct enquiry integration</td></tr>
-          <tr><td style="padding:7px 0;font-size:13px;color:#374151;">✅&nbsp; Product wishlists for customers</td></tr>
-          <tr><td style="padding:7px 0;font-size:13px;color:#374151;">✅&nbsp; 3D Try-On experience for shoppers</td></tr>
-          <tr><td style="padding:7px 0;font-size:13px;color:#374151;">✅&nbsp; Customer reviews & ratings</td></tr>
-          <tr><td style="padding:7px 0;font-size:13px;color:#374151;">✅&nbsp; Store performance analytics dashboard</td></tr>
+          ${(planFeatures && planFeatures.length > 0
+            ? planFeatures
+            : [
+                "Unlimited product listings",
+                "Your own branded store URL",
+                "Customer appointment bookings",
+                "WhatsApp direct enquiry integration",
+                "Product wishlists for customers",
+                "3D Try-On experience for shoppers",
+                "Customer reviews & ratings",
+                "Store performance analytics dashboard",
+              ]
+          ).map(f => `<tr><td style="padding:7px 0;font-size:13px;color:#374151;">✅&nbsp; ${escapeHtml(f)}</td></tr>`).join("")}
         </table>
       </div>
 
@@ -194,8 +200,9 @@ export async function sendStoreReactivatedEmail(params: {
   planPrice: string;
   planPeriod: string;
   planBadge: string;
+  planFeatures?: string[];
 }) {
-  const { toEmail, storeName, planName, planPrice, planPeriod, planBadge } = params;
+  const { toEmail, storeName, planName, planPrice, planPeriod, planBadge, planFeatures } = params;
   const safeStoreName = escapeHtml(storeName || "Your Store");
   const safePlan = escapeHtml(planName || "");
   const safePrice = escapeHtml(planPrice || "");
@@ -227,12 +234,17 @@ export async function sendStoreReactivatedEmail(params: {
       <div style="margin-bottom:24px;">
         <p style="font-size:11px;font-weight:700;color:#6b7280;letter-spacing:2px;text-transform:uppercase;margin:0 0 12px;">Everything Back Online</p>
         <table style="width:100%;border-collapse:collapse;">
-          <tr><td style="padding:7px 0;font-size:13px;color:#374151;">✅&nbsp; Your store is visible to all customers</td></tr>
-          <tr><td style="padding:7px 0;font-size:13px;color:#374151;">✅&nbsp; Product listings live and browsable</td></tr>
-          <tr><td style="padding:7px 0;font-size:13px;color:#374151;">✅&nbsp; Appointment bookings are open again</td></tr>
-          <tr><td style="padding:7px 0;font-size:13px;color:#374151;">✅&nbsp; WhatsApp enquiries flowing in</td></tr>
-          <tr><td style="padding:7px 0;font-size:13px;color:#374151;">✅&nbsp; Dashboard and analytics fully accessible</td></tr>
-          <tr><td style="padding:7px 0;font-size:13px;color:#374151;">✅&nbsp; 3D Try-On experience active for shoppers</td></tr>
+          ${(planFeatures && planFeatures.length > 0
+            ? planFeatures
+            : [
+                "Your store is visible to all customers",
+                "Product listings live and browsable",
+                "Appointment bookings are open again",
+                "WhatsApp enquiries flowing in",
+                "Dashboard and analytics fully accessible",
+                "3D Try-On experience active for shoppers",
+              ]
+          ).map(f => `<tr><td style="padding:7px 0;font-size:13px;color:#374151;">✅&nbsp; ${escapeHtml(f)}</td></tr>`).join("")}
         </table>
       </div>
 
