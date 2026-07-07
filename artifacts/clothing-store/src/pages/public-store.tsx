@@ -175,10 +175,19 @@ export default function PublicStore() {
   const photoInputRef = useRef<HTMLInputElement>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
 
+  const [storeInactive, setStoreInactive] = useState(false);
+
   const { data, isLoading, error } = useQuery<PublicStoreData>({
     queryKey: ["public-store", slug],
     queryFn: async () => {
       const res = await fetch(`/api/public/store/${slug}`);
+      if (res.status === 410) {
+        const body = await res.json().catch(() => ({}));
+        if (body?.code === "STORE_INACTIVE") {
+          setStoreInactive(true);
+          throw new Error("STORE_INACTIVE");
+        }
+      }
       if (!res.ok) throw new Error("Store not found");
       return res.json();
     },
@@ -556,6 +565,23 @@ export default function PublicStore() {
             50% { opacity: 0.45; }
           }
         `}</style>
+      </div>
+    );
+  }
+
+  /* ── Store Inactive ── */
+  if (storeInactive) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center text-center px-6" style={{ background: "#ffffff" }}>
+        <div className="w-20 h-20 rounded-full flex items-center justify-center mb-5" style={{ background: "#FFF7ED" }}>
+          <AlertCircle className="w-10 h-10" style={{ color: "#F97316" }} />
+        </div>
+        <h1 className="text-xl font-black text-gray-900 mb-2" style={{ fontFamily: "'Montserrat', sans-serif" }}>
+          Store Temporarily Unavailable
+        </h1>
+        <p className="text-gray-500 text-sm leading-relaxed max-w-xs">
+          This store is currently inactive. Please check back later or contact the store owner directly.
+        </p>
       </div>
     );
   }

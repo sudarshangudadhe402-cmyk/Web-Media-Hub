@@ -55,6 +55,16 @@ router.get("/public/store/:slug", ipRateLimit(60, 60 * 1000), async (req, res) =
       res.status(404).json({ error: "Store not found" });
       return;
     }
+
+    // Check owner's subscription — if expired, serve a 410 so the customer knows the store is temporarily inactive
+    const owner = await User.findById(store.ownerId).select("subscriptionEndDate isActive").lean();
+    const subEnd = owner && (owner as any).subscriptionEndDate ? new Date((owner as any).subscriptionEndDate) : null;
+    const isExpired = subEnd ? subEnd < new Date() : false;
+    const isDeactivated = owner && (owner as any).isActive === false && !isExpired;
+    if (isExpired || isDeactivated) {
+      res.status(410).json({ error: "Store is temporarily inactive.", code: "STORE_INACTIVE" });
+      return;
+    }
     const [products, storeCategories] = await Promise.all([
       Product.find({ storeId: String(store._id) }).sort({ createdAt: -1 }),
       Category.find({ storeId: String(store._id) }).sort({ createdAt: 1 }),
