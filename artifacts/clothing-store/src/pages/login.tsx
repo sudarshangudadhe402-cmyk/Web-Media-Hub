@@ -78,6 +78,8 @@ export default function Login() {
   const [forgotError, setForgotError] = useState("");
   const [forgotResend, setForgotResend] = useState(0);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState("");
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     if (forgotResend <= 0) return;
@@ -91,8 +93,11 @@ export default function Login() {
     setForgotEmail("");
     setForgotOtp("");
     setForgotNewPassword("");
+    setForgotConfirmPassword("");
     setForgotError("");
     setForgotResend(0);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
   }
 
   async function handleForgotSendOtp(e: React.FormEvent) {
@@ -150,8 +155,11 @@ export default function Login() {
 
   async function handleForgotReset(e: React.FormEvent) {
     e.preventDefault();
-    if (!forgotNewPassword || !/^\d{4,}$/.test(forgotNewPassword)) {
-      setForgotError("Password must be numbers only (min 4 digits)"); return;
+    if (!forgotNewPassword || forgotNewPassword.length < 1) {
+      setForgotError("New password is required"); return;
+    }
+    if (forgotNewPassword !== forgotConfirmPassword) {
+      setForgotError("Passwords do not match"); return;
     }
     setForgotLoading(true);
     setForgotError("");
@@ -819,7 +827,7 @@ export default function Login() {
                   <p className="text-xs mt-0.5" style={{ color: "#888" }}>
                     {forgotStep === "email" && "Enter your admin email to receive an OTP"}
                     {forgotStep === "otp" && `6-digit code sent to ${forgotEmail}`}
-                    {forgotStep === "reset" && "Enter your new password (numbers only)"}
+                    {forgotStep === "reset" && forgotEmail}
                     {forgotStep === "done" && "You can now login with your new password"}
                   </p>
                 </div>
@@ -922,14 +930,19 @@ export default function Login() {
                 {/* Step 3 — New Password */}
                 {forgotStep === "reset" && (
                   <form onSubmit={handleForgotReset} className="space-y-4">
+                    {/* Email display — OTP nahi dikhta, sirf email */}
+                    <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5 flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-amber-600 shrink-0" />
+                      <p className="text-xs text-amber-800 font-medium truncate">{forgotEmail}</p>
+                    </div>
+                    {/* New Password */}
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "#AAA" }} />
                       <input
                         type={showNewPassword ? "text" : "password"}
-                        inputMode="numeric"
-                        placeholder="New password (numbers only)"
+                        placeholder="New password"
                         value={forgotNewPassword}
-                        onChange={(e) => { setForgotNewPassword(e.target.value.replace(/\D/g, "")); setForgotError(""); }}
+                        onChange={(e) => { setForgotNewPassword(e.target.value); setForgotError(""); }}
                         required
                         autoFocus
                         className="w-full outline-none"
@@ -951,26 +964,43 @@ export default function Login() {
                         {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
-                    <p className="text-xs" style={{ color: "#888" }}>Only numbers allowed, minimum 4 digits</p>
-                    {forgotError && <p className="text-xs font-medium" style={{ color: "#DC2626" }}>{forgotError}</p>}
-                    <div className="flex gap-3">
+                    {/* Confirm Password */}
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "#AAA" }} />
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="Confirm password"
+                        value={forgotConfirmPassword}
+                        onChange={(e) => { setForgotConfirmPassword(e.target.value); setForgotError(""); }}
+                        required
+                        className="w-full outline-none"
+                        style={{
+                          height: "48px", borderRadius: "10px", border: "1.5px solid #E5E0DA",
+                          paddingLeft: "40px", paddingRight: "40px", fontSize: "14px",
+                          color: "#111", background: "#FAFAF9",
+                        }}
+                        onFocus={(e) => { e.target.style.borderColor = "#D97706"; e.target.style.background = "#FFF"; }}
+                        onBlur={(e) => { e.target.style.borderColor = "#E5E0DA"; e.target.style.background = "#FAFAF9"; }}
+                      />
                       <button
                         type="button"
-                        onClick={() => { setForgotStep("otp"); setForgotError(""); }}
-                        className="flex-1 font-semibold"
-                        style={{ height: "46px", borderRadius: "10px", border: "1.5px solid #E5E0DA", fontSize: "14px", color: "#444" }}
+                        tabIndex={-1}
+                        onClick={() => setShowConfirmPassword((p) => !p)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2"
+                        style={{ color: "#AAA" }}
                       >
-                        Back
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={forgotLoading || forgotNewPassword.length < 4}
-                        className="flex-1 font-semibold text-white disabled:opacity-50"
-                        style={{ height: "46px", borderRadius: "10px", background: "#92400E", fontSize: "14px" }}
-                      >
-                        {forgotLoading ? <span className="flex items-center justify-center gap-2"><RefreshCw className="w-4 h-4 animate-spin" />Saving...</span> : "Reset Password"}
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
+                    {forgotError && <p className="text-xs font-medium" style={{ color: "#DC2626" }}>{forgotError}</p>}
+                    <button
+                      type="submit"
+                      disabled={forgotLoading || !forgotNewPassword || !forgotConfirmPassword}
+                      className="w-full font-semibold text-white disabled:opacity-50"
+                      style={{ height: "48px", borderRadius: "10px", background: "#92400E", fontSize: "14px" }}
+                    >
+                      {forgotLoading ? <span className="flex items-center justify-center gap-2"><RefreshCw className="w-4 h-4 animate-spin" />Saving...</span> : "Reset Password"}
+                    </button>
                   </form>
                 )}
 
