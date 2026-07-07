@@ -38,6 +38,7 @@ export interface IUser extends Document {
   autopaySetupTokenExpiry: Date | null;
   lastWebhookPaymentId: string; // idempotency key for subscription.charged events
   failedPaymentCount: number; // consecutive autopay failures; autopay is cancelled after 2
+  expiredEmailSent: boolean; // true once the deactivation email has been sent; reset on renewal
   createdAt: Date;
   comparePassword(candidate: string): Promise<boolean>;
   needsRehash(): boolean;
@@ -91,6 +92,7 @@ const UserSchema = new Schema<IUser>(
     autopaySetupTokenExpiry: { type: Date, default: null },
     lastWebhookPaymentId: { type: String, default: "" },
     failedPaymentCount: { type: Number, default: 0 },
+    expiredEmailSent: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
