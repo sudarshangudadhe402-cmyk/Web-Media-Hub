@@ -360,8 +360,13 @@ router.post("/auth/admin/forgot-password/reset", authRateLimiter, validate(Forgo
     }).sort({ createdAt: -1 });
 
     if (!record) { res.status(400).json({ error: "Invalid or expired code. Please request a new one." }); return; }
-    const otpMatch = crypto.timingSafeEqual(Buffer.from(record.code), Buffer.from(otp.trim().padEnd(record.code.length)));
-    if (!otpMatch || record.code.length !== otp.trim().length) {
+    const trimmedOtp = otp.trim();
+    // Length check MUST come before timingSafeEqual — buffers of different lengths cause a crash
+    if (trimmedOtp.length !== record.code.length) {
+      res.status(400).json({ error: "Incorrect OTP. Please try again." }); return;
+    }
+    const otpMatch = crypto.timingSafeEqual(Buffer.from(record.code), Buffer.from(trimmedOtp));
+    if (!otpMatch) {
       res.status(400).json({ error: "Incorrect OTP. Please try again." }); return;
     }
 

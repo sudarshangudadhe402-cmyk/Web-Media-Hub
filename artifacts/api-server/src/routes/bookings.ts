@@ -5,6 +5,7 @@ import { Store } from "../models/Store";
 import { Notification } from "../models/Notification";
 import { AuthRequest, requireAuth } from "../middlewares/auth";
 import { requireDb } from "../middlewares/dbCheck";
+import { bookingRateLimiter } from "../middlewares/rateLimiter";
 
 const router = Router();
 
@@ -111,7 +112,7 @@ router.get("/bookings/completed", requireAuth, async (req: AuthRequest, res) => 
   }
 });
 
-router.post("/bookings", async (req, res) => {
+router.post("/bookings", bookingRateLimiter, async (req, res) => {
   try {
     const { productId, customerName, customerPhone, customerAddress, selectedSize, tryOnImage } = req.body;
 

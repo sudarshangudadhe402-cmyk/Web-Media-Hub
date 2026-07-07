@@ -45,7 +45,7 @@ function calcSubscriptionDates(period: string): { start: Date | null; end: Date 
     return { start: now, end };
   }
   if (p.includes("year")) {
-    const end = new Date(now); end.setDate(end.getDate() + 365);
+    const end = new Date(now); end.setFullYear(end.getFullYear() + 1);
     return { start: now, end };
   }
   return { start: null, end: null };
@@ -427,11 +427,15 @@ router.post("/payments/verify-subscription-auth", async (req: any, res) => {
       return;
     }
 
-    if (email) {
-      await User.updateOne(
-        { email: String(email).toLowerCase().trim() },
-        { autopayStatus: "active" }
-      );
+    // Look up user by subscription ID — never trust email from client as proof of ownership
+    const updateResult = await User.updateOne(
+      { razorpaySubscriptionId: razorpay_subscription_id },
+      { autopayStatus: "active" }
+    );
+
+    if (updateResult.matchedCount === 0) {
+      res.status(404).json({ error: "No account found for this subscription." });
+      return;
     }
 
     res.json({ success: true });

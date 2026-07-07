@@ -7,6 +7,10 @@ import { authRateLimiter } from "./middlewares/rateLimiter";
 
 const app: Express = express();
 
+// Trust the first proxy hop so rate limiters get the real client IP
+// instead of reading the spoofable x-forwarded-for raw header
+app.set("trust proxy", 1);
+
 // ─── Security Headers ────────────────────────────────────────────────────────
 app.use((_req: Request, res: Response, next: NextFunction) => {
   res.setHeader("X-Content-Type-Options", "nosniff");

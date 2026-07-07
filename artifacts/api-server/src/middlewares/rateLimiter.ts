@@ -1,11 +1,9 @@
 import rateLimit from "express-rate-limit";
 
+// Use Express-derived req.ip (respects `app.set("trust proxy", 1)` set in app.ts).
+// Do NOT read x-forwarded-for directly — that header is client-controlled and trivially spoofed.
 function getIp(req: any): string {
-  return (
-    (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
-    req.socket?.remoteAddress ||
-    "unknown"
-  );
+  return req.ip || req.socket?.remoteAddress || "unknown";
 }
 
 export const authRateLimiter = rateLimit({
@@ -35,5 +33,15 @@ export const otpRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many OTP requests from this IP. Please wait 10 minutes." },
+  skipSuccessfulRequests: false,
+});
+
+export const bookingRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  keyGenerator: getIp,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many booking requests. Please wait a minute and try again." },
   skipSuccessfulRequests: false,
 });

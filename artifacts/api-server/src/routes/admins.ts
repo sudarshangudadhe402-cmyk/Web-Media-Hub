@@ -27,7 +27,7 @@ function calcSubscriptionDates(
   }
   if (p.includes("year")) {
     const end = new Date(now);
-    end.setDate(end.getDate() + 365);
+    end.setFullYear(end.getFullYear() + 1);
     return { start: now, end };
   }
   return { start: null, end: null };

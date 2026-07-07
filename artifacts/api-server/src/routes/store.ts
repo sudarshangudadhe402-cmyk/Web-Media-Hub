@@ -61,7 +61,7 @@ router.post("/store", requireAuth, async (req: AuthRequest, res) => {
       store.openDays = openDays;
       store.bannerImage = bannerImage;
       store.description = description;
-      store.isLocked = true;
+      // Do NOT touch isLocked here — preserve whatever super admin has set
       if (!store.publicSlug) store.publicSlug = slugify(name);
       await store.save();
     } else {
@@ -94,7 +94,7 @@ router.patch("/store", requireAuth, async (req: AuthRequest, res) => {
       return;
     }
 
-    const { name, address, whatsappNumber, openingTime, openDays, bannerImage, description, isLocked } = req.body;
+    const { name, address, whatsappNumber, openingTime, openDays, bannerImage, description } = req.body;
     if (name !== undefined) store.name = name;
     if (address !== undefined) store.address = address;
     if (whatsappNumber !== undefined) store.whatsappNumber = whatsappNumber;
@@ -102,7 +102,7 @@ router.patch("/store", requireAuth, async (req: AuthRequest, res) => {
     if (openDays !== undefined) store.openDays = openDays;
     if (bannerImage !== undefined) store.bannerImage = bannerImage;
     if (description !== undefined) store.description = description;
-    if (isLocked !== undefined) store.isLocked = isLocked;
+    // isLocked is super-admin only — regular admins cannot change lock state
     await store.save();
 
     res.json(formatStore(store));
