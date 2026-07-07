@@ -135,11 +135,14 @@ router.post("/bookings", bookingRateLimiter, async (req, res) => {
       ? `🪞 Virtual Try-On booking for "${product.name}" by ${customerName}`
       : `New booking for "${product.name}" by ${customerName}`;
 
-    await Notification.create({
+    // Fire-and-forget — notification failure must not orphan or roll back the booking
+    Notification.create({
       type: "booking",
       message: notifMessage,
       relatedId: String(booking._id),
       storeId: product.storeId ?? undefined,
+    }).catch((notifErr) => {
+      req.log?.error({ err: notifErr }, "Failed to create booking notification");
     });
 
     res.status(201).json({

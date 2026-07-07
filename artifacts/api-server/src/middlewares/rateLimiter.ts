@@ -1,15 +1,12 @@
 import rateLimit from "express-rate-limit";
 
-// Use Express-derived req.ip (respects `app.set("trust proxy", 1)` set in app.ts).
-// Do NOT read x-forwarded-for directly — that header is client-controlled and trivially spoofed.
-function getIp(req: any): string {
-  return req.ip || req.socket?.remoteAddress || "unknown";
-}
+// No custom keyGenerator — express-rate-limit defaults to req.ip, which Express
+// correctly derives from the trusted proxy chain (app.set("trust proxy", 1) in app.ts).
+// Handles IPv4, IPv4-mapped IPv6, and native IPv6 correctly out of the box.
 
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 30,
-  keyGenerator: getIp,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests from this IP. Please wait 15 minutes and try again." },
@@ -19,7 +16,6 @@ export const authRateLimiter = rateLimit({
 export const loginStrictLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 10,
-  keyGenerator: getIp,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many login attempts. Please wait 1 minute and try again." },
@@ -29,7 +25,6 @@ export const loginStrictLimiter = rateLimit({
 export const otpRateLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
   max: 5,
-  keyGenerator: getIp,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many OTP requests from this IP. Please wait 10 minutes." },
@@ -39,7 +34,6 @@ export const otpRateLimiter = rateLimit({
 export const bookingRateLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 10,
-  keyGenerator: getIp,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many booking requests. Please wait a minute and try again." },

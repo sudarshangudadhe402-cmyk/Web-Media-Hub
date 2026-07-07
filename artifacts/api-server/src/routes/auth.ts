@@ -37,10 +37,8 @@ interface AttemptRecord {
 const loginAttempts = new Map<string, AttemptRecord>();
 
 function getAttemptKey(req: Request, identifier: string): string {
-  const ip =
-    (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
-    req.socket?.remoteAddress ||
-    "unknown";
+  // Use Express-derived req.ip (respects trust proxy) — do NOT read x-forwarded-for directly
+  const ip = (req as any).ip || req.socket?.remoteAddress || "unknown";
   return `${ip}::${identifier.toLowerCase()}`;
 }
 
@@ -198,9 +196,11 @@ router.post("/auth/login", loginStrictLimiter, validate(AdminLoginSchema), requi
 
     const sessionId = crypto.randomUUID();
 
-    if (!user.activeSessions) user.activeSessions = [];
-    user.activeSessions.push({ sessionId, loginAt: new Date() });
-    await user.save();
+    // Atomic push — avoids lost-session race condition from concurrent logins
+    await (user.constructor as any).updateOne(
+      { _id: user._id },
+      { $push: { activeSessions: { sessionId, loginAt: new Date() } } }
+    );
 
     const token = signToken(String(user._id), sessionId, user.role);
     res.json({
@@ -361,11 +361,13 @@ router.post("/auth/admin/forgot-password/reset", authRateLimiter, validate(Forgo
 
     if (!record) { res.status(400).json({ error: "Invalid or expired code. Please request a new one." }); return; }
     const trimmedOtp = otp.trim();
-    // Length check MUST come before timingSafeEqual — buffers of different lengths cause a crash
-    if (trimmedOtp.length !== record.code.length) {
+    const otpBuf = Buffer.from(trimmedOtp);
+    const codeBuf = Buffer.from(record.code);
+    // Compare byte lengths (not string lengths) — timingSafeEqual crashes on length mismatch
+    if (otpBuf.byteLength !== codeBuf.byteLength) {
       res.status(400).json({ error: "Incorrect OTP. Please try again." }); return;
     }
-    const otpMatch = crypto.timingSafeEqual(Buffer.from(record.code), Buffer.from(trimmedOtp));
+    const otpMatch = crypto.timingSafeEqual(codeBuf, otpBuf);
     if (!otpMatch) {
       res.status(400).json({ error: "Incorrect OTP. Please try again." }); return;
     }
