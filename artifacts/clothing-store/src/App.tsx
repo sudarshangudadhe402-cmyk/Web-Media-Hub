@@ -28,6 +28,27 @@ import { Layout } from "@/components/layout";
 
 const queryClient = new QueryClient();
 
+// Global fetch interceptor: any 403 SUBSCRIPTION_EXPIRED → redirect to /plan-renewal
+(function patchFetch() {
+  const origFetch = window.fetch.bind(window);
+  window.fetch = async function (...args) {
+    const res = await origFetch(...args);
+    if (res.status === 403) {
+      try {
+        const clone = res.clone();
+        const data = await clone.json();
+        if (data?.code === "SUBSCRIPTION_EXPIRED") {
+          const base = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+          window.location.replace(base + "/plan-renewal");
+          // Return a never-resolving response so callers don't proceed
+          return new Promise(() => {});
+        }
+      } catch {}
+    }
+    return res;
+  };
+})();
+
 function useLegalStatus(userId: string | undefined, role: string | undefined) {
   const [legalDone, setLegalDone] = useState<boolean | null>(null);
 
@@ -178,7 +199,19 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
-      <Route path="/create-store" component={CreateStore} />
+      <Route path="/create-store">
+        {() => {
+          const { user, isLoading } = useAuth();
+          const [, nav] = useLocation();
+          useEffect(() => {
+            if (isLoading) return;
+            if (user && isSubscriptionExpired(user)) nav("/plan-renewal");
+          }, [user, isLoading, nav]);
+          if (isLoading) return <div className="h-screen w-full flex items-center justify-center">Loading...</div>;
+          if (user && isSubscriptionExpired(user)) return null;
+          return <CreateStore />;
+        }}
+      </Route>
       <Route path="/plan-renewal">
         {() => <PlanRenewalRoute />}
       </Route>

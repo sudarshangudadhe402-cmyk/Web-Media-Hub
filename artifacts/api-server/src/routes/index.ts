@@ -1,4 +1,6 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
+import { User } from "../models/User";
 import healthRouter from "./health";
 import authRouter from "./auth";
 import productsRouter from "./products";
@@ -20,11 +22,54 @@ import campaignsRouter from "./campaigns";
 import paymentsRouter from "./payments";
 import { requireDb } from "../middlewares/dbCheck";
 
+const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || "";
+
+// Routes that are allowed even with an expired subscription
+const SUBSCRIPTION_EXEMPT_PREFIXES = [
+  "/api/auth",
+  "/api/payments",
+  "/api/public",
+  "/api/pricing",
+  "/api/legal",
+  "/api/store-requests",
+  "/api/health",
+  "/api/settings",
+];
+
+async function subscriptionGuard(req: Request, res: Response, next: NextFunction): Promise<void> {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith("Bearer ")) { next(); return; }
+
+  const path = req.path;
+  const isExempt = SUBSCRIPTION_EXEMPT_PREFIXES.some((prefix) => path.startsWith(prefix));
+  if (isExempt) { next(); return; }
+
+  try {
+    const token = auth.split(" ")[1];
+    const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
+    const user = await User.findById(decoded.id).select("role subscriptionEndDate").lean();
+    if (
+      user &&
+      (user as any).role === "admin" &&
+      (user as any).subscriptionEndDate &&
+      new Date((user as any).subscriptionEndDate) < new Date()
+    ) {
+      res.status(403).json({ error: "Subscription expired. Please renew your plan to continue.", code: "SUBSCRIPTION_EXPIRED" });
+      return;
+    }
+  } catch {
+    // If JWT is invalid, let individual routes handle it
+  }
+  next();
+}
+
 const router: IRouter = Router();
 
 router.use(healthRouter);
 
 router.use(requireDb);
+
+router.use(subscriptionGuard);
 
 router.use(authRouter);
 router.use(legalRouter);
