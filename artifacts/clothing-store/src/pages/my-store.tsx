@@ -131,6 +131,11 @@ export default function MyStore() {
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [cancelSentTo, setCancelSentTo] = useState("");
 
+  const [reactStep, setReactStep] = useState<"idle" | "sending" | "otp" | "verifying" | "mandate">("idle");
+  const [reactOtp, setReactOtp] = useState("");
+  const [reactError, setReactError] = useState<string | null>(null);
+  const [reactSentTo, setReactSentTo] = useState("");
+
   useEffect(() => {
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -233,6 +238,99 @@ export default function MyStore() {
       }
     }, "image/png");
   }, [buildStyledCanvas, toast]);
+
+  const handleSendReactivateOtp = useCallback(async () => {
+    setReactError(null);
+    setReactStep("sending");
+    try {
+      const token = localStorage.getItem("wmh_token");
+      const res = await fetch("/api/payments/autopay/send-reactivate-otp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setReactError(data.error ?? "Failed to send verification code.");
+        setReactStep("idle");
+        return;
+      }
+      setReactSentTo(data.email ?? user?.email ?? "");
+      setReactOtp("");
+      setReactStep("otp");
+    } catch {
+      setReactError("Network error. Please try again.");
+      setReactStep("idle");
+    }
+  }, [user]);
+
+  const handleVerifyReactivateOtp = useCallback(async () => {
+    if (!reactOtp.trim()) {
+      setReactError("Please enter the OTP sent to your email.");
+      return;
+    }
+    setReactError(null);
+    setReactStep("verifying");
+    try {
+      const token = localStorage.getItem("wmh_token");
+      const res = await fetch("/api/payments/autopay/reactivate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ otp: reactOtp.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setReactError(data.error ?? "Failed to reactivate AutoPay.");
+        setReactStep("otp");
+        return;
+      }
+      // OTP verified — open Razorpay subscription checkout for mandate
+      setReactStep("mandate");
+      await new Promise<void>((resolve) => {
+        const rzp = new (window as any).Razorpay({
+          key: data.keyId,
+          subscription_id: data.subscriptionId,
+          name: "Web Media Hub",
+          description: `AutoPay Reactivation — ${user?.planName ?? ""}`,
+          prefill: { email: user?.email ?? "" },
+          theme: { color: "#16a34a" },
+          handler: async (subResponse: any) => {
+            try {
+              const vToken = localStorage.getItem("wmh_token");
+              await fetch("/api/payments/verify-subscription-auth", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  ...(vToken ? { Authorization: `Bearer ${vToken}` } : {}),
+                },
+                body: JSON.stringify({
+                  razorpay_payment_id: subResponse.razorpay_payment_id,
+                  razorpay_subscription_id: subResponse.razorpay_subscription_id,
+                  razorpay_signature: subResponse.razorpay_signature,
+                  email: user?.email ?? "",
+                }),
+              });
+            } catch { /* non-fatal */ }
+            toast({ title: "AutoPay reactivated!", description: "Your plan will auto-renew at the end of the current period." });
+            resolve();
+          },
+          modal: { ondismiss: () => resolve() },
+        });
+        rzp.open();
+      });
+      setReactStep("idle");
+      setReactOtp("");
+      queryClient.invalidateQueries();
+    } catch {
+      setReactError("Network error. Please try again.");
+      setReactStep("otp");
+    }
+  }, [reactOtp, user, toast, queryClient]);
 
   const handleSendCancelOtp = useCallback(async () => {
     setCancelError(null);
@@ -557,9 +655,16 @@ export default function MyStore() {
                     </Button>
                   )}
                   {user.autopayStatus === "cancelled" && (
-                    <span className="shrink-0 text-[10px] font-semibold text-red-500 bg-red-50 border border-red-200 rounded-full px-2 py-1">
-                      AutoPay Cancelled
-                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 text-xs text-green-700 border-green-300 bg-green-50 hover:bg-green-100 hover:text-green-800"
+                      onClick={() => { setReactError(null); handleSendReactivateOtp(); }}
+                      disabled={reactStep === "sending"}
+                    >
+                      {reactStep === "sending" ? "Sending…" : "⚡ Active AutoPay"}
+                    </Button>
                   )}
                 </div>
               )}
@@ -602,6 +707,53 @@ export default function MyStore() {
                         disabled={cancelStep === "verifying"}
                       >
                         {cancelStep === "verifying" ? "Cancelling…" : "Confirm Cancellation"}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              {/* Reactivate AutoPay — OTP verification dialog */}
+              <Dialog open={reactStep === "otp" || reactStep === "verifying" || reactStep === "mandate"} onOpenChange={(open) => { if (!open) { setReactStep("idle"); setReactOtp(""); setReactError(null); } }}>
+                <DialogContent className="max-w-sm">
+                  <DialogHeader>
+                    <DialogTitle className="text-green-700">Reactivate AutoPay</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      We've sent a 6-digit OTP to <span className="font-medium text-foreground">{reactSentTo}</span>. Enter it below to confirm. After verification, you'll complete the AutoPay mandate setup.
+                    </p>
+                    <Input
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="Enter OTP"
+                      value={reactOtp}
+                      onChange={(e) => setReactOtp(e.target.value.replace(/\D/g, ""))}
+                      className="text-center tracking-[0.3em] font-semibold"
+                      disabled={reactStep === "verifying" || reactStep === "mandate"}
+                    />
+                    {reactError && <p className="text-xs text-red-600">{reactError}</p>}
+                    {reactStep === "mandate" && (
+                      <p className="text-xs text-green-700 font-medium text-center">OTP verified! Complete mandate setup in the payment window…</p>
+                    )}
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs"
+                        onClick={handleSendReactivateOtp}
+                        disabled={reactStep === "verifying" || reactStep === "mandate"}
+                      >
+                        Resend OTP
+                      </Button>
+                      <Button
+                        type="button"
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                        onClick={handleVerifyReactivateOtp}
+                        disabled={reactStep === "verifying" || reactStep === "mandate"}
+                      >
+                        {reactStep === "verifying" ? "Verifying…" : reactStep === "mandate" ? "Setting up…" : "Confirm & Setup"}
                       </Button>
                     </div>
                   </div>

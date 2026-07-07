@@ -493,6 +493,146 @@ router.post("/payments/autopay/cancel", requireAuth, async (req: AuthRequest, re
   }
 });
 
+// ── POST /api/payments/autopay/send-reactivate-otp ───────────────────────────
+// Sends an OTP to confirm the admin wants to reactivate a previously cancelled AutoPay
+router.post("/payments/autopay/send-reactivate-otp", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const user = req.user!;
+    if (user.autopayStatus !== "cancelled") {
+      res.status(400).json({ error: "AutoPay is not in cancelled state." });
+      return;
+    }
+    if (!user.subscriptionEndDate) {
+      res.status(400).json({ error: "This plan does not support AutoPay." });
+      return;
+    }
+
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await OtpCode.create({
+      email: user.email.toLowerCase().trim(),
+      storeId: String(user._id),
+      code,
+      purpose: "reactivate-autopay",
+      expiresAt,
+    });
+
+    await sendOtpEmail(user.email, code, user.planName || "your store", "reactivate-autopay");
+
+    res.json({ success: true, email: user.email });
+  } catch (err) {
+    (req as any).log?.error({ err }, "Send reactivate-autopay OTP error");
+    res.status(500).json({ error: "Failed to send verification code." });
+  }
+});
+
+// ── POST /api/payments/autopay/reactivate ─────────────────────────────────────
+// Verifies the OTP, then creates a fresh Razorpay subscription for the current plan
+// starting from today's subscriptionEndDate. Returns subscriptionId + keyId so the
+// frontend can open the Razorpay checkout for mandate authentication.
+router.post("/payments/autopay/reactivate", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const user = req.user!;
+    const { otp } = req.body;
+    if (!otp) {
+      res.status(400).json({ error: "OTP is required." });
+      return;
+    }
+    if (user.autopayStatus !== "cancelled") {
+      res.status(400).json({ error: "AutoPay is not in cancelled state." });
+      return;
+    }
+    if (!user.subscriptionEndDate) {
+      res.status(400).json({ error: "This plan does not support AutoPay." });
+      return;
+    }
+
+    const emailLower = user.email.toLowerCase().trim();
+    const record = await OtpCode.findOne({
+      email: emailLower,
+      purpose: "reactivate-autopay",
+      used: false,
+    }).sort({ createdAt: -1 });
+
+    if (
+      !record ||
+      new Date() > record.expiresAt ||
+      record.code.length !== String(otp).length ||
+      !crypto.timingSafeEqual(Buffer.from(record.code), Buffer.from(String(otp)))
+    ) {
+      res.status(400).json({ error: "Invalid or expired OTP." });
+      return;
+    }
+
+    record.used = true;
+    await record.save();
+
+    const rzp = getRazorpay();
+    if (!rzp) {
+      res.status(503).json({ error: "Payment gateway not configured." });
+      return;
+    }
+
+    const basePlanRupees = parsePrice(user.originalPlanPrice || user.planPrice);
+    if (!basePlanRupees || basePlanRupees <= 0) {
+      res.status(400).json({ error: "Could not determine plan price for AutoPay." });
+      return;
+    }
+
+    const renewalPaymentCharge = Math.round(basePlanRupees * 0.02);
+    const amountRupees = basePlanRupees + renewalPaymentCharge;
+    const periodDays = parsePeriodDays(user.planPeriod);
+    const { rzpPeriod, interval } = daysToPeriod(periodDays);
+
+    // New subscription starts billing from the current subscriptionEndDate
+    const start_at = Math.floor(user.subscriptionEndDate.getTime() / 1000);
+
+    const Razorpay = (await import("razorpay")).default;
+    const instance = new Razorpay({ key_id: rzp.key_id, key_secret: rzp.key_secret });
+
+    const plan = await (instance.plans.create as any)({
+      period: rzpPeriod,
+      interval,
+      item: {
+        name: user.planName || "Store Plan",
+        amount: Math.round(amountRupees * 100),
+        currency: "INR",
+        description: `${user.planName || "Store Plan"} — Web Media Hub AutoPay (incl. 2% payment charges)`,
+      },
+    });
+
+    const totalCount = rzpPeriod === "yearly" ? 10 : 120;
+    const subscription = await (instance.subscriptions.create as any)({
+      plan_id: plan.id,
+      total_count: totalCount,
+      quantity: 1,
+      start_at,
+      customer_notify: 1,
+      notes: { email: emailLower, planName: user.planName || "" },
+    });
+
+    await User.updateOne(
+      { _id: user._id },
+      {
+        razorpaySubscriptionId: subscription.id,
+        razorpayPlanId: plan.id,
+        autopayStatus: "pending",
+      }
+    );
+
+    res.json({
+      subscriptionId: subscription.id,
+      keyId: rzp.key_id,
+      currency: "INR",
+      nextBillingAt: user.subscriptionEndDate.toISOString(),
+    });
+  } catch (err) {
+    (req as any).log?.error({ err }, "Reactivate autopay error");
+    res.status(500).json({ error: "Failed to reactivate AutoPay." });
+  }
+});
+
 // ── POST /api/payments/razorpay-webhook ──────────────────────────────────────
 // Handles Razorpay subscription lifecycle events (charged, cancelled, halted).
 // Uses raw body (set up in app.ts) for HMAC verification.
