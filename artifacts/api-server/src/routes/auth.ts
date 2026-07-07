@@ -196,10 +196,17 @@ router.post("/auth/login", loginStrictLimiter, validate(AdminLoginSchema), requi
 
     const sessionId = crypto.randomUUID();
 
-    // Atomic push — avoids lost-session race condition from concurrent logins
+    // Atomic push + cap at 20 most-recent sessions to prevent unbounded document growth
     await (user.constructor as any).updateOne(
       { _id: user._id },
-      { $push: { activeSessions: { sessionId, loginAt: new Date() } } }
+      {
+        $push: {
+          activeSessions: {
+            $each: [{ sessionId, loginAt: new Date() }],
+            $slice: -20,
+          },
+        },
+      }
     );
 
     const token = signToken(String(user._id), sessionId, user.role);

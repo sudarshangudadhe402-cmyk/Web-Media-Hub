@@ -112,7 +112,7 @@ router.get("/bookings/completed", requireAuth, async (req: AuthRequest, res) => 
   }
 });
 
-router.post("/bookings", bookingRateLimiter, async (req, res) => {
+router.post("/bookings", bookingRateLimiter, requireDb, async (req, res) => {
   try {
     const { productId, customerName, customerPhone, customerAddress, selectedSize, tryOnImage } = req.body;
 
@@ -171,14 +171,20 @@ router.patch("/bookings/:id/complete", requireAuth, async (req: AuthRequest, res
       return;
     }
 
-    const booking = await Booking.findByIdAndUpdate(
-      req.params.id,
+    const booking = await Booking.findOneAndUpdate(
+      { _id: req.params.id, ignored: { $ne: true } },
       { completed: true, completedAt: new Date() },
       { new: true }
     ).populate("productId");
 
     if (!booking) {
-      res.status(404).json({ error: "Booking not found" });
+      // Either not found or was in ignored state
+      const exists = await Booking.findById(req.params.id).select("ignored").lean();
+      if (!exists) {
+        res.status(404).json({ error: "Booking not found" });
+      } else {
+        res.status(400).json({ error: "Cannot complete a booking that has been ignored" });
+      }
       return;
     }
 

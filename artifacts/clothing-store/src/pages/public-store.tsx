@@ -142,6 +142,7 @@ export default function PublicStore() {
   const [selectedSize, setSelectedSize] = useState("");
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [bookingError, setBookingError] = useState<string | null>(null);
   const [tryOnBookingImage, setTryOnBookingImage] = useState<string | null>(null);
 
   const [myBookings, setMyBookings] = useState<SavedBooking[]>(() => {
@@ -523,8 +524,14 @@ export default function PublicStore() {
           savedAt: Date.now(),
         }));
         setBookingSuccess(true);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        const msg = (errData as any)?.error || "Booking failed. Please try again.";
+        setBookingError(msg);
       }
-    } catch {}
+    } catch {
+      setBookingError("Something went wrong. Please try again.");
+    }
     finally { setBookingLoading(false); }
   }
 
@@ -667,7 +674,10 @@ export default function PublicStore() {
                   <p className="text-xs mt-1 text-red-500">{bookingForm.whatsapp.length < 10 ? "Enter 10-digit number" : "Invalid number"}</p>
                 )}
               </div>
-              <button onClick={submitBooking} disabled={!canBook} className="w-full font-black py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm" style={{ background: canBook ? "#000000" : "#e5e7eb", color: canBook ? "#ffffff" : "#9ca3af", fontFamily: "'Montserrat', sans-serif" }}>
+              {bookingError && (
+                <p className="text-sm text-red-500 text-center font-medium">{bookingError}</p>
+              )}
+              <button onClick={() => { setBookingError(null); submitBooking(); }} disabled={!canBook} className="w-full font-black py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm" style={{ background: canBook ? "#000000" : "#e5e7eb", color: canBook ? "#ffffff" : "#9ca3af", fontFamily: "'Montserrat', sans-serif" }}>
                 {bookingLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                 Book Product
               </button>

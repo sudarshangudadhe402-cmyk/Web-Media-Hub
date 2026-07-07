@@ -41,7 +41,13 @@ function calcSubscriptionDates(period: string): { start: Date | null; end: Date 
   }
   if (p.includes("month")) {
     const m = parseInt(p) || 1;
-    const end = new Date(now); end.setMonth(end.getMonth() + m);
+    const end = new Date(now);
+    const targetMonth = end.getMonth() + m;
+    end.setMonth(targetMonth);
+    // If day overflowed (e.g. Jan 31 + 1 month → March 3), clamp to last day of intended month
+    if (end.getMonth() !== ((targetMonth) % 12)) {
+      end.setDate(0); // last day of previous month = intended month's last day
+    }
     return { start: now, end };
   }
   if (p.includes("year")) {
@@ -139,7 +145,8 @@ router.post("/payments/verify-and-register", async (req: any, res) => {
 
     // 3. Create StoreRequest (approved immediately)
     const rewardCode = generateRewardCode(emailLower);
-    const request = await StoreRequest.create({
+    let request: InstanceType<typeof StoreRequest> | null = null;
+    request = await StoreRequest.create({
       email: emailLower,
       password,
       storeName,
@@ -168,28 +175,42 @@ router.post("/payments/verify-and-register", async (req: any, res) => {
     const setupToken = crypto.randomBytes(32).toString("hex");
     const setupTokenExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    await User.create({
-      username: autoUsername,
-      email: emailLower,
-      password,
-      adminNumber: cleanPhone,
-      role: "admin",
-      planKey: plan ?? "",   // plan id from DynamicPricing — used for feature lookup in emails
-      planName: planName ?? plan ?? "",
-      planPrice: planPrice ?? "",
-      planPeriod: planPeriod ?? "",
-      planBadge: planBadge ?? "",
-      planColor: planColor ?? "",
-      subscriptionStartDate: start,
-      subscriptionEndDate: end,
-      coupon_code: couponCode ? String(couponCode).toUpperCase() : "",
-      signup_source: couponCode ? "INFLUENCER" : "ORGANIC",
-      storeType: storeType ?? "",
-      originalPlanPrice: rawOriginalPrice ? String(rawOriginalPrice) : (planPrice ?? ""),
-      autopayStatus: "none",
-      autopaySetupToken: setupToken,
-      autopaySetupTokenExpiry: setupTokenExpiry,
-    });
+    try {
+      await User.create({
+        username: autoUsername,
+        email: emailLower,
+        password,
+        adminNumber: cleanPhone,
+        role: "admin",
+        planKey: plan ?? "",   // plan id from DynamicPricing — used for feature lookup in emails
+        planName: planName ?? plan ?? "",
+        planPrice: planPrice ?? "",
+        planPeriod: planPeriod ?? "",
+        planBadge: planBadge ?? "",
+        planColor: planColor ?? "",
+        subscriptionStartDate: start,
+        subscriptionEndDate: end,
+        coupon_code: couponCode ? String(couponCode).toUpperCase() : "",
+        signup_source: couponCode ? "INFLUENCER" : "ORGANIC",
+        storeType: storeType ?? "",
+        originalPlanPrice: rawOriginalPrice ? String(rawOriginalPrice) : (planPrice ?? ""),
+        autopayStatus: "none",
+        autopaySetupToken: setupToken,
+        autopaySetupTokenExpiry: setupTokenExpiry,
+      });
+    } catch (userCreateErr: any) {
+      // If User creation fails (e.g. duplicate email race), roll back the dangling StoreRequest
+      if (request) {
+        await StoreRequest.findByIdAndDelete(request._id).catch(() => {});
+      }
+      req.log?.error({ err: userCreateErr }, "User.create failed after StoreRequest created — rolled back");
+      if (userCreateErr?.code === 11000) {
+        res.status(400).json({ error: "Email already registered. Please login." });
+      } else {
+        res.status(500).json({ error: "Registration failed. Please contact support." });
+      }
+      return;
+    }
 
     // 4b. Record revenue event — first-time signup payment
     const createdUser = await User.findOne({ email: emailLower }).select("_id");
