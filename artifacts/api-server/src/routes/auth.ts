@@ -163,8 +163,14 @@ router.post("/auth/login", loginStrictLimiter, validate(AdminLoginSchema), requi
     }
 
     if (user.role === "admin" && user.isActive === false) {
-      res.status(403).json({ error: "Admin is currently not-active, please contact to super-admin" });
-      return;
+      const now = new Date();
+      const isSubscriptionExpired =
+        user.subscriptionEndDate instanceof Date && user.subscriptionEndDate < now;
+      if (!isSubscriptionExpired) {
+        res.status(403).json({ error: "Admin is currently not-active, please contact to super-admin" });
+        return;
+      }
+      // Subscription expired — allow login so they can reach the plan renewal page
     }
 
     if (user.role === "super_admin") {

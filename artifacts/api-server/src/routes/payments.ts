@@ -8,7 +8,7 @@ import { Ambassador } from "../models/Ambassador";
 import { OtpCode } from "../models/OtpCode";
 import { RevenuePayment } from "../models/RevenuePayment";
 import { sendOtpEmail } from "../services/emailOtp";
-import { requireAuth, AuthRequest } from "../middlewares/auth";
+import { requireAuth, requireAuthForRenewal, AuthRequest } from "../middlewares/auth";
 
 const router = Router();
 
@@ -401,6 +401,104 @@ router.post("/payments/verify-subscription-auth", async (req: any, res) => {
   } catch (err) {
     req.log?.error({ err }, "Verify subscription auth error");
     res.status(500).json({ error: "Failed to verify subscription authentication." });
+  }
+});
+
+// ── POST /api/payments/renewal-create-order ──────────────────────────────────
+// Creates Razorpay order for an existing admin renewing their plan
+router.post("/payments/renewal-create-order", requireAuthForRenewal, async (req: AuthRequest, res) => {
+  try {
+    const rzp = getRazorpay();
+    if (!rzp) { res.status(503).json({ error: "Payment gateway not configured. Please contact support." }); return; }
+
+    const user = req.user!;
+    if (user.role !== "admin") { res.status(403).json({ error: "Only admins can renew a plan." }); return; }
+
+    const { planPrice, planName } = req.body;
+    const basePriceRupees = parsePrice(planPrice);
+    if (!basePriceRupees || basePriceRupees <= 0) {
+      res.status(400).json({ error: "Invalid plan price" }); return;
+    }
+
+    const paymentCharge = Math.round(basePriceRupees * 0.02);
+    const amountRupees = basePriceRupees + paymentCharge;
+    const amountPaise = Math.round(amountRupees * 100);
+
+    const Razorpay = (await import("razorpay")).default;
+    const instance = new Razorpay({ key_id: rzp.key_id, key_secret: rzp.key_secret });
+    const order = await (instance.orders.create as any)({
+      amount: amountPaise,
+      currency: "INR",
+      receipt: `renewal_${Date.now()}`,
+      notes: { planName: planName ?? "", email: user.email ?? "" },
+    });
+
+    res.json({ orderId: order.id, amount: amountPaise, currency: "INR", keyId: rzp.key_id });
+  } catch (err) {
+    req.log?.error({ err }, "Renewal create order error");
+    res.status(500).json({ error: "Failed to create renewal order" });
+  }
+});
+
+// ── POST /api/payments/renewal-verify ─────────────────────────────────────────
+// Verifies Razorpay payment, updates admin plan + subscription, reactivates account
+router.post("/payments/renewal-verify", requireAuthForRenewal, async (req: AuthRequest, res) => {
+  try {
+    const rzp = getRazorpay();
+    if (!rzp) { res.status(503).json({ error: "Payment gateway not configured." }); return; }
+
+    const user = req.user!;
+    if (user.role !== "admin") { res.status(403).json({ error: "Only admins can renew a plan." }); return; }
+
+    const {
+      razorpay_order_id, razorpay_payment_id, razorpay_signature,
+      planKey, planName, planPrice, planPeriod, planBadge, planColor,
+    } = req.body;
+
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      res.status(400).json({ error: "Missing payment fields." }); return;
+    }
+
+    const expectedSig = crypto
+      .createHmac("sha256", rzp.key_secret)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest("hex");
+
+    if (expectedSig !== razorpay_signature) {
+      res.status(400).json({ error: "Payment verification failed. Please contact support." }); return;
+    }
+
+    const { start, end } = calcSubscriptionDates(planPeriod ?? "");
+
+    const adminUser = await User.findById(String(user._id));
+    if (!adminUser) { res.status(404).json({ error: "Admin not found" }); return; }
+
+    if (planKey) adminUser.planKey = planKey;
+    if (planName) adminUser.planName = planName;
+    if (planPrice) {
+      adminUser.planPrice = planPrice;
+      adminUser.originalPlanPrice = planPrice;
+    }
+    if (planPeriod) adminUser.planPeriod = planPeriod;
+    if (planBadge !== undefined) adminUser.planBadge = planBadge;
+    if (planColor !== undefined) adminUser.planColor = planColor;
+    adminUser.subscriptionStartDate = start;
+    adminUser.subscriptionEndDate = end;
+    adminUser.isActive = true;
+    adminUser.activeSessions = [];
+    await adminUser.save();
+
+    await RevenuePayment.create({
+      adminId: String(adminUser._id),
+      type: "renewal",
+      amount: parsePrice(planPrice),
+      planName: planName ?? adminUser.planName ?? "",
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    req.log?.error({ err }, "Renewal verify error");
+    res.status(500).json({ error: "Renewal failed. Please contact support." });
   }
 });
 

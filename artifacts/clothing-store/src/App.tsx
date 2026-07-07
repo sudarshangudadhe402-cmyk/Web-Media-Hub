@@ -23,6 +23,7 @@ import MarketingSourceSelect from "@/pages/marketing-source-select";
 import SalesLedger from "@/pages/sales-ledger";
 import DemoStore from "@/pages/demo-store";
 import PartnershipPage from "@/pages/partnership";
+import PlanRenewal from "@/pages/plan-renewal";
 import { Layout } from "@/components/layout";
 
 const queryClient = new QueryClient();
@@ -66,6 +67,13 @@ function useSourceStatus(userId: string | undefined, role: string | undefined, l
   return sourceStatus;
 }
 
+function isSubscriptionExpired(user: any): boolean {
+  if (!user || user.role !== "admin") return false;
+  const end = user.subscriptionEndDate;
+  if (!end) return false;
+  return new Date(end) < new Date();
+}
+
 function ProtectedRoute({ component: Component, adminOnly = false }: { component: any; adminOnly?: boolean }) {
   const { user, isLoading } = useAuth();
   const [_, setLocation] = useLocation();
@@ -78,6 +86,7 @@ function ProtectedRoute({ component: Component, adminOnly = false }: { component
     if (!user) { setLocation("/login"); return; }
     if (adminOnly && user.role !== "super_admin") { setLocation("/"); return; }
     if (!adminOnly && user.role === "super_admin") { setLocation("/manage-admins"); return; }
+    if (!adminOnly && isSubscriptionExpired(user)) { setLocation("/plan-renewal"); return; }
     if (legalDone === false) { setLocation("/legal-agreement"); return; }
     if (legalDone === true && sourceStatus?.needsSelection) { setLocation("/marketing-source-select"); return; }
   }, [user, isLoading, setLocation, adminOnly, legalDone, sourceStatus]);
@@ -89,6 +98,7 @@ function ProtectedRoute({ component: Component, adminOnly = false }: { component
   if (!user) return null;
   if (adminOnly && user.role !== "super_admin") return null;
   if (!adminOnly && user.role === "super_admin") return null;
+  if (!adminOnly && isSubscriptionExpired(user)) return null;
   if (legalDone === false) return null;
   if (sourceStatus?.needsSelection) return null;
 
@@ -110,6 +120,7 @@ function ProtectedRouteFullPage({ component: Component }: { component: any }) {
     if (isLoading) return;
     if (!user) { setLocation("/login"); return; }
     if (user.role === "super_admin") { setLocation("/manage-admins"); return; }
+    if (isSubscriptionExpired(user)) { setLocation("/plan-renewal"); return; }
     if (legalDone === false) { setLocation("/legal-agreement"); return; }
     if (legalDone === true && sourceStatus?.needsSelection) { setLocation("/marketing-source-select"); return; }
   }, [user, isLoading, setLocation, legalDone, sourceStatus]);
@@ -118,10 +129,28 @@ function ProtectedRouteFullPage({ component: Component }: { component: any }) {
     return <div className="h-screen w-full flex items-center justify-center">Loading...</div>;
   }
   if (!user || user.role === "super_admin") return null;
+  if (isSubscriptionExpired(user)) return null;
   if (legalDone === false) return null;
   if (sourceStatus?.needsSelection) return null;
 
   return <Component />;
+}
+
+function PlanRenewalRoute() {
+  const { user, isLoading } = useAuth();
+  const [_, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!user) { setLocation("/login"); return; }
+    if (user.role === "super_admin") { setLocation("/manage-admins"); return; }
+    if (!isSubscriptionExpired(user)) { setLocation("/"); return; }
+  }, [user, isLoading, setLocation]);
+
+  if (isLoading) return <div className="h-screen w-full flex items-center justify-center">Loading...</div>;
+  if (!user || !isSubscriptionExpired(user)) return null;
+
+  return <PlanRenewal />;
 }
 
 function MarketingSourceSelectRoute() {
@@ -150,6 +179,9 @@ function Router() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/create-store" component={CreateStore} />
+      <Route path="/plan-renewal">
+        {() => <PlanRenewalRoute />}
+      </Route>
       <Route path="/legal-agreement" component={LegalAgreement} />
       <Route path="/marketing-source-select">
         {() => <MarketingSourceSelectRoute />}

@@ -53,6 +53,35 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
   }
 }
 
+/** Like requireAuth but allows isActive=false accounts (for plan renewal flow) */
+export async function requireAuthForRenewal(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      res.status(401).json({ error: "No token provided" });
+      return;
+    }
+    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; sessionId?: string };
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      res.status(401).json({ error: "Authentication failed." });
+      return;
+    }
+    if (decoded.sessionId) {
+      const sessionExists = user.activeSessions.some((s) => s.sessionId === decoded.sessionId);
+      if (!sessionExists && user.role !== "super_admin") {
+        res.status(401).json({ error: "Session expired" });
+        return;
+      }
+    }
+    req.user = user;
+    next();
+  } catch {
+    res.status(401).json({ error: "Invalid or expired token" });
+  }
+}
+
 export async function requireSuperAdmin(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   await requireAuth(req, res, () => {
     if (req.user?.role !== "super_admin") {

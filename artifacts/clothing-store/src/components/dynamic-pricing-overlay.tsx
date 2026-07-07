@@ -52,6 +52,7 @@ interface CouponResult {
 interface Props {
   onBack: () => void;
   onSelectPlan: (plan: SelectedPlan) => void;
+  renewalMode?: boolean;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -158,7 +159,7 @@ function PlanCard({ plan, onSelect }: { plan: DynamicPlan; onSelect: () => void 
 }
 
 // ── Main Overlay ──────────────────────────────────────────────────────────────
-export default function DynamicPricingOverlay({ onBack, onSelectPlan }: Props) {
+export default function DynamicPricingOverlay({ onBack, onSelectPlan, renewalMode = false }: Props) {
   const [search, setSearch] = useState("");
   const [detailPlan, setDetailPlan] = useState<DynamicPlan | null>(null);
 
@@ -306,93 +307,93 @@ export default function DynamicPricingOverlay({ onBack, onSelectPlan }: Props) {
               </div>
             )}
 
-            {/* Coupon Code Section */}
-            <div className="bg-white rounded-2xl p-5" style={{ border: `1.5px solid ${BORDER}` }}>
-              <div className="flex items-center gap-2 mb-3">
-                <Ticket className="w-4 h-4" style={{ color: GOLD }} />
-                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: HINT }}>Have a Coupon Code?</p>
-              </div>
+            {/* Coupon Code Section — hidden in renewal mode */}
+            {!renewalMode && (
+              <div className="bg-white rounded-2xl p-5" style={{ border: `1.5px solid ${BORDER}` }}>
+                <div className="flex items-center gap-2 mb-3">
+                  <Ticket className="w-4 h-4" style={{ color: GOLD }} />
+                  <p className="text-xs font-bold uppercase tracking-wider" style={{ color: HINT }}>Have a Coupon Code?</p>
+                </div>
 
-              {couponResult?.valid ? (
-                /* ── Applied state ── */
-                <div>
-                  <div className="flex items-center justify-between p-3 rounded-xl mb-2"
-                    style={{ background: "#F0FAF0", border: "1.5px solid #4CAF50" }}>
-                    <div className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-green-600 shrink-0" />
-                      <div>
-                        <p className="text-xs font-bold text-green-700">{couponCode.toUpperCase()} applied!</p>
-                        {couponResult.partnerName && (
-                          <p className="text-[10px] text-green-600">{couponResult.type === "influencer" ? "Influencer" : "Ambassador"}: {couponResult.partnerName}</p>
-                        )}
+                {couponResult?.valid ? (
+                  <div>
+                    <div className="flex items-center justify-between p-3 rounded-xl mb-2"
+                      style={{ background: "#F0FAF0", border: "1.5px solid #4CAF50" }}>
+                      <div className="flex items-center gap-2">
+                        <Check className="w-4 h-4 text-green-600 shrink-0" />
+                        <div>
+                          <p className="text-xs font-bold text-green-700">{couponCode.toUpperCase()} applied!</p>
+                          {couponResult.partnerName && (
+                            <p className="text-[10px] text-green-600">{couponResult.type === "influencer" ? "Influencer" : "Ambassador"}: {couponResult.partnerName}</p>
+                          )}
+                        </div>
                       </div>
+                      <button onClick={removeCoupon} className="ml-2 p-1 rounded-full hover:bg-green-100 transition-colors">
+                        <X className="w-3.5 h-3.5 text-green-600" />
+                      </button>
                     </div>
-                    <button onClick={removeCoupon} className="ml-2 p-1 rounded-full hover:bg-green-100 transition-colors">
-                      <X className="w-3.5 h-3.5 text-green-600" />
-                    </button>
+                    <div className="flex items-center justify-between px-1">
+                      <div>
+                        <span className="text-xs line-through" style={{ color: HINT }}>{couponResult.originalPrice}</span>
+                        <span className="text-base font-extrabold ml-2" style={{ color: LABEL }}>{couponResult.discountedPrice}</span>
+                      </div>
+                      {couponResult.savings && (
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#E8F5E9", color: "#2E7D32" }}>
+                          Save {couponResult.savings}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between px-1">
-                    <div>
-                      <span className="text-xs line-through" style={{ color: HINT }}>{couponResult.originalPrice}</span>
-                      <span className="text-base font-extrabold ml-2" style={{ color: LABEL }}>{couponResult.discountedPrice}</span>
+                ) : (
+                  <div>
+                    <div className="flex gap-2">
+                      <input
+                        ref={couponInputRef}
+                        type="text"
+                        value={couponCode}
+                        onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponResult(null); }}
+                        onKeyDown={(e) => e.key === "Enter" && applyCoupon()}
+                        placeholder="Enter coupon code"
+                        className="flex-1 outline-none text-sm font-medium uppercase tracking-wider"
+                        style={{
+                          height: "44px",
+                          borderRadius: "10px",
+                          border: `1.5px solid ${couponResult?.valid === false ? "#EF5350" : BORDER}`,
+                          background: "#FAFAFA",
+                          paddingLeft: "12px",
+                          paddingRight: "12px",
+                          color: LABEL,
+                        }}
+                        disabled={couponLoading}
+                      />
+                      <button
+                        type="button"
+                        onClick={applyCoupon}
+                        disabled={!couponCode.trim() || couponLoading}
+                        className="font-bold text-white text-sm px-4 rounded-xl shrink-0 transition-opacity"
+                        style={{
+                          height: "44px",
+                          background: couponCode.trim() && !couponLoading
+                            ? `linear-gradient(135deg, ${GOLD_BG}, #E8940A)`
+                            : "#D4C5A9",
+                          opacity: couponCode.trim() && !couponLoading ? 1 : 0.7,
+                          cursor: couponCode.trim() && !couponLoading ? "pointer" : "not-allowed",
+                        }}
+                      >
+                        {couponLoading ? "..." : "Apply"}
+                      </button>
                     </div>
-                    {couponResult.savings && (
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#E8F5E9", color: "#2E7D32" }}>
-                        Save {couponResult.savings}
-                      </span>
+                    {couponResult?.valid === false && (
+                      <p className="text-xs font-medium mt-2 px-1" style={{ color: "#EF5350" }}>
+                        {couponResult.error ?? "Invalid coupon code"}
+                      </p>
                     )}
                   </div>
-                </div>
-              ) : (
-                /* ── Input state ── */
-                <div>
-                  <div className="flex gap-2">
-                    <input
-                      ref={couponInputRef}
-                      type="text"
-                      value={couponCode}
-                      onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponResult(null); }}
-                      onKeyDown={(e) => e.key === "Enter" && applyCoupon()}
-                      placeholder="Enter coupon code"
-                      className="flex-1 outline-none text-sm font-medium uppercase tracking-wider"
-                      style={{
-                        height: "44px",
-                        borderRadius: "10px",
-                        border: `1.5px solid ${couponResult?.valid === false ? "#EF5350" : BORDER}`,
-                        background: "#FAFAFA",
-                        paddingLeft: "12px",
-                        paddingRight: "12px",
-                        color: LABEL,
-                      }}
-                      disabled={couponLoading}
-                    />
-                    <button
-                      type="button"
-                      onClick={applyCoupon}
-                      disabled={!couponCode.trim() || couponLoading}
-                      className="font-bold text-white text-sm px-4 rounded-xl shrink-0 transition-opacity"
-                      style={{
-                        height: "44px",
-                        background: couponCode.trim() && !couponLoading
-                          ? `linear-gradient(135deg, ${GOLD_BG}, #E8940A)`
-                          : "#D4C5A9",
-                        opacity: couponCode.trim() && !couponLoading ? 1 : 0.7,
-                        cursor: couponCode.trim() && !couponLoading ? "pointer" : "not-allowed",
-                      }}
-                    >
-                      {couponLoading ? "..." : "Apply"}
-                    </button>
-                  </div>
-                  {couponResult?.valid === false && (
-                    <p className="text-xs font-medium mt-2 px-1" style={{ color: "#EF5350" }}>
-                      {couponResult.error ?? "Invalid coupon code"}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
 
-            {/* Select button */}
+            {/* Primary action button */}
             <button
               type="button"
               onClick={() => handleSelect(detailPlan)}
@@ -406,8 +407,19 @@ export default function DynamicPricingOverlay({ onBack, onSelectPlan }: Props) {
               }}
             >
               <Star className="w-4 h-4 fill-white" />
-              {couponResult?.valid ? `Select at ${couponResult.discountedPrice}` : "Select This Plan"}
+              {renewalMode
+                ? `Pay ${detailPlan.price}`
+                : couponResult?.valid
+                  ? `Select at ${couponResult.discountedPrice}`
+                  : "Select This Plan"}
             </button>
+
+            {/* AutoPay note — only in renewal mode */}
+            {renewalMode && (
+              <p className="text-xs text-center px-2 leading-relaxed" style={{ color: HINT }}>
+                You don't need to do renewal on end of subscription, it will be automatically done via AutoPay.
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -420,15 +432,19 @@ export default function DynamicPricingOverlay({ onBack, onSelectPlan }: Props) {
       {/* Header */}
       <div className="flex items-center gap-3 px-5 py-3.5 shrink-0"
         style={{ borderBottom: `1px solid ${BORDER}`, background: "rgba(250,246,238,0.97)" }}>
-        <button onClick={onBack}
-          className="flex items-center gap-1.5 text-sm font-semibold hover:opacity-70 transition-opacity"
-          style={{ color: LABEL }}>
-          <ArrowLeft className="w-4 h-4" /> Back
-        </button>
+        {!renewalMode && (
+          <button onClick={onBack}
+            className="flex items-center gap-1.5 text-sm font-semibold hover:opacity-70 transition-opacity"
+            style={{ color: LABEL }}>
+            <ArrowLeft className="w-4 h-4" /> Back
+          </button>
+        )}
         <div className="flex-1 text-center">
-          <p className="font-bold text-sm" style={{ color: LABEL }}>Select a Plan</p>
+          <p className="font-bold text-sm" style={{ color: LABEL }}>
+            {renewalMode ? "Renew Your Plan to Activate Your Store" : "Select a Plan"}
+          </p>
         </div>
-        <div style={{ width: "60px" }} />
+        {!renewalMode && <div style={{ width: "60px" }} />}
       </div>
 
       {/* Search bar */}
