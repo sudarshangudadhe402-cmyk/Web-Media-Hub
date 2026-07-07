@@ -74,11 +74,7 @@ export const ForgotPasswordSendOtpSchema = z.object({
 export const ForgotPasswordResetSchema = z.object({
   email: emailField,
   otp: otpField,
-  newPassword: z
-    .string()
-    .min(4)
-    .max(128)
-    .regex(/^\d+$/, "Password must be digits only"),
+  newPassword: passwordField,
 });
 
 const customerPasswordField = z

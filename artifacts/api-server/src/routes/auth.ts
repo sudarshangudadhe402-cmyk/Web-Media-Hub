@@ -348,10 +348,6 @@ router.post("/auth/admin/forgot-password/reset", authRateLimiter, validate(Forgo
       res.status(400).json({ error: "Email, OTP and new password are required" }); return;
     }
 
-    if (!/^\d+$/.test(newPassword) || newPassword.length < 4) {
-      res.status(400).json({ error: "Password must be numbers only (minimum 4 digits)" }); return;
-    }
-
     const record = await OtpCode.findOne({
       email: email.trim().toLowerCase(),
       purpose: "admin-forgot-password",
