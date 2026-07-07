@@ -36,7 +36,9 @@ export async function sendStoreCreatedEmail(params: {
   const safePrice = escapeHtml(planPrice || "");
   const safePeriod = escapeHtml(planPeriod || "");
   const safeBadge = escapeHtml(planBadge || "");
-  const loginUrl = escapeHtml(process.env.FRONTEND_URL || "https://web-media-hub.replit.app");
+  const baseUrl = (process.env.FRONTEND_URL || "https://web-media-hub.replit.app").replace(/\/$/, "");
+  const loginUrl = escapeHtml(`${baseUrl}/login`);
+  const loginUrlRaw = `${baseUrl}/login`;
 
   const html = `
   <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
@@ -101,7 +103,7 @@ export async function sendStoreCreatedEmail(params: {
 
       <!-- CTA -->
       <div style="text-align:center;">
-        <a href="${loginUrl}" style="display:inline-block;background:#000;color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:14px;font-weight:700;letter-spacing:0.5px;">Go to My Store Dashboard →</a>
+        <a href="${loginUrl}" style="display:inline-block;background:#000;color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:14px;font-weight:700;letter-spacing:0.5px;">Login to My Store Dashboard →</a>
       </div>
     </div>
     <!-- Footer -->
@@ -116,7 +118,7 @@ export async function sendStoreCreatedEmail(params: {
     replyTo: process.env.GMAIL_USER,
     subject: `Congratulations! Your store is created on Web Media Hub 🎉`,
     html,
-    text: `Congratulations! Your store "${storeName}" is now live on Web Media Hub.\n\nLogin: ${toEmail}\nPassword: ${password}\n\nPlan: ${planName} — ${planPrice} ${planPeriod}\n\nVisit: ${loginUrl}\n\nWeb Media Hub`,
+    text: `Congratulations! Your store "${storeName}" is now live on Web Media Hub.\n\nLogin: ${toEmail}\nPassword: ${password}\n\nPlan: ${planName} — ${planPrice} ${planPeriod}\n\nAdmin Login Page: ${loginUrlRaw}\n\nWeb Media Hub`,
   });
 }
 
@@ -129,9 +131,9 @@ export async function sendStoreDeactivatedEmail(params: {
   const { toEmail, storeName, planName } = params;
   const safeStoreName = escapeHtml(storeName || "Your Store");
   const safePlan = escapeHtml(planName || "your plan");
-  const renewUrl = escapeHtml(
-    `${process.env.FRONTEND_URL || "https://web-media-hub.replit.app"}/plan-renewal`
-  );
+  const baseUrl = (process.env.FRONTEND_URL || "https://web-media-hub.replit.app").replace(/\/$/, "");
+  const renewUrl = escapeHtml(`${baseUrl}/login`);
+  const renewUrlRaw = `${baseUrl}/login`;
 
   const html = `
   <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
@@ -173,7 +175,7 @@ export async function sendStoreDeactivatedEmail(params: {
 
       <!-- CTA -->
       <div style="text-align:center;">
-        <a href="${renewUrl}" style="display:inline-block;background:#f97316;color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:14px;font-weight:700;letter-spacing:0.5px;">Renew My Plan &amp; Reactivate Store →</a>
+        <a href="${renewUrl}" style="display:inline-block;background:#f97316;color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:14px;font-weight:700;letter-spacing:0.5px;">Login &amp; Renew My Plan →</a>
       </div>
     </div>
     <!-- Footer -->
@@ -188,7 +190,7 @@ export async function sendStoreDeactivatedEmail(params: {
     replyTo: process.env.GMAIL_USER,
     subject: `Your store is deactivated on Web Media Hub — Please renew your plan`,
     html,
-    text: `Your store "${storeName}" has been deactivated because your ${planName} subscription has expired.\n\nRenew your plan to reactivate: ${renewUrl}\n\nAll your data is safe — products, bookings, and customers are preserved.\n\nWeb Media Hub`,
+    text: `Your store "${storeName}" has been deactivated because your ${planName} subscription has expired.\n\nLogin to renew your plan: ${renewUrlRaw}\n\nAll your data is safe — products, bookings, and customers are preserved.\n\nWeb Media Hub`,
   });
 }
 
@@ -208,7 +210,9 @@ export async function sendStoreReactivatedEmail(params: {
   const safePrice = escapeHtml(planPrice || "");
   const safePeriod = escapeHtml(planPeriod || "");
   const safeBadge = escapeHtml(planBadge || "");
-  const dashboardUrl = escapeHtml(process.env.FRONTEND_URL || "https://web-media-hub.replit.app");
+  const baseUrl = (process.env.FRONTEND_URL || "https://web-media-hub.replit.app").replace(/\/$/, "");
+  const dashboardUrl = escapeHtml(`${baseUrl}/login`);
+  const dashboardUrlRaw = `${baseUrl}/login`;
 
   const html = `
   <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
@@ -264,7 +268,7 @@ export async function sendStoreReactivatedEmail(params: {
 
       <!-- CTA -->
       <div style="text-align:center;">
-        <a href="${dashboardUrl}" style="display:inline-block;background:#16a34a;color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:14px;font-weight:700;letter-spacing:0.5px;">Go to My Dashboard →</a>
+        <a href="${dashboardUrl}" style="display:inline-block;background:#16a34a;color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:14px;font-weight:700;letter-spacing:0.5px;">Login to My Dashboard →</a>
       </div>
     </div>
     <!-- Footer -->
@@ -279,7 +283,7 @@ export async function sendStoreReactivatedEmail(params: {
     replyTo: process.env.GMAIL_USER,
     subject: `Congratulations! Your store is active again on Web Media Hub 🎉`,
     html,
-    text: `Great news! Your store "${storeName}" is active again on Web Media Hub.\n\nActive Plan: ${planName} — ${planPrice} ${planPeriod}\n\nVisit your dashboard: ${dashboardUrl}\n\nWeb Media Hub`,
+    text: `Great news! Your store "${storeName}" is active again on Web Media Hub.\n\nActive Plan: ${planName} — ${planPrice} ${planPeriod}\n\nAdmin Login Page: ${dashboardUrlRaw}\n\nWeb Media Hub`,
   });
 }
 
