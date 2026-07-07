@@ -149,7 +149,8 @@ router.get("/products/:id", requireAuth, async (req: AuthRequest, res) => {
       return;
     }
 
-    if (store && product.storeId !== String(store._id)) {
+    // Require an owned store — deny access if user has no store OR product belongs to another store
+    if (!store || product.storeId !== String(store._id)) {
       res.status(403).json({ error: "Access denied" });
       return;
     }
@@ -172,12 +173,35 @@ router.patch("/products/:id", requireAuth, async (req: AuthRequest, res) => {
       return;
     }
 
-    if (store && existing.storeId !== String(store._id)) {
+    if (!store || existing.storeId !== String(store._id)) {
       res.status(403).json({ error: "You can only edit your own store's products" });
       return;
     }
 
-    const product = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    // Whitelist allowed fields — never pass req.body directly to prevent
+    // clients from overwriting storeId, likeCount, tryOnLikeCount, _id, etc.
+    const {
+      name, brandName, description, images, modelUrl,
+      discountPrice, actualPrice, functionCategory, productType,
+      sizes, age, gender, stock, colours,
+    } = req.body;
+    const allowedUpdate: Record<string, unknown> = {};
+    if (name !== undefined) allowedUpdate.name = name;
+    if (brandName !== undefined) allowedUpdate.brandName = brandName;
+    if (description !== undefined) allowedUpdate.description = description;
+    if (images !== undefined) allowedUpdate.images = images;
+    if (modelUrl !== undefined) allowedUpdate.modelUrl = modelUrl;
+    if (discountPrice !== undefined) allowedUpdate.discountPrice = discountPrice;
+    if (actualPrice !== undefined) allowedUpdate.actualPrice = actualPrice;
+    if (functionCategory !== undefined) allowedUpdate.functionCategory = functionCategory;
+    if (productType !== undefined) allowedUpdate.productType = productType;
+    if (sizes !== undefined) allowedUpdate.sizes = sizes;
+    if (age !== undefined) allowedUpdate.age = age;
+    if (gender !== undefined) allowedUpdate.gender = gender;
+    if (stock !== undefined) allowedUpdate.stock = stock;
+    if (colours !== undefined) allowedUpdate.colours = colours;
+
+    const product = await Product.findByIdAndUpdate(req.params.id, { $set: allowedUpdate }, { new: true });
     if (!product) {
       res.status(404).json({ error: "Product not found" });
       return;
@@ -201,7 +225,7 @@ router.delete("/products/:id", requireAuth, async (req: AuthRequest, res) => {
       return;
     }
 
-    if (store && existing.storeId !== String(store._id)) {
+    if (!store || existing.storeId !== String(store._id)) {
       res.status(403).json({ error: "You can only delete your own store's products" });
       return;
     }

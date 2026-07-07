@@ -22,18 +22,23 @@ import campaignsRouter from "./campaigns";
 import paymentsRouter from "./payments";
 import { requireDb } from "../middlewares/dbCheck";
 
-const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || "";
+const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET;
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET or SESSION_SECRET environment variable is required");
+}
 
-// Routes that are allowed even with an expired subscription
+// Routes that are allowed even with an expired subscription.
+// These are router-relative paths (no /api prefix) because this middleware
+// runs inside the /api sub-router where req.path strips the /api prefix.
 const SUBSCRIPTION_EXEMPT_PREFIXES = [
-  "/api/auth",
-  "/api/payments",
-  "/api/public",
-  "/api/pricing",
-  "/api/legal",
-  "/api/store-requests",
-  "/api/health",
-  "/api/settings",
+  "/auth",
+  "/payments",
+  "/public",
+  "/pricing",
+  "/legal",
+  "/store-requests",
+  "/health",
+  "/settings",
 ];
 
 async function subscriptionGuard(req: Request, res: Response, next: NextFunction): Promise<void> {
