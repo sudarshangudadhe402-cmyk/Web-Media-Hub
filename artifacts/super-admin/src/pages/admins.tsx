@@ -36,7 +36,6 @@ import {
   Search,
   CalendarDays,
   Clock,
-  RefreshCw,
   AlertTriangle,
   CheckCircle2,
   Link as LinkIcon,
@@ -263,29 +262,6 @@ export default function Admins() {
     onError: () => toast({ variant: "destructive", title: "Failed to update admin status" }),
   });
 
-  const renewSubscription = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await authFetch(`/api/admins/${id}/renew-subscription`, { method: "PATCH" });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error((err as any).error ?? "Failed to renew");
-      }
-      return res.json();
-    },
-    onSuccess: (data) => {
-      toast({ title: "Subscription renewed ✅ New period started from today" });
-      queryClient.invalidateQueries({ queryKey: getListAdminsQueryKey() });
-      if (selectedAdmin) {
-        setSelectedAdmin((prev) => prev ? {
-          ...prev,
-          subscriptionStartDate: data.subscriptionStartDate,
-          subscriptionEndDate: data.subscriptionEndDate,
-          isActive: true,
-        } as any : prev);
-      }
-    },
-    onError: (err: Error) => toast({ variant: "destructive", title: err.message }),
-  });
 
   function openAdminDetail(admin: NonNullable<typeof admins>[number]) {
     setSelectedAdmin(admin);
@@ -789,24 +765,6 @@ export default function Admins() {
                     </div>
                   </div>
 
-                  {/* Renew button — only after subscription expires (non-lifetime) */}
-                  {!isLifetime && subEnd && isExpired && (
-                    <div className="px-4 py-3 border-t bg-muted/30">
-                      <Button
-                        size="sm"
-                        className="w-full gap-2"
-                        style={{ background: planColor || undefined }}
-                        disabled={renewSubscription.isPending}
-                        onClick={() => renewSubscription.mutate(selectedAdmin.id)}
-                      >
-                        <RefreshCw className={`w-3.5 h-3.5 ${renewSubscription.isPending ? "animate-spin" : ""}`} />
-                        {renewSubscription.isPending ? "Renewing..." : "Reactivate & Renew Subscription"}
-                      </Button>
-                      <p className="text-[10px] text-muted-foreground text-center mt-1.5">
-                        Renewal resets the subscription period from today. New analysis period begins.
-                      </p>
-                    </div>
-                  )}
                 </div>
 
                 <div className="bg-muted rounded-xl divide-y divide-border">

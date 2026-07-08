@@ -3,44 +3,11 @@ import { User } from "../models/User";
 import { Store } from "../models/Store";
 import { Product } from "../models/Product";
 import { requireSuperAdmin } from "../middlewares/auth";
-import { DynamicPricing } from "../models/DynamicPricing";
 import { StoreRequest } from "../models/StoreRequest";
 import { RevenuePayment } from "../models/RevenuePayment";
 
 const router = Router();
 
-function calcSubscriptionDates(
-  subscriptionDays: number | null | undefined,
-  planPeriod: string
-): { start: Date | null; end: Date | null } {
-  const now = new Date();
-  if (subscriptionDays !== null && subscriptionDays !== undefined && subscriptionDays > 0) {
-    const end = new Date(now);
-    end.setDate(end.getDate() + subscriptionDays);
-    return { start: now, end };
-  }
-  const p = (planPeriod ?? "").toLowerCase();
-  if (p.includes("month")) {
-    const end = new Date(now);
-    end.setDate(end.getDate() + 30);
-    return { start: now, end };
-  }
-  if (p.includes("year")) {
-    const end = new Date(now);
-    end.setFullYear(end.getFullYear() + 1);
-    return { start: now, end };
-  }
-  return { start: null, end: null };
-}
-
-async function findDynamicPlanById(planKey: string): Promise<{ durationDays: number | null } | null> {
-  if (!planKey) return null;
-  const doc = await DynamicPricing.findById("pricing-v2").lean();
-  const plans = (doc as any)?.plans ?? [];
-  const plan = plans.find((p: any) => String(p._id) === planKey);
-  if (!plan) return null;
-  return { durationDays: plan.durationDays ?? null };
-}
 
 // ── Referral rewards: admins who referred others via referral link ────────────
 router.get("/admins/referral-rewards", requireSuperAdmin, async (req, res) => {
@@ -228,45 +195,6 @@ router.get("/admins", requireSuperAdmin, async (req, res) => {
   }
 });
 
-router.patch("/admins/:id/renew-subscription", requireSuperAdmin, async (req, res) => {
-  try {
-    const admin = await User.findById(req.params.id);
-    if (!admin) { res.status(404).json({ error: "Admin not found" }); return; }
-
-    const planKey = admin.planKey || "";
-    const planCfg = await findDynamicPlanById(planKey);
-    const subscriptionDays: number | null = planCfg?.durationDays ?? null;
-
-    const { start, end } = calcSubscriptionDates(subscriptionDays, admin.planPeriod ?? "");
-    if (!end) { res.status(400).json({ error: "This plan does not have a subscription period" }); return; }
-
-    admin.subscriptionStartDate = start;
-    admin.subscriptionEndDate = end;
-    admin.isActive = true;
-    await admin.save();
-
-    // Record revenue event — manual renewal by super-admin
-    const renewalAmount = parseFloat(String(admin.planPrice).replace(/[^\d.]/g, "")) || 0;
-    if (renewalAmount > 0) {
-      await RevenuePayment.create({
-        adminId: String(admin._id),
-        type: "renewal",
-        amount: renewalAmount,
-        planName: admin.planName || "",
-      });
-    }
-
-    res.json({
-      id: String(admin._id),
-      subscriptionStartDate: admin.subscriptionStartDate?.toISOString() ?? null,
-      subscriptionEndDate: admin.subscriptionEndDate?.toISOString() ?? null,
-      isActive: admin.isActive,
-    });
-  } catch (err) {
-    req.log.error({ err }, "Renew subscription error");
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
 
 router.patch("/admins/:id/toggle-active", requireSuperAdmin, async (req, res) => {
   try {
