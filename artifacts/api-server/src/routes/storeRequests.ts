@@ -37,6 +37,48 @@ router.get("/store-requests/my", requireAuth, async (req: any, res) => {
   }
 });
 
+// ── Duplicate check: called before step 2 → step 3 on the Create Store form ──
+router.post("/store-requests/check-duplicate", async (req: any, res) => {
+  try {
+    const email = (req.body?.email ?? "").trim().toLowerCase();
+    const whatsapp = (req.body?.whatsapp ?? "").trim();
+
+    // Check StoreRequest collection (any non-rejected request counts as taken)
+    const [emailRequest, whatsappRequest] = await Promise.all([
+      email
+        ? StoreRequest.findOne({ email, status: { $in: ["pending", "approved"] } }).lean()
+        : null,
+      whatsapp
+        ? StoreRequest.findOne({ whatsapp, status: { $in: ["pending", "approved"] } }).lean()
+        : null,
+    ]);
+
+    if (emailRequest) {
+      res.json({ emailTaken: true, whatsappTaken: false });
+      return;
+    }
+    if (whatsappRequest) {
+      res.json({ emailTaken: false, whatsappTaken: true });
+      return;
+    }
+
+    // Also check User collection in case the store was already created
+    const existingUser = email
+      ? await User.findOne({ email }).select("_id").lean()
+      : null;
+
+    if (existingUser) {
+      res.json({ emailTaken: true, whatsappTaken: false });
+      return;
+    }
+
+    res.json({ emailTaken: false, whatsappTaken: false });
+  } catch (err) {
+    req.log?.error?.({ err }, "check-duplicate error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ── Admin referral history (stores created via this admin's referral link) ──
 router.get("/store-requests/my-referrals", requireAuth, async (req: any, res) => {
   try {

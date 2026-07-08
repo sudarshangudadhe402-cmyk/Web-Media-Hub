@@ -932,6 +932,9 @@ export default function CreateStore() {
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-semibold" style={{ color: HINT }}>
                               You got discount
+                              <span className="ml-1 font-bold" style={{ color: "#16A34A" }}>
+                                ({Math.round((paymentBreakdown.discount / paymentBreakdown.original) * 100)}%)
+                              </span>
                               {selectedPlan.couponCode && (
                                 <span className="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
                                   style={{ background: "#DCFCE7", color: "#16A34A" }}>COUPON</span>
