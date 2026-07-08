@@ -565,13 +565,46 @@ function DashboardTab() {
   return (
     <div className="space-y-6">
       {/* Stats — always all-time cumulative */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <StatCard title="Total Admins" value={fmt(data.totalAdmins)} icon={Users} color="bg-blue-500" />
         <StatCard title="Paying Admins" value={fmt(data.totalPayingAdmins)} sub={`${data.totalAdmins > 0 ? Math.round(data.totalPayingAdmins/data.totalAdmins*100) : 0}% conversion`} icon={Activity} color="bg-green-500" />
-        <StatCard title="Total Revenue" value={fmtRs(data.totalRevenue)} icon={DollarSign} color="bg-purple-500" />
-        <StatCard title="New Signups Revenue" value={fmtRs(data.newSignupsRevenue)} sub="This month" icon={TrendingUp} color="bg-orange-500" />
-        <StatCard title="Renewals Revenue" value={fmtRs(data.renewalsRevenue)} sub="This month" icon={RefreshCw} color="bg-teal-500" />
       </div>
+
+      {/* Revenue — single combined card with 3 columns separated by vertical lines */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="flex items-stretch divide-x divide-border">
+            {/* Left: Total Revenue */}
+            <div className="flex-1 flex flex-col items-center justify-center py-4 px-3 text-center">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-purple-500 mb-2">
+                <DollarSign className="w-4 h-4 text-white" />
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-tight mb-1">Total Revenue</p>
+              <p className="text-xl font-bold">{fmtRs(data.totalRevenue)}</p>
+            </div>
+
+            {/* Middle: New Signups Revenue */}
+            <div className="flex-1 flex flex-col items-center justify-center py-4 px-3 text-center">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-orange-500 mb-2">
+                <TrendingUp className="w-4 h-4 text-white" />
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-tight mb-1">New Signups Revenue</p>
+              <p className="text-xl font-bold">{fmtRs(data.newSignupsRevenue)}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">This month</p>
+            </div>
+
+            {/* Right: Renewals Revenue */}
+            <div className="flex-1 flex flex-col items-center justify-center py-4 px-3 text-center">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-teal-500 mb-2">
+                <RefreshCw className="w-4 h-4 text-white" />
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-tight mb-1">Renewals Revenue</p>
+              <p className="text-xl font-bold">{fmtRs(data.renewalsRevenue)}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">This month</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Dashed divider */}
       <div className="border-t border-dashed border-gray-300" />
