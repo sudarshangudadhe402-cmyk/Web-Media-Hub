@@ -39,7 +39,10 @@ app.use(
         return callback(null, true);
       }
       // Allow Replit dev domains (*.replit.dev, *.repl.co, *.replit.app)
-      if (/\.(replit\.dev|repl\.co|replit\.app|janeway\.replit\.dev)$/.test(origin)) {
+      // Extract hostname so a port suffix like :3000 doesn't break the match
+      let hostname = origin;
+      try { hostname = new URL(origin).hostname; } catch {}
+      if (/\.(replit\.dev|repl\.co|replit\.app|janeway\.replit\.dev)$/.test(hostname)) {
         return callback(null, true);
       }
       // Allow localhost in development
