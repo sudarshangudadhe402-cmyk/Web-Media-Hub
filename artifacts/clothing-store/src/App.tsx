@@ -195,23 +195,23 @@ function MarketingSourceSelectRoute() {
   return <MarketingSourceSelect sources={sourceStatus.sources || []} />;
 }
 
+function CreateStoreRoute() {
+  const { user, isLoading } = useAuth();
+  const [, nav] = useLocation();
+  useEffect(() => {
+    if (isLoading) return;
+    if (user && isSubscriptionExpired(user)) nav("/plan-renewal");
+  }, [user, isLoading, nav]);
+  if (isLoading) return <div className="h-screen w-full flex items-center justify-center">Loading...</div>;
+  if (user && isSubscriptionExpired(user)) return null;
+  return <CreateStore />;
+}
+
 function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
-      <Route path="/create-store">
-        {() => {
-          const { user, isLoading } = useAuth();
-          const [, nav] = useLocation();
-          useEffect(() => {
-            if (isLoading) return;
-            if (user && isSubscriptionExpired(user)) nav("/plan-renewal");
-          }, [user, isLoading, nav]);
-          if (isLoading) return <div className="h-screen w-full flex items-center justify-center">Loading...</div>;
-          if (user && isSubscriptionExpired(user)) return null;
-          return <CreateStore />;
-        }}
-      </Route>
+      <Route path="/create-store" component={CreateStoreRoute} />
       <Route path="/plan-renewal">
         {() => <PlanRenewalRoute />}
       </Route>
