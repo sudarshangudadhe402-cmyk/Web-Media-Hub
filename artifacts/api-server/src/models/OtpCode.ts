@@ -7,6 +7,8 @@ export interface IOtpCode extends Document {
   purpose: "signup" | "signin" | "admin-creation" | "admin-forgot-password" | "cancel-autopay" | "reactivate-autopay";
   expiresAt: Date;
   used: boolean;
+  /** true only when the correct code was entered by the user — distinct from `used` which also covers invalidation on resend */
+  verified: boolean;
   createdAt: Date;
 }
 
@@ -18,6 +20,7 @@ const OtpCodeSchema = new Schema<IOtpCode>(
     purpose: { type: String, enum: ["signup", "signin", "admin-creation", "admin-forgot-password", "partner-verification", "partner-withdrawal", "cancel-autopay", "reactivate-autopay"], required: true },
     expiresAt: { type: Date, required: true },
     used: { type: Boolean, default: false },
+    verified: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

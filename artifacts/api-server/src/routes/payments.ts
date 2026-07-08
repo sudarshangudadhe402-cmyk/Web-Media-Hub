@@ -133,8 +133,21 @@ router.post("/payments/verify-and-register", async (req: any, res) => {
       return;
     }
 
-    // 2. Check for duplicates
+    // 2. Check email OTP was verified (server-side proof)
     const emailLower = (email ?? "").toLowerCase().trim();
+    const otpVerified = await OtpCode.findOne({
+      email: emailLower,
+      purpose: "signup",
+      used: true,
+      verified: true,
+      createdAt: { $gte: new Date(Date.now() - 2 * 60 * 60 * 1000) }, // within last 2 hours
+    }).sort({ createdAt: -1 }).lean();
+    if (!otpVerified) {
+      res.status(400).json({ error: "Email verification required. Please verify your email with OTP before completing payment." });
+      return;
+    }
+
+    // 2b. Check for duplicates
     const existingUser = await User.findOne({ email: emailLower });
     if (existingUser) {
       res.status(400).json({ error: "Email already registered. Please login." });

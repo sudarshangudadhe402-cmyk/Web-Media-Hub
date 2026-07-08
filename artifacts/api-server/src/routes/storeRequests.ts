@@ -4,6 +4,7 @@ import { User } from "../models/User";
 import { OtpCode } from "../models/OtpCode";
 import { sendCreateStoreOtpEmail } from "../services/emailOtp";
 import { requireAuth, requireSuperAdmin } from "../middlewares/auth";
+import { otpRateLimiter } from "../middlewares/rateLimiter";
 
 const router = Router();
 
@@ -76,7 +77,7 @@ router.post("/store-requests/send-email-otp", async (req: any, res) => {
 });
 
 // ── Verify email OTP for store creation ──
-router.post("/store-requests/verify-email-otp", async (req: any, res) => {
+router.post("/store-requests/verify-email-otp", otpRateLimiter, async (req: any, res) => {
   try {
     const email = (req.body?.email ?? "").trim().toLowerCase();
     const code  = (req.body?.code  ?? "").trim();
@@ -103,6 +104,7 @@ router.post("/store-requests/verify-email-otp", async (req: any, res) => {
     }
 
     record.used = true;
+    record.verified = true;
     await record.save();
 
     res.json({ verified: true });
