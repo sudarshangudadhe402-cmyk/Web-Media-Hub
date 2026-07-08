@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { StoreRequest } from "../models/StoreRequest";
 import { User } from "../models/User";
+import { OtpCode } from "../models/OtpCode";
+import { sendCreateStoreOtpEmail } from "../services/emailOtp";
 import { requireAuth, requireSuperAdmin } from "../middlewares/auth";
 
 const router = Router();
@@ -34,6 +36,79 @@ router.get("/store-requests/my", requireAuth, async (req: any, res) => {
   } catch (err) {
     req.log.error({ err }, "My store requests error");
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── Send email OTP for store creation email verification ──
+router.post("/store-requests/send-email-otp", async (req: any, res) => {
+  try {
+    const email = (req.body?.email ?? "").trim().toLowerCase();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      res.status(400).json({ error: "Valid email required" });
+      return;
+    }
+
+    // Rate-limit: max 3 OTPs per email per 10 minutes
+    const recentCount = await OtpCode.countDocuments({
+      email,
+      purpose: "signup",
+      createdAt: { $gte: new Date(Date.now() - 10 * 60 * 1000) },
+    });
+    if (recentCount >= 3) {
+      res.status(429).json({ error: "Too many OTP requests. Please wait 10 minutes." });
+      return;
+    }
+
+    // Invalidate old unused OTPs for this email
+    await OtpCode.updateMany({ email, purpose: "signup", used: false }, { used: true });
+
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    await OtpCode.create({ email, storeId: "", code, purpose: "signup", expiresAt, used: false });
+
+    await sendCreateStoreOtpEmail({ toEmail: email, otp: code });
+
+    res.json({ sent: true });
+  } catch (err) {
+    req.log?.error?.({ err }, "send-email-otp error");
+    res.status(500).json({ error: "Failed to send OTP. Please try again." });
+  }
+});
+
+// ── Verify email OTP for store creation ──
+router.post("/store-requests/verify-email-otp", async (req: any, res) => {
+  try {
+    const email = (req.body?.email ?? "").trim().toLowerCase();
+    const code  = (req.body?.code  ?? "").trim();
+
+    if (!email || !code) {
+      res.status(400).json({ error: "Email and code required" });
+      return;
+    }
+
+    const record = await OtpCode.findOne({
+      email,
+      purpose: "signup",
+      used: false,
+      expiresAt: { $gt: new Date() },
+    }).sort({ createdAt: -1 });
+
+    if (!record) {
+      res.status(400).json({ error: "OTP expired or not found. Please request a new one." });
+      return;
+    }
+    if (record.code !== code) {
+      res.status(400).json({ error: "Incorrect OTP. Please try again." });
+      return;
+    }
+
+    record.used = true;
+    await record.save();
+
+    res.json({ verified: true });
+  } catch (err) {
+    req.log?.error?.({ err }, "verify-email-otp error");
+    res.status(500).json({ error: "Verification failed. Please try again." });
   }
 });
 

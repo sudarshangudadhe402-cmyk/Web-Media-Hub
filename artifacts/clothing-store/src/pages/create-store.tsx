@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -90,6 +90,59 @@ const STEPS = [
 /* ─── Duplicate popup state ─── */
 interface DupePopup { message: string }
 
+/* ─── OTP Input Boxes ─── */
+function OtpBoxes({ digits, email, verifying, error, onDigitChange, onKeyDown, onResend, sending, GOLD, BORDER, LABEL, HINT }: {
+  digits: string[];
+  email: string;
+  verifying: boolean;
+  error: string | null;
+  onDigitChange: (i: number, v: string, refs: (HTMLInputElement | null)[]) => void;
+  onKeyDown: (e: any, i: number, refs: (HTMLInputElement | null)[]) => void;
+  onResend: () => void;
+  sending: boolean;
+  GOLD: string; BORDER: string; LABEL: string; HINT: string;
+}) {
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  return (
+    <motion.div
+      key="otp-section"
+      initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+      className="space-y-2"
+    >
+      <p className="text-xs font-semibold" style={{ color: LABEL }}>
+        Enter OTP sent to <span style={{ color: GOLD }}>{email}</span>
+      </p>
+      <div className="flex gap-2 justify-center">
+        {digits.map((digit, i) => (
+          <input
+            key={i}
+            ref={el => { inputRefs.current[i] = el; }}
+            type="text"
+            inputMode="numeric"
+            maxLength={1}
+            value={digit}
+            onChange={e => onDigitChange(i, e.target.value, inputRefs.current)}
+            onKeyDown={e => onKeyDown(e, i, inputRefs.current)}
+            className="w-10 h-12 text-center font-bold rounded-xl outline-none transition-all"
+            style={{
+              border: `2px solid ${digit ? GOLD : BORDER}`,
+              background: digit ? `${GOLD}15` : "#F7F3EC",
+              color: LABEL,
+              fontSize: "20px",
+            }}
+          />
+        ))}
+      </div>
+      {verifying && <p className="text-xs text-center" style={{ color: HINT }}>Verifying…</p>}
+      {error && <p className="text-xs text-center font-semibold" style={{ color: "#E53E3E" }}>{error}</p>}
+      <button type="button" onClick={onResend} disabled={sending}
+        className="w-full text-xs text-center underline" style={{ color: HINT, background: "none", border: "none", cursor: sending ? "default" : "pointer" }}>
+        {sending ? "Sending…" : "Resend OTP"}
+      </button>
+    </motion.div>
+  );
+}
+
 export default function CreateStore() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(0);
@@ -99,6 +152,13 @@ export default function CreateStore() {
   const [selectedPlan, setSelectedPlan] = useState<SelectedPlan | null>(null);
   const [checking,     setChecking]     = useState(false);
   const [dupePopup,    setDupePopup]    = useState<DupePopup | null>(null);
+  // ── Email OTP state ──
+  const [otpSent,      setOtpSent]      = useState(false);
+  const [otpVerified,  setOtpVerified]  = useState(false);
+  const [otpDigits,    setOtpDigits]    = useState<string[]>(["","","","","",""]);
+  const [otpError,     setOtpError]     = useState<string | null>(null);
+  const [sendingOtp,   setSendingOtp]   = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedStoreType, setSelectedStoreType] = useState<string | null>(null);
   const [apiCategories, setApiCategories] = useState<string[]>([]);
@@ -336,13 +396,80 @@ export default function CreateStore() {
   const { formState: { errors, isValid } } = form;
   const password  = form.watch("password");
   const storeName = form.watch("storeName");
+  const emailVal  = form.watch("email");
   const strength  = getPasswordStrength(password);
   const storeNameOk = (storeName ?? "").length >= 2 && !errors.storeName;
   const step1Ready = isValid && !!selectedPlan;
 
+  // Reset OTP state whenever email changes
+  useEffect(() => {
+    setOtpSent(false);
+    setOtpVerified(false);
+    setOtpDigits(["","","","","",""]);
+    setOtpError(null);
+  }, [emailVal]);
+
   function goTo(next: number) {
     setDir(next > step ? 1 : -1);
     setStep(next);
+  }
+
+  async function handleSendOtp() {
+    if (!step1Ready || sendingOtp) return;
+    const email = form.getValues("email").trim();
+    setSendingOtp(true);
+    setOtpError(null);
+    try {
+      const res = await fetch("/api/store-requests/send-email-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setOtpError(data.error || "Failed to send OTP."); return; }
+      setOtpSent(true);
+      setOtpDigits(["","","","","",""]);
+    } catch {
+      setOtpError("Network error. Please try again.");
+    } finally {
+      setSendingOtp(false);
+    }
+  }
+
+  async function handleVerifyOtp(digits: string[]) {
+    const code = digits.join("");
+    if (code.length < 6 || verifyingOtp) return;
+    const email = form.getValues("email").trim();
+    setVerifyingOtp(true);
+    setOtpError(null);
+    try {
+      const res = await fetch("/api/store-requests/verify-email-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setOtpError(data.error || "Invalid OTP."); return; }
+      setOtpVerified(true);
+    } catch {
+      setOtpError("Network error. Please try again.");
+    } finally {
+      setVerifyingOtp(false);
+    }
+  }
+
+  function handleOtpDigitChange(index: number, value: string, refs: (HTMLInputElement | null)[]) {
+    const digit = value.replace(/\D/g, "").slice(-1);
+    const next = [...otpDigits];
+    next[index] = digit;
+    setOtpDigits(next);
+    setOtpError(null);
+    if (digit && index < 5) refs[index + 1]?.focus();
+    if (next.every(d => d !== "")) handleVerifyOtp(next);
+  }
+
+  function handleOtpKeyDown(e: KeyboardEvent, index: number, refs: (HTMLInputElement | null)[]) {
+    if (e.key === "Backspace" && !otpDigits[index] && index > 0) refs[index - 1]?.focus();
   }
 
   async function handleContinueStep2() {
@@ -725,6 +852,35 @@ export default function CreateStore() {
                     {!errors.password && <p className="text-xs" style={{ color: HINT }}>Min 8 chars, 1 uppercase, 1 number (special chars/emojis nahi)</p>}
                   </div>
 
+                  {/* ── OTP boxes (shown after OTP sent, hidden once verified) ── */}
+                  <AnimatePresence>
+                    {otpSent && !otpVerified && (
+                      <OtpBoxes
+                        digits={otpDigits}
+                        email={form.getValues("email")}
+                        verifying={verifyingOtp}
+                        error={otpError}
+                        onDigitChange={handleOtpDigitChange}
+                        onKeyDown={handleOtpKeyDown}
+                        onResend={handleSendOtp}
+                        sending={sendingOtp}
+                        GOLD={GOLD} BORDER={BORDER} LABEL={LABEL} HINT={HINT}
+                      />
+                    )}
+                  </AnimatePresence>
+
+                  {/* Verified badge */}
+                  <AnimatePresence>
+                    {otpVerified && (
+                      <motion.div key="verified" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                        className="flex items-center gap-2 px-3 py-2 rounded-xl"
+                        style={{ background: "#F0FDF4", border: "1.5px solid #BBF7D0" }}>
+                        <CheckCircle className="w-4 h-4 shrink-0" style={{ color: "#16A34A" }} />
+                        <p className="text-xs font-semibold" style={{ color: "#16A34A" }}>Email verified successfully</p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                   {/* Store Name */}
                   <div className="space-y-1">
                     <FieldRow icon={<Store className="w-4 h-4" style={{ color: HINT }} />} label="Store Name" error={errors.storeName?.message}>
@@ -791,25 +947,44 @@ export default function CreateStore() {
                     <ChevronRight className="w-4 h-4 text-white/80" />
                   </motion.button>
 
-                  {/* Continue */}
-                  <motion.button type="button"
-                    disabled={!step1Ready || checking}
-                    onClick={handleContinueStep2}
-                    whileHover={step1Ready&&!checking?{scale:1.012}:{}}
-                    whileTap={step1Ready&&!checking?{scale:0.97}:{}}
-                    className="w-full flex items-center justify-center gap-2 font-bold text-white"
-                    style={{ height:"52px", borderRadius:"14px",
-                      background: step1Ready&&!checking ? LABEL : "#C5BFB5",
-                      fontSize:"15px", cursor:step1Ready&&!checking?"pointer":"not-allowed",
-                      boxShadow:step1Ready?"0 4px 16px rgba(0,0,0,0.18)":"none", transition:"all 0.2s" }}>
-                    {checking ? (
-                      <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Checking...</>
-                    ) : (
-                      <>Continue <ChevronRight className="w-4 h-4" /></>
-                    )}
-                  </motion.button>
+                  {/* Send OTP / Continue button */}
+                  {!otpVerified ? (
+                    <motion.button type="button"
+                      disabled={!step1Ready || sendingOtp}
+                      onClick={handleSendOtp}
+                      whileHover={step1Ready&&!sendingOtp?{scale:1.012}:{}}
+                      whileTap={step1Ready&&!sendingOtp?{scale:0.97}:{}}
+                      className="w-full flex items-center justify-center gap-2 font-bold text-white"
+                      style={{ height:"52px", borderRadius:"14px",
+                        background: step1Ready&&!sendingOtp ? "#1A73E8" : "#C5BFB5",
+                        fontSize:"15px", cursor:step1Ready&&!sendingOtp?"pointer":"not-allowed",
+                        boxShadow:step1Ready?"0 4px 20px rgba(26,115,232,0.35)":"none", transition:"all 0.2s" }}>
+                      {sendingOtp ? (
+                        <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Sending OTP…</>
+                      ) : (
+                        <><Mail className="w-4 h-4" />{otpSent ? "Resend OTP on Email" : "Send OTP on Email"}</>
+                      )}
+                    </motion.button>
+                  ) : (
+                    <motion.button type="button"
+                      disabled={!step1Ready || checking}
+                      onClick={handleContinueStep2}
+                      whileHover={step1Ready&&!checking?{scale:1.012}:{}}
+                      whileTap={step1Ready&&!checking?{scale:0.97}:{}}
+                      className="w-full flex items-center justify-center gap-2 font-bold text-white"
+                      style={{ height:"52px", borderRadius:"14px",
+                        background: step1Ready&&!checking ? LABEL : "#C5BFB5",
+                        fontSize:"15px", cursor:step1Ready&&!checking?"pointer":"not-allowed",
+                        boxShadow:step1Ready?"0 4px 16px rgba(0,0,0,0.18)":"none", transition:"all 0.2s" }}>
+                      {checking ? (
+                        <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Checking…</>
+                      ) : (
+                        <>Continue <ChevronRight className="w-4 h-4" /></>
+                      )}
+                    </motion.button>
+                  )}
 
-                  {!step1Ready && !checking && (
+                  {!step1Ready && (
                     <p className="text-center text-xs" style={{ color: "#BBAA99" }}>
                       {!selectedPlan ? "Choose a plan to continue" : "Fill all fields to continue"}
                     </p>

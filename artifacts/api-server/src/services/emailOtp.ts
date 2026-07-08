@@ -122,6 +122,45 @@ export async function sendStoreCreatedEmail(params: {
   });
 }
 
+// ─── Create Store — Email OTP ─────────────────────────────────────────────────
+export async function sendCreateStoreOtpEmail(params: {
+  toEmail: string;
+  otp: string;
+}) {
+  const { toEmail, otp } = params;
+  const safeEmail = escapeHtml(toEmail);
+  const digits = otp.split("").map(d => escapeHtml(d));
+
+  const html = `
+  <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:480px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
+    <div style="background:linear-gradient(135deg,#000 0%,#1a1a2e 100%);padding:28px 24px;text-align:center;">
+      <p style="color:#D4A017;font-size:11px;letter-spacing:3px;font-weight:700;margin:0 0 8px;text-transform:uppercase;">Web Media Hub</p>
+      <p style="color:#ffffff;font-size:22px;font-weight:800;margin:0;">Verify Your Email</p>
+      <p style="color:rgba(255,255,255,0.6);font-size:13px;margin:6px 0 0;">Enter the OTP below to continue creating your store</p>
+    </div>
+    <div style="padding:32px 28px;text-align:center;">
+      <p style="font-size:13px;color:#6b7280;margin:0 0 24px;">We sent a 6-digit verification code to <strong style="color:#111827;">${safeEmail}</strong></p>
+      <div style="display:inline-flex;gap:10px;margin-bottom:28px;">
+        ${digits.map(d => `<div style="width:44px;height:52px;background:#f9fafb;border:2px solid #D4A017;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#111827;">${d}</div>`).join("")}
+      </div>
+      <p style="font-size:12px;color:#9ca3af;margin:0 0 6px;">This OTP is valid for <strong>10 minutes</strong>.</p>
+      <p style="font-size:12px;color:#9ca3af;margin:0;">If you did not request this, you can safely ignore this email.</p>
+    </div>
+    <div style="background:#f9fafb;padding:14px 24px;border-top:1px solid #f3f4f6;text-align:center;">
+      <p style="font-size:11px;color:#d1d5db;margin:0;">Powered by <strong style="color:#9ca3af;">Web Media Hub</strong></p>
+    </div>
+  </div>`;
+
+  await _transporter.sendMail({
+    from: `"Web Media Hub" <${process.env.GMAIL_USER}>`,
+    to: toEmail,
+    replyTo: process.env.GMAIL_USER,
+    subject: `${otp} — Your Web Media Hub verification code`,
+    html,
+    text: `Your Web Media Hub email verification code is: ${otp}\n\nThis OTP is valid for 10 minutes.\n\nIf you did not request this, ignore this email.`,
+  });
+}
+
 // ─── Store Deactivated Email ──────────────────────────────────────────────────
 export async function sendStoreDeactivatedEmail(params: {
   toEmail: string;
