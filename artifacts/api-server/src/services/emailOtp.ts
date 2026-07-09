@@ -387,11 +387,21 @@ export async function sendAutopayAutoCancelledEmail(params: {
 export async function sendLockoutEmail(
   toEmail: string,
   username: string,
-  lockedUntil: Date
+  lockedUntil: Date,
+  role: "admin" | "super_admin" = "super_admin"
 ) {
+  const baseUrl = (process.env.FRONTEND_URL || "https://web-media-hub.replit.app").replace(/\/$/, "");
   const safeUsername = escapeHtml(username);
   const lockedUntilStr = lockedUntil.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
-  const resetUrl = `${process.env.FRONTEND_URL || "https://web-media-hub.replit.app"}/super-admin/forgot-password`;
+
+  const isAdmin = role === "admin";
+  const actionUrl = isAdmin
+    ? `${baseUrl}/login`
+    : `${baseUrl}/super-admin/forgot-password`;
+  const buttonLabel = isAdmin ? "Go to Login Page" : "Reset My Password";
+  const buttonHint = isAdmin
+    ? "Use the button above to go to the login page. Contact your super-admin if you need your password reset."
+    : "If this was you and you forgot your password, use the button above to reset it. Otherwise, please contact support immediately.";
 
   const subject = "Security Alert: Your Web Media Hub account has been temporarily locked";
   const html = `
@@ -407,12 +417,12 @@ export async function sendLockoutEmail(
           For your security, access has been locked until <strong>${escapeHtml(lockedUntilStr)} IST</strong>.
         </p>
         <p style="font-size:13px;color:#6b7280;margin:0 0 24px;">
-          If this wasn't you, your credentials may be compromised. We strongly recommend resetting your password immediately.
+          If this wasn't you, your credentials may be compromised. We strongly recommend contacting your super-admin immediately.
         </p>
-        <a href="${escapeHtml(resetUrl)}" style="display:inline-block;background:#000;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:600;">
-          Reset My Password
+        <a href="${escapeHtml(actionUrl)}" style="display:inline-block;background:#000;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:600;">
+          ${buttonLabel}
         </a>
-        <p style="font-size:12px;color:#9ca3af;margin:24px 0 0;">If this was you and you forgot your password, use the button above to reset it. Otherwise, please contact support immediately.</p>
+        <p style="font-size:12px;color:#9ca3af;margin:24px 0 0;">${buttonHint}</p>
       </div>
       <div style="background:#f9fafb;padding:16px 28px;border-top:1px solid #f3f4f6;">
         <p style="font-size:11px;color:#d1d5db;margin:0;text-align:center;">Powered by <strong style="color:#9ca3af;">Web Media Hub</strong></p>
@@ -426,7 +436,7 @@ export async function sendLockoutEmail(
     replyTo: process.env.GMAIL_USER,
     subject,
     html,
-    text: `Your account has been temporarily locked until ${lockedUntilStr} IST due to multiple failed login attempts.\n\nReset your password: ${resetUrl}\n\nWeb Media Hub`,
+    text: `Your account has been temporarily locked until ${lockedUntilStr} IST due to multiple failed login attempts.\n\n${buttonLabel}: ${actionUrl}\n\nWeb Media Hub`,
     headers: { "X-Priority": "1", "X-Mailer": "Web Media Hub Mailer" },
   });
 }

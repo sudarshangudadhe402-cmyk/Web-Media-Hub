@@ -146,7 +146,7 @@ router.post("/auth/login", loginStrictLimiter, validate(AdminLoginSchema), requi
         rec.lockoutEmailSent = true;
         loginAttempts.set(attemptKey, rec);
         // Fire-and-forget — do not block response on email delivery
-        sendLockoutEmail(user.email, user.username, new Date(rec.lockedUntil!)).catch(() => {});
+        sendLockoutEmail(user.email, user.username, new Date(rec.lockedUntil!), "admin").catch(() => {});
       }
 
       const retryAfterS = rec.retryAfterMs > 0 ? Math.ceil(rec.retryAfterMs / 1000) : undefined;
@@ -178,7 +178,7 @@ router.post("/auth/login", loginStrictLimiter, validate(AdminLoginSchema), requi
         if (saJustLocked && user.email && !saRec.lockoutEmailSent) {
           saRec.lockoutEmailSent = true;
           loginAttempts.set(attemptKey, saRec);
-          sendLockoutEmail(user.email, user.username, new Date(saRec.lockedUntil!)).catch(() => {});
+          sendLockoutEmail(user.email, user.username, new Date(saRec.lockedUntil!), "super_admin").catch(() => {});
         }
         res.status(401).json({ error: "Incorrect email or password." });
         return;
