@@ -394,14 +394,9 @@ export async function sendLockoutEmail(
   const safeUsername = escapeHtml(username);
   const lockedUntilStr = lockedUntil.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
 
-  const isAdmin = role === "admin";
-  const actionUrl = isAdmin
-    ? `${baseUrl}/login`
-    : `${baseUrl}/super-admin/forgot-password`;
-  const buttonLabel = isAdmin ? "Go to Login Page" : "Reset My Password";
-  const buttonHint = isAdmin
-    ? "Use the button above to go to the login page. Contact your super-admin if you need your password reset."
-    : "If this was you and you forgot your password, use the button above to reset it. Otherwise, please contact support immediately.";
+  const actionUrl = `${baseUrl}/login`;
+  const buttonLabel = "Go to Login Page";
+  const buttonHint = "Use the button above to go to the login page. Contact your super-admin if you need your password reset.";
 
   const subject = "Security Alert: Your Web Media Hub account has been temporarily locked";
   const html = `
