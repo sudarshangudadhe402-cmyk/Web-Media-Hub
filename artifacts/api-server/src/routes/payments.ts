@@ -9,10 +9,11 @@ import { DynamicPricing } from "../models/DynamicPricing";
 import {
   sendStoreCreatedEmail,
   sendStoreReactivatedEmail,
+  sendAutopayAutoCancelledEmail,
+  sendOtpEmail,
 } from "../services/emailOtp";
 import { OtpCode } from "../models/OtpCode";
 import { RevenuePayment } from "../models/RevenuePayment";
-import { sendOtpEmail } from "../services/emailOtp";
 import { requireAuth, requireAuthForRenewal, AuthRequest } from "../middlewares/auth";
 
 const router = Router();
@@ -979,6 +980,18 @@ router.post("/payments/razorpay-webhook", async (req: any, res) => {
           { razorpaySubscriptionId: subscriptionId },
           { autopayStatus: "cancelled", failedPaymentCount: newFailedCount }
         );
+        // Notify the store owner that autopay was auto-cancelled
+        try {
+          const { Store } = await import("../models/Store");
+          const store = await Store.findOne({ ownerId: String(user._id) }).lean();
+          const storeName = (store as any)?.storeName ?? (store as any)?.name ?? user.planName ?? user.email;
+          await sendAutopayAutoCancelledEmail({
+            toEmail: user.email,
+            storeName,
+          });
+        } catch (emailErr) {
+          req.log?.error({ err: emailErr }, "Failed to send autopay auto-cancel email");
+        }
       } else {
         await User.updateOne(
           { razorpaySubscriptionId: subscriptionId },

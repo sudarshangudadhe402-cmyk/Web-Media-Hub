@@ -10,7 +10,7 @@ function escapeHtml(str: string): string {
 }
 
 // ─── Shared email transporter ─────────────────────────────────────────────────
-const _transporter = nodemailer.createTransport({
+const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
     user: process.env.GMAIL_USER,
@@ -112,7 +112,7 @@ export async function sendStoreCreatedEmail(params: {
     </div>
   </div>`;
 
-  await _transporter.sendMail({
+  await transporter.sendMail({
     from: `"Web Media Hub" <${process.env.GMAIL_USER}>`,
     to: toEmail,
     replyTo: process.env.GMAIL_USER,
@@ -151,7 +151,7 @@ export async function sendCreateStoreOtpEmail(params: {
     </div>
   </div>`;
 
-  await _transporter.sendMail({
+  await transporter.sendMail({
     from: `"Web Media Hub" <${process.env.GMAIL_USER}>`,
     to: toEmail,
     replyTo: process.env.GMAIL_USER,
@@ -223,7 +223,7 @@ export async function sendStoreDeactivatedEmail(params: {
     </div>
   </div>`;
 
-  await _transporter.sendMail({
+  await transporter.sendMail({
     from: `"Web Media Hub" <${process.env.GMAIL_USER}>`,
     to: toEmail,
     replyTo: process.env.GMAIL_USER,
@@ -316,7 +316,7 @@ export async function sendStoreReactivatedEmail(params: {
     </div>
   </div>`;
 
-  await _transporter.sendMail({
+  await transporter.sendMail({
     from: `"Web Media Hub" <${process.env.GMAIL_USER}>`,
     to: toEmail,
     replyTo: process.env.GMAIL_USER,
@@ -326,22 +326,63 @@ export async function sendStoreReactivatedEmail(params: {
   });
 }
 
-function _escapeHtml_unused(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
+// ─── Autopay Auto-Cancelled Email ────────────────────────────────────────────
+export async function sendAutopayAutoCancelledEmail(params: {
+  toEmail: string;
+  storeName: string;
+}) {
+  const { toEmail, storeName } = params;
+  const safeStoreName = escapeHtml(storeName || "your store");
+  const baseUrl = (process.env.FRONTEND_URL || "https://web-media-hub.replit.app").replace(/\/$/, "");
+  const renewUrl = escapeHtml(`${baseUrl}/login`);
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
-});
+  const html = `
+  <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
+    <div style="background:#1f2937;padding:32px 28px;text-align:center;">
+      <p style="color:#ffffff;font-size:12px;letter-spacing:3px;font-weight:700;margin:0 0 12px;text-transform:uppercase;">Web Media Hub</p>
+      <div style="width:56px;height:56px;background:rgba(239,68,68,0.15);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;">
+        <span style="font-size:28px;line-height:1;">⚠️</span>
+      </div>
+      <p style="color:#f9fafb;font-size:20px;font-weight:800;margin:0;">AutoPay Has Been Cancelled</p>
+      <p style="color:rgba(255,255,255,0.6);font-size:13px;margin:8px 0 0;">Store: ${safeStoreName}</p>
+    </div>
+    <div style="padding:32px 28px;">
+      <p style="font-size:14px;color:#374151;margin:0 0 16px;line-height:1.7;">
+        Dear store <strong>${safeStoreName}</strong>,
+      </p>
+      <p style="font-size:14px;color:#374151;margin:0 0 16px;line-height:1.7;">
+        Your AutoPay has been cancelled because two consecutive renewal payments were declined by your bank or payment provider.
+      </p>
+      <p style="font-size:14px;color:#374151;margin:0 0 28px;line-height:1.7;">
+        To keep your store active, you will now need to <strong>renew your subscription manually</strong> by visiting the website.
+      </p>
+
+      <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:12px;padding:18px 20px;margin-bottom:28px;">
+        <p style="font-size:13px;font-weight:700;color:#92400e;margin:0 0 6px;">What you need to do</p>
+        <p style="font-size:13px;color:#92400e;margin:0;line-height:1.6;">Log in to your store dashboard and go to <strong>Subscription &amp; Billing</strong> to renew your plan. All your products, bookings, and customer data are safe.</p>
+      </div>
+
+      <div style="text-align:center;margin-bottom:28px;">
+        <a href="${renewUrl}" style="display:inline-block;background:#000;color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:14px;font-weight:700;letter-spacing:0.5px;">Renew My Subscription →</a>
+      </div>
+
+      <p style="font-size:13px;color:#6b7280;margin:0;line-height:1.6;">If you have any questions or need assistance, simply reply to this email — we are happy to help.</p>
+    </div>
+    <div style="background:#f9fafb;padding:16px 28px;border-top:1px solid #f3f4f6;text-align:center;">
+      <p style="font-size:12px;color:#9ca3af;margin:0;">Thank you,</p>
+      <p style="font-size:12px;font-weight:700;color:#6b7280;margin:4px 0 0;">Team Web Media Hub</p>
+    </div>
+  </div>`;
+
+  await transporter.sendMail({
+    from: `"Web Media Hub" <${process.env.GMAIL_USER}>`,
+    to: toEmail,
+    replyTo: process.env.GMAIL_USER,
+    subject: `Important: Your AutoPay has been cancelled — ${storeName}`,
+    html,
+    text: `Dear store ${storeName},\n\nYour AutoPay has been cancelled because two consecutive renewal payments were declined.\n\nTo keep your store active, please renew your subscription manually by visiting: ${baseUrl}/login\n\nAll your data is safe.\n\nThank you,\nTeam Web Media Hub`,
+  });
+}
 
 export async function sendLockoutEmail(
   toEmail: string,
