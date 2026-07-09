@@ -394,9 +394,8 @@ export async function sendLockoutEmail(
   const safeUsername = escapeHtml(username);
   const lockedUntilStr = lockedUntil.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
 
-  const actionUrl = `${baseUrl}/login`;
-  const buttonLabel = "Go to Login Page";
-  const buttonHint = "Use the button above to go to the login page. Contact your super-admin if you need your password reset.";
+  const isAdmin = role === "admin";
+  const loginUrl = `${baseUrl}/login`;
 
   const subject = "Security Alert: Your Web Media Hub account has been temporarily locked";
   const html = `
@@ -411,13 +410,15 @@ export async function sendLockoutEmail(
           We detected multiple failed login attempts on your account <strong>${safeUsername}</strong>.
           For your security, access has been locked until <strong>${escapeHtml(lockedUntilStr)} IST</strong>.
         </p>
-        <p style="font-size:13px;color:#6b7280;margin:0 0 24px;">
+        <p style="font-size:13px;color:#6b7280;margin:0 0 ${isAdmin ? "24px" : "0"};">
           If this wasn't you, your credentials may be compromised. We strongly recommend contacting your super-admin immediately.
         </p>
-        <a href="${escapeHtml(actionUrl)}" style="display:inline-block;background:#000;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:600;">
-          ${buttonLabel}
+        ${isAdmin ? `
+        <a href="${escapeHtml(loginUrl)}" style="display:inline-block;background:#000;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:600;">
+          Go to Login Page
         </a>
-        <p style="font-size:12px;color:#9ca3af;margin:24px 0 0;">${buttonHint}</p>
+        <p style="font-size:12px;color:#9ca3af;margin:24px 0 0;">Use the button above to go to the login page. Contact your super-admin if you need your password reset.</p>
+        ` : ""}
       </div>
       <div style="background:#f9fafb;padding:16px 28px;border-top:1px solid #f3f4f6;">
         <p style="font-size:11px;color:#d1d5db;margin:0;text-align:center;">Powered by <strong style="color:#9ca3af;">Web Media Hub</strong></p>
@@ -431,7 +432,7 @@ export async function sendLockoutEmail(
     replyTo: process.env.GMAIL_USER,
     subject,
     html,
-    text: `Your account has been temporarily locked until ${lockedUntilStr} IST due to multiple failed login attempts.\n\n${buttonLabel}: ${actionUrl}\n\nWeb Media Hub`,
+    text: `Your account has been temporarily locked until ${lockedUntilStr} IST due to multiple failed login attempts.${isAdmin ? `\n\nGo to Login Page: ${loginUrl}` : ""}\n\nWeb Media Hub`,
     headers: { "X-Priority": "1", "X-Mailer": "Web Media Hub Mailer" },
   });
 }
