@@ -44,8 +44,34 @@ router.get("/store-requests/my", requireAuth, async (req: any, res) => {
 router.post("/store-requests/send-email-otp", async (req: any, res) => {
   try {
     const email = (req.body?.email ?? "").trim().toLowerCase();
+    const whatsapp = (req.body?.whatsapp ?? "").trim();
+
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       res.status(400).json({ error: "Valid email required" });
+      return;
+    }
+
+    // ── Duplicate check before sending OTP ──
+    const [emailInRequest, whatsappInRequest] = await Promise.all([
+      StoreRequest.findOne({ email, status: { $in: ["pending", "approved"] } }).lean(),
+      whatsapp
+        ? StoreRequest.findOne({ whatsapp, status: { $in: ["pending", "approved"] } }).lean()
+        : null,
+    ]);
+
+    if (emailInRequest) {
+      res.status(409).json({ error: "This email is already registered. Please use a different email." });
+      return;
+    }
+
+    const existingUser = await User.findOne({ email }).select("_id").lean();
+    if (existingUser) {
+      res.status(409).json({ error: "This email is already registered. Please use a different email." });
+      return;
+    }
+
+    if (whatsappInRequest) {
+      res.status(409).json({ error: "This WhatsApp number is already registered. Please use a different number." });
       return;
     }
 

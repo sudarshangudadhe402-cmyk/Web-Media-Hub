@@ -416,17 +416,26 @@ export default function CreateStore() {
 
   async function handleSendOtp() {
     if (!step1Ready || sendingOtp) return;
-    const email = form.getValues("email").trim();
+    const values = form.getValues();
+    const email = values.email.trim();
+    const whatsapp = values.whatsapp.trim();
     setSendingOtp(true);
     setOtpError(null);
     try {
       const res = await fetch("/api/store-requests/send-email-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, whatsapp }),
       });
       const data = await res.json();
-      if (!res.ok) { setOtpError(data.error || "Failed to send OTP."); return; }
+      if (!res.ok) {
+        if (res.status === 409) {
+          setDupePopup({ message: data.error });
+        } else {
+          setOtpError(data.error || "Failed to send OTP.");
+        }
+        return;
+      }
       setOtpSent(true);
       setOtpDigits(["","","","","",""]);
     } catch {
