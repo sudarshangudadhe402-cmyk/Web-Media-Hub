@@ -508,17 +508,6 @@ export default function ProfileTab({
             <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Store Info</p>
           </div>
           <div className="divide-y" style={{ borderColor: "#f5f5f5" }}>
-            {data.address && (
-              <div className="flex items-start gap-3 px-4 py-3.5">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "#f5f5f5" }}>
-                  <MapPin className="w-4 h-4 text-gray-600" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Address</p>
-                  <p className="text-sm text-gray-800 font-medium leading-snug">{data.address}</p>
-                </div>
-              </div>
-            )}
             {data.openingTime && (
               <div className="flex items-start gap-3 px-4 py-3.5">
                 <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "#f5f5f5" }}>
@@ -573,23 +562,19 @@ export default function ProfileTab({
         )}
 
         <div className="rounded-2xl overflow-hidden" style={{ background: "#ffffff", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
-          <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: "#f0f0f0" }}>
-            <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
-              {data.address
-                ? data.address.split(",").map(s => s.trim()).filter(Boolean).slice(-1)[0] || "Store Address"
-                : "Store Address"}
-            </p>
+          <div className="px-4 py-3 border-b" style={{ borderColor: "#f0f0f0" }}>
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Store Address</p>
+          </div>
+          <div className="px-4 py-3 flex items-center gap-3">
+            <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
+            <p className="text-sm text-gray-600 leading-relaxed flex-1">{data.address || "No address set"}</p>
             <button
               onClick={() => {}}
-              className="px-3 py-1 rounded-lg text-xs font-bold text-white"
+              className="px-4 py-2 rounded-xl text-sm font-bold text-white flex-shrink-0"
               style={{ background: "#22c55e" }}
             >
-              Mapping
+              📍 Mapping
             </button>
-          </div>
-          <div className="px-4 py-3 flex items-start gap-3">
-            <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-            <p className="text-sm text-gray-600 leading-relaxed">{data.address || "No address set"}</p>
           </div>
         </div>
 
