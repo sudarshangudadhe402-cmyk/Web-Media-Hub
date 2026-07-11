@@ -55,6 +55,7 @@ export default function ProfileTab({
     : null;
 
   const [accountTab, setAccountTab] = useState<"signup" | "signin">("signup");
+  const [accountSectionOpen, setAccountSectionOpen] = useState(false);
 
   // Signup form
   const [suName, setSuName] = useState("");
@@ -187,6 +188,16 @@ export default function ProfileTab({
               </div>
             </div>
           </div>
+        ) : !accountSectionOpen ? (
+          /* Collapsed — just a "Create account" button */
+          <button
+            onClick={() => setAccountSectionOpen(true)}
+            className="w-full flex items-center justify-center gap-2 font-bold py-3.5 rounded-2xl text-sm transition-all"
+            style={{ background: "#16a34a", color: "#ffffff", fontFamily: "'Montserrat', sans-serif", boxShadow: "0 2px 12px rgba(22,163,74,0.25)" }}
+          >
+            <User className="w-4 h-4" />
+            Create Account
+          </button>
         ) : (
           /* Sign up / Sign in card */
           <div className="rounded-2xl overflow-hidden" style={{ background: "#ffffff", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
