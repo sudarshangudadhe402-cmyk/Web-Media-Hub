@@ -496,9 +496,6 @@ export default function ProfileTab({
           <h1 className="text-white font-black text-2xl leading-tight" style={{ fontFamily: "'Montserrat', sans-serif" }}>
             {data.name}
           </h1>
-          {data.publicSlug && (
-            <p className="text-white/60 text-xs mt-0.5">@{data.publicSlug}</p>
-          )}
         </div>
       </div>
 
@@ -528,7 +525,7 @@ export default function ProfileTab({
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Open Days</p>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(day => (
-                      <span key={day} className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: openDaySet.has(day) ? "#000" : "#f5f5f5", color: openDaySet.has(day) ? "#fff" : "#ccc" }}>
+                      <span key={day} className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: openDaySet.has(day) ? "#22c55e" : "#f5f5f5", color: openDaySet.has(day) ? "#fff" : "#ccc" }}>
                         {day}
                       </span>
                     ))}
