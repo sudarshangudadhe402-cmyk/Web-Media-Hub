@@ -17,6 +17,7 @@ interface PublicProduct {
   gender: string | null;
   likeCount: number;
   tryOnLikeCount: number;
+  averageRating: number;
   recentLikeCount: number;
   recentTryOnCount: number;
 }
@@ -39,9 +40,8 @@ function discountPct(p: PublicProduct) {
     : 0;
 }
 
-function pseudoRating(p: PublicProduct) {
-  const seed = p.id.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-  return (3.5 + (seed % 15) / 10).toFixed(1);
+function formatRating(r: number) {
+  return r > 0 ? r.toFixed(1) : null;
 }
 
 
@@ -232,19 +232,30 @@ export default function ShopTab({
                     </div>
 
                     {/* Star rating */}
-                    <div className="flex items-center gap-0.5 mb-1.5">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <Star
-                          key={s}
-                          className={`w-2.5 h-2.5 ${
-                            parseFloat(pseudoRating(p)) >= s
-                              ? "fill-amber-400 text-amber-400"
-                              : "text-gray-200"
-                          }`}
-                        />
-                      ))}
-                      <span className="text-[10px] text-gray-400 ml-0.5">{pseudoRating(p)}</span>
-                    </div>
+                    {formatRating(p.averageRating) ? (
+                      <div className="flex items-center gap-0.5 mb-1.5">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star
+                            key={s}
+                            className={`w-2.5 h-2.5 ${
+                              p.averageRating >= s
+                                ? "fill-amber-400 text-amber-400"
+                                : p.averageRating >= s - 0.5
+                                ? "fill-amber-200 text-amber-300"
+                                : "text-gray-200"
+                            }`}
+                          />
+                        ))}
+                        <span className="text-[10px] text-gray-400 ml-0.5">{formatRating(p.averageRating)}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-0.5 mb-1.5">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star key={s} className="w-2.5 h-2.5 text-gray-200" />
+                        ))}
+                        <span className="text-[10px] text-gray-300 ml-0.5">No ratings</span>
+                      </div>
+                    )}
 
                     {/* Try-on count + Like count */}
                     <div className="flex items-center gap-2">

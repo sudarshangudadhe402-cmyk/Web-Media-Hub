@@ -4,7 +4,7 @@ import {
   MapPin, Clock, CalendarDays, MessageCircle, Heart, ShoppingBag,
   ChevronLeft, X, Camera, Loader2, RefreshCw,
   CheckCircle2, TrendingDown, Download, Share2,
-  AlertCircle, Edit2, Trash2, Box, ShoppingCart,
+  AlertCircle, Edit2, Trash2, Box, ShoppingCart, Star,
 } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 
@@ -30,6 +30,7 @@ interface PublicProduct {
   gender: string | null;
   likeCount: number;
   tryOnLikeCount: number;
+  averageRating: number;
   recentLikeCount: number;
   recentTryOnCount: number;
 }
@@ -65,6 +66,7 @@ interface ReviewItem {
   customerId: string;
   customerName: string;
   text: string;
+  rating: number;
   likeCount: number;
   likes: string[];
   createdAt: string;
@@ -190,10 +192,14 @@ export default function PublicStore() {
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviewBoxOpen, setReviewBoxOpen] = useState(false);
   const [reviewText, setReviewText] = useState("");
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewHoverRating, setReviewHoverRating] = useState(0);
   const [reviewPosting, setReviewPosting] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
   const [editReviewText, setEditReviewText] = useState("");
+  const [editReviewRating, setEditReviewRating] = useState(0);
+  const [editReviewHoverRating, setEditReviewHoverRating] = useState(0);
 
   const photoInputRef = useRef<HTMLInputElement>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -952,11 +958,22 @@ export default function PublicStore() {
           )}
           {/* ── Reviews Section ───────────────────────────────────────────── */}
           <div className="border-t" style={{ borderColor: "#f0f0f0" }}>
-            <div className="px-4 pt-4 pb-2 flex items-center gap-2">
+            <div className="px-4 pt-4 pb-2 flex items-center gap-2 flex-wrap">
               <span className="text-sm font-black text-gray-900" style={{ fontFamily: "'Montserrat', sans-serif" }}>Customer Reviews</span>
               {reviews.length > 0 && (
                 <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{reviews.length}</span>
               )}
+              {reviews.length > 0 && (() => {
+                const avg = reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length;
+                return (
+                  <div className="flex items-center gap-1 ml-auto">
+                    {[1,2,3,4,5].map(s => (
+                      <Star key={s} className={`w-3.5 h-3.5 ${avg >= s ? "fill-amber-400 text-amber-400" : avg >= s - 0.5 ? "fill-amber-200 text-amber-300" : "text-gray-200"}`} />
+                    ))}
+                    <span className="text-xs font-bold text-gray-700 ml-0.5">{avg.toFixed(1)}</span>
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="px-4 pb-3">
@@ -964,20 +981,49 @@ export default function PublicStore() {
                 <p className="text-xs text-gray-400 text-center py-2 bg-gray-50 rounded-xl">Login to your account to write a review</p>
               ) : reviews.find(r => r.customerId === customerAccount.id) ? null : !reviewBoxOpen ? (
                 <button
-                  onClick={() => setReviewBoxOpen(true)}
+                  onClick={() => { setReviewBoxOpen(true); setReviewRating(0); setReviewHoverRating(0); setReviewText(""); setReviewError(null); }}
                   className="w-full py-2.5 rounded-xl font-bold text-sm transition-all active:scale-[0.98]"
                   style={{ background: "#22c55e", color: "white" }}
                 >
                   ✏️ Write Review
                 </button>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3 bg-gray-50 rounded-2xl p-3 border" style={{ borderColor: "#e5e7eb" }}>
+                  {/* Star rating selector */}
+                  <div>
+                    <p className="text-xs font-bold text-gray-600 mb-1.5">Your Rating <span className="text-red-500">*</span></p>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setReviewRating(s)}
+                          onMouseEnter={() => setReviewHoverRating(s)}
+                          onMouseLeave={() => setReviewHoverRating(0)}
+                          className="p-0.5 transition-transform active:scale-110"
+                        >
+                          <Star
+                            className={`w-7 h-7 transition-colors ${
+                              (reviewHoverRating || reviewRating) >= s
+                                ? "fill-amber-400 text-amber-400"
+                                : "text-gray-300"
+                            }`}
+                          />
+                        </button>
+                      ))}
+                      {reviewRating > 0 && (
+                        <span className="ml-1 text-xs font-semibold text-amber-600">
+                          {["", "Poor", "Fair", "Good", "Very Good", "Excellent"][reviewRating]}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                   <textarea
                     value={reviewText}
                     onChange={e => setReviewText(e.target.value)}
                     placeholder="Share your experience with this product..."
                     maxLength={500}
-                    rows={4}
+                    rows={3}
                     className="w-full rounded-xl border px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-green-400"
                     style={{ borderColor: "#e5e7eb" }}
                   />
@@ -985,37 +1031,41 @@ export default function PublicStore() {
                     <span className="text-xs text-gray-400">{reviewText.length}/500</span>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => { setReviewBoxOpen(false); setReviewText(""); setReviewError(null); }}
+                        onClick={() => { setReviewBoxOpen(false); setReviewText(""); setReviewRating(0); setReviewHoverRating(0); setReviewError(null); }}
                         className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-500 border"
                         style={{ borderColor: "#e5e7eb" }}
                       >Cancel</button>
                       <button
-                        disabled={reviewPosting || !reviewText.trim()}
+                        disabled={reviewPosting || !reviewText.trim() || reviewRating === 0}
                         onClick={async () => {
-                          if (!reviewText.trim() || !customerAccount || !data) return;
+                          if (!reviewText.trim() || reviewRating === 0 || !customerAccount || !data) return;
                           setReviewPosting(true);
                           setReviewError(null);
                           try {
                             const res = await fetch("/api/public/reviews", {
                               method: "POST",
                               headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ productId: selectedProduct.id, storeId: data.id, customerId: customerAccount.id, text: reviewText.trim() }),
+                              body: JSON.stringify({ productId: selectedProduct.id, storeId: data.id, customerId: customerAccount.id, text: reviewText.trim(), rating: reviewRating }),
                             });
                             const json = await res.json();
                             if (!res.ok) { setReviewError(json.error || "Failed to post review"); return; }
                             setReviews(prev => [json, ...prev]);
                             setReviewBoxOpen(false);
                             setReviewText("");
+                            setReviewRating(0);
                           } catch { setReviewError("Something went wrong"); }
                           finally { setReviewPosting(false); }
                         }}
                         className="px-4 py-2 rounded-xl text-sm font-bold text-white transition-all"
-                        style={{ background: reviewPosting || !reviewText.trim() ? "#86efac" : "#22c55e" }}
+                        style={{ background: reviewPosting || !reviewText.trim() || reviewRating === 0 ? "#86efac" : "#22c55e" }}
                       >
                         {reviewPosting ? "Posting..." : "Post"}
                       </button>
                     </div>
                   </div>
+                  {reviewRating === 0 && reviewText.trim().length > 0 && (
+                    <p className="text-xs text-amber-600">⭐ Please select a star rating before posting</p>
+                  )}
                   {reviewError && <p className="text-xs text-red-500">{reviewError}</p>}
                 </div>
               )}
@@ -1059,10 +1109,17 @@ export default function PublicStore() {
                               </p>
                             </div>
                           </div>
+                          {review.rating > 0 && (
+                            <div className="flex items-center gap-0.5">
+                              {[1,2,3,4,5].map(s => (
+                                <Star key={s} className={`w-3 h-3 ${review.rating >= s ? "fill-amber-400 text-amber-400" : "text-gray-200"}`} />
+                              ))}
+                            </div>
+                          )}
                           {isOwn && (
                             <div className="flex gap-1">
                               <button
-                                onClick={() => { setEditingReviewId(review.id); setEditReviewText(review.text); }}
+                                onClick={() => { setEditingReviewId(review.id); setEditReviewText(review.text); setEditReviewRating(review.rating || 0); setEditReviewHoverRating(0); }}
                                 className="p-1.5 rounded-full hover:bg-green-100 transition-colors"
                               >
                                 <Edit2 className="w-3.5 h-3.5 text-gray-500" />
@@ -1087,6 +1144,30 @@ export default function PublicStore() {
 
                         {isEditing ? (
                           <div className="space-y-2">
+                            {/* Edit rating selector */}
+                            <div>
+                              <p className="text-xs font-bold text-gray-600 mb-1">Rating <span className="text-red-500">*</span></p>
+                              <div className="flex items-center gap-0.5">
+                                {[1, 2, 3, 4, 5].map((s) => (
+                                  <button
+                                    key={s}
+                                    type="button"
+                                    onClick={() => setEditReviewRating(s)}
+                                    onMouseEnter={() => setEditReviewHoverRating(s)}
+                                    onMouseLeave={() => setEditReviewHoverRating(0)}
+                                    className="p-0.5 transition-transform active:scale-110"
+                                  >
+                                    <Star
+                                      className={`w-6 h-6 transition-colors ${
+                                        (editReviewHoverRating || editReviewRating) >= s
+                                          ? "fill-amber-400 text-amber-400"
+                                          : "text-gray-300"
+                                      }`}
+                                    />
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
                             <textarea
                               value={editReviewText}
                               onChange={e => setEditReviewText(e.target.value)}
@@ -1097,25 +1178,28 @@ export default function PublicStore() {
                             />
                             <div className="flex justify-end gap-2">
                               <button
-                                onClick={() => setEditingReviewId(null)}
+                                onClick={() => { setEditingReviewId(null); setEditReviewRating(0); setEditReviewHoverRating(0); }}
                                 className="px-3 py-1.5 text-xs rounded-lg border text-gray-500"
                                 style={{ borderColor: "#e5e7eb" }}
                               >Cancel</button>
                               <button
+                                disabled={!editReviewText.trim() || editReviewRating === 0}
                                 onClick={async () => {
-                                  if (!editReviewText.trim() || !customerAccount) return;
+                                  if (!editReviewText.trim() || editReviewRating === 0 || !customerAccount) return;
                                   const res = await fetch(`/api/public/reviews/${review.id}`, {
                                     method: "PUT",
                                     headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ customerId: customerAccount.id, text: editReviewText.trim() }),
+                                    body: JSON.stringify({ customerId: customerAccount.id, text: editReviewText.trim(), rating: editReviewRating }),
                                   });
                                   if (res.ok) {
-                                    setReviews(prev => prev.map(r => r.id === review.id ? { ...r, text: editReviewText.trim(), updatedAt: new Date().toISOString() } : r));
+                                    const json = await res.json();
+                                    setReviews(prev => prev.map(r => r.id === review.id ? { ...r, text: json.text, rating: json.rating, updatedAt: json.updatedAt } : r));
                                     setEditingReviewId(null);
+                                    setEditReviewRating(0);
                                   }
                                 }}
                                 className="px-3 py-1.5 text-xs rounded-lg font-bold text-white"
-                                style={{ background: "#22c55e" }}
+                                style={{ background: !editReviewText.trim() || editReviewRating === 0 ? "#86efac" : "#22c55e" }}
                               >Save</button>
                             </div>
                           </div>

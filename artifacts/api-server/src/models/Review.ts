@@ -6,6 +6,7 @@ export interface IReview extends Document {
   customerId: string;
   customerName: string;
   text: string;
+  rating: number;
   likes: string[];
   createdAt: Date;
   updatedAt: Date;
@@ -18,6 +19,7 @@ const ReviewSchema = new Schema<IReview>(
     customerId: { type: String, required: true },
     customerName: { type: String, required: true },
     text: { type: String, required: true, maxlength: 500 },
+    rating: { type: Number, required: true, min: 1, max: 5 },
     likes: { type: [String], default: [] },
   },
   { timestamps: true }

@@ -17,6 +17,7 @@ export interface IProduct extends Document {
   colours: string[];
   likeCount: number;
   tryOnLikeCount: number;
+  averageRating: number;
   storeId?: string;
   createdAt: Date;
 }
@@ -42,6 +43,7 @@ const ProductSchema = new Schema<IProduct>(
     colours: [{ type: String }],
     likeCount: { type: Number, default: 0 },
     tryOnLikeCount: { type: Number, default: 0 },
+    averageRating: { type: Number, default: 0 },
     storeId: { type: String },
   },
   { timestamps: true }

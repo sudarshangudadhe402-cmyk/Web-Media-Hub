@@ -118,6 +118,7 @@ router.get("/public/store/:slug", ipRateLimit(60, 60 * 1000), async (req, res) =
           gender: p.gender ?? null,
           likeCount: p.likeCount,
           tryOnLikeCount: p.tryOnLikeCount ?? 0,
+          averageRating: p.averageRating ?? 0,
           recentLikeCount: recentMap[pid]?.like ?? 0,
           recentTryOnCount: recentMap[pid]?.tryon ?? 0,
         };
@@ -295,21 +296,36 @@ router.delete("/public/cart/:customerId/:productId", async (req, res) => {
 
 // ─── Reviews ─────────────────────────────────────────────────────────────────
 
+/** Recalculate and persist a product's averageRating from all its reviews. */
+async function recalcProductRating(productId: string): Promise<void> {
+  const agg = await Review.aggregate([
+    { $match: { productId } },
+    { $group: { _id: null, avg: { $avg: "$rating" }, count: { $sum: 1 } } },
+  ]);
+  const avg = agg.length > 0 ? Math.round(agg[0].avg * 10) / 10 : 0;
+  await Product.findByIdAndUpdate(productId, { averageRating: avg });
+}
+
+function serializeReview(r: any) {
+  return {
+    id: String(r._id),
+    customerId: r.customerId,
+    customerName: r.customerName,
+    text: r.text,
+    rating: r.rating,
+    likeCount: r.likes.length,
+    likes: r.likes,
+    createdAt: r.createdAt.toISOString(),
+    updatedAt: r.updatedAt.toISOString(),
+  };
+}
+
 router.get("/public/reviews/:productId", async (req, res) => {
   try {
     const { storeId } = req.query;
     if (!storeId) { res.status(400).json({ error: "storeId required" }); return; }
     const reviews = await Review.find({ productId: req.params.productId, storeId }).sort({ createdAt: -1 });
-    res.json(reviews.map(r => ({
-      id: String(r._id),
-      customerId: r.customerId,
-      customerName: r.customerName,
-      text: r.text,
-      likeCount: r.likes.length,
-      likes: r.likes,
-      createdAt: (r as any).createdAt.toISOString(),
-      updatedAt: (r as any).updatedAt.toISOString(),
-    })));
+    res.json(reviews.map(serializeReview));
   } catch (err) {
     req.log.error({ err }, "Get reviews error");
     res.status(500).json({ error: "Internal server error" });
@@ -318,29 +334,25 @@ router.get("/public/reviews/:productId", async (req, res) => {
 
 router.post("/public/reviews", ipRateLimit(5, 60_000), async (req, res) => {
   try {
-    const { productId, storeId, customerId, text } = req.body;
+    const { productId, storeId, customerId, text, rating } = req.body;
     if (!productId || !storeId || !customerId || !text?.trim()) {
       res.status(400).json({ error: "All fields required" }); return;
     }
     if (text.trim().length > 500) {
       res.status(400).json({ error: "Review too long (max 500 characters)" }); return;
     }
+    const ratingNum = Number(rating);
+    if (!rating || isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+      res.status(400).json({ error: "Rating must be between 1 and 5" }); return;
+    }
     const account = await CustomerAccount.findOne({ _id: customerId, storeId });
     if (!account) { res.status(403).json({ error: "Invalid customer account" }); return; }
     const existing = await Review.findOne({ productId, customerId });
     if (existing) { res.status(409).json({ error: "You already reviewed this product" }); return; }
     const customerName = account.name || "Customer";
-    const review = await Review.create({ productId, storeId, customerId, customerName, text: text.trim(), likes: [] });
-    res.status(201).json({
-      id: String(review._id),
-      customerId: review.customerId,
-      customerName: review.customerName,
-      text: review.text,
-      likeCount: 0,
-      likes: [],
-      createdAt: (review as any).createdAt.toISOString(),
-      updatedAt: (review as any).updatedAt.toISOString(),
-    });
+    const review = await Review.create({ productId, storeId, customerId, customerName, text: text.trim(), rating: ratingNum, likes: [] });
+    await recalcProductRating(productId);
+    res.status(201).json(serializeReview(review));
   } catch (err) {
     req.log.error({ err }, "Create review error");
     res.status(500).json({ error: "Internal server error" });
@@ -349,15 +361,23 @@ router.post("/public/reviews", ipRateLimit(5, 60_000), async (req, res) => {
 
 router.put("/public/reviews/:id", ipRateLimit(10, 60_000), async (req, res) => {
   try {
-    const { customerId, text } = req.body;
+    const { customerId, text, rating } = req.body;
     if (!customerId || !text?.trim()) { res.status(400).json({ error: "customerId and text required" }); return; }
     if (text.trim().length > 500) { res.status(400).json({ error: "Review too long (max 500 characters)" }); return; }
     const review = await Review.findById(req.params.id);
     if (!review) { res.status(404).json({ error: "Review not found" }); return; }
     if (review.customerId !== customerId) { res.status(403).json({ error: "Not your review" }); return; }
     review.text = text.trim();
+    if (rating !== undefined) {
+      const ratingNum = Number(rating);
+      if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+        res.status(400).json({ error: "Rating must be between 1 and 5" }); return;
+      }
+      review.rating = ratingNum;
+    }
     await review.save();
-    res.json({ id: String(review._id), text: review.text, updatedAt: (review as any).updatedAt.toISOString() });
+    await recalcProductRating(review.productId);
+    res.json(serializeReview(review));
   } catch (err) {
     req.log.error({ err }, "Edit review error");
     res.status(500).json({ error: "Internal server error" });
@@ -371,7 +391,9 @@ router.delete("/public/reviews/:id", async (req, res) => {
     const review = await Review.findById(req.params.id);
     if (!review) { res.status(404).json({ error: "Review not found" }); return; }
     if (review.customerId !== customerId) { res.status(403).json({ error: "Not your review" }); return; }
+    const { productId } = review;
     await review.deleteOne();
+    await recalcProductRating(productId);
     res.json({ success: true });
   } catch (err) {
     req.log.error({ err }, "Delete review error");
