@@ -107,6 +107,7 @@ export default function Products() {
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [limitPopupOpen, setLimitPopupOpen] = useState(false);
+  const [modelSizePopupOpen, setModelSizePopupOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const { toast } = useToast();
@@ -260,9 +261,9 @@ export default function Products() {
       return;
     }
 
-    const maxSizeBytes = 10 * 1024 * 1024;
+    const maxSizeBytes = 5 * 1024 * 1024;
     if (file.size > maxSizeBytes) {
-      toast({ title: "File limit 10MB", description: "Your 3D model file exceeds the 10MB limit.", variant: "destructive" });
+      setModelSizePopupOpen(true);
       return;
     }
 
@@ -437,6 +438,24 @@ export default function Products() {
             </p>
           </div>
           <Button onClick={() => setLimitPopupOpen(false)} className="w-full mt-1">
+            OK
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* 3D model file size limit popup */}
+      <Dialog open={modelSizePopupOpen} onOpenChange={setModelSizePopupOpen}>
+        <DialogContent className="max-w-xs text-center">
+          <DialogHeader>
+            <DialogTitle className="text-red-600 text-lg">File Too Large</DialogTitle>
+          </DialogHeader>
+          <div className="py-3 space-y-3">
+            <div className="text-4xl">🚫</div>
+            <p className="text-sm text-gray-700 font-medium leading-relaxed">
+              The 5MB file size limit has been exceeded.<br />Please upload a 3D model file smaller than 5MB.
+            </p>
+          </div>
+          <Button onClick={() => setModelSizePopupOpen(false)} className="w-full mt-1">
             OK
           </Button>
         </DialogContent>
@@ -839,7 +858,7 @@ export default function Products() {
                 <div className="space-y-1.5">
                   <Label className="flex items-center gap-1.5">
                     <Box className="w-3.5 h-3.5 text-purple-500" />
-                    3D Model <span className="text-[11px] text-muted-foreground font-normal">(optional · .glb / .gltf)</span>
+                    3D Model <span className="text-[11px] text-muted-foreground font-normal">(optional · .glb / .gltf · max 5MB)</span>
                   </Label>
                   {modelUrl ? (
                     <div className="flex items-center gap-3 p-3 rounded-xl border bg-purple-50 border-purple-200">
