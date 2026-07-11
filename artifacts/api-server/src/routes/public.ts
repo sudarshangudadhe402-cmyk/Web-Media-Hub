@@ -174,13 +174,16 @@ router.post(
   ipRateLimit(10, 60_000),
   async (req, res) => {
     try {
-      const product = await Product.findById(req.params.id);
+      // Use atomic $inc to prevent race conditions / lost counts
+      const product = await Product.findByIdAndUpdate(
+        req.params.id,
+        { $inc: { likeCount: 1 } },
+        { new: true }
+      );
       if (!product) {
         res.status(404).json({ error: "Product not found" });
         return;
       }
-      product.likeCount += 1;
-      await product.save();
       await LikeEvent.create({ productId: String(product._id), type: "like" });
       await Notification.create({
         type: "like",
@@ -202,13 +205,16 @@ router.post(
   ipRateLimit(5, 60_000),
   async (req, res) => {
     try {
-      const product = await Product.findById(req.params.id);
+      // Use atomic $inc to prevent race conditions / lost counts
+      const product = await Product.findByIdAndUpdate(
+        req.params.id,
+        { $inc: { tryOnLikeCount: 1 } },
+        { new: true }
+      );
       if (!product) {
         res.status(404).json({ error: "Product not found" });
         return;
       }
-      product.tryOnLikeCount = (product.tryOnLikeCount ?? 0) + 1;
-      await product.save();
       await LikeEvent.create({ productId: String(product._id), type: "tryon" });
       await Notification.create({
         type: "like",

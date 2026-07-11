@@ -84,7 +84,7 @@ export default function ShopTab({
       list = list.filter((p) => p.tryOnLikeCount > 0);
       list.sort((a, b) => b.tryOnLikeCount - a.tryOnLikeCount);
     } else if (sortBy === "trending") {
-      list = list.filter((p) => p.recentLikeCount > 0 && p.recentTryOnCount > 0);
+      list = list.filter((p) => p.recentLikeCount > 0 || p.recentTryOnCount > 0);
       list.sort((a, b) => b.recentLikeCount + b.recentTryOnCount - (a.recentLikeCount + a.recentTryOnCount));
     }
     return list;

@@ -69,7 +69,7 @@ export default function HomeTab({
 
   const newArrivals = products.slice(0, 8);
   const mostTrending = [...products]
-    .filter((p) => p.likeCount > 0 && p.tryOnLikeCount > 0)
+    .filter((p) => p.likeCount > 0 || p.tryOnLikeCount > 0)
     .sort((a, b) => (b.recentLikeCount + b.recentTryOnCount) - (a.recentLikeCount + a.recentTryOnCount))
     .slice(0, 10);
   const filteredBySearch = search.trim()
