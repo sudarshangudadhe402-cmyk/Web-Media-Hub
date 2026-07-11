@@ -40,7 +40,7 @@ async function fetchAcceptances(search: string, from: string, to: string): Promi
   if (to) params.set("to", to);
   const token = getToken();
   const res = await fetch(`/api/legal/acceptances?${params.toString()}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   if (!res.ok) throw new Error("Failed to fetch records");
   return res.json();
@@ -342,7 +342,7 @@ export default function LegalLog() {
   async function handleExport() {
     const token = getToken();
     const res = await fetch("/api/legal/acceptances/export", {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     if (!res.ok) return;
     const blob = await res.blob();

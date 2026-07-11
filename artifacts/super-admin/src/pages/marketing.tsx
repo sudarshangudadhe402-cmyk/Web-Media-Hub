@@ -769,8 +769,12 @@ function InfluencersTab() {
 
   async function del(id: string) {
     if (!confirm("Delete this influencer?")) return;
-    await fetch(`${BASE}/marketing/influencers/${id}`, { method: "DELETE", headers: authHeaders() });
-    load();
+    try {
+      const r = await fetch(`${BASE}/marketing/influencers/${id}`, { method: "DELETE", headers: authHeaders() });
+      if (!r.ok) { const e = await r.json().catch(() => ({})); toast({ title: e.error || "Failed to delete", variant: "destructive" }); return; }
+      toast({ title: "Influencer deleted" });
+      load();
+    } catch { toast({ title: "Failed to delete", variant: "destructive" }); }
   }
 
   function exportCSV() { window.open(`${BASE}/marketing/export/csv?type=influencers&token=${token()}`, "_blank"); }
@@ -911,11 +915,15 @@ function AmbassadorsTab() {
 
   async function del(id: string) {
     if (!confirm("Delete this ambassador?")) return;
-    await fetch(`${BASE}/marketing/ambassadors/${id}`, { method: "DELETE", headers: authHeaders() });
-    load();
+    try {
+      const r = await fetch(`${BASE}/marketing/ambassadors/${id}`, { method: "DELETE", headers: authHeaders() });
+      if (!r.ok) { const e = await r.json().catch(() => ({})); toast({ title: e.error || "Failed to delete", variant: "destructive" }); return; }
+      toast({ title: "Ambassador deleted" });
+      load();
+    } catch { toast({ title: "Failed to delete", variant: "destructive" }); }
   }
 
-  function exportCSV() { window.open(`${BASE}/marketing/export/csv?type=ambassadors`, "_blank"); }
+  function exportCSV() { window.open(`${BASE}/marketing/export/csv?type=ambassadors&token=${token()}`, "_blank"); }
 
   return (
     <div className="space-y-4">
@@ -1371,19 +1379,25 @@ function SourcesTab() {
 
   async function deleteCustomSource(id: string, label: string) {
     if (!confirm(`Delete "${label}" source?`)) return;
-    await fetch(`${BASE}/marketing/sources/config/${id}`, { method: "DELETE", headers: authHeaders() });
-    toast({ title: "Source deleted" });
-    loadAll();
+    try {
+      const r = await fetch(`${BASE}/marketing/sources/config/${id}`, { method: "DELETE", headers: authHeaders() });
+      if (!r.ok) { toast({ title: "Failed to delete source", variant: "destructive" }); return; }
+      toast({ title: "Source deleted" });
+      loadAll();
+    } catch { toast({ title: "Failed to delete source", variant: "destructive" }); }
   }
 
   async function deleteBuiltinSource(key: string, label: string) {
     if (!confirm(`Delete "${label}" source? It will be hidden from all views.`)) return;
-    await fetch(`${BASE}/marketing/sources/builtin/${key}`, {
-      method: "PATCH", headers: authHeaders(),
-      body: JSON.stringify({ isActive: false }),
-    });
-    toast({ title: "Source deleted" });
-    loadAll();
+    try {
+      const r = await fetch(`${BASE}/marketing/sources/builtin/${key}`, {
+        method: "PATCH", headers: authHeaders(),
+        body: JSON.stringify({ isActive: false }),
+      });
+      if (!r.ok) { toast({ title: "Failed to hide source", variant: "destructive" }); return; }
+      toast({ title: "Source deleted" });
+      loadAll();
+    } catch { toast({ title: "Failed to hide source", variant: "destructive" }); }
   }
 
   const statsMap: Record<string, any> = {};
@@ -1622,6 +1636,7 @@ function RevenueTab() {
       const params = new URLSearchParams({ range });
       if (range === "custom" && from && to) { params.set("from", from); params.set("to", to); }
       const r = await fetch(`${BASE}/marketing/revenue?${params}`, { headers: authHeaders() });
+      if (!r.ok) throw new Error("Server error");
       setData(await r.json());
     } catch { toast({ title: "Failed", variant: "destructive" }); }
     finally { setLoading(false); }

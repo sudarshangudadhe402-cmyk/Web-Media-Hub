@@ -523,7 +523,7 @@ export default function PricingConfig() {
   const allPlans = data?.plans ?? [];
 
   // Keep local reorderable copy in sync with server data
-  useMemo(() => {
+  useEffect(() => {
     setOrderedPlans(allPlans);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(allPlans.map((p) => p.id))]);
