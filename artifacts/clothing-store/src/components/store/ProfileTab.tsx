@@ -573,12 +573,23 @@ export default function ProfileTab({
         )}
 
         <div className="rounded-2xl overflow-hidden" style={{ background: "#ffffff", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
-          <div className="px-4 py-3 border-b" style={{ borderColor: "#f0f0f0" }}>
-            <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Security</p>
+          <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: "#f0f0f0" }}>
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
+              {data.address
+                ? data.address.split(",").map(s => s.trim()).filter(Boolean).slice(-1)[0] || "Store Address"
+                : "Store Address"}
+            </p>
+            <button
+              onClick={() => {}}
+              className="px-3 py-1 rounded-lg text-xs font-bold text-white"
+              style={{ background: "#22c55e" }}
+            >
+              Mapping
+            </button>
           </div>
           <div className="px-4 py-3 flex items-start gap-3">
-            <Shield className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-gray-400 leading-relaxed">Your account is secured with email OTP verification. We never store your password in plain text.</p>
+            <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-gray-600 leading-relaxed">{data.address || "No address set"}</p>
           </div>
         </div>
 
