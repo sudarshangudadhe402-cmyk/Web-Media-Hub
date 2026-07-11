@@ -1,23 +1,23 @@
-import { Home, ShoppingBag, CalendarDays, Heart, User } from "lucide-react";
+import { Home, ShoppingBag, CalendarDays, ShoppingCart, User } from "lucide-react";
 
-export type TabType = "home" | "shop" | "mybookings" | "wishlist" | "profile";
+export type TabType = "home" | "shop" | "mybookings" | "cart" | "profile";
 
 interface BottomNavbarProps {
   activeTab: TabType;
   onTabChange: (tab: TabType) => void;
   bookingCount?: number;
-  wishlistCount?: number;
+  cartCount?: number;
 }
 
 const tabs = [
   { key: "home" as const, label: "Home", Icon: Home },
   { key: "shop" as const, label: "Shop", Icon: ShoppingBag },
   { key: "mybookings" as const, label: "My Booking", Icon: CalendarDays },
-  { key: "wishlist" as const, label: "Wishlist", Icon: Heart },
+  { key: "cart" as const, label: "Cart", Icon: ShoppingCart },
   { key: "profile" as const, label: "Profile", Icon: User },
 ];
 
-export default function BottomNavbar({ activeTab, onTabChange, bookingCount = 0, wishlistCount = 0 }: BottomNavbarProps) {
+export default function BottomNavbar({ activeTab, onTabChange, bookingCount = 0, cartCount = 0 }: BottomNavbarProps) {
   return (
     <div
       className="fixed bottom-0 left-0 right-0 z-50 border-t"
@@ -26,7 +26,7 @@ export default function BottomNavbar({ activeTab, onTabChange, bookingCount = 0,
       <div className="flex items-stretch">
         {tabs.map(({ key, label, Icon }) => {
           const isActive = activeTab === key;
-          const badge = key === "mybookings" ? bookingCount : key === "wishlist" ? wishlistCount : 0;
+          const badge = key === "mybookings" ? bookingCount : key === "cart" ? cartCount : 0;
           return (
             <button
               key={key}
@@ -38,7 +38,7 @@ export default function BottomNavbar({ activeTab, onTabChange, bookingCount = 0,
                   className="w-5 h-5 transition-all"
                   style={{
                     color: isActive ? "#000000" : "#9ca3af",
-                    fill: isActive && (key === "home" || key === "wishlist") ? (key === "wishlist" ? "#ef4444" : "#000000") : "none",
+                    fill: isActive && key === "home" ? "#000000" : "none",
                     strokeWidth: isActive ? 2.5 : 1.8,
                   }}
                 />

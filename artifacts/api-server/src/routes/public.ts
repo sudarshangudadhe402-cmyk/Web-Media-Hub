@@ -224,6 +224,69 @@ router.post(
   }
 );
 
+// ─── Cart (account-linked, synced across devices) ───────────────────────────
+
+router.get("/public/cart/:customerId", async (req, res) => {
+  try {
+    const account = await CustomerAccount.findById(req.params.customerId).select("cart").lean();
+    if (!account) {
+      res.status(404).json({ error: "Account not found" });
+      return;
+    }
+    res.json({ cart: account.cart ?? [] });
+  } catch (err) {
+    req.log.error({ err }, "Cart fetch error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/public/cart", ipRateLimit(30, 60_000), async (req, res) => {
+  try {
+    const { customerId, productId } = req.body as { customerId?: string; productId?: string };
+    if (!customerId || !productId) {
+      res.status(400).json({ error: "customerId and productId are required" });
+      return;
+    }
+    const product = await Product.findById(productId).select("_id").lean();
+    if (!product) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+    const account = await CustomerAccount.findByIdAndUpdate(
+      customerId,
+      { $addToSet: { cart: productId } },
+      { new: true }
+    ).select("cart");
+    if (!account) {
+      res.status(404).json({ error: "Account not found" });
+      return;
+    }
+    res.json({ cart: account.cart });
+  } catch (err) {
+    req.log.error({ err }, "Add to cart error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/public/cart/:customerId/:productId", async (req, res) => {
+  try {
+    const { customerId, productId } = req.params;
+    const account = await CustomerAccount.findByIdAndUpdate(
+      customerId,
+      { $pull: { cart: productId } },
+      { new: true }
+    ).select("cart");
+    if (!account) {
+      res.status(404).json({ error: "Account not found" });
+      return;
+    }
+    res.json({ cart: account.cart });
+  } catch (err) {
+    req.log.error({ err }, "Remove from cart error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ─── Reviews ─────────────────────────────────────────────────────────────────
 
 router.get("/public/reviews/:productId", async (req, res) => {

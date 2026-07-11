@@ -8,6 +8,7 @@ export interface ICustomerAccount extends Document {
   password: string;
   source?: string;
   campaign?: string;
+  cart: string[];
   createdAt: Date;
   lastActivityAt: Date;
   comparePassword(candidate: string): Promise<boolean>;
@@ -29,6 +30,7 @@ const CustomerAccountSchema = new Schema<ICustomerAccount>(
     password: { type: String, required: true },
     source: { type: String },
     campaign: { type: String },
+    cart: { type: [String], default: [] },
     lastActivityAt: { type: Date, default: Date.now, index: true },
   },
   { timestamps: true }

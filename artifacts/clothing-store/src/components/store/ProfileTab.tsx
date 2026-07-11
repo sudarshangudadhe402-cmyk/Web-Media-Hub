@@ -18,6 +18,7 @@ export interface CustomerAccountInfo {
   name: string;
   email: string;
   password: string;
+  cart: string[];
   createdAt: string;
 }
 

@@ -4,7 +4,7 @@ import {
   MapPin, Clock, CalendarDays, MessageCircle, Heart, ShoppingBag,
   ChevronLeft, X, Camera, Loader2, RefreshCw,
   CheckCircle2, TrendingDown, Download, Share2,
-  AlertCircle, Edit2, Trash2, Box,
+  AlertCircle, Edit2, Trash2, Box, ShoppingCart,
 } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 
@@ -12,7 +12,7 @@ import BottomNavbar, { TabType } from "@/components/store/BottomNavbar";
 import HomeTab, { AdminCategory } from "@/components/store/HomeTab";
 import ShopTab from "@/components/store/ShopTab";
 import MyBookingTab from "@/components/store/MyBookingTab";
-import WishlistTab from "@/components/store/WishlistTab";
+import CartTab from "@/components/store/CartTab";
 import ProfileTab, { type CustomerAccountInfo } from "@/components/store/ProfileTab";
 
 interface PublicProduct {
@@ -132,6 +132,7 @@ export default function PublicStore() {
 
   const [show3DUnavailable, setShow3DUnavailable] = useState(false);
   const [viewing3D, setViewing3D] = useState<PublicProduct | null>(null);
+  const [showLoginRequired, setShowLoginRequired] = useState(false);
   const [bookingForm, setBookingForm] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(`wmh_customer_${slug}`) || "null");
@@ -153,9 +154,30 @@ export default function PublicStore() {
   const [completedStatus, setCompletedStatus] = useState<Record<string, boolean>>({});
 
   const [customerAccount, setCustomerAccount] = useState<CustomerAccountInfo | null>(() => {
-    try { return JSON.parse(localStorage.getItem(`wmh_account_${slug}`) || "null"); }
+    try {
+      const parsed = JSON.parse(localStorage.getItem(`wmh_account_${slug}`) || "null");
+      return parsed ? { ...parsed, cart: parsed.cart ?? [] } : null;
+    }
     catch { return null; }
   });
+
+  // Re-sync cart from the server so it stays consistent across devices
+  useEffect(() => {
+    if (!customerAccount?.id) return;
+    fetch(`/api/public/cart/${customerAccount.id}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((d) => {
+        if (!d) return;
+        setCustomerAccount((prev) => {
+          if (!prev) return prev;
+          const acc = { ...prev, cart: d.cart ?? [] };
+          localStorage.setItem(`wmh_account_${slug}`, JSON.stringify(acc));
+          return acc;
+        });
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customerAccount?.id]);
   const [signUpLoading, setSignUpLoading] = useState(false);
   const [signInLoading, setSignInLoading] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
@@ -292,6 +314,29 @@ export default function PublicStore() {
     } catch {}
   }
 
+  async function handleAddToCart(productId: string) {
+    if (!customerAccount) {
+      setShowLoginRequired(true);
+      return;
+    }
+    const inCart = customerAccount.cart?.includes(productId);
+    try {
+      const res = inCart
+        ? await fetch(`/api/public/cart/${customerAccount.id}/${productId}`, { method: "DELETE" })
+        : await fetch("/api/public/cart", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ customerId: customerAccount.id, productId }),
+          });
+      if (res.ok) {
+        const d = await res.json();
+        const acc: CustomerAccountInfo = { ...customerAccount, cart: d.cart ?? [] };
+        setCustomerAccount(acc);
+        localStorage.setItem(`wmh_account_${slug}`, JSON.stringify(acc));
+      }
+    } catch {}
+  }
+
   function openProduct(product: PublicProduct) {
     setPreviousProductId(null);
     setSelectedProduct(product);
@@ -381,7 +426,7 @@ export default function PublicStore() {
       });
       const d = await res.json();
       if (!res.ok) { setSignUpError(d.error || "Verification failed"); return; }
-      const acc: CustomerAccountInfo = { id: d.id, name: d.name, email: d.email, password, createdAt: d.createdAt };
+      const acc: CustomerAccountInfo = { id: d.id, name: d.name, email: d.email, password, cart: d.cart ?? [], createdAt: d.createdAt };
       setCustomerAccount(acc);
       localStorage.setItem(`wmh_account_${slug}`, JSON.stringify(acc));
       setSignUpError(null);
@@ -400,7 +445,7 @@ export default function PublicStore() {
       });
       const d = await res.json();
       if (!res.ok) { setSignInError(d.error || "Verification failed"); return; }
-      const acc: CustomerAccountInfo = { id: d.id, name: d.name, email: d.email, password, createdAt: d.createdAt };
+      const acc: CustomerAccountInfo = { id: d.id, name: d.name, email: d.email, password, cart: d.cart ?? [], createdAt: d.createdAt };
       setCustomerAccount(acc);
       localStorage.setItem(`wmh_account_${slug}`, JSON.stringify(acc));
       setSignInError(null);
@@ -819,6 +864,21 @@ export default function PublicStore() {
             )}
           </div>
 
+          <div className="px-4 pt-3 flex justify-end">
+            <button
+              onClick={() => handleAddToCart(selectedProduct.id)}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-sm active:scale-95 transition-transform"
+              style={
+                customerAccount?.cart?.includes(selectedProduct.id)
+                  ? { background: "#ecfdf5", color: "#16a34a", border: "1.5px solid #86efac" }
+                  : { background: "#000000", color: "#ffffff" }
+              }
+            >
+              <ShoppingCart className="w-4 h-4" />
+              {customerAccount?.cart?.includes(selectedProduct.id) ? "Added to Cart" : "Add to Cart"}
+            </button>
+          </div>
+
           <div className="px-4 pt-4 pb-3">
             <h1 className="text-lg font-black text-gray-900 leading-tight mb-2" style={{ fontFamily: "'Montserrat', sans-serif" }}>{selectedProduct.name}</h1>
             <div className="flex items-center gap-3 mb-2">
@@ -1140,6 +1200,28 @@ export default function PublicStore() {
           </div>
         )}
 
+        {/* Login Required popup (Add to Cart while logged out) */}
+        {showLoginRequired && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setShowLoginRequired(false)}>
+            <div className="absolute inset-0 bg-black/40" />
+            <div className="relative w-full rounded-t-3xl px-6 pt-6 pb-12 text-center" style={{ background: "#ffffff" }} onClick={(e) => e.stopPropagation()}>
+              <div className="w-12 h-1 rounded-full bg-gray-200 mx-auto mb-5" />
+              <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "#f3f0ff" }}>
+                <ShoppingCart className="w-8 h-8" style={{ color: "#7c3aed" }} />
+              </div>
+              <p className="font-black text-lg text-gray-900 mb-2" style={{ fontFamily: "'Montserrat', sans-serif" }}>Login Required</p>
+              <p className="text-sm text-gray-500 mb-6">Please login or create an account to add products to your cart.</p>
+              <button
+                className="w-full py-3.5 rounded-2xl font-bold text-sm"
+                style={{ background: "#000000", color: "white" }}
+                onClick={() => { setShowLoginRequired(false); setView("browse"); setSelectedProduct(null); setTab("profile"); }}
+              >
+                Go to Profile
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* 3D Model Viewer */}
         {viewing3D && (
           <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "rgba(0,0,0,0.92)" }}>
@@ -1315,14 +1397,34 @@ export default function PublicStore() {
             completedStatus={completedStatus}
           />
         )}
-        {tab === "wishlist" && (
-          <WishlistTab
-            products={data.products}
-            wishlistProducts={new Set([...likedProducts].filter((id) => tryOnProducts.has(id)))}
-            likeCounts={likeCounts}
-            onProductClick={openProduct}
-            onUnlike={handleLike}
-          />
+        {tab === "cart" && (
+          customerAccount ? (
+            <CartTab
+              products={data.products}
+              cartProductIds={new Set(customerAccount.cart ?? [])}
+              onProductClick={openProduct}
+              onRemove={handleAddToCart}
+            />
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center pb-24 px-6 text-center" style={{ background: "#ffffff" }}>
+              <div className="w-24 h-24 rounded-full flex items-center justify-center mb-5" style={{ background: "#f8f8f8" }}>
+                <ShoppingCart className="w-10 h-10 text-gray-200" />
+              </div>
+              <h2 className="text-lg font-black text-gray-900 mb-2" style={{ fontFamily: "'Montserrat', sans-serif" }}>
+                Login to view your Cart
+              </h2>
+              <p className="text-sm text-gray-400 leading-relaxed max-w-xs mb-5">
+                Your cart is linked to your account so it stays in sync everywhere you sign in.
+              </p>
+              <button
+                onClick={() => setTab("profile")}
+                className="px-6 py-3 rounded-2xl font-bold text-sm"
+                style={{ background: "#000000", color: "white" }}
+              >
+                Go to Profile
+              </button>
+            </div>
+          )
         )}
         {tab === "profile" && (
           <ProfileTab
@@ -1346,8 +1448,30 @@ export default function PublicStore() {
         activeTab={tab}
         onTabChange={(newTab) => { setTab(newTab); setShopInitCategory("all"); }}
         bookingCount={myBookings.filter(b => !completedStatus[b.id]).length}
-        wishlistCount={[...likedProducts].filter((id) => tryOnProducts.has(id)).length}
+        cartCount={customerAccount?.cart?.length ?? 0}
       />
+
+      {/* Login Required popup (Add to Cart while logged out) */}
+      {showLoginRequired && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setShowLoginRequired(false)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="relative w-full rounded-t-3xl px-6 pt-6 pb-12 text-center" style={{ background: "#ffffff" }} onClick={(e) => e.stopPropagation()}>
+            <div className="w-12 h-1 rounded-full bg-gray-200 mx-auto mb-5" />
+            <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "#f3f0ff" }}>
+              <ShoppingCart className="w-8 h-8" style={{ color: "#7c3aed" }} />
+            </div>
+            <p className="font-black text-lg text-gray-900 mb-2" style={{ fontFamily: "'Montserrat', sans-serif" }}>Login Required</p>
+            <p className="text-sm text-gray-500 mb-6">Please login or create an account to add products to your cart.</p>
+            <button
+              className="w-full py-3.5 rounded-2xl font-bold text-sm"
+              style={{ background: "#000000", color: "white" }}
+              onClick={() => { setShowLoginRequired(false); setView("browse"); setSelectedProduct(null); setTab("profile"); }}
+            >
+              Go to Profile
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

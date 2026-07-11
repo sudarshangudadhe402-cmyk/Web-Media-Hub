@@ -155,6 +155,7 @@ router.post("/public/customer-account/verify-signup", validate(CustomerVerifySig
       id: String(account._id),
       name: account.name,
       email: account.email,
+      cart: account.cart ?? [],
       createdAt: account.createdAt,
     });
   } catch (err) {
@@ -224,6 +225,7 @@ router.post("/public/customer-account/verify-signin", validate(CustomerVerifySig
       id: String(account._id),
       name: account.name,
       email: account.email,
+      cart: account.cart ?? [],
       createdAt: account.createdAt,
     });
   } catch (err) {
