@@ -1160,33 +1160,44 @@ export default function MyStore() {
           </div>
 
           {/* 2. Store Address */}
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="address">Store Address <span className="text-destructive">*</span></Label>
-            <div className="flex gap-2">
-              <Input
-                id="address"
-                placeholder="e.g. 123 Market Street, Mumbai"
-                value={form.address}
-                onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))}
-                data-testid="store-address"
-                className="flex-1"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="shrink-0 gap-1.5"
-                onClick={() => setMapOpen(true)}
-                title="Pin location on map"
-              >
-                <MapIcon className="w-4 h-4" />
-                <span className="hidden sm:inline">Pin on Map</span>
-              </Button>
-            </div>
+            <Input
+              id="address"
+              placeholder="e.g. 123 Market Street, Mumbai"
+              value={form.address}
+              onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))}
+              data-testid="store-address"
+            />
+
+            {/* Live Location Card */}
+            <button
+              type="button"
+              onClick={() => setMapOpen(true)}
+              className="w-full rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary/60 transition-colors px-4 py-3.5 flex items-center gap-3 text-left"
+            >
+              <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                <LocateFixed className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-primary leading-tight">Save Live Location on Map</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {form.latitude !== null && form.longitude !== null
+                    ? `📍 Location saved — tap to change`
+                    : "Tap to pin exact store location on map"}
+                </p>
+              </div>
+              {form.latitude !== null && form.longitude !== null ? (
+                <Check className="w-5 h-5 text-green-600 shrink-0" />
+              ) : (
+                <MapIcon className="w-5 h-5 text-primary/50 shrink-0" />
+              )}
+            </button>
+
             {form.latitude !== null && form.longitude !== null && (
               <p className="text-xs text-green-600 flex items-center gap-1">
                 <LocateFixed className="w-3 h-3" />
-                Location pinned ({form.latitude.toFixed(5)}, {form.longitude.toFixed(5)})
+                Exact location saved ({form.latitude.toFixed(5)}, {form.longitude.toFixed(5)})
               </p>
             )}
           </div>
@@ -1199,20 +1210,34 @@ export default function MyStore() {
                   <MapPin className="w-4 h-4 text-primary" /> Pin Your Store Location
                 </DialogTitle>
               </DialogHeader>
-              <div className="px-4 pb-2 flex items-center gap-2">
-                <Button
+
+              {/* Prominent GPS button */}
+              <div className="px-4 pb-3">
+                <button
                   type="button"
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 text-xs"
                   onClick={handleUseMyLocation}
                   disabled={mapGeoLoading}
+                  className="w-full rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60 transition-colors px-4 py-3 flex items-center gap-3"
                 >
-                  <LocateFixed className="w-3.5 h-3.5" />
-                  {mapGeoLoading ? "Locating…" : "Use My Location"}
-                </Button>
-                <p className="text-xs text-muted-foreground">or tap anywhere on the map to drop a pin</p>
+                  <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                    <LocateFixed className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-semibold leading-tight">
+                      {mapGeoLoading ? "Getting your location…" : "Use My Live Location"}
+                    </p>
+                    <p className="text-xs opacity-80 mt-0.5">Precise • Exact location only</p>
+                  </div>
+                  {!mapGeoLoading && <Navigation className="w-4 h-4 opacity-70 shrink-0" />}
+                </button>
+
+                <div className="flex items-center gap-2 mt-2.5">
+                  <div className="flex-1 h-px bg-border" />
+                  <p className="text-xs text-muted-foreground px-1">or tap map to place pin manually</p>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
               </div>
+
               {/* Map */}
               <div className="h-72 w-full">
                 <MapContainer
@@ -1229,6 +1254,7 @@ export default function MyStore() {
                   {mapPin && <Marker position={[mapPin.lat, mapPin.lng]} />}
                 </MapContainer>
               </div>
+
               {/* Address preview */}
               <div className="px-4 py-3 border-t bg-muted/30">
                 <p className="text-xs text-muted-foreground mb-1">Address will be set to:</p>
