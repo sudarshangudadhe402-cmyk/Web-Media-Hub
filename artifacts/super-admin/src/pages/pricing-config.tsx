@@ -2,11 +2,16 @@ import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import {
   Plus, Search, Tag, Trash2, ChevronDown, ChevronUp, X, Check,
   Clock, Calendar, Pencil, BadgePlus, ChevronRight, GripVertical,
+  Link as LinkIcon, Copy,
 } from "lucide-react";
 
 const TOKEN_KEY = "wmh_super_token";
@@ -14,6 +19,18 @@ const TOKEN_KEY = "wmh_super_token";
 function authHeaders() {
   const token = sessionStorage.getItem(TOKEN_KEY);
   return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function authFetch(url: string, options?: RequestInit) {
+  const token = sessionStorage.getItem(TOKEN_KEY);
+  return fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options?.headers ?? {}),
+    },
+  });
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -513,6 +530,53 @@ export default function PricingConfig() {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
+  // ── Global Link state ────────────────────────────────────────────────────────
+  const [linkInput, setLinkInput] = useState("");
+  const [isEditingLink, setIsEditingLink] = useState(false);
+
+  const { data: globalLinkData, refetch: refetchGlobalLink } = useQuery({
+    queryKey: ["settings", "global-link"],
+    queryFn: async () => {
+      const res = await authFetch("/api/settings/global-link");
+      if (!res.ok) return { globalLink: null };
+      return res.json() as Promise<{ globalLink: string | null }>;
+    },
+  });
+  const globalLink = globalLinkData?.globalLink ?? null;
+
+  const saveGlobalLink = useMutation({
+    mutationFn: async (link: string) => {
+      const res = await authFetch("/api/settings/global-link", {
+        method: "PUT",
+        body: JSON.stringify({ globalLink: link }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Global link saved ✅" });
+      refetchGlobalLink();
+      setIsEditingLink(false);
+      setLinkInput("");
+    },
+    onError: () => toast({ variant: "destructive", title: "Failed to save link" }),
+  });
+
+  const deleteGlobalLink = useMutation({
+    mutationFn: async () => {
+      const res = await authFetch("/api/settings/global-link", { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Global link removed" });
+      refetchGlobalLink();
+      setIsEditingLink(false);
+      setLinkInput("");
+    },
+    onError: () => toast({ variant: "destructive", title: "Failed to remove link" }),
+  });
+
   const { data, isLoading } = useQuery<PricingData>({
     queryKey: ["dynamic-pricing"],
     queryFn: fetchPricing,
@@ -608,6 +672,88 @@ export default function PricingConfig() {
             Add Plan
           </Button>
         </div>
+      </div>
+
+      {/* ── Global Link ────────────────────────────────────────────────────── */}
+      <div>
+        <div className="flex items-center gap-2 mb-2">
+          <LinkIcon className="h-4 w-4 text-primary" />
+          <h2 className="text-sm font-semibold">Global Link</h2>
+        </div>
+        {globalLink && !isEditingLink ? (
+          <Card className="border-primary/20">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2">
+                <LinkIcon className="h-3.5 w-3.5 text-primary shrink-0" />
+                <a
+                  href={globalLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 text-sm text-primary font-medium underline underline-offset-2 break-all line-clamp-1"
+                >
+                  {globalLink}
+                </a>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2.5 gap-1 text-xs shrink-0"
+                  onClick={() => { navigator.clipboard.writeText(globalLink); toast({ title: "Link copied!" }); }}
+                >
+                  <Copy className="h-3 w-3" /> Copy
+                </Button>
+              </div>
+              <div className="flex justify-end mt-1.5">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-36">
+                    <DropdownMenuItem onClick={() => { setLinkInput(globalLink); setIsEditingLink(true); }}>
+                      <Pencil className="h-3.5 w-3.5 mr-2" /> Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-red-600 focus:text-red-600"
+                      onClick={() => deleteGlobalLink.mutate()}
+                      disabled={deleteGlobalLink.isPending}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="border-dashed border-2">
+            <CardContent className="p-3 space-y-2">
+              <p className="text-sm text-muted-foreground">
+                {isEditingLink ? "Update the global link:" : "Paste a link to show on all admin pages:"}
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  value={linkInput}
+                  onChange={(e) => setLinkInput(e.target.value)}
+                  placeholder="https://example.com/..."
+                  className="flex-1 h-9"
+                />
+                <Button
+                  onClick={() => { const t = linkInput.trim(); if (!t) return; saveGlobalLink.mutate(t); }}
+                  disabled={saveGlobalLink.isPending || !linkInput.trim()}
+                  className="bg-primary text-primary-foreground h-9"
+                >
+                  {saveGlobalLink.isPending ? "Saving..." : isEditingLink ? "Update" : "Save"}
+                </Button>
+                {isEditingLink && (
+                  <Button variant="outline" className="h-9" onClick={() => { setIsEditingLink(false); setLinkInput(""); }}>
+                    Cancel
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* ── Search bar ─────────────────────────────────────────────────────── */}

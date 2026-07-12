@@ -346,6 +346,10 @@ export default function Admins() {
   const activePlanTab = PLAN_TABS.find(t => t.id === planFilter) ?? PLAN_TABS[0];
 
   return (
+    <div />
+  );
+  /* eslint-disable-next-line no-unreachable */
+  return (
     <div className="space-y-6 max-w-4xl mx-auto pb-12">
 
       {/* ── Global Link Section ── */}
