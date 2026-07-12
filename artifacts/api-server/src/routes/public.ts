@@ -90,6 +90,8 @@ router.get("/public/store/:slug", ipRateLimit(60, 60 * 1000), async (req, res) =
       id: String(store._id),
       name: store.name,
       address: store.address ?? null,
+      latitude: store.latitude ?? null,
+      longitude: store.longitude ?? null,
       whatsappNumber: store.whatsappNumber ?? null,
       openingTime: store.openingTime ?? null,
       openDays: store.openDays ?? null,

@@ -5,6 +5,8 @@ interface StoreData {
   id: string;
   name: string;
   address: string | null;
+  latitude: number | null;
+  longitude: number | null;
   whatsappNumber: string | null;
   openingTime: string | null;
   openDays: string | null;
@@ -565,13 +567,50 @@ export default function ProfileTab({
           <div className="px-4 py-3 flex items-center gap-3">
             <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
             <p className="text-sm text-gray-600 leading-relaxed flex-1">{data.address || "No address set"}</p>
-            <button
-              onClick={() => {}}
-              className="px-4 py-2 rounded-xl text-sm font-bold text-white flex-shrink-0"
-              style={{ background: "#22c55e" }}
-            >
-              📍 Mapping
-            </button>
+            {(data.latitude && data.longitude) || data.address ? (
+              <button
+                onClick={() => {
+                  if (data.latitude && data.longitude) {
+                    // Get user's current location and open navigation
+                    if (navigator.geolocation) {
+                      navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                          const origin = `${pos.coords.latitude},${pos.coords.longitude}`;
+                          const dest = `${data.latitude},${data.longitude}`;
+                          window.open(
+                            `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&travelmode=driving`,
+                            "_blank"
+                          );
+                        },
+                        () => {
+                          // GPS denied — open maps with just the destination
+                          window.open(
+                            `https://www.google.com/maps/dir/?api=1&destination=${data.latitude},${data.longitude}&travelmode=driving`,
+                            "_blank"
+                          );
+                        },
+                        { enableHighAccuracy: true, timeout: 8000 }
+                      );
+                    } else {
+                      window.open(
+                        `https://www.google.com/maps/dir/?api=1&destination=${data.latitude},${data.longitude}&travelmode=driving`,
+                        "_blank"
+                      );
+                    }
+                  } else if (data.address) {
+                    // No coordinates — search by address
+                    window.open(
+                      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.address)}`,
+                      "_blank"
+                    );
+                  }
+                }}
+                className="px-4 py-2 rounded-xl text-sm font-bold text-white flex-shrink-0 active:scale-95 transition-transform"
+                style={{ background: "#22c55e" }}
+              >
+                📍 Mapping
+              </button>
+            ) : null}
           </div>
         </div>
 

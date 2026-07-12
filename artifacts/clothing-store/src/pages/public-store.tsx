@@ -39,6 +39,8 @@ interface PublicStoreData {
   id: string;
   name: string;
   address: string | null;
+  latitude: number | null;
+  longitude: number | null;
   whatsappNumber: string | null;
   openingTime: string | null;
   openDays: string | null;
