@@ -517,6 +517,35 @@ export default function MyStore() {
     }
   }
 
+  async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(address)}&limit=1`,
+        { headers: { "Accept-Language": "en" } }
+      );
+      const data = await res.json();
+      if (data.length === 0) return null;
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    } catch {
+      return null;
+    }
+  }
+
+  async function handleFindOnMap() {
+    if (!form.address.trim()) return;
+    setMapGeoLoading(true);
+    const coords = await geocodeAddress(form.address);
+    setMapGeoLoading(false);
+    if (!coords) {
+      toast({ variant: "destructive", title: "Address not found on map", description: "Try a more specific address, or pin manually on the map." });
+      setMapOpen(true);
+      return;
+    }
+    setMapPin(coords);
+    setForm((p) => ({ ...p, latitude: coords.lat, longitude: coords.lng }));
+    setMapOpen(true);
+  }
+
   async function handleMapPick(lat: number, lng: number) {
     setMapPin({ lat, lng });
     setMapGeoLoading(true);
@@ -1166,11 +1195,39 @@ export default function MyStore() {
               id="address"
               placeholder="e.g. 123 Market Street, Mumbai"
               value={form.address}
-              onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))}
+              onChange={(e) => {
+                const val = e.target.value;
+                // Clear saved coordinates when admin edits address manually
+                setForm((p) => ({ ...p, address: val, latitude: null, longitude: null }));
+                setMapPin(null);
+              }}
               data-testid="store-address"
             />
 
-            {/* Live Location Card */}
+            {/* If address typed but no coordinates yet — show Find on Map prompt */}
+            {form.address.trim().length >= 3 && form.latitude === null && (
+              <button
+                type="button"
+                onClick={handleFindOnMap}
+                disabled={mapGeoLoading}
+                className="w-full rounded-xl border-2 border-dashed border-orange-400/60 bg-orange-50 hover:bg-orange-100 disabled:opacity-60 transition-colors px-4 py-3 flex items-center gap-3 text-left"
+              >
+                <div className="w-9 h-9 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
+                  <MapIcon className="w-5 h-5 text-orange-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-orange-700 leading-tight">
+                    {mapGeoLoading ? "Searching on map…" : "Find This Address on Map"}
+                  </p>
+                  <p className="text-xs text-orange-500 mt-0.5">
+                    Coordinates required for customer navigation — tap to confirm location
+                  </p>
+                </div>
+                <MapPin className="w-5 h-5 text-orange-400 shrink-0" />
+              </button>
+            )}
+
+            {/* Live Location Card — always visible to pin via GPS or manual tap */}
             <button
               type="button"
               onClick={() => setMapOpen(true)}
