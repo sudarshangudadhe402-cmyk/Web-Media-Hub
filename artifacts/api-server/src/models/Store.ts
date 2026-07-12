@@ -4,6 +4,8 @@ export interface IStore extends Document {
   ownerId?: string;
   name: string;
   address?: string;
+  latitude?: number;
+  longitude?: number;
   whatsappNumber?: string;
   openingTime?: string;
   openDays?: string;
@@ -19,6 +21,8 @@ const StoreSchema = new Schema<IStore>(
     ownerId: { type: String },
     name: { type: String, required: true, trim: true },
     address: { type: String },
+    latitude: { type: Number },
+    longitude: { type: Number },
     whatsappNumber: { type: String },
     openingTime: { type: String },
     openDays: { type: String },

@@ -17,6 +17,8 @@ function formatStore(s: InstanceType<typeof Store>) {
     id: String(s._id),
     name: s.name,
     address: s.address ?? null,
+    latitude: s.latitude ?? null,
+    longitude: s.longitude ?? null,
     whatsappNumber: s.whatsappNumber ?? null,
     openingTime: s.openingTime ?? null,
     openDays: s.openDays ?? null,
@@ -50,12 +52,14 @@ router.get("/store", requireAuth, async (req: AuthRequest, res) => {
 router.post("/store", requireAuth, async (req: AuthRequest, res) => {
   try {
     const userId = String(req.user!._id);
-    const { name, address, whatsappNumber, openingTime, openDays, bannerImage, description } = req.body;
+    const { name, address, latitude, longitude, whatsappNumber, openingTime, openDays, bannerImage, description } = req.body;
 
     let store = await getStoreForUser(userId);
     if (store) {
       store.name = name;
       store.address = address;
+      store.latitude = latitude ?? undefined;
+      store.longitude = longitude ?? undefined;
       store.whatsappNumber = whatsappNumber;
       store.openingTime = openingTime;
       store.openDays = openDays;
@@ -69,6 +73,8 @@ router.post("/store", requireAuth, async (req: AuthRequest, res) => {
         ownerId: userId,
         name,
         address,
+        latitude: latitude ?? undefined,
+        longitude: longitude ?? undefined,
         whatsappNumber,
         openingTime,
         openDays,
@@ -94,9 +100,11 @@ router.patch("/store", requireAuth, async (req: AuthRequest, res) => {
       return;
     }
 
-    const { name, address, whatsappNumber, openingTime, openDays, bannerImage, description } = req.body;
+    const { name, address, latitude, longitude, whatsappNumber, openingTime, openDays, bannerImage, description } = req.body;
     if (name !== undefined) store.name = name;
     if (address !== undefined) store.address = address;
+    if (latitude !== undefined) store.latitude = latitude;
+    if (longitude !== undefined) store.longitude = longitude;
     if (whatsappNumber !== undefined) store.whatsappNumber = whatsappNumber;
     if (openingTime !== undefined) store.openingTime = openingTime;
     if (openDays !== undefined) store.openDays = openDays;

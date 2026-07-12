@@ -222,6 +222,10 @@ export interface Store {
   /** @nullable */
   address?: string | null;
   /** @nullable */
+  latitude?: number | null;
+  /** @nullable */
+  longitude?: number | null;
+  /** @nullable */
   whatsappNumber?: string | null;
   /** @nullable */
   openingTime?: string | null;
@@ -240,6 +244,8 @@ export interface Store {
 export interface StoreInput {
   name: string;
   address?: string;
+  latitude?: number;
+  longitude?: number;
   whatsappNumber?: string;
   openingTime?: string;
   openDays?: string;
@@ -250,6 +256,8 @@ export interface StoreInput {
 export interface StoreUpdate {
   name?: string;
   address?: string;
+  latitude?: number;
+  longitude?: number;
   whatsappNumber?: string;
   openingTime?: string;
   openDays?: string;

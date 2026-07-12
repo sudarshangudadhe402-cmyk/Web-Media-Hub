@@ -35,7 +35,35 @@ import {
   ZoomOut,
   Check,
   X as XIcon,
+  Navigation,
+  LocateFixed,
+  Map as MapIcon,
 } from "lucide-react";
+import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+
+// Fix default leaflet marker icons in Vite
+const LeafletDefaultIcon = L.icon({
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+L.Marker.prototype.options.icon = LeafletDefaultIcon;
+
+// Click handler inside the map
+function MapClickHandler({ onPick }: { onPick: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(e) {
+      onPick(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+}
 import {
   Dialog,
   DialogContent,
@@ -59,6 +87,8 @@ interface TimeVal {
 interface StoreForm {
   name: string;
   address: string;
+  latitude: number | null;
+  longitude: number | null;
   whatsappNumber: string;
   openFrom: TimeVal;
   openTo: TimeVal;
@@ -71,6 +101,8 @@ const DEFAULT_TIME: TimeVal = { hour: "", minute: "00", period: "AM" };
 const EMPTY_FORM: StoreForm = {
   name: "",
   address: "",
+  latitude: null,
+  longitude: null,
   whatsappNumber: "",
   openFrom: { ...DEFAULT_TIME },
   openTo: { ...DEFAULT_TIME, period: "PM" },
@@ -135,6 +167,11 @@ export default function MyStore() {
   const [reactOtp, setReactOtp] = useState("");
   const [reactError, setReactError] = useState<string | null>(null);
   const [reactSentTo, setReactSentTo] = useState("");
+
+  // Map picker state
+  const [mapOpen, setMapOpen] = useState(false);
+  const [mapPin, setMapPin] = useState<{ lat: number; lng: number } | null>(null);
+  const [mapGeoLoading, setMapGeoLoading] = useState(false);
 
   useEffect(() => {
     const img = new Image();
@@ -395,15 +432,20 @@ export default function MyStore() {
   useEffect(() => {
     if (store && !initializedRef.current) {
       initializedRef.current = true;
+      const lat = store.latitude ?? null;
+      const lng = store.longitude ?? null;
       setForm({
         name: store.name ?? "",
         address: store.address ?? "",
+        latitude: lat,
+        longitude: lng,
         whatsappNumber: store.whatsappNumber ?? "",
         openFrom: parseTime12(store.openingTime, 0),
         openTo: parseTime12(store.openingTime, 1),
         openDays: parseDays(store.openDays),
         description: store.description ?? "",
       });
+      if (lat !== null && lng !== null) setMapPin({ lat, lng });
       setBannerUrl(store.bannerImage ?? "");
       setBannerPreview(store.bannerImage ?? "");
       setLocked(!!store.isLocked);
@@ -462,10 +504,66 @@ export default function MyStore() {
     setCropOpen(false);
   }
 
+  async function reverseGeocode(lat: number, lng: number): Promise<string> {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
+        { headers: { "Accept-Language": "en" } }
+      );
+      const data = await res.json();
+      return data.display_name ?? "";
+    } catch {
+      return "";
+    }
+  }
+
+  async function handleMapPick(lat: number, lng: number) {
+    setMapPin({ lat, lng });
+    setMapGeoLoading(true);
+    const addr = await reverseGeocode(lat, lng);
+    setMapGeoLoading(false);
+    setForm((p) => ({
+      ...p,
+      latitude: lat,
+      longitude: lng,
+      address: addr || p.address,
+    }));
+  }
+
+  async function handleUseMyLocation() {
+    if (!navigator.geolocation) {
+      toast({ variant: "destructive", title: "Geolocation not supported by your browser" });
+      return;
+    }
+    setMapGeoLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setMapPin({ lat, lng });
+        const addr = await reverseGeocode(lat, lng);
+        setMapGeoLoading(false);
+        setForm((p) => ({
+          ...p,
+          latitude: lat,
+          longitude: lng,
+          address: addr || p.address,
+        }));
+      },
+      () => {
+        setMapGeoLoading(false);
+        toast({ variant: "destructive", title: "Could not get location", description: "Please allow location access and try again." });
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+
   function buildPayload() {
     return {
       name: form.name,
       address: form.address,
+      latitude: form.latitude ?? undefined,
+      longitude: form.longitude ?? undefined,
       whatsappNumber: form.whatsappNumber,
       openingTime:
         form.openFrom.hour && form.openTo.hour
@@ -515,15 +613,20 @@ export default function MyStore() {
 
   function handleUpdate() {
     if (store) {
+      const lat = store.latitude ?? null;
+      const lng = store.longitude ?? null;
       setForm({
         name: store.name ?? "",
         address: store.address ?? "",
+        latitude: lat,
+        longitude: lng,
         whatsappNumber: store.whatsappNumber ?? "",
         openFrom: parseTime12(store.openingTime, 0),
         openTo: parseTime12(store.openingTime, 1),
         openDays: parseDays(store.openDays),
         description: store.description ?? "",
       });
+      if (lat !== null && lng !== null) setMapPin({ lat, lng });
       setBannerPreview(store.bannerImage ?? "");
       setBannerUrl(store.bannerImage ?? "");
     }
@@ -533,15 +636,20 @@ export default function MyStore() {
 
   function handleCancel() {
     if (store) {
+      const lat = store.latitude ?? null;
+      const lng = store.longitude ?? null;
       setForm({
         name: store.name ?? "",
         address: store.address ?? "",
+        latitude: lat,
+        longitude: lng,
         whatsappNumber: store.whatsappNumber ?? "",
         openFrom: parseTime12(store.openingTime, 0),
         openTo: parseTime12(store.openingTime, 1),
         openDays: parseDays(store.openDays),
         description: store.description ?? "",
       });
+      if (lat !== null && lng !== null) setMapPin({ lat, lng }); else setMapPin(null);
       setBannerPreview(store.bannerImage ?? "");
       setBannerUrl(store.bannerImage ?? "");
     }
@@ -765,9 +873,19 @@ export default function MyStore() {
                 {store.address && (
                   <div className="flex items-start gap-3 px-4 py-3">
                     <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <p className="text-xs text-muted-foreground">Store Address</p>
                       <p className="text-sm font-medium">{store.address}</p>
+                      {store.latitude && store.longitude && (
+                        <a
+                          href={`https://www.google.com/maps/dir/?api=1&destination=${store.latitude},${store.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 mt-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                        >
+                          <Navigation className="w-3 h-3" /> Navigate in Google Maps
+                        </a>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1044,14 +1162,95 @@ export default function MyStore() {
           {/* 2. Store Address */}
           <div className="space-y-1.5">
             <Label htmlFor="address">Store Address <span className="text-destructive">*</span></Label>
-            <Input
-              id="address"
-              placeholder="e.g. 123 Market Street, Mumbai"
-              value={form.address}
-              onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))}
-              data-testid="store-address"
-            />
+            <div className="flex gap-2">
+              <Input
+                id="address"
+                placeholder="e.g. 123 Market Street, Mumbai"
+                value={form.address}
+                onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))}
+                data-testid="store-address"
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0 gap-1.5"
+                onClick={() => setMapOpen(true)}
+                title="Pin location on map"
+              >
+                <MapIcon className="w-4 h-4" />
+                <span className="hidden sm:inline">Pin on Map</span>
+              </Button>
+            </div>
+            {form.latitude !== null && form.longitude !== null && (
+              <p className="text-xs text-green-600 flex items-center gap-1">
+                <LocateFixed className="w-3 h-3" />
+                Location pinned ({form.latitude.toFixed(5)}, {form.longitude.toFixed(5)})
+              </p>
+            )}
           </div>
+
+          {/* Map Picker Dialog */}
+          <Dialog open={mapOpen} onOpenChange={setMapOpen}>
+            <DialogContent className="max-w-lg p-0 overflow-hidden">
+              <DialogHeader className="px-4 pt-4 pb-2">
+                <DialogTitle className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-primary" /> Pin Your Store Location
+                </DialogTitle>
+              </DialogHeader>
+              <div className="px-4 pb-2 flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={handleUseMyLocation}
+                  disabled={mapGeoLoading}
+                >
+                  <LocateFixed className="w-3.5 h-3.5" />
+                  {mapGeoLoading ? "Locating…" : "Use My Location"}
+                </Button>
+                <p className="text-xs text-muted-foreground">or tap anywhere on the map to drop a pin</p>
+              </div>
+              {/* Map */}
+              <div className="h-72 w-full">
+                <MapContainer
+                  center={mapPin ? [mapPin.lat, mapPin.lng] : [20.5937, 78.9629]}
+                  zoom={mapPin ? 15 : 5}
+                  style={{ height: "100%", width: "100%" }}
+                  key={mapPin ? `${mapPin.lat}-${mapPin.lng}` : "default"}
+                >
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                  <MapClickHandler onPick={handleMapPick} />
+                  {mapPin && <Marker position={[mapPin.lat, mapPin.lng]} />}
+                </MapContainer>
+              </div>
+              {/* Address preview */}
+              <div className="px-4 py-3 border-t bg-muted/30">
+                <p className="text-xs text-muted-foreground mb-1">Address will be set to:</p>
+                <p className="text-sm font-medium line-clamp-2">
+                  {mapGeoLoading ? "Looking up address…" : form.address || "Tap a location on the map above"}
+                </p>
+              </div>
+              <div className="flex gap-2 px-4 pb-4 pt-2">
+                <Button type="button" variant="outline" className="flex-1" onClick={() => setMapOpen(false)}>
+                  <XIcon className="w-4 h-4 mr-1.5" /> Close
+                </Button>
+                <Button
+                  type="button"
+                  className="flex-1"
+                  onClick={() => setMapOpen(false)}
+                  disabled={!mapPin}
+                >
+                  <Check className="w-4 h-4 mr-1.5" /> Confirm Location
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {/* 3. Owner WhatsApp Number */}
           <div className="space-y-1.5">

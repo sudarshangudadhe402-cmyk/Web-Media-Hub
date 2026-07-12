@@ -850,6 +850,10 @@ components:
           type: string
         address:
           type: ["string", "null"]
+        latitude:
+          type: ["number", "null"]
+        longitude:
+          type: ["number", "null"]
         whatsappNumber:
           type: ["string", "null"]
         openingTime:
@@ -875,6 +879,10 @@ components:
           type: string
         address:
           type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
         whatsappNumber:
           type: string
         openingTime:
@@ -893,6 +901,10 @@ components:
           type: string
         address:
           type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
         whatsappNumber:
           type: string
         openingTime:
