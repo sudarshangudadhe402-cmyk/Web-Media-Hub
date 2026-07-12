@@ -1296,17 +1296,17 @@ export default function MyStore() {
               </div>
 
               {/* Map */}
-              <div className="h-72 w-full">
+              <div className="h-96 w-full">
                 <MapContainer
                   center={mapPin ? [mapPin.lat, mapPin.lng] : [20.5937, 78.9629]}
-                  zoom={mapPin ? 15 : 5}
+                  zoom={mapPin ? 16 : 5}
                   style={{ height: "100%", width: "100%" }}
                   key={mapPin ? `${mapPin.lat}-${mapPin.lng}` : "default"}
+                  zoomControl={true}
                 >
                   <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
-                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                    subdomains="abcd"
+                    attribution='Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community'
+                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
                     maxZoom={20}
                   />
                   <MapClickHandler onPick={handleMapPick} />
