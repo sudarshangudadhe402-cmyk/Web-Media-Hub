@@ -1,0 +1,73 @@
+Secure File Upload Requirements (Images & 3D Models)
+
+Implement a secure file upload system for our SaaS.
+
+Purpose
+
+The uploaded files are only for storage and display. They must never be executed, interpreted, or processed as code.
+
+Security Rules
+
+1. Accept only approved file types.
+   
+   - Images: ".jpg", ".jpeg", ".png", ".webp"
+   - 3D Models: ".glb", ".gltf"
+
+2. Validate the actual file content (MIME type and file signature), not just the file extension.
+
+3. Reject any file that:
+   
+   - Contains executable code.
+   - Contains scripts or embedded JavaScript.
+   - Contains HTML, PHP, ASP, JSP, EXE, BAT, SH, DLL, JS, or any executable content.
+   - Has a mismatched extension and file content.
+   - Is corrupted or malformed.
+   - Exceeds the configured file size limit.
+
+4. Store every uploaded file as passive binary data only.
+
+5. Never execute, import, evaluate, parse, or interpret any uploaded file as code.
+
+6. Never allow uploaded files to:
+   
+   - Run commands.
+   - Access the server.
+   - Modify the database.
+   - Execute JavaScript.
+   - Trigger backend logic.
+   - Change website behavior.
+   - Access environment variables or API keys.
+
+7. Serve uploaded files only through secure static file URLs.
+
+8. Always send security headers such as:
+   
+   - "Content-Type"
+   - "X-Content-Type-Options: nosniff"
+
+9. Do not allow uploaded files to be opened as HTML pages or scripts.
+
+10. Sanitize filenames before saving.
+    
+    - Generate a random UUID filename.
+    - Remove special characters.
+    - Never use the original filename for storage.
+
+11. Save uploads outside the application source code and outside executable directories.
+
+12. The shopping page should only:
+    
+    - Display image files.
+    - Display 3D model files in the viewer.
+    - Never execute any embedded content.
+
+13. If a file fails validation, reject it and log the reason without exposing internal server details.
+
+14. The upload pipeline must follow the principle:
+    Upload → Validate → Scan → Store → Display
+    Never:
+    Upload → Execute
+
+Final Requirement
+
+Uploaded images and 3D model files must behave as static assets only. Even if a malicious user uploads a file containing hidden code, commands, scripts, or payloads, our SaaS must never execute, interpret, or trust that content. The system should only save the file and display it safely to customers.

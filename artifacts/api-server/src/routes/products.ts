@@ -4,6 +4,7 @@ import { Store } from "../models/Store";
 import { Notification } from "../models/Notification";
 import { AuthRequest, requireAuth } from "../middlewares/auth";
 import { requireDb } from "../middlewares/dbCheck";
+import { validateUploadedFile, recordUploadViolation } from "../middlewares/uploadValidator";
 
 const router = Router();
 
@@ -103,14 +104,28 @@ router.get("/products/upload-image", requireAuth, async (req, res) => {
   res.status(405).json({ error: "Use POST" });
 });
 
-router.post("/products/upload-image", requireAuth, async (req, res) => {
+router.post("/products/upload-image", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { imageData, fileName } = req.body;
     if (!imageData) {
       res.status(400).json({ error: "imageData is required" });
       return;
     }
-    const url = `data:image/${fileName?.split(".").pop() || "jpeg"};base64,${imageData}`;
+
+    const result = validateUploadedFile(imageData, fileName ?? "upload.jpg", "image");
+    if (!result.ok) {
+      const userId = String(req.user!._id);
+      const blocked = await recordUploadViolation(userId, req.log as any);
+      if (blocked) {
+        res.status(403).json({ error: "Your account has been blocked due to repeated invalid upload attempts." });
+      } else {
+        res.status(400).json({ error: result.reason ?? "Invalid file" });
+      }
+      return;
+    }
+
+    // Serve as a data URI — content-type locked to detected MIME, never executable
+    const url = `data:${result.detectedMime};base64,${imageData}`;
     res.json({ url });
   } catch (err) {
     req.log.error({ err }, "Upload image error");
@@ -122,15 +137,28 @@ router.get("/products/upload-model", requireAuth, async (req, res) => {
   res.status(405).json({ error: "Use POST" });
 });
 
-router.post("/products/upload-model", requireAuth, async (req, res) => {
+router.post("/products/upload-model", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { modelData, fileName } = req.body;
     if (!modelData) {
       res.status(400).json({ error: "modelData is required" });
       return;
     }
-    const ext = fileName?.split(".").pop()?.toLowerCase() || "glb";
-    const url = `data:model/${ext};base64,${modelData}`;
+
+    const result = validateUploadedFile(modelData, fileName ?? "upload.glb", "model");
+    if (!result.ok) {
+      const userId = String(req.user!._id);
+      const blocked = await recordUploadViolation(userId, req.log as any);
+      if (blocked) {
+        res.status(403).json({ error: "Your account has been blocked due to repeated invalid upload attempts." });
+      } else {
+        res.status(400).json({ error: result.reason ?? "Invalid file" });
+      }
+      return;
+    }
+
+    // Serve as a data URI — content-type locked to detected MIME, never executable
+    const url = `data:${result.detectedMime};base64,${modelData}`;
     res.json({ url });
   } catch (err) {
     req.log.error({ err }, "Upload model error");
