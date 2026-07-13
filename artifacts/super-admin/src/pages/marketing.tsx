@@ -133,7 +133,7 @@ const SOURCE_LABELS: Record<string, string> = {
   AFFILIATE:"Affiliate", WHATSAPP:"WhatsApp", DIRECT:"Direct",
 };
 
-const TABS = ["Dashboard","Influencers","Ambassadors","Referral Tracking","Marketing Sources","Revenue Analytics"] as const;
+const TABS = ["Influencers","Ambassadors","Referral Tracking","Marketing Sources"] as const;
 type Tab = typeof TABS[number];
 
 const DATE_RANGES = [
@@ -512,216 +512,6 @@ function StoreTypePage({ onClose, onSaved, categories, storeTypes }: {
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-/* ── DASHBOARD ── */
-function DashboardTab() {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [storeTypes, setStoreTypes] = useState<StoreTypeObj[]>([]);
-  const [storeTypeCounts, setStoreTypeCounts] = useState<Record<string, number>>({});
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [showCatModal, setShowCatModal] = useState(false);
-  const [showTypeModal, setShowTypeModal] = useState(false);
-  const { toast } = useToast();
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [dashR, catR] = await Promise.all([
-        fetch(`${BASE}/marketing/dashboard?range=all`, { headers: authHeaders() }),
-        fetch(`${BASE}/marketing/categories-config`, { headers: authHeaders() }),
-      ]);
-      if (!dashR.ok) throw new Error("Server error");
-      const dashData = await dashR.json();
-      setData(dashData);
-      if (catR.ok) {
-        const cData = await catR.json();
-        const cats: string[] = cData.categories ?? [];
-        const types: StoreTypeObj[] = (cData.storeTypes ?? []).map((s: any) =>
-          typeof s === "string" ? { name: s, category: "" } : s
-        );
-        setCategories(cats);
-        setStoreTypes(types);
-        setStoreTypeCounts(cData.storeTypeCounts ?? {});
-        if (cats.length > 0) setActiveCategory(prev => prev && cats.includes(prev) ? prev : cats[0]);
-      }
-    } catch { toast({ title: "Failed to load dashboard", variant: "destructive" }); }
-    finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  const visibleTypes = activeCategory
-    ? storeTypes.filter(s => s.category === activeCategory)
-    : [];
-
-  if (loading) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
-  if (!data) return null;
-
-  return (
-    <div className="space-y-6">
-      {/* Stats — always all-time cumulative */}
-      <div className="grid grid-cols-2 gap-4">
-        <StatCard title="Total Admins" value={fmt(data.totalAdmins)} icon={Users} color="bg-blue-500" />
-        <StatCard title="Paying Admins" value={fmt(data.totalPayingAdmins)} sub={`${data.totalAdmins > 0 ? Math.round(data.totalPayingAdmins/data.totalAdmins*100) : 0}% conversion`} icon={Activity} color="bg-green-500" />
-      </div>
-
-      {/* Revenue — single combined card with 3 columns separated by vertical lines */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="flex items-stretch divide-x divide-border">
-            {/* Left: Total Revenue */}
-            <div className="flex-1 flex flex-col items-center justify-center py-4 px-3 text-center">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-purple-500 mb-2">
-                <DollarSign className="w-4 h-4 text-white" />
-              </div>
-              <p className="text-[11px] text-muted-foreground leading-tight mb-1">Total Revenue</p>
-              <p className="text-xl font-bold">{fmtRs(data.totalRevenue)}</p>
-            </div>
-
-            {/* Middle: New Signups Revenue */}
-            <div className="flex-1 flex flex-col items-center justify-center py-4 px-3 text-center">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-orange-500 mb-2">
-                <TrendingUp className="w-4 h-4 text-white" />
-              </div>
-              <p className="text-[11px] text-muted-foreground leading-tight mb-1">New Signups Revenue</p>
-              <p className="text-xl font-bold">{fmtRs(data.newSignupsRevenue)}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">This month</p>
-            </div>
-
-            {/* Right: Renewals Revenue */}
-            <div className="flex-1 flex flex-col items-center justify-center py-4 px-3 text-center">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-teal-500 mb-2">
-                <RefreshCw className="w-4 h-4 text-white" />
-              </div>
-              <p className="text-[11px] text-muted-foreground leading-tight mb-1">Renewals Revenue</p>
-              <p className="text-xl font-bold">{fmtRs(data.renewalsRevenue)}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">This month</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Dashed divider */}
-      <div className="border-t border-dashed border-gray-300" />
-
-      {/* Add Category / Add Store Type buttons */}
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          onClick={() => setShowCatModal(true)}
-          className="flex items-center justify-between px-4 py-3 rounded-xl border border-purple-200 bg-white hover:bg-purple-50 transition-colors group">
-          <span className="text-sm font-semibold text-purple-600">Add Store Category</span>
-          <span className="w-7 h-7 rounded-full border-2 border-purple-500 flex items-center justify-center text-purple-500 group-hover:bg-purple-500 group-hover:text-white transition-colors">
-            <Plus size={14} />
-          </span>
-        </button>
-        <button
-          onClick={() => setShowTypeModal(true)}
-          className="flex items-center justify-between px-4 py-3 rounded-xl border border-orange-200 bg-white hover:bg-orange-50 transition-colors group">
-          <span className="text-sm font-semibold text-orange-500">Add Store Type</span>
-          <span className="w-7 h-7 rounded-full border-2 border-orange-500 flex items-center justify-center text-orange-500 group-hover:bg-orange-500 group-hover:text-white transition-colors">
-            <Plus size={14} />
-          </span>
-        </button>
-      </div>
-
-      {/* Category tabs + store types */}
-      {categories.length > 0 && (
-        <div>
-          {/* Tabs row */}
-          <div className="flex gap-0 border-b border-gray-200 overflow-x-auto">
-            {categories.map(cat => (
-              <button key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors ${
-                  activeCategory === cat
-                    ? "text-purple-600 border-b-2 border-purple-600"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}>
-                {cat}
-              </button>
-            ))}
-          </div>
-
-          {/* Store types list */}
-          <div className="mt-4">
-            <p className="text-sm font-bold text-purple-600 mb-3">Store Type</p>
-            {visibleTypes.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">
-                No store types yet. Click "Add Store Type" to add one.
-              </p>
-            ) : (
-              <div className="divide-y divide-gray-100">
-                {visibleTypes.map(st => {
-                  // Key: "name::category" with fallback to plain name (legacy admins without category)
-                  const countKey = `${st.name}::${st.category}`;
-                  const count = (storeTypeCounts[countKey] ?? 0) + (storeTypeCounts[st.name] ?? 0);
-                  return (
-                    <div key={st.name} className="flex items-center justify-between py-3">
-                      <span className="text-sm text-gray-800">{st.name}</span>
-                      <span className="text-sm font-semibold text-gray-700">{count}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Top Influencers */}
-      {data.topInfluencers?.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Top Influencers</CardTitle></CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead><tr className="border-b text-muted-foreground text-xs">
-                  <th className="text-left pb-2 pr-4">Name</th>
-                  <th className="text-left pb-2 pr-4">Coupon</th>
-                  <th className="text-right pb-2 pr-4">Signups</th>
-                  <th className="text-right pb-2 pr-4">Paying</th>
-                  <th className="text-right pb-2 pr-4">Revenue</th>
-                  <th className="text-right pb-2">Commission</th>
-                </tr></thead>
-                <tbody>
-                  {data.topInfluencers.map((inf: any) => (
-                    <tr key={inf._id} className="border-b last:border-0">
-                      <td className="py-2 pr-4 font-medium">{inf.name}</td>
-                      <td className="py-2 pr-4"><Badge variant="outline">{inf.coupon_code}</Badge></td>
-                      <td className="text-right py-2 pr-4">{inf.total_signups}</td>
-                      <td className="text-right py-2 pr-4 text-green-600">{inf.total_paid_admins}</td>
-                      <td className="text-right py-2 pr-4">{fmtRs(inf.total_revenue)}</td>
-                      <td className="text-right py-2 text-purple-600 font-semibold">{fmtRs(inf.total_revenue * inf.commission_percentage / 100)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Full-page overlays */}
-      {showCatModal && (
-        <CategoryPage
-          onClose={() => setShowCatModal(false)}
-          onSaved={load}
-          categories={categories}
-        />
-      )}
-      {showTypeModal && (
-        <StoreTypePage
-          onClose={() => setShowTypeModal(false)}
-          onSaved={load}
-          categories={categories}
-          storeTypes={storeTypes}
-        />
-      )}
     </div>
   );
 }
@@ -1621,117 +1411,9 @@ function SourcesTab() {
   );
 }
 
-/* ── REVENUE ANALYTICS ── */
-function RevenueTab() {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [range, setRange] = useState("all");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const { toast } = useToast();
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ range });
-      if (range === "custom" && from && to) { params.set("from", from); params.set("to", to); }
-      const r = await fetch(`${BASE}/marketing/revenue?${params}`, { headers: authHeaders() });
-      if (!r.ok) throw new Error("Server error");
-      setData(await r.json());
-    } catch { toast({ title: "Failed", variant: "destructive" }); }
-    finally { setLoading(false); }
-  }, [range, from, to]);
-
-  useEffect(() => { load(); }, [load]);
-
-  function exportCSV() { window.open(`${BASE}/marketing/export/csv?type=admins`, "_blank"); }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-3 items-center justify-between">
-        <DateFilterBar range={range} setRange={setRange} from={from} setFrom={setFrom} to={to} setTo={setTo} />
-        <Button size="sm" variant="outline" onClick={exportCSV}><Download className="w-4 h-4 mr-1" />Export CSV</Button>
-      </div>
-
-      {loading ? <div className="flex justify-center py-10"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div> : data && (
-        <>
-          <Card>
-            <CardContent className="pt-5">
-              <p className="text-sm text-muted-foreground mb-1">Total Revenue</p>
-              <p className="text-3xl font-bold text-green-600">{fmtRs(data.total || 0)}</p>
-            </CardContent>
-          </Card>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Revenue by Source</CardTitle></CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={data.bySource || []} margin={{ left: -10 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="source" tick={{ fontSize: 9 }} tickFormatter={v => SOURCE_LABELS[v]?.split(" ")[0]} />
-                    <YAxis tick={{ fontSize: 10 }} tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} />
-                    <Tooltip formatter={(v: any) => fmtRs(v)} labelFormatter={l => SOURCE_LABELS[l] || l} />
-                    <Bar dataKey="revenue" name="Revenue" radius={[4,4,0,0]}>
-                      {(data.bySource || []).map((s: any, i: number) => <Cell key={i} fill={SOURCE_COLORS[s.source]} />)}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Revenue by Plan</CardTitle></CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={data.byPlan || []} margin={{ left: -10 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="plan" tick={{ fontSize: 9 }} />
-                    <YAxis tick={{ fontSize: 10 }} tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} />
-                    <Tooltip formatter={(v: any) => fmtRs(v)} />
-                    <Bar dataKey="revenue" name="Revenue" fill="#8b5cf6" radius={[4,4,0,0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead><tr className="border-b bg-muted/30 text-xs text-muted-foreground">
-                    <th className="text-left p-3 font-medium">Source</th>
-                    <th className="text-right p-3 font-medium">Admins</th>
-                    <th className="text-right p-3 font-medium">Revenue</th>
-                    <th className="text-right p-3 font-medium">% of Total</th>
-                  </tr></thead>
-                  <tbody>
-                    {(data.bySource || []).map((s: any) => (
-                      <tr key={s.source} className="border-b last:border-0 hover:bg-muted/20">
-                        <td className="p-3 font-medium flex items-center gap-2">
-                          <span className="w-3 h-3 rounded-full inline-block" style={{ background: SOURCE_COLORS[s.source] }} />
-                          {SOURCE_LABELS[s.source]}
-                        </td>
-                        <td className="p-3 text-right">{s.admins}</td>
-                        <td className="p-3 text-right font-semibold text-green-600">{fmtRs(s.revenue)}</td>
-                        <td className="p-3 text-right text-muted-foreground">{data.total > 0 ? `${Math.round(s.revenue/data.total*100)}%` : "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </>
-      )}
-    </div>
-  );
-}
-
 /* ── MAIN PAGE ── */
 export default function MarketingAnalytics() {
-  const [activeTab, setActiveTab] = useState<Tab>("Dashboard");
+  const [activeTab, setActiveTab] = useState<Tab>("Influencers");
 
   return (
     <div className="space-y-5">
@@ -1758,12 +1440,10 @@ export default function MarketingAnalytics() {
       </div>
 
       {/* Tab Content */}
-      {activeTab === "Dashboard" && <DashboardTab />}
       {activeTab === "Influencers" && <InfluencersTab />}
       {activeTab === "Ambassadors" && <AmbassadorsTab />}
       {activeTab === "Referral Tracking" && <ReferralTab />}
       {activeTab === "Marketing Sources" && <SourcesTab />}
-      {activeTab === "Revenue Analytics" && <RevenueTab />}
     </div>
   );
 }
