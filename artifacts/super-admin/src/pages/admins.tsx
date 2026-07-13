@@ -46,19 +46,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 
-const TOKEN_KEY = "wmh_super_token";
-
-function authFetch(url: string, options?: RequestInit) {
-  const token = sessionStorage.getItem(TOKEN_KEY);
-  return fetch(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options?.headers ?? {}),
-    },
-  });
-}
+import { authFetch } from "@/lib/admin-api";
 
 function getDaysRemaining(endDateStr: string | null | undefined): number | null {
   if (!endDateStr) return null;

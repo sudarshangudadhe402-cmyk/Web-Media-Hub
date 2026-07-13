@@ -14,24 +14,7 @@ import {
   Link as LinkIcon, Copy,
 } from "lucide-react";
 
-const TOKEN_KEY = "wmh_super_token";
-
-function authHeaders() {
-  const token = sessionStorage.getItem(TOKEN_KEY);
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-function authFetch(url: string, options?: RequestInit) {
-  const token = sessionStorage.getItem(TOKEN_KEY);
-  return fetch(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options?.headers ?? {}),
-    },
-  });
-}
+import { authHeaders, authFetch } from "@/lib/admin-api";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface PlanCoupon {

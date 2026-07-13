@@ -26,21 +26,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 
-/* ── Auth helpers ────────────────────────────────────────────────────────── */
-const BASE = "/api";
-function token() { return sessionStorage.getItem("wmh_super_token") || ""; }
-function authHeaders() { return { "Content-Type": "application/json", Authorization: `Bearer ${token()}` }; }
-
-/* ── Auth fetch ─────────────────────────────────────────────────────────────── */
-function authFetch(url: string) {
-  const t = sessionStorage.getItem("wmh_super_token");
-  return fetch(url, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(t ? { Authorization: `Bearer ${t}` } : {}),
-    },
-  });
-}
+import { BASE, authHeaders, authFetch } from "@/lib/admin-api";
 
 /* ── Types ──────────────────────────────────────────────────────────────────── */
 interface StatsOverview {
