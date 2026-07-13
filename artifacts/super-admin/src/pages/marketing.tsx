@@ -13,8 +13,8 @@ import {
   PieChart, Pie, Cell, LineChart, Line, Legend,
 } from "recharts";
 import {
-  TrendingUp, Users, DollarSign, Activity, Plus, Trash2, Edit2,
-  Download, Search, ChevronLeft, ChevronRight, X, Check, RefreshCw, Link2, QrCode, MoreVertical, ArrowLeft,
+  TrendingUp, Users, DollarSign, Plus, Trash2, Edit2,
+  Download, Search, ChevronLeft, ChevronRight, X, Check, RefreshCw, Link2, QrCode, ArrowLeft,
 } from "lucide-react";
 
 function partnerLink(type: "influencer" | "ambassador" | "referral", code: string) {
@@ -113,8 +113,6 @@ function QRDialog({ open, onClose, type, code, name }: { open: boolean; onClose:
 const BASE = "/api";
 function token() { return sessionStorage.getItem("wmh_super_token") || ""; }
 function authHeaders() { return { "Content-Type": "application/json", Authorization: `Bearer ${token()}` }; }
-
-const SOURCES = ["ORGANIC","GOOGLE_AD","FACEBOOK_AD","INSTAGRAM_AD","YOUTUBE","REFERRAL","AMBASSADOR","INFLUENCER","AFFILIATE","WHATSAPP","DIRECT"];
 
 // Non-deletable: 3 fixed partner types (show live count)
 const NON_DELETABLE_KEYS = ["INFLUENCER","AMBASSADOR","REFERRAL"] as const;

@@ -56,16 +56,6 @@ interface Props {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function daysToHuman(days: number | null): string {
-  if (days === null || days <= 0) return "Lifetime";
-  if (days === 1) return "1 day";
-  if (days < 30) return `${days} days`;
-  const months = Math.round(days / 30);
-  if (months < 12) return `${months} month${months > 1 ? "s" : ""}`;
-  const years = +(days / 365).toFixed(1);
-  return years === 1 ? "1 year" : `${years} years`;
-}
-
 function planToPeriod(days: number | null): string {
   if (days === null || days <= 0) return "Lifetime";
   if (days <= 31) return `/ ${days} Days`;

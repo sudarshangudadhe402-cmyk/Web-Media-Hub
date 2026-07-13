@@ -1,4 +1,4 @@
-import { MapPin, Clock, CalendarDays, MessageCircle, ShoppingBag, Phone, Star, Shield, User, LogOut, Loader2, AlertCircle, Eye, EyeOff, Mail, CheckCircle2 } from "lucide-react";
+import { MapPin, Clock, CalendarDays, ShoppingBag, Phone, User, LogOut, Loader2, AlertCircle, Eye, EyeOff, Mail, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 
 interface StoreData {
@@ -78,10 +78,6 @@ export default function ProfileTab({
   // Resend countdown
   const [resendCountdown, setResendCountdown] = useState(0);
 
-  const DAY_FULL: Record<string, string> = {
-    Sun: "Sunday", Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday",
-    Thu: "Thursday", Fri: "Friday", Sat: "Saturday",
-  };
   const openDaySet = new Set((data.openDays ?? "").split(",").map((d) => d.trim()).filter(Boolean));
 
   const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);

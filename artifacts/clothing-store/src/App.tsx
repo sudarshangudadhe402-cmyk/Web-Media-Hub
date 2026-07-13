@@ -130,33 +130,6 @@ function ProtectedRoute({ component: Component, adminOnly = false }: { component
   );
 }
 
-function ProtectedRouteFullPage({ component: Component }: { component: any }) {
-  const { user, isLoading } = useAuth();
-  const [_, setLocation] = useLocation();
-  const { legalDone } = useLegalStatus(user?.id, user?.role);
-  const sourceStatus = useSourceStatus(user?.id, user?.role, legalDone);
-  useInactivityLogout();
-
-  useEffect(() => {
-    if (isLoading) return;
-    if (!user) { setLocation("/login"); return; }
-    if (user.role === "super_admin") { setLocation("/manage-admins"); return; }
-    if (isSubscriptionExpired(user)) { setLocation("/plan-renewal"); return; }
-    if (legalDone === false) { setLocation("/legal-agreement"); return; }
-    if (legalDone === true && sourceStatus?.needsSelection) { setLocation("/marketing-source-select"); return; }
-  }, [user, isLoading, setLocation, legalDone, sourceStatus]);
-
-  if (isLoading || legalDone === null) {
-    return <div className="h-screen w-full flex items-center justify-center">Loading...</div>;
-  }
-  if (!user || user.role === "super_admin") return null;
-  if (isSubscriptionExpired(user)) return null;
-  if (legalDone === false) return null;
-  if (sourceStatus?.needsSelection) return null;
-
-  return <Component />;
-}
-
 function PlanRenewalRoute() {
   const { user, isLoading } = useAuth();
   const [_, setLocation] = useLocation();
