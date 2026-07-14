@@ -1,0 +1,285 @@
+Enterprise SaaS Deep Audit & Refactoring Command
+
+You are a Senior Staff Software Engineer and Software Architect from a top global engineering agency. Treat this SaaS as a production application that will serve millions of users. Your goal is to make the codebase production-grade without changing any existing business logic or user-facing functionality.
+
+Primary Rule
+
+Do NOT rewrite the application from scratch.
+Do NOT remove or break any existing feature.
+Do NOT change UI/UX unless it improves performance, accessibility, or maintainability.
+Preserve all APIs, database schema, authentication flow, and application behavior unless an improvement is clearly safe.
+
+Perform a Complete Deep Scan of the Entire Project
+
+Analyze every folder, file, function, component, API, middleware, database query, utility, configuration, package, environment variable, asset, script, and dependency.
+
+1. Code Quality Audit
+
+- Find verbose code.
+- Replace long implementations with shorter, cleaner, and more maintainable code.
+- Remove unnecessary nesting.
+- Reduce duplicate conditions.
+- Simplify complex logic.
+- Replace repeated patterns with reusable functions.
+- Remove unnecessary wrappers.
+- Remove dead code.
+- Remove commented-out code.
+- Remove unnecessary comments.
+- Keep only meaningful documentation.
+
+2. Duplicate Code Detection
+
+Find duplicated:
+
+- Functions
+- Components
+- Hooks
+- Utilities
+- Services
+- Validation
+- API logic
+- Database logic
+
+Merge them into reusable modules.
+
+Follow the DRY principle everywhere.
+
+3. Remove Unused Items
+
+Find and safely remove:
+
+- Unused functions
+- Unused components
+- Unused APIs
+- Unused imports
+- Unused variables
+- Unused interfaces/types
+- Unused images
+- Unused assets
+- Unused packages
+- Unused npm dependencies
+- Unused CSS
+- Unused files
+- Unused folders
+
+4. Performance Optimization
+
+Check every page.
+
+Reduce:
+
+- unnecessary renders
+- unnecessary state updates
+- expensive calculations
+- unnecessary API calls
+- blocking operations
+
+Implement:
+
+- lazy loading
+- code splitting
+- memoization where appropriate
+- caching
+- image optimization
+- asset optimization
+
+Reduce JavaScript bundle size.
+
+Improve loading speed.
+
+5. API Optimization
+
+Analyze every API.
+
+Check:
+
+- response time
+- payload size
+- duplicate requests
+- repeated database calls
+- unnecessary processing
+
+Optimize:
+
+- request handling
+- response structure
+- caching
+- pagination
+- filtering
+- error handling
+
+6. Database Optimization
+
+Inspect every query.
+
+Find:
+
+- slow queries
+- duplicate queries
+- unnecessary joins
+- N+1 query problems
+- repeated fetches
+
+Optimize:
+
+- indexes
+- query efficiency
+- batching
+- pagination
+- connection usage
+
+Never change business data.
+
+7. Architecture Review
+
+Remove over-engineering.
+
+Keep architecture:
+
+- simple
+- scalable
+- modular
+- maintainable
+
+Follow clean architecture where practical.
+
+8. Security Audit
+
+Perform a complete security review.
+
+Check for:
+
+- SQL Injection
+- NoSQL Injection
+- XSS
+- CSRF
+- SSRF
+- File upload vulnerabilities
+- Path traversal
+- Authentication issues
+- Authorization issues
+- Rate limiting
+- Missing validation
+- Sensitive data exposure
+- Environment variable leaks
+- Unsafe logging
+- Dependency vulnerabilities
+
+Apply secure coding best practices.
+
+9. Frontend Review
+
+Optimize:
+
+- components
+- routing
+- rendering
+- accessibility
+- responsiveness
+- loading speed
+
+Keep UI behavior unchanged.
+
+10. Backend Review
+
+Optimize:
+
+- controllers
+- services
+- middleware
+- validation
+- logging
+- error handling
+- business logic
+
+Keep APIs compatible.
+
+11. Project Structure
+
+Reorganize folders only if necessary.
+
+Follow professional enterprise structure.
+
+Group files logically.
+
+Remove clutter.
+
+12. Dependency Audit
+
+Update only safe dependencies.
+
+Remove deprecated libraries.
+
+Remove unnecessary packages.
+
+Keep versions stable.
+
+13. Maintainability
+
+Improve:
+
+- naming
+- consistency
+- readability
+- folder organization
+- separation of concerns
+
+Follow SOLID, DRY and KISS principles.
+
+14. Production Readiness
+
+Verify:
+
+- no console spam
+- no debug code
+- proper error handling
+- proper logging
+- graceful fallbacks
+- loading states
+- empty states
+- retry mechanisms
+
+15. Final Verification
+
+After every optimization:
+
+- verify the project builds successfully
+- verify no feature is broken
+- verify all pages work
+- verify all APIs work
+- verify authentication works
+- verify database operations work
+- verify uploads work
+- verify notifications work
+- verify payments work
+- verify admin dashboard works
+- verify mobile responsiveness remains intact
+
+16. Output Rules
+
+Do NOT make blind changes.
+
+For every optimization:
+
+1. Explain why it was changed.
+2. Explain the benefit.
+3. Confirm that functionality remains unchanged.
+
+At the end generate a complete Optimization Report including:
+
+- Files scanned
+- Files modified
+- Duplicate code removed
+- Verbose code simplified
+- Dead code removed
+- Unused packages removed
+- Performance improvements
+- Database optimizations
+- API optimizations
+- Security fixes
+- Maintainability improvements
+- Remaining recommendations
+
+Goal
+
+Transform this project into a production-ready SaaS that looks and feels like it was engineered by a top-tier professional software agency. The codebase should be clean, modular, scalable, secure, high-performance, and easy to maintain while preserving 100% of existing functionality.

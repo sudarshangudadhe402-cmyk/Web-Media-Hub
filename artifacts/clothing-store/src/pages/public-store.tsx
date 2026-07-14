@@ -434,7 +434,7 @@ export default function PublicStore() {
       });
       const d = await res.json();
       if (!res.ok) { setSignUpError(d.error || "Verification failed"); return; }
-      const acc: CustomerAccountInfo = { id: d.id, name: d.name, email: d.email, password, cart: d.cart ?? [], createdAt: d.createdAt };
+      const acc: CustomerAccountInfo = { id: d.id, name: d.name, email: d.email, cart: d.cart ?? [], createdAt: d.createdAt };
       setCustomerAccount(acc);
       localStorage.setItem(`wmh_account_${slug}`, JSON.stringify(acc));
       setSignUpError(null);
@@ -453,7 +453,7 @@ export default function PublicStore() {
       });
       const d = await res.json();
       if (!res.ok) { setSignInError(d.error || "Verification failed"); return; }
-      const acc: CustomerAccountInfo = { id: d.id, name: d.name, email: d.email, password, cart: d.cart ?? [], createdAt: d.createdAt };
+      const acc: CustomerAccountInfo = { id: d.id, name: d.name, email: d.email, cart: d.cart ?? [], createdAt: d.createdAt };
       setCustomerAccount(acc);
       localStorage.setItem(`wmh_account_${slug}`, JSON.stringify(acc));
       setSignInError(null);
