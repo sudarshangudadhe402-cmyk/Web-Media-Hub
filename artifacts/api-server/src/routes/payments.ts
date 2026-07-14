@@ -65,6 +65,31 @@ function getRazorpay() {
   return { key_id, key_secret };
 }
 
+/**
+ * Cross-checks the amount actually paid on a Razorpay order against the plan price
+ * the client is now claiming at verification time. Without this, a client could pay
+ * for a cheap plan at /create-order and then claim a more expensive plan's
+ * name/price/features at /verify-and-register or /renewal-verify — the signature
+ * check alone only proves payment_id belongs to order_id, not that the claimed plan
+ * matches what was actually charged.
+ */
+async function verifyOrderMatchesClaimedPrice(
+  rzp: { key_id: string; key_secret: string },
+  orderId: string,
+  claimedPlanPriceRupees: number
+): Promise<boolean> {
+  try {
+    const Razorpay = (await import("razorpay")).default;
+    const instance = new Razorpay({ key_id: rzp.key_id, key_secret: rzp.key_secret });
+    const order = await (instance.orders.fetch as any)(orderId);
+    const expectedPaise = Math.round((claimedPlanPriceRupees + claimedPlanPriceRupees * 0.02) * 100);
+    // Allow a 1-paise tolerance for rounding
+    return Math.abs(Number(order.amount) - expectedPaise) <= 1;
+  } catch {
+    return false;
+  }
+}
+
 // ── POST /api/payments/create-order ─────────────────────────────────────────
 // Creates a Razorpay order for the given plan price
 router.post("/payments/create-order", async (req: any, res) => {
@@ -130,6 +155,17 @@ router.post("/payments/verify-and-register", async (req: any, res) => {
       .digest("hex");
 
     if (expectedSig !== razorpay_signature) {
+      res.status(400).json({ error: "Payment verification failed. Please contact support." });
+      return;
+    }
+
+    // 1b. Confirm the plan/price being claimed here matches what was actually paid
+    // for at /create-order — prevents paying for a cheap plan then registering as an
+    // expensive one.
+    const claimedPriceRupees = parsePrice(planPrice);
+    const amountMatches = await verifyOrderMatchesClaimedPrice(rzp, razorpay_order_id, claimedPriceRupees);
+    if (!amountMatches) {
+      req.log?.warn({ razorpay_order_id, planPrice }, "Plan price mismatch at verify-and-register — rejected");
       res.status(400).json({ error: "Payment verification failed. Please contact support." });
       return;
     }
@@ -541,6 +577,16 @@ router.post("/payments/renewal-verify", requireAuthForRenewal, async (req: AuthR
       .digest("hex");
 
     if (expectedSig !== razorpay_signature) {
+      res.status(400).json({ error: "Payment verification failed. Please contact support." }); return;
+    }
+
+    // Confirm the plan/price being claimed here matches what was actually paid for
+    // at /renewal-create-order — prevents renewing at a cheap price then claiming an
+    // expensive plan's name/features.
+    const claimedPriceRupees = parsePrice(planPrice);
+    const amountMatches = await verifyOrderMatchesClaimedPrice(rzp, razorpay_order_id, claimedPriceRupees);
+    if (!amountMatches) {
+      req.log?.warn({ razorpay_order_id, planPrice }, "Plan price mismatch at renewal-verify — rejected");
       res.status(400).json({ error: "Payment verification failed. Please contact support." }); return;
     }
 
