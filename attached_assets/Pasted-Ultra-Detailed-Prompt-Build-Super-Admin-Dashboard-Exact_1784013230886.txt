@@ -1,0 +1,369 @@
+Ultra Detailed Prompt – Build Super Admin Dashboard Exactly Like the Reference Design
+
+Build the Super Admin Dashboard by replacing the existing blank Admin List page.
+
+The final result must visually match the provided reference design as closely as possible.
+
+General Rules
+
+- Do NOT create a new page.
+- Replace the current Admin List page.
+- Keep the same routing.
+- Keep all backend APIs unchanged.
+- Change only the UI.
+
+---
+
+Overall Design
+
+Create a premium SaaS dashboard similar to Linear, Stripe Dashboard, Vercel Dashboard and modern CRM systems.
+
+Design style:
+
+- Clean
+- Minimal
+- Premium
+- Enterprise
+- Large white cards
+- Soft shadows
+- Rounded corners (16px)
+- Smooth animations
+- Plenty of whitespace
+
+Theme
+
+- White background
+- Purple primary color
+- Light gray borders
+- Soft shadows
+- Professional spacing
+
+Font
+
+Inter
+
+Font weights
+
+500
+600
+700
+
+---
+
+Mobile Layout
+
+Single-column layout.
+
+No bottom navigation.
+
+No floating navigation.
+
+Everything scrolls vertically.
+
+---
+
+Header
+
+Top App Bar
+
+Left
+
+Hamburger Menu
+
+Center
+
+Dashboard
+
+Below title
+
+Web Media Hub
+
+Right
+
+Notification Icon
+
+Profile Avatar
+
+---
+
+Filter Section
+
+Full width cards
+
+Dropdown 1
+
+State
+
+Dropdown 2
+
+City
+
+Dropdown 3
+
+Sub-City
+
+Dropdown 4
+
+Date Range
+
+Rounded inputs
+
+16px radius
+
+---
+
+Statistics Section
+
+Responsive grid.
+
+Cards exactly like reference.
+
+Cards
+
+Total Managers
+
+Total Cities
+
+Total Sub Cities
+
+Total Stores
+
+Pending Queries
+
+Active Managers
+
+Offline Managers
+
+New Stores Today
+
+Total Renewals
+
+Every card contains
+
+Large icon
+
+Title
+
+Large number
+
+Small trend
+
+Rounded corners
+
+Soft shadow
+
+---
+
+Managers Overview
+
+Professional card.
+
+Top
+
+Title
+
+Managers Overview
+
+Right
+
+View All
+
+Below
+
+Search Bar
+
+Purple Add Manager Button
+
+Below
+
+Manager List
+
+Each manager row contains
+
+Photo
+
+Manager Name
+
+Employee ID
+
+City
+
+Sub City
+
+Assigned Stores
+
+Active Stores
+
+Circular Performance Indicator
+
+Status Badge
+
+Three Dot Menu
+
+Rows
+
+Large
+
+Rounded
+
+Soft shadow
+
+Spacing exactly like reference.
+
+---
+
+India Map Card
+
+Large card
+
+Rounded
+
+Soft shadow
+
+Map inside card
+
+Dropdown on top right
+
+Interactive zoom controls
+
+---
+
+Quick Actions
+
+Exactly five action cards.
+
+Large square buttons.
+
+Equal width.
+
+Rounded.
+
+Large colorful icon.
+
+Label below icon.
+
+Buttons
+
+Add Manager
+
+Change Manager
+
+Transfer Store
+
+Add City
+
+Send Broadcast
+
+No other buttons.
+
+---
+
+Spacing
+
+Outer padding
+
+24px
+
+Card spacing
+
+16px
+
+Card radius
+
+16px
+
+Button radius
+
+14px
+
+Input radius
+
+14px
+
+Icon size
+
+24px
+
+Card height
+
+Same as reference.
+
+---
+
+Colors
+
+Primary
+
+Purple
+
+Background
+
+White
+
+Border
+
+Light Gray
+
+Success
+
+Green
+
+Warning
+
+Orange
+
+Danger
+
+Red
+
+---
+
+Animations
+
+Card Hover
+
+Scale 1.02
+
+Button Hover
+
+Purple glow
+
+Smooth transitions
+
+300ms
+
+---
+
+Responsive
+
+Desktop
+
+Laptop
+
+Tablet
+
+Mobile
+
+Everything responsive.
+
+Never overflow.
+
+Never overlap.
+
+---
+
+Quality
+
+No placeholder layout.
+
+No ugly spacing.
+
+No bootstrap look.
+
+No default browser components.
+
+No basic admin template.
+
+Must look like a premium SaaS dashboard created by a professional UI/UX agency.
+
+The final result should closely match the attached reference image in layout, spacing, hierarchy, typography, colors, and overall visual quality while keeping the existing project functionality intact.

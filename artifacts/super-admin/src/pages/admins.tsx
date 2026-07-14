@@ -1,10 +1,6 @@
 import { useState, useMemo } from "react";
 import { useListAdmins } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,26 +18,24 @@ import {
   TrendingUp,
   RefreshCw,
   Search,
-  Bell,
-  Filter,
   Plus,
   ArrowLeftRight,
   Radio,
-  Map,
   MoreVertical,
   Eye,
   Pencil,
   UserMinus,
-  ChevronRight,
-  Activity,
-  Star,
-  LayoutGrid,
+  ChevronDown,
+  Globe,
+  Calendar,
+  Building2,
   CalendarDays,
-  Zap,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { authFetch } from "@/lib/admin-api";
 
-// ── helpers ──────────────────────────────────────────────────────────────────
+// ── helpers ───────────────────────────────────────────────────────────────────
 
 function fmtDate(iso: string | null | undefined) {
   if (!iso) return "—";
@@ -50,6 +44,18 @@ function fmtDate(iso: string | null | undefined) {
     month: "short",
     year: "numeric",
   });
+}
+
+function isInDateRange(
+  iso: string | null | undefined,
+  start: Date | null,
+  end: Date | null
+): boolean {
+  if (!iso) return false;
+  const d = new Date(iso);
+  if (start && d < start) return false;
+  if (end && d > end) return false;
+  return true;
 }
 
 function isToday(iso: string | null | undefined): boolean {
@@ -63,689 +69,824 @@ function isToday(iso: string | null | undefined): boolean {
   );
 }
 
-// ── constants ─────────────────────────────────────────────────────────────────
+/** Subscription health as a 0–100 percentage */
+function subscriptionHealth(admin: any): number {
+  if (admin.isActive === false) return 0;
+  const end = admin.subscriptionEndDate
+    ? new Date(admin.subscriptionEndDate)
+    : null;
+  const start = admin.subscriptionStartDate
+    ? new Date(admin.subscriptionStartDate)
+    : null;
+  const now = new Date();
+  if (!end) return admin.isActive !== false ? 50 : 0;
+  if (end < now) return 0;
+  if (!start) return 80;
+  const total = end.getTime() - start.getTime();
+  const remaining = end.getTime() - now.getTime();
+  return Math.max(5, Math.min(100, Math.round((remaining / total) * 100)));
+}
 
-const INDIA_STATES = [
-  "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh",
-  "Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka",
-  "Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram",
-  "Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana",
-  "Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Delhi","Jammu & Kashmir",
+// ── date-range presets ───────────────────────────────────────────────────────
+
+const DATE_PRESETS: { label: string; start: Date | null; end: Date | null }[] =
+  [
+    { label: "All Time", start: null, end: null },
+    {
+      label: "01 May - 31 May 2024",
+      start: new Date("2024-05-01"),
+      end: new Date("2024-05-31T23:59:59"),
+    },
+    {
+      label: "01 Apr - 30 Apr 2024",
+      start: new Date("2024-04-01"),
+      end: new Date("2024-04-30T23:59:59"),
+    },
+    {
+      label: "01 Jun - 30 Jun 2024",
+      start: new Date("2024-06-01"),
+      end: new Date("2024-06-30T23:59:59"),
+    },
+    (() => {
+      const now = new Date();
+      return {
+        label: "This Month",
+        start: new Date(now.getFullYear(), now.getMonth(), 1),
+        end: null,
+      };
+    })(),
+    (() => {
+      const now = new Date();
+      const s = new Date(now);
+      s.setMonth(s.getMonth() - 3);
+      return { label: "Last 3 Months", start: s, end: null };
+    })(),
+  ];
+
+// ── Circular Progress ─────────────────────────────────────────────────────────
+
+function CircularProgress({
+  pct,
+  color,
+  size = 52,
+}: {
+  pct: number;
+  color: string;
+  size?: number;
+}) {
+  const r = (size - 8) / 2;
+  const circ = 2 * Math.PI * r;
+  const filled = (Math.min(100, Math.max(0, pct)) / 100) * circ;
+  return (
+    <svg
+      width={size}
+      height={size}
+      style={{ transform: "rotate(-90deg)", display: "block", flexShrink: 0 }}
+    >
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke="#f0f0f0"
+        strokeWidth={5}
+      />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth={5}
+        strokeDasharray={`${filled} ${circ - filled}`}
+        strokeLinecap="round"
+      />
+      <text
+        x={size / 2}
+        y={size / 2 + 1}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fill="#1e1b4b"
+        fontSize={9}
+        fontWeight="700"
+        style={{
+          transform: `rotate(90deg)`,
+          transformOrigin: `${size / 2}px ${size / 2}px`,
+        }}
+      >
+        {pct}%
+      </text>
+    </svg>
+  );
+}
+
+// ── India SVG Map ─────────────────────────────────────────────────────────────
+
+const REGION_DOTS = [
+  { x: 245, y: 72,  label: "N"  },
+  { x: 118, y: 178, label: "W"  },
+  { x: 170, y: 195, label: "C"  },
+  { x: 262, y: 152, label: "E"  },
+  { x: 200, y: 215, label: "MW" },
+  { x: 100, y: 248, label: "GJ" },
+  { x: 175, y: 258, label: "TS" },
+  { x: 145, y: 310, label: "TN" },
+  { x: 155, y: 380, label: "KL" },
 ];
+
+function IndiaMap() {
+  return (
+    <div className="flex justify-center items-center" style={{ height: 300 }}>
+      <svg
+        viewBox="0 0 360 460"
+        style={{ width: "100%", height: "100%", maxWidth: 300 }}
+        fill="none"
+      >
+        <path
+          d="M200,20 C220,18 240,22 258,30 C275,38 285,50 290,65
+             C305,58 320,62 328,72 C338,85 332,100 325,110
+             C335,118 342,130 338,145 C334,158 322,165 310,162
+             C318,175 322,192 315,205 C308,218 295,224 282,220
+             C285,235 283,252 274,263 C265,274 252,278 240,275
+             C238,290 230,304 218,312 C206,320 192,322 180,318
+             C175,335 165,350 152,360 C138,370 122,374 108,370
+             C100,385 88,398 74,404 C60,410 44,408 34,398
+             C24,388 22,372 28,358 C18,348 12,334 14,320
+             C16,306 26,295 38,290 C30,278 26,262 30,248
+             C34,234 46,224 60,220 C52,206 50,190 56,177
+             C62,164 76,155 90,154 C85,140 84,124 90,112
+             C96,100 108,92 120,90 C112,76 110,60 118,48
+             C126,36 142,28 158,26
+             C168,30 178,24 188,20 Z"
+          fill="#e8e6f8"
+          stroke="#c4bef0"
+          strokeWidth={1.5}
+        />
+        <ellipse
+          cx={210}
+          cy={415}
+          rx={14}
+          ry={20}
+          fill="#e8e6f8"
+          stroke="#c4bef0"
+          strokeWidth={1}
+        />
+        {REGION_DOTS.map((d) => (
+          <g key={d.label}>
+            <circle cx={d.x} cy={d.y} r={13} fill="#6d28d9" opacity={0.88} />
+            <text
+              x={d.x}
+              y={d.y + 1}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="white"
+              fontSize={7}
+              fontWeight="700"
+            >
+              {d.label}
+            </text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+// ── Quick Actions ─────────────────────────────────────────────────────────────
 
 const QUICK_ACTIONS = [
-  { icon: Plus,          label: "Add Manager",     color: "#7c3aed", bg: "rgba(124,58,237,0.10)" },
-  { icon: ArrowLeftRight,label: "Change Manager",  color: "#0891b2", bg: "rgba(8,145,178,0.10)"  },
-  { icon: Store,         label: "Transfer Store",  color: "#059669", bg: "rgba(5,150,105,0.10)"  },
-  { icon: MapPin,        label: "Add City",        color: "#d97706", bg: "rgba(217,119,6,0.10)"  },
-  { icon: Radio,         label: "Send Broadcast",  color: "#db2777", bg: "rgba(219,39,119,0.10)" },
+  { icon: Users,          label: "Add Manager",    color: "#7c3aed", bg: "rgba(124,58,237,0.10)" },
+  { icon: ArrowLeftRight, label: "Change Manager", color: "#0891b2", bg: "rgba(8,145,178,0.10)"  },
+  { icon: Store,          label: "Transfer Store", color: "#059669", bg: "rgba(5,150,105,0.10)"  },
+  { icon: Building2,      label: "Add City",       color: "#d97706", bg: "rgba(217,119,6,0.10)"  },
+  { icon: Radio,          label: "Send Broadcast", color: "#db2777", bg: "rgba(219,39,119,0.10)" },
 ];
 
-// ── main component ────────────────────────────────────────────────────────────
+// ── Main Dashboard ────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
   const { toast } = useToast();
   const { data: admins = [], isLoading } = useListAdmins();
 
   // Filters
-  const [search, setSearch] = useState("");
-  const [stateFilter, setStateFilter] = useState("All States");
-  const [cityFilter, setCityFilter] = useState("All Cities");
-  const [subCityFilter, setSubCityFilter] = useState("All Sub-Cities");
-  const [dateFilter, setDateFilter] = useState("This Month");
+  const [search, setSearch]           = useState("");
+  const [locationFilter, setLocationFilter] = useState("All India");
+  const [datePresetIdx, setDatePresetIdx]   = useState(0);
+  const [mapDropdown, setMapDropdown]       = useState("Total Stores");
 
-  // Map drill-down
-  const [mapLevel, setMapLevel] = useState<"india" | "state" | "city">("india");
-  const [selectedState, setSelectedState] = useState<string | null>(null);
-  const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  const datePreset = DATE_PRESETS[datePresetIdx];
 
-  // Revenue data for renewals
+  // Marketing / revenue data for renewals
   const { data: revenueData } = useQuery({
-    queryKey: ["dashboard-revenue"],
+    queryKey: ["dashboard-marketing-revenue"],
     queryFn: async () => {
-      const res = await authFetch("/api/revenue/summary");
+      const res = await authFetch("/api/marketing/revenue");
       if (!res.ok) return null;
       return res.json();
     },
     staleTime: 60_000,
   });
 
-  // ── derived stats from real admin data ──────────────────────────────────────
-  const totalStores = (admins as any[]).length;
-  const newStoresToday = (admins as any[]).filter((a) =>
+  // Pending store requests (used as proxy for pending queries)
+  const { data: storeRequests } = useQuery({
+    queryKey: ["dashboard-store-requests"],
+    queryFn: async () => {
+      const res = await authFetch("/api/store-requests");
+      if (!res.ok) return null;
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+
+  // ── Derived stats from real API data ────────────────────────────────────────
+
+  const adminsArr = admins as any[];
+
+  // Date-range filtered set (applied to createdAt / storeCreatedAt)
+  const dateFilteredAdmins = useMemo(
+    () =>
+      datePreset.start || datePreset.end
+        ? adminsArr.filter((a) =>
+            isInDateRange(
+              a.storeCreatedAt ?? a.createdAt,
+              datePreset.start,
+              datePreset.end
+            )
+          )
+        : adminsArr,
+    [adminsArr, datePreset]
+  );
+
+  const totalStores   = dateFilteredAdmins.length;
+  const activeStores  = dateFilteredAdmins.filter((a) => a.isActive !== false).length;
+  const offlineStores = totalStores - activeStores;
+  const newStoresToday = adminsArr.filter((a) =>
     isToday(a.storeCreatedAt ?? a.createdAt)
   ).length;
-  const activeStores = (admins as any[]).filter((a) => a.isActive !== false).length;
 
-  const totalRenewals = revenueData?.renewalCount ?? 0;
+  const totalRenewals: number =
+    revenueData?.renewalCount ?? revenueData?.total ?? 0;
 
-  const stats = [
-    { icon: Users,        label: "Total Managers",  value: 0,              color: "#7c3aed", bg: "rgba(124,58,237,0.10)", trend: null },
-    { icon: MapPin,       label: "Total Cities",    value: 0,              color: "#0891b2", bg: "rgba(8,145,178,0.10)",  trend: null },
-    { icon: Map,          label: "Total Sub-Cities",value: 0,              color: "#0d9488", bg: "rgba(13,148,136,0.10)", trend: null },
-    { icon: Store,        label: "Total Stores",    value: totalStores,    color: "#7c3aed", bg: "rgba(124,58,237,0.10)", trend: "+2" },
-    { icon: UserCheck,    label: "Active Managers", value: 0,              color: "#059669", bg: "rgba(5,150,105,0.10)",  trend: null },
-    { icon: UserX,        label: "Offline Managers",value: 0,              color: "#dc2626", bg: "rgba(220,38,38,0.10)",  trend: null },
-    { icon: MessageSquare,label: "Pending Queries", value: 0,              color: "#d97706", bg: "rgba(217,119,6,0.10)",  trend: null },
-    { icon: TrendingUp,   label: "New Stores Today",value: newStoresToday, color: "#db2777", bg: "rgba(219,39,119,0.10)", trend: newStoresToday > 0 ? `+${newStoresToday}` : null },
-    { icon: RefreshCw,    label: "Total Renewals",  value: totalRenewals,  color: "#7c3aed", bg: "rgba(124,58,237,0.10)", trend: null },
-  ];
+  const pendingQueriesCount: number = Array.isArray(storeRequests)
+    ? storeRequests.filter((r: any) => r.status === "pending").length
+    : (storeRequests?.pending ?? 0);
 
-  // ── mock manager rows for the table (empty until backend ready) ──────────
-  const managerRows: any[] = [];
+  const activeRate  = totalStores > 0
+    ? Math.round((activeStores  / totalStores) * 10000) / 100
+    : 0;
+  const offlineRate = totalStores > 0
+    ? Math.round((offlineStores / totalStores) * 10000) / 100
+    : 0;
 
-  // ── mock recent activities ────────────────────────────────────────────────
-  const activities: Array<{ icon: any; label: string; time: string; color: string }> = [];
+  // ── Search + list filter ─────────────────────────────────────────────────
 
-  // ── mock pending queries ──────────────────────────────────────────────────
-  const pendingQueries: any[] = [];
-
-  // ── mock city report ──────────────────────────────────────────────────────
-  const cityReport: any[] = [];
-
-  // ── map breadcrumb label ──────────────────────────────────────────────────
-  const mapBreadcrumb =
-    mapLevel === "india"
-      ? "India"
-      : mapLevel === "state"
-      ? selectedState ?? "State"
-      : `${selectedCity ?? "City"} — ${selectedState}`;
+  const filteredAdmins = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return dateFilteredAdmins.filter(
+      (a) =>
+        !q ||
+        (a.storeName   ?? "").toLowerCase().includes(q) ||
+        (a.username    ?? "").toLowerCase().includes(q) ||
+        (a.email       ?? "").toLowerCase().includes(q) ||
+        (a.adminNumber ?? "").toLowerCase().includes(q)
+    );
+  }, [dateFilteredAdmins, search]);
 
   function handleComingSoon(label: string) {
-    toast({ title: `${label} — Coming Soon`, description: "This feature is under development." });
+    toast({
+      title: `${label} — Coming Soon`,
+      description: "This feature is under development.",
+    });
   }
 
-  return (
-    <div className="space-y-6 pb-16">
+  // ── Stat card data ────────────────────────────────────────────────────────
 
-      {/* ── Page Header ────────────────────────────────────────────────────── */}
-      <div className="flex flex-col gap-4">
-        {/* Title row */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight" style={{ color: "#1e1b4b" }}>
-              Dashboard
-            </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {fmtDate(new Date().toISOString())} · Super Admin View
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              className="relative w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-105"
-              style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.15)" }}
-              onClick={() => handleComingSoon("Notifications")}
-            >
-              <Bell className="w-4 h-4" style={{ color: "#7c3aed" }} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 border border-white" />
-            </button>
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold"
-              style={{ background: "rgba(124,58,237,0.12)", color: "#7c3aed", border: "1px solid rgba(124,58,237,0.2)" }}
-            >
-              SA
-            </div>
-          </div>
+  const row1Stats = [
+    {
+      icon: <Users className="w-5 h-5" style={{ color: "#7c3aed" }} />,
+      bg: "rgba(124,58,237,0.10)", border: "rgba(124,58,237,0.18)",
+      label: "Total Managers",
+      // Each admin account IS a store owner / manager
+      value: isLoading ? "—" : totalStores.toLocaleString(),
+      action: "View all", actionColor: "#7c3aed",
+    },
+    {
+      icon: <Building2 className="w-5 h-5" style={{ color: "#0891b2" }} />,
+      bg: "rgba(8,145,178,0.10)", border: "rgba(8,145,178,0.18)",
+      label: "Total Cities",
+      // City field not yet in listAdmins response; shows 0 until API updated
+      value: isLoading ? "—" : "0",
+      action: "View all", actionColor: "#0891b2",
+    },
+    {
+      icon: <Store className="w-5 h-5" style={{ color: "#059669" }} />,
+      bg: "rgba(5,150,105,0.10)", border: "rgba(5,150,105,0.18)",
+      label: "Total Stores",
+      value: isLoading ? "—" : totalStores.toLocaleString(),
+      action: "View all", actionColor: "#059669",
+    },
+    {
+      icon: <MessageSquare className="w-5 h-5" style={{ color: "#d97706" }} />,
+      bg: "rgba(217,119,6,0.10)", border: "rgba(217,119,6,0.18)",
+      label: "Pending Queries",
+      value: isLoading ? "—" : pendingQueriesCount.toLocaleString(),
+      action: "View all", actionColor: "#d97706",
+    },
+  ];
+
+  const row2Stats = [
+    {
+      icon: <UserCheck className="w-5 h-5" style={{ color: "#059669" }} />,
+      bg: "rgba(5,150,105,0.10)", border: "rgba(5,150,105,0.18)",
+      label: "Active Managers",
+      value: isLoading ? "—" : activeStores.toLocaleString(),
+      badge: `${activeRate}%`, badgeColor: "#059669",
+    },
+    {
+      icon: <UserX className="w-5 h-5" style={{ color: "#dc2626" }} />,
+      bg: "rgba(220,38,38,0.10)", border: "rgba(220,38,38,0.18)",
+      label: "Offline Managers",
+      value: isLoading ? "—" : offlineStores.toLocaleString(),
+      badge: `${offlineRate}%`, badgeColor: "#dc2626",
+    },
+    {
+      icon: <TrendingUp className="w-5 h-5" style={{ color: "#0891b2" }} />,
+      bg: "rgba(8,145,178,0.10)", border: "rgba(8,145,178,0.18)",
+      label: "New Stores Today",
+      value: isLoading ? "—" : newStoresToday.toLocaleString(),
+      badge: newStoresToday > 0 ? `+${newStoresToday}` : null,
+      badgeColor: "#059669",
+    },
+    {
+      icon: <RefreshCw className="w-5 h-5" style={{ color: "#7c3aed" }} />,
+      bg: "rgba(124,58,237,0.10)", border: "rgba(124,58,237,0.18)",
+      label: "Total Renewals",
+      value: isLoading ? "—" : totalRenewals.toLocaleString(),
+      action: "View all", actionColor: "#7c3aed",
+    },
+  ];
+
+  return (
+    <div
+      className="min-h-screen pb-8"
+      style={{ background: "#f8f8fc", fontFamily: "'Inter', sans-serif" }}
+    >
+      <div className="max-w-2xl mx-auto px-4 pt-4 space-y-4">
+
+        {/* ── Filter Row ─────────────────────────────────────────────────── */}
+        <div className="flex gap-3">
+          {/* Location / region filter */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex-1 flex items-center gap-2 px-4 py-3 rounded-2xl text-sm font-medium bg-white border"
+                style={{ borderColor: "#e5e7eb", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
+              >
+                <Globe className="w-4 h-4 shrink-0" style={{ color: "#7c3aed" }} />
+                <span className="flex-1 text-left text-gray-700 truncate">{locationFilter}</span>
+                <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-48">
+              {["All India", "North India", "South India", "East India", "West India"].map((o) => (
+                <DropdownMenuItem key={o} onClick={() => setLocationFilter(o)} className="text-sm">
+                  {o}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Date range filter — applies to store created date */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex-1 flex items-center gap-2 px-4 py-3 rounded-2xl text-sm font-medium bg-white border"
+                style={{ borderColor: "#e5e7eb", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
+              >
+                <Calendar className="w-4 h-4 shrink-0" style={{ color: "#7c3aed" }} />
+                <span className="flex-1 text-left text-gray-700 text-xs truncate">
+                  {datePreset.label}
+                </span>
+                <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-52">
+              {DATE_PRESETS.map((p, i) => (
+                <DropdownMenuItem key={p.label} onClick={() => setDatePresetIdx(i)} className="text-xs">
+                  {p.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
-        {/* Filters row */}
-        <div className="flex flex-wrap gap-2">
-          {/* Search */}
-          <div className="relative flex-1 min-w-[180px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Search managers, stores..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-9 text-sm"
-            />
+        {/* ── Stats Row 1 ─────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 gap-3">
+          {row1Stats.map((s) => (
+            <div
+              key={s.label}
+              className="bg-white rounded-2xl p-4 transition-transform duration-200 hover:scale-[1.02] cursor-default"
+              style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.07)", border: "1px solid #f0f0f5" }}
+            >
+              <div
+                className="w-10 h-10 rounded-2xl flex items-center justify-center mb-3"
+                style={{ background: s.bg, border: `1px solid ${s.border}` }}
+              >
+                {s.icon}
+              </div>
+              <p className="text-xs text-gray-500 font-medium leading-tight mb-1">{s.label}</p>
+              <p className="text-2xl font-bold tracking-tight" style={{ color: "#1e1b4b" }}>
+                {s.value}
+              </p>
+              {s.action && (
+                <button
+                  className="text-xs font-semibold mt-2 transition-opacity hover:opacity-70"
+                  style={{ color: s.actionColor }}
+                  onClick={() => handleComingSoon(s.label)}
+                >
+                  {s.action}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* ── Stats Row 2 ─────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 gap-3">
+          {row2Stats.map((s) => (
+            <div
+              key={s.label}
+              className="bg-white rounded-2xl p-4 transition-transform duration-200 hover:scale-[1.02] cursor-default"
+              style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.07)", border: "1px solid #f0f0f5" }}
+            >
+              <div
+                className="w-10 h-10 rounded-2xl flex items-center justify-center mb-3"
+                style={{ background: s.bg, border: `1px solid ${s.border}` }}
+              >
+                {s.icon}
+              </div>
+              <p className="text-xs text-gray-500 font-medium leading-tight mb-1">{s.label}</p>
+              <p className="text-2xl font-bold tracking-tight" style={{ color: "#1e1b4b" }}>
+                {s.value}
+              </p>
+              {s.badge && (
+                <p className="text-xs font-bold mt-1.5" style={{ color: s.badgeColor }}>
+                  {s.badge}
+                </p>
+              )}
+              {(s as any).action && (
+                <button
+                  className="text-xs font-semibold mt-2 transition-opacity hover:opacity-70"
+                  style={{ color: (s as any).actionColor }}
+                  onClick={() => handleComingSoon(s.label)}
+                >
+                  {(s as any).action}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* ── Managers / Stores Overview ──────────────────────────────────── */}
+        <div
+          className="bg-white rounded-2xl overflow-hidden"
+          style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.07)", border: "1px solid #f0f0f5" }}
+        >
+          {/* Section header */}
+          <div className="flex items-center justify-between px-4 pt-4 pb-3">
+            <h2 className="text-base font-bold" style={{ color: "#1e1b4b" }}>
+              Managers Overview
+            </h2>
+            <button
+              className="text-sm font-semibold"
+              style={{ color: "#7c3aed" }}
+              onClick={() => handleComingSoon("View All Managers")}
+            >
+              View All
+            </button>
           </div>
 
-          {/* Date filter */}
-          {(["This Month", "Last Month", "Last 3 Months", "This Year"] as const).map((opt) => (
+          {/* Search + Add Manager */}
+          <div className="flex gap-2 px-4 pb-3">
+            <div
+              className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl border"
+              style={{ borderColor: "#e5e7eb", background: "#f9f9fc" }}
+            >
+              <Search className="w-4 h-4 text-gray-400 shrink-0" />
+              <input
+                placeholder="Search by name, city or ID..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="flex-1 text-sm bg-transparent outline-none text-gray-600 placeholder-gray-400"
+              />
+            </div>
             <button
-              key={opt}
-              onClick={() => setDateFilter(opt)}
-              className="h-9 px-3 rounded-lg text-xs font-medium transition-all border"
+              onClick={() => handleComingSoon("Add Manager")}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-200 hover:opacity-90 hover:shadow-lg shrink-0"
               style={{
-                background: dateFilter === opt ? "rgba(124,58,237,0.10)" : "transparent",
-                borderColor: dateFilter === opt ? "rgba(124,58,237,0.4)" : "hsl(var(--border))",
-                color: dateFilter === opt ? "#7c3aed" : "hsl(var(--muted-foreground))",
+                background: "linear-gradient(135deg, #7c3aed, #9333ea)",
+                boxShadow: "0 4px 12px rgba(124,58,237,0.3)",
               }}
             >
-              {opt}
+              <Plus className="w-4 h-4" />
+              Add Manager
             </button>
-          ))}
+          </div>
 
-          {/* State / City / Sub-City dropdowns */}
-          {[
-            { label: stateFilter,    options: ["All States", ...INDIA_STATES], setter: setStateFilter },
-            { label: cityFilter,     options: ["All Cities"],                  setter: setCityFilter   },
-            { label: subCityFilter,  options: ["All Sub-Cities"],              setter: setSubCityFilter },
-          ].map(({ label, options, setter }) => (
-            <DropdownMenu key={label}>
+          {/* Rows */}
+          {isLoading ? (
+            <div className="px-4 pb-4 space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-16 rounded-xl animate-pulse"
+                  style={{ background: "#f0f0f5" }}
+                />
+              ))}
+            </div>
+          ) : filteredAdmins.length === 0 ? (
+            <div className="px-4 pb-6 pt-2 text-center">
+              <Users className="w-10 h-10 mx-auto mb-3 opacity-15" style={{ color: "#7c3aed" }} />
+              <p className="text-sm font-medium text-gray-500">
+                {search ? "No results found" : "No managers added yet"}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                {search ? "Try a different search term" : 'Click "Add Manager" to get started'}
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y" style={{ borderColor: "#f0f0f5" }}>
+              {filteredAdmins.slice(0, 10).map((admin: any, idx: number) => {
+                const isActive   = admin.isActive !== false;
+                const isOnline   = (admin.activeSessionCount ?? 0) > 0;
+                const displayName = admin.storeName || admin.username || admin.email || "—";
+                const subLabel    = admin.adminNumber ?? admin.email ?? "—";
+                const initials    = displayName.substring(0, 2).toUpperCase();
+                const hues        = ["#7c3aed", "#0891b2", "#059669", "#d97706", "#db2777"];
+                const hue         = hues[idx % hues.length];
+                const perf        = subscriptionHealth(admin);
+
+                return (
+                  <div
+                    key={admin.id ?? idx}
+                    className="flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition-colors"
+                  >
+                    {/* Avatar */}
+                    <div
+                      className="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
+                      style={{ background: `linear-gradient(135deg, ${hue}, ${hue}cc)` }}
+                    >
+                      {initials}
+                    </div>
+
+                    {/* Name + ID */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate" style={{ color: "#1e1b4b" }}>
+                        {displayName}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5 truncate">{subLabel}</p>
+                      {admin.planName && (
+                        <span
+                          className="text-[10px] font-medium px-1.5 py-0.5 rounded mt-0.5 inline-block"
+                          style={{
+                            background: admin.planColor ? admin.planColor + "18" : "rgba(124,58,237,0.08)",
+                            color: admin.planColor || "#7c3aed",
+                          }}
+                        >
+                          {admin.planName}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Stores: 1 per admin (each admin owns exactly one store) */}
+                    <div className="text-center shrink-0 hidden sm:block">
+                      <p className="text-[10px] text-gray-400 font-medium">Stores</p>
+                      <p className="text-base font-bold" style={{ color: "#1e1b4b" }}>1</p>
+                    </div>
+
+                    {/* Subscription health circle */}
+                    <div className="shrink-0">
+                      <CircularProgress
+                        pct={perf}
+                        color={isActive ? "#7c3aed" : "#dc2626"}
+                      />
+                    </div>
+
+                    {/* Online / offline badge — uses activeSessionCount from API */}
+                    <div
+                      className="px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0"
+                      style={{
+                        background: isOnline
+                          ? "rgba(5,150,105,0.10)"
+                          : "rgba(219,39,119,0.10)",
+                        color:      isOnline ? "#059669" : "#db2777",
+                        border: `1px solid ${isOnline ? "rgba(5,150,105,0.2)" : "rgba(219,39,119,0.2)"}`,
+                      }}
+                    >
+                      {isOnline ? "Online" : "Offline"}
+                    </div>
+
+                    {/* 3-dot menu */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors shrink-0">
+                          <MoreVertical className="w-4 h-4 text-gray-400" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-44">
+                        <DropdownMenuItem className="text-xs gap-2">
+                          <Eye className="w-3.5 h-3.5" /> View Profile
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-xs gap-2">
+                          <Pencil className="w-3.5 h-3.5" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-xs gap-2">
+                          <ArrowLeftRight className="w-3.5 h-3.5" /> Change Manager
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-xs gap-2 text-red-600 focus:text-red-600">
+                          <UserMinus className="w-3.5 h-3.5" /> Disable
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                );
+              })}
+              {filteredAdmins.length > 10 && (
+                <div className="px-4 py-3 text-center">
+                  <p className="text-xs text-gray-400">
+                    Showing 10 of {filteredAdmins.length} stores
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── India Map Card ──────────────────────────────────────────────── */}
+        <div
+          className="bg-white rounded-2xl overflow-hidden"
+          style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.07)", border: "1px solid #f0f0f5" }}
+        >
+          <div className="flex items-center justify-between px-4 pt-4 pb-2">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4" style={{ color: "#7c3aed" }} />
+              <h2 className="text-base font-bold" style={{ color: "#1e1b4b" }}>
+                India - Managers Map
+              </h2>
+            </div>
+            <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs font-medium">
-                  <Filter className="w-3 h-3" />
-                  {label}
-                </Button>
+                <button className="flex items-center gap-1.5 text-sm font-semibold text-gray-600 hover:text-gray-800 transition-colors">
+                  {mapDropdown} <ChevronDown className="w-4 h-4 text-gray-400" />
+                </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="max-h-60 overflow-y-auto w-44">
-                {options.map((o) => (
-                  <DropdownMenuItem key={o} onClick={() => setter(o)} className="text-xs">
+              <DropdownMenuContent align="end">
+                {["Total Stores", "Active Stores", "Total Managers", "Pending Queries"].map((o) => (
+                  <DropdownMenuItem key={o} onClick={() => setMapDropdown(o)} className="text-sm">
                     {o}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Stats Cards ────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-        {stats.map((s) => {
-          const Icon = s.icon;
-          return (
-            <Card key={s.label} className="relative overflow-hidden group hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 cursor-default">
-              <div
-                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                style={{ background: `linear-gradient(135deg, ${s.bg} 0%, transparent 60%)` }}
-              />
-              <CardContent className="p-4 relative z-10">
-                <div className="flex items-start justify-between mb-3">
-                  <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: s.bg, border: `1px solid ${s.color}22` }}
-                  >
-                    <Icon className="w-4 h-4" style={{ color: s.color }} />
-                  </div>
-                  {s.trend && (
-                    <span
-                      className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                      style={{ background: "rgba(5,150,105,0.12)", color: "#059669" }}
-                    >
-                      {s.trend}
-                    </span>
-                  )}
-                </div>
-                <p className="text-2xl font-bold tracking-tight" style={{ color: "#1e1b4b" }}>
-                  {isLoading && s.label === "Total Stores" ? "—" : s.value.toLocaleString()}
-                </p>
-                <p className="text-xs text-muted-foreground font-medium mt-0.5">{s.label}</p>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* ── Quick Actions ───────────────────────────────────────────────────── */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <Zap className="w-4 h-4" style={{ color: "#7c3aed" }} />
-          <h2 className="text-base font-semibold">Quick Actions</h2>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-          {QUICK_ACTIONS.map((action) => {
-            const Icon = action.icon;
-            return (
-              <button
-                key={action.label}
-                onClick={() => handleComingSoon(action.label)}
-                className="group relative overflow-hidden rounded-2xl p-4 flex flex-col items-center gap-3 border transition-all duration-200 hover:-translate-y-1 hover:shadow-lg text-center"
-                style={{
-                  background: "hsl(var(--card))",
-                  borderColor: "hsl(var(--border))",
-                }}
-              >
-                <div
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                  style={{ background: `linear-gradient(135deg, ${action.bg} 0%, transparent 70%)` }}
-                />
-                <div
-                  className="relative z-10 w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110"
-                  style={{ background: action.bg, border: `1px solid ${action.color}22` }}
-                >
-                  <Icon className="w-5 h-5" style={{ color: action.color }} />
-                </div>
-                <span className="relative z-10 text-xs font-semibold text-foreground/80 group-hover:text-foreground transition-colors leading-tight">
-                  {action.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Managers Overview + Top Performers ─────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-        {/* Managers Table */}
-        <div className="lg:col-span-2">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4" style={{ color: "#7c3aed" }} />
-              <h2 className="text-base font-semibold">Managers Overview</h2>
-            </div>
-            <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => handleComingSoon("Add Manager")}>
-              <Plus className="w-3 h-3" /> Add Manager
-            </Button>
           </div>
 
-          <Card className="overflow-hidden">
-            {/* Table header */}
-            <div
-              className="grid text-[10px] font-bold uppercase tracking-wider text-white px-4 py-3"
-              style={{
-                background: "linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)",
-                gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr 1fr 80px",
-              }}
-            >
-              <span>Manager</span>
-              <span>State</span>
-              <span>City</span>
-              <span>Stores</span>
-              <span>Performance</span>
-              <span>Status</span>
-              <span></span>
+          <div className="relative px-4 pb-4">
+            <IndiaMap />
+            <div className="absolute right-7 bottom-8 flex flex-col gap-1">
+              <button
+                className="w-8 h-8 rounded-xl flex items-center justify-center bg-white shadow-md border hover:bg-gray-50 transition-colors"
+                style={{ borderColor: "#e5e7eb" }}
+                onClick={() => handleComingSoon("Zoom In")}
+              >
+                <ZoomIn className="w-4 h-4 text-gray-600" />
+              </button>
+              <button
+                className="w-8 h-8 rounded-xl flex items-center justify-center bg-white shadow-md border hover:bg-gray-50 transition-colors"
+                style={{ borderColor: "#e5e7eb" }}
+                onClick={() => handleComingSoon("Zoom Out")}
+              >
+                <ZoomOut className="w-4 h-4 text-gray-600" />
+              </button>
             </div>
-
-            {/* Table body */}
-            {managerRows.length === 0 ? (
-              <CardContent className="py-14 text-center">
-                <Users className="w-10 h-10 mx-auto mb-3 opacity-15" style={{ color: "#7c3aed" }} />
-                <p className="text-sm font-medium text-muted-foreground">No managers added yet</p>
-                <p className="text-xs text-muted-foreground mt-1">Click "Add Manager" to get started</p>
-              </CardContent>
-            ) : (
-              <div className="divide-y divide-border">
-                {managerRows.map((m, i) => (
-                  <div
-                    key={i}
-                    className="grid items-center px-4 py-3 hover:bg-muted/40 transition-colors text-sm"
-                    style={{ gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr 1fr 80px" }}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                        style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)" }}>
-                        {m.name?.[0]}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-semibold truncate text-xs">{m.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{m.empId}</p>
-                      </div>
-                    </div>
-                    <span className="text-xs text-muted-foreground truncate">{m.state}</span>
-                    <span className="text-xs text-muted-foreground truncate">{m.city}</span>
-                    <span className="text-xs font-medium">{m.stores}</span>
-                    <div className="flex items-center gap-1.5">
-                      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${m.perf}%`, background: "linear-gradient(90deg, #7c3aed, #a855f7)" }} />
-                      </div>
-                      <span className="text-[10px] font-bold" style={{ color: "#7c3aed" }}>{m.perf}%</span>
-                    </div>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full w-fit ${m.online ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                      {m.online ? "Online" : "Offline"}
-                    </span>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7">
-                          <MoreVertical className="w-3.5 h-3.5" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40">
-                        <DropdownMenuItem className="text-xs gap-2"><Eye className="w-3 h-3" /> View Profile</DropdownMenuItem>
-                        <DropdownMenuItem className="text-xs gap-2"><Pencil className="w-3 h-3" /> Edit</DropdownMenuItem>
-                        <DropdownMenuItem className="text-xs gap-2"><ArrowLeftRight className="w-3 h-3" /> Change Manager</DropdownMenuItem>
-                        <DropdownMenuItem className="text-xs gap-2 text-red-600 focus:text-red-600"><UserMinus className="w-3 h-3" /> Disable Manager</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
+          </div>
         </div>
 
-        {/* Top Performers */}
+        {/* ── Quick Actions ───────────────────────────────────────────────── */}
         <div>
-          <div className="flex items-center gap-2 mb-3">
-            <Star className="w-4 h-4" style={{ color: "#d97706" }} />
-            <h2 className="text-base font-semibold">Top Performers</h2>
-          </div>
-          <Card className="overflow-hidden">
-            <div className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-white"
-              style={{ background: "linear-gradient(135deg, #d97706 0%, #f59e0b 100%)" }}>
-              Manager Performance
-            </div>
-            {managerRows.length === 0 ? (
-              <CardContent className="py-10 text-center">
-                <Star className="w-8 h-8 mx-auto mb-2 opacity-15" style={{ color: "#d97706" }} />
-                <p className="text-xs text-muted-foreground">No data yet</p>
-              </CardContent>
-            ) : (
-              <div className="divide-y divide-border">
-                {managerRows.slice(0, 5).map((m, i) => (
-                  <div key={i} className="flex items-center gap-3 px-4 py-3">
-                    <span className="text-xs font-bold w-4 text-muted-foreground">#{i + 1}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold truncate">{m.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{m.city}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs font-bold" style={{ color: "#7c3aed" }}>{m.perf}%</p>
-                      <p className="text-[10px] text-muted-foreground">{m.stores} stores</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-        </div>
-      </div>
-
-      {/* ── India Map + Geographic Breakdown ──────────────────────────────── */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4" style={{ color: "#7c3aed" }} />
-            <h2 className="text-base font-semibold">India Map</h2>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <button
-                className={`hover:text-foreground transition-colors ${mapLevel === "india" ? "font-semibold text-foreground" : ""}`}
-                onClick={() => { setMapLevel("india"); setSelectedState(null); setSelectedCity(null); }}
-              >
-                India
-              </button>
-              {selectedState && (
-                <>
-                  <ChevronRight className="w-3 h-3" />
-                  <button
-                    className={`hover:text-foreground transition-colors ${mapLevel === "state" ? "font-semibold text-foreground" : ""}`}
-                    onClick={() => { setMapLevel("state"); setSelectedCity(null); }}
+          <h2 className="text-base font-bold mb-3" style={{ color: "#1e1b4b" }}>
+            Quick Actions
+          </h2>
+          <div className="grid grid-cols-5 gap-2">
+            {QUICK_ACTIONS.map((action) => {
+              const Icon = action.icon;
+              return (
+                <button
+                  key={action.label}
+                  onClick={() => handleComingSoon(action.label)}
+                  className="group flex flex-col items-center gap-2 py-4 rounded-2xl bg-white border transition-all duration-200 hover:-translate-y-1 hover:shadow-md"
+                  style={{ borderColor: "#f0f0f5", boxShadow: "0 1px 6px rgba(0,0,0,0.05)" }}
+                >
+                  <div
+                    className="w-11 h-11 rounded-2xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110"
+                    style={{ background: action.bg }}
                   >
-                    {selectedState}
-                  </button>
-                </>
-              )}
-              {selectedCity && (
-                <>
-                  <ChevronRight className="w-3 h-3" />
-                  <span className="font-semibold text-foreground">{selectedCity}</span>
-                </>
-              )}
-            </div>
+                    <Icon className="w-5 h-5" style={{ color: action.color }} />
+                  </div>
+                  <span
+                    className="text-[10px] font-semibold text-center leading-tight px-1"
+                    style={{ color: "#374151" }}
+                  >
+                    {action.label}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        <Card>
-          <CardContent className="p-4">
-            {mapLevel === "india" && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-                {INDIA_STATES.map((state) => (
-                  <button
-                    key={state}
-                    onClick={() => { setSelectedState(state); setMapLevel("state"); }}
-                    className="group relative text-left rounded-xl p-3 border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
-                    style={{
-                      background: "hsl(var(--card))",
-                      borderColor: "hsl(var(--border))",
-                    }}
+        {/* ── All Stores (real data) ─────────────────────────────────────── */}
+        {!isLoading && adminsArr.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Store className="w-4 h-4" style={{ color: "#7c3aed" }} />
+              <h2 className="text-base font-bold" style={{ color: "#1e1b4b" }}>
+                All Stores
+              </h2>
+              <span
+                className="text-[11px] font-bold px-2 py-0.5 rounded-full"
+                style={{ background: "rgba(124,58,237,0.10)", color: "#7c3aed" }}
+              >
+                {filteredAdmins.length}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {filteredAdmins.slice(0, 12).map((admin: any) => {
+                const isActive    = admin.isActive !== false;
+                const displayName = admin.storeName || admin.email || "—";
+                const planName    = admin.planName as string;
+                const planColor   = admin.planColor as string;
+                const endDate     = admin.subscriptionEndDate as string | null;
+                return (
+                  <div
+                    key={admin.id}
+                    className="bg-white rounded-2xl p-4 flex items-center gap-3 hover:shadow-md transition-all duration-200"
+                    style={{ border: "1px solid #f0f0f5", boxShadow: "0 1px 6px rgba(0,0,0,0.05)" }}
                   >
                     <div
-                      className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{ background: "rgba(124,58,237,0.06)" }}
-                    />
-                    <p className="relative z-10 text-xs font-semibold text-foreground/80 group-hover:text-foreground transition-colors leading-tight">{state}</p>
-                    <div className="relative z-10 flex gap-2 mt-2">
-                      <span className="text-[10px] text-muted-foreground">0 mgrs</span>
-                      <span className="text-[10px] text-muted-foreground">0 stores</span>
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold shrink-0"
+                      style={{
+                        background: isActive
+                          ? "linear-gradient(135deg, #7c3aed, #a855f7)"
+                          : "#d1d5db",
+                        color: "white",
+                      }}
+                    >
+                      {displayName.substring(0, 2).toUpperCase()}
                     </div>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {mapLevel === "state" && (
-              <div className="space-y-3">
-                <div
-                  className="rounded-xl p-4 border"
-                  style={{ background: "rgba(124,58,237,0.05)", borderColor: "rgba(124,58,237,0.2)" }}
-                >
-                  <p className="font-semibold" style={{ color: "#7c3aed" }}>{selectedState}</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
-                    {["Managers", "Stores", "Pending Queries", "Active Stores"].map((label, i) => (
-                      <div key={label} className="text-center">
-                        <p className="text-lg font-bold" style={{ color: "#7c3aed" }}>0</p>
-                        <p className="text-[10px] text-muted-foreground">{label}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground text-center">No cities added for {selectedState} yet</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ── Recent Activities + Pending Queries ────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-        {/* Recent Activities */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <Activity className="w-4 h-4" style={{ color: "#059669" }} />
-            <h2 className="text-base font-semibold">Recent Activities</h2>
-          </div>
-          <Card>
-            {activities.length === 0 ? (
-              <CardContent className="py-12 text-center">
-                <Activity className="w-8 h-8 mx-auto mb-2 opacity-15" style={{ color: "#059669" }} />
-                <p className="text-sm font-medium text-muted-foreground">No recent activities</p>
-                <p className="text-xs text-muted-foreground mt-1">Activity feed will appear here</p>
-              </CardContent>
-            ) : (
-              <div className="divide-y divide-border">
-                {activities.map((a, i) => {
-                  const Icon = a.icon;
-                  return (
-                    <div key={i} className="flex items-start gap-3 px-4 py-3">
-                      <div className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
-                        style={{ background: `${a.color}18`, border: `1px solid ${a.color}22` }}>
-                        <Icon className="w-3.5 h-3.5" style={{ color: a.color }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium">{a.label}</p>
-                        <p className="text-[10px] text-muted-foreground">{a.time}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </Card>
-        </div>
-
-        {/* Pending Queries */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <MessageSquare className="w-4 h-4" style={{ color: "#d97706" }} />
-            <h2 className="text-base font-semibold">Pending Queries</h2>
-          </div>
-          <Card>
-            {pendingQueries.length === 0 ? (
-              <CardContent className="py-12 text-center">
-                <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-15" style={{ color: "#d97706" }} />
-                <p className="text-sm font-medium text-muted-foreground">No pending queries</p>
-                <p className="text-xs text-muted-foreground mt-1">All clear! 🎉</p>
-              </CardContent>
-            ) : (
-              <div className="divide-y divide-border">
-                {pendingQueries.map((q, i) => (
-                  <div key={i} className="flex items-start gap-3 px-4 py-3">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs font-medium truncate">{q.storeName}</p>
-                        <Badge className="text-[9px] px-1.5 py-0 h-4"
-                          style={{
-                            background: q.priority === "High" ? "rgba(220,38,38,0.1)" : "rgba(217,119,6,0.1)",
-                            color: q.priority === "High" ? "#dc2626" : "#d97706",
-                            border: "none",
-                          }}>
-                          {q.priority}
-                        </Badge>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs font-semibold truncate">{displayName}</span>
+                        {!isActive && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 font-semibold">
+                            Inactive
+                          </span>
+                        )}
                       </div>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{q.manager} · {fmtDate(q.date)}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        {planName && (
+                          <span
+                            className="text-[10px] font-medium px-1.5 py-0.5 rounded"
+                            style={{
+                              background: planColor ? planColor + "18" : "rgba(124,58,237,0.08)",
+                              color: planColor || "#7c3aed",
+                            }}
+                          >
+                            {planName}
+                          </span>
+                        )}
+                        {endDate && (
+                          <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                            <CalendarDays className="w-2.5 h-2.5" />
+                            {fmtDate(endDate)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </Card>
-        </div>
-      </div>
-
-      {/* ── City / Sub-City Report ─────────────────────────────────────────── */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <LayoutGrid className="w-4 h-4" style={{ color: "#0891b2" }} />
-          <h2 className="text-base font-semibold">City / Sub-City Report</h2>
-        </div>
-        <Card className="overflow-hidden">
-          <div
-            className="grid text-[10px] font-bold uppercase tracking-wider text-white px-4 py-3 gap-2"
-            style={{
-              background: "linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)",
-              gridTemplateColumns: "1fr 1fr 1fr 80px 80px 80px 80px 1fr",
-            }}
-          >
-            <span>State</span>
-            <span>City</span>
-            <span>Sub-City</span>
-            <span>Total</span>
-            <span>Active</span>
-            <span>Trial</span>
-            <span>Queries</span>
-            <span>Manager</span>
-          </div>
-
-          {cityReport.length === 0 ? (
-            <CardContent className="py-12 text-center">
-              <LayoutGrid className="w-8 h-8 mx-auto mb-2 opacity-15" style={{ color: "#0891b2" }} />
-              <p className="text-sm font-medium text-muted-foreground">No city data yet</p>
-              <p className="text-xs text-muted-foreground mt-1">Add cities and assign managers to see the report</p>
-            </CardContent>
-          ) : (
-            <div className="divide-y divide-border">
-              {cityReport.map((row, i) => (
-                <div
-                  key={i}
-                  className="grid items-center px-4 py-3 hover:bg-muted/30 transition-colors text-xs gap-2"
-                  style={{ gridTemplateColumns: "1fr 1fr 1fr 80px 80px 80px 80px 1fr" }}
-                >
-                  <span className="font-medium truncate">{row.state}</span>
-                  <span className="text-muted-foreground truncate">{row.city}</span>
-                  <span className="text-muted-foreground truncate">{row.subCity}</span>
-                  <span className="font-semibold">{row.total}</span>
-                  <span className="text-green-600 font-semibold">{row.active}</span>
-                  <span className="text-amber-600 font-semibold">{row.trial}</span>
-                  <span className="text-red-500 font-semibold">{row.queries}</span>
-                  <span className="text-muted-foreground truncate">{row.manager}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-      </div>
-
-      {/* ── Admin Stores Summary (existing real data) ──────────────────────── */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <Store className="w-4 h-4" style={{ color: "#7c3aed" }} />
-          <h2 className="text-base font-semibold">All Stores</h2>
-          <span
-            className="text-[11px] font-bold px-2 py-0.5 rounded-full"
-            style={{ background: "rgba(124,58,237,0.10)", color: "#7c3aed" }}
-          >
-            {totalStores}
-          </span>
-        </div>
-
-        {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "hsl(var(--muted))" }} />
-            ))}
-          </div>
-        ) : totalStores === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <Store className="w-10 h-10 mx-auto mb-3 opacity-15" style={{ color: "#7c3aed" }} />
-              <p className="text-sm text-muted-foreground">No stores registered yet</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {(admins as any[])
-              .filter((a) =>
-                !search.trim() ||
-                (a.storeName ?? "").toLowerCase().includes(search.toLowerCase()) ||
-                (a.email ?? "").toLowerCase().includes(search.toLowerCase())
-              )
-              .slice(0, 12)
-              .map((admin) => {
-                const isActive = admin.isActive !== false;
-                const displayName = admin.storeName || admin.email || "—";
-                const planName = admin.planName as string;
-                const planColor = admin.planColor as string;
-                const endDate = admin.subscriptionEndDate as string | null;
-                return (
-                  <Card key={admin.id} className="hover:border-purple-200 transition-colors">
-                    <CardContent className="p-3.5 flex items-center gap-3">
-                      <div
-                        className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold text-white shrink-0"
-                        style={{ background: isActive ? "linear-gradient(135deg, #7c3aed, #a855f7)" : "hsl(var(--muted))", color: isActive ? "white" : "hsl(var(--muted-foreground))" }}
-                      >
-                        {displayName.substring(0, 2).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-xs font-semibold truncate">{displayName}</span>
-                          {!isActive && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 font-semibold">Inactive</span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          {planName && (
-                            <span
-                              className="text-[10px] font-medium px-1.5 py-0.5 rounded"
-                              style={{ background: planColor ? planColor + "18" : "rgba(124,58,237,0.08)", color: planColor || "#7c3aed" }}
-                            >
-                              {planName}
-                            </span>
-                          )}
-                          {endDate && (
-                            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                              <CalendarDays className="w-2.5 h-2.5" />
-                              {fmtDate(endDate)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
                 );
               })}
+            </div>
+
+            {filteredAdmins.length > 12 && (
+              <p className="text-xs text-center text-gray-400 mt-3">
+                Showing 12 of {filteredAdmins.length} stores
+              </p>
+            )}
           </div>
         )}
-        {totalStores > 12 && (
-          <p className="text-xs text-center text-muted-foreground mt-3">
-            Showing 12 of {totalStores} stores · Use the Admins section for full list
-          </p>
-        )}
-      </div>
 
+      </div>
     </div>
   );
 }
