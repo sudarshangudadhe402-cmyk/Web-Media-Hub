@@ -1,0 +1,244 @@
+Replit Prompt – Replace Admin List with Super Admin Dashboard
+
+Replace the current blank "Admin List" page with a completely new page named "Dashboard".
+
+Do not create a new page. Use the existing Admin List page and replace its entire UI with this new Super Admin Dashboard.
+
+Design Requirements
+
+- Premium SaaS UI
+- Modern agency-quality design
+- Fully responsive (Mobile + Tablet + Desktop)
+- Fast loading
+- Clean layout with rounded cards
+- Professional spacing and typography
+- Purple/White theme matching Web Media Hub branding
+- Smooth hover effects and transitions
+- Mobile-first responsive layout
+
+---
+
+Page Title
+
+Dashboard
+
+This page is for the Super Admin only.
+
+---
+
+Top Header
+
+Display:
+
+- Dashboard Title
+- Notification Icon
+- Super Admin Profile
+- Search
+- Date Filter
+- State Filter
+- City Filter
+- Sub-City Filter
+
+---
+
+Statistics Cards
+
+Show cards for:
+
+- Total Managers
+- Total Cities
+- Total Sub-Cities
+- Total Stores
+- Active Managers
+- Offline Managers
+- Pending Queries
+- New Stores Today
+- Total Renewals
+
+Each card should contain:
+
+- Icon
+- Title
+- Number
+- Small trend indicator
+
+---
+
+Managers Overview
+
+Professional searchable table
+
+Columns:
+
+- Profile Photo
+- Manager Name
+- Employee ID
+- State
+- City
+- Sub-City
+- Assigned Stores
+- Active Stores
+- Pending Queries
+- Performance %
+- Status (Online/Offline)
+- Action Menu
+
+Actions:
+
+- View Profile
+- Edit
+- Change Manager
+- Disable Manager
+
+---
+
+India Map
+
+Interactive India Map
+
+Allow drill-down:
+
+India
+
+↓
+
+State
+
+↓
+
+City
+
+↓
+
+Sub-City
+
+Display:
+
+- Number of Managers
+- Number of Stores
+- Pending Queries
+- Active Stores
+
+---
+
+Manager Performance
+
+Top Performing Managers
+
+Display:
+
+- Name
+- City
+- Performance %
+- Store Rating
+- Total Stores
+
+---
+
+Recent Activities
+
+Live activity feed
+
+Examples:
+
+- Manager Added
+- Store Added
+- Store Renewed
+- Query Solved
+- Broadcast Sent
+
+---
+
+Pending Queries
+
+Latest unresolved tickets
+
+Show:
+
+- Store Name
+- Manager
+- Priority
+- Created Date
+- Status
+
+---
+
+City / Sub-City Report
+
+Table
+
+Columns:
+
+- State
+- City
+- Sub-City
+- Total Stores
+- Active Stores
+- Trial Stores
+- Pending Queries
+- Assigned Manager
+
+---
+
+Quick Actions Section
+
+Display large action cards exactly in this order:
+
+1. Add Manager
+2. Change Manager
+3. Transfer Store
+4. Add City
+5. Send Broadcast
+
+Each action card should have:
+
+- Modern Icon
+- Label
+- Hover Animation
+
+---
+
+Mobile Layout
+
+Do NOT use a bottom navigation bar.
+
+Remove:
+
+- Home
+- Manager
+- Store
+- Queries
+- More
+
+Instead, place the Quick Actions section at the bottom of the page with:
+
+- Add Manager
+- Change Manager
+- Transfer Store
+- Add City
+- Send Broadcast
+
+Use responsive cards (2 or 3 per row depending on screen width).
+
+---
+
+Performance
+
+- Lazy load large tables
+- Virtual scrolling if needed
+- Optimized rendering
+- Responsive tables
+- Smooth animations
+- No unnecessary libraries
+
+---
+
+Final Requirement
+
+Completely replace the old blank Admin List page with this new Dashboard page.
+
+Do not create duplicate routes.
+
+Keep all existing backend APIs and database connections unchanged.
+
+Only redesign and replace the UI while preserving existing functionality and project architecture.

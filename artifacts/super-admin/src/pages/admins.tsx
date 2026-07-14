@@ -1,20 +1,10 @@
-import { useState, useEffect } from "react";
-import {
-  useListAdmins,
-  useDeleteAdmin,
-  getListAdminsQueryKey,
-} from "@workspace/api-client-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useMemo } from "react";
+import { useListAdmins } from "@workspace/api-client-react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,879 +13,739 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Shield,
   Users,
-  ChevronRight,
-  Eye,
-  EyeOff,
-  Trash2,
-  Phone,
+  MapPin,
   Store,
-  Copy,
-  ExternalLink,
-  Search,
-  CalendarDays,
-  Clock,
-  AlertTriangle,
-  CheckCircle2,
-  Link as LinkIcon,
-  Pencil,
-  Gift,
   UserCheck,
+  UserX,
+  MessageSquare,
+  TrendingUp,
+  RefreshCw,
+  Search,
+  Bell,
+  Filter,
+  Plus,
+  ArrowLeftRight,
+  Radio,
+  Map,
+  MoreVertical,
+  Eye,
+  Pencil,
+  UserMinus,
+  ChevronRight,
+  Activity,
+  Star,
+  LayoutGrid,
+  CalendarDays,
+  Zap,
 } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Input } from "@/components/ui/input";
-
 import { authFetch } from "@/lib/admin-api";
 
-function getDaysRemaining(endDateStr: string | null | undefined): number | null {
-  if (!endDateStr) return null;
-  const end = new Date(endDateStr);
-  const now = new Date();
-  return Math.floor((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-}
+// ── helpers ──────────────────────────────────────────────────────────────────
 
 function fmtDate(iso: string | null | undefined) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(iso).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
-function SubscriptionBadge({ endDate, planPeriod }: { endDate: string | null | undefined; planPeriod?: string }) {
-  // Primary signal: no end date means lifetime/one-time plan
-  const isLifetime = !endDate || planPeriod?.toLowerCase().includes("lifetime");
-  if (isLifetime) {
-    return (
-      <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: "rgba(168,85,247,0.12)", color: "#9333ea" }}>
-        Lifetime ∞
-      </span>
-    );
-  }
-  const days = getDaysRemaining(endDate);
-  if (days === null) return null;
-  if (days <= 0) {
-    return (
-      <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold flex items-center gap-1" style={{ background: "rgba(239,68,68,0.12)", color: "#dc2626" }}>
-        <AlertTriangle className="w-2.5 h-2.5" /> Expired
-      </span>
-    );
-  }
-  if (days <= 5) {
-    return (
-      <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: "rgba(234,179,8,0.15)", color: "#ca8a04" }}>
-        {days}d left ⚠️
-      </span>
-    );
-  }
+function isToday(iso: string | null | undefined): boolean {
+  if (!iso) return false;
+  const d = new Date(iso);
+  const now = new Date();
   return (
-    <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: "rgba(34,197,94,0.12)", color: "#16a34a" }}>
-      {days}d left
-    </span>
+    d.getDate() === now.getDate() &&
+    d.getMonth() === now.getMonth() &&
+    d.getFullYear() === now.getFullYear()
   );
 }
 
-const SOURCE_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  ORGANIC:    { bg: "rgba(34,197,94,0.12)",  text: "#16a34a", label: "Organic" },
-  REFERRAL:   { bg: "rgba(59,130,246,0.12)", text: "#2563eb", label: "Referral" },
-  AMBASSADOR: { bg: "rgba(168,85,247,0.12)", text: "#9333ea", label: "Ambassador" },
-  INFLUENCER: { bg: "rgba(249,115,22,0.12)", text: "#ea580c", label: "Influencer" },
-  CAMPAIGN:   { bg: "rgba(236,72,153,0.12)", text: "#db2777", label: "Campaign" },
-  UTM:        { bg: "rgba(234,179,8,0.12)",  text: "#ca8a04", label: "UTM" },
-};
+// ── constants ─────────────────────────────────────────────────────────────────
 
-function getSourceStyle(source: string) {
-  const key = source.toUpperCase();
-  return SOURCE_COLORS[key] ?? { bg: "rgba(107,114,128,0.12)", text: "#6b7280", label: source };
-}
-
-interface PricingPlan {
-  id: string;
-  name: string;
-  price: string;
-}
-
-const TAB_COLORS = [
-  { color: "#2563eb", bg: "rgba(37,99,235,0.10)" },
-  { color: "#d97706", bg: "rgba(217,119,6,0.10)" },
-  { color: "#16a34a", bg: "rgba(22,163,74,0.10)" },
-  { color: "#FF2D2D", bg: "rgba(255,45,45,0.10)" },
-  { color: "#9333ea", bg: "rgba(147,51,234,0.10)" },
-  { color: "#0891b2", bg: "rgba(8,145,178,0.10)" },
+const INDIA_STATES = [
+  "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh",
+  "Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka",
+  "Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram",
+  "Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana",
+  "Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Delhi","Jammu & Kashmir",
 ];
 
-export default function Admins() {
+const QUICK_ACTIONS = [
+  { icon: Plus,          label: "Add Manager",     color: "#7c3aed", bg: "rgba(124,58,237,0.10)" },
+  { icon: ArrowLeftRight,label: "Change Manager",  color: "#0891b2", bg: "rgba(8,145,178,0.10)"  },
+  { icon: Store,         label: "Transfer Store",  color: "#059669", bg: "rgba(5,150,105,0.10)"  },
+  { icon: MapPin,        label: "Add City",        color: "#d97706", bg: "rgba(217,119,6,0.10)"  },
+  { icon: Radio,         label: "Send Broadcast",  color: "#db2777", bg: "rgba(219,39,119,0.10)" },
+];
+
+// ── main component ────────────────────────────────────────────────────────────
+
+export default function Dashboard() {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const { data: admins = [], isLoading } = useListAdmins();
 
-  const { data: admins, isLoading } = useListAdmins();
-  const deleteAdmin = useDeleteAdmin();
+  // Filters
+  const [search, setSearch] = useState("");
+  const [stateFilter, setStateFilter] = useState("All States");
+  const [cityFilter, setCityFilter] = useState("All Cities");
+  const [subCityFilter, setSubCityFilter] = useState("All Sub-Cities");
+  const [dateFilter, setDateFilter] = useState("This Month");
 
-  const { data: pricingData } = useQuery({
-    queryKey: ["pricing-plans"],
+  // Map drill-down
+  const [mapLevel, setMapLevel] = useState<"india" | "state" | "city">("india");
+  const [selectedState, setSelectedState] = useState<string | null>(null);
+  const [selectedCity, setSelectedCity] = useState<string | null>(null);
+
+  // Revenue data for renewals
+  const { data: revenueData } = useQuery({
+    queryKey: ["dashboard-revenue"],
     queryFn: async () => {
-      const res = await fetch("/api/pricing");
-      if (!res.ok) throw new Error("Failed to load plans");
-      return res.json() as Promise<{ plans: PricingPlan[] }>;
-    },
-    staleTime: 30_000,
-  });
-  const pricingPlans = pricingData?.plans ?? [];
-
-  const [linkInput, setLinkInput] = useState("");
-  const [isEditingLink, setIsEditingLink] = useState(false);
-
-  const { data: referralData, isLoading: referralLoading } = useQuery({
-    queryKey: ["referral-rewards"],
-    queryFn: async () => {
-      const res = await authFetch("/api/admins/referral-rewards");
-      if (!res.ok) return { referrals: [] };
-      return res.json() as Promise<{
-        referrals: Array<{
-          id: string;
-          rewardCode: string;
-          date: string;
-          referrerUsername: string;
-          referrer: { email: string; adminNumber: string; storeName: string; userId: string } | null;
-          referredEmail: string;
-          referredStoreName: string;
-          referredPlan: string;
-        }>;
-      }>;
-    },
-    staleTime: 30_000,
-  });
-
-  const { data: globalLinkData, refetch: refetchGlobalLink } = useQuery({
-    queryKey: ["settings", "global-link"],
-    queryFn: async () => {
-      const res = await authFetch("/api/settings/global-link");
-      if (!res.ok) return { globalLink: null };
-      return res.json() as Promise<{ globalLink: string | null }>;
-    },
-  });
-  const globalLink = globalLinkData?.globalLink ?? null;
-
-  const saveGlobalLink = useMutation({
-    mutationFn: async (link: string) => {
-      const res = await authFetch("/api/settings/global-link", {
-        method: "PUT",
-        body: JSON.stringify({ globalLink: link }),
-      });
-      if (!res.ok) throw new Error("Failed to save");
+      const res = await authFetch("/api/revenue/summary");
+      if (!res.ok) return null;
       return res.json();
     },
-    onSuccess: () => {
-      toast({ title: "Global link saved ✅" });
-      refetchGlobalLink();
-      setIsEditingLink(false);
-      setLinkInput("");
-    },
-    onError: () => toast({ variant: "destructive", title: "Failed to save link" }),
+    staleTime: 60_000,
   });
 
-  const deleteGlobalLink = useMutation({
-    mutationFn: async () => {
-      const res = await authFetch("/api/settings/global-link", { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Global link removed" });
-      refetchGlobalLink();
-      setIsEditingLink(false);
-      setLinkInput("");
-    },
-    onError: () => toast({ variant: "destructive", title: "Failed to remove link" }),
-  });
+  // ── derived stats from real admin data ──────────────────────────────────────
+  const totalStores = (admins as any[]).length;
+  const newStoresToday = (admins as any[]).filter((a) =>
+    isToday(a.storeCreatedAt ?? a.createdAt)
+  ).length;
+  const activeStores = (admins as any[]).filter((a) => a.isActive !== false).length;
 
-  const [selectedAdmin, setSelectedAdmin] = useState<NonNullable<typeof admins>[number] | null>(null);
-  const [adminDetailOpen, setAdminDetailOpen] = useState(false);
-  const [showPass, setShowPass] = useState(false);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [storeStats, setStoreStats] = useState<{ tryOnCount: number; adsCount: number } | null>(null);
+  const totalRenewals = revenueData?.renewalCount ?? 0;
 
-  useEffect(() => {
-    if (!selectedAdmin) { setStoreStats(null); return; }
-    setStoreStats(null);
-    authFetch(`/api/admins/${selectedAdmin.id}/store-stats`)
-      .then((r) => r.json())
-      .then((d) => setStoreStats(d))
-      .catch(() => setStoreStats({ tryOnCount: 0, adsCount: 0 }));
-  }, [(selectedAdmin as any)?.id]);
-
-  const toggleActive = useMutation({
-    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
-      const res = await authFetch(`/api/admins/${id}/toggle-active`, {
-        method: "PATCH",
-        body: JSON.stringify({ isActive }),
-      });
-      if (!res.ok) throw new Error("Failed to update");
-      return res.json();
-    },
-    onSuccess: (_, { isActive }) => {
-      toast({ title: isActive ? "Admin activated ✅" : "Admin deactivated 🔴" });
-      queryClient.invalidateQueries({ queryKey: getListAdminsQueryKey() });
-      if (selectedAdmin) {
-        setSelectedAdmin((prev) => prev ? { ...prev, isActive } as any : prev);
-      }
-      if (isActive && selectedAdmin) {
-        const phone = (selectedAdmin as any).adminNumber as string | undefined;
-        if (phone && phone.trim()) {
-          const cleanPhone = `91${phone.replace(/\D/g, "")}`;
-          const msg = `Hello! 👋\n\nThis is *Web Media Hub*.\n\nWe're glad to inform you that your store has been *reactivated* and is now live again. We truly hope you won't let it go inactive again.\n\nWe are always here, standing by your side to help grow your business — and we hope you'll continue to stand with us too. Your trust and support mean everything to us. 🙏\n\n— *Team Web Media Hub*`;
-          const waLink = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
-          window.open(waLink, "_blank");
-        }
-      }
-    },
-    onError: () => toast({ variant: "destructive", title: "Failed to update admin status" }),
-  });
-
-
-  function openAdminDetail(admin: NonNullable<typeof admins>[number]) {
-    setSelectedAdmin(admin);
-    setAdminDetailOpen(true);
-    setShowPass(false);
-  }
-
-  function handleDelete(id: string) {
-    deleteAdmin.mutate(
-      { id },
-      {
-        onSuccess: () => {
-          toast({ title: "Admin deleted" });
-          queryClient.invalidateQueries({ queryKey: getListAdminsQueryKey() });
-          setAdminDetailOpen(false);
-          setDeleteConfirmId(null);
-        },
-        onError: () => toast({ variant: "destructive", title: "Failed to delete admin" }),
-      }
-    );
-  }
-
-  function getStoreUrl(slug: string | null | undefined) {
-    if (!slug) return null;
-    const origin = window.location.origin;
-    return `${origin}/store/${slug}`;
-  }
-
-  function copyToClipboard(text: string) {
-    navigator.clipboard.writeText(text);
-    toast({ title: "Link copied!" });
-  }
-
-  const [storeSearch, setStoreSearch] = useState("");
-  const [planFilter, setPlanFilter] = useState<string>("all");
-
-  const adminCount = admins?.length ?? 0;
-
-  const PLAN_TABS = [
-    { id: "all", label: "All", price: null as string | null, color: "#6b7280", bg: "rgba(107,114,128,0.10)" },
-    ...pricingPlans.map((plan, i) => {
-      const c = TAB_COLORS[i % TAB_COLORS.length];
-      return { id: plan.id, label: plan.name, price: plan.price as string | null, color: c.color, bg: c.bg };
-    }),
+  const stats = [
+    { icon: Users,        label: "Total Managers",  value: 0,              color: "#7c3aed", bg: "rgba(124,58,237,0.10)", trend: null },
+    { icon: MapPin,       label: "Total Cities",    value: 0,              color: "#0891b2", bg: "rgba(8,145,178,0.10)",  trend: null },
+    { icon: Map,          label: "Total Sub-Cities",value: 0,              color: "#0d9488", bg: "rgba(13,148,136,0.10)", trend: null },
+    { icon: Store,        label: "Total Stores",    value: totalStores,    color: "#7c3aed", bg: "rgba(124,58,237,0.10)", trend: "+2" },
+    { icon: UserCheck,    label: "Active Managers", value: 0,              color: "#059669", bg: "rgba(5,150,105,0.10)",  trend: null },
+    { icon: UserX,        label: "Offline Managers",value: 0,              color: "#dc2626", bg: "rgba(220,38,38,0.10)",  trend: null },
+    { icon: MessageSquare,label: "Pending Queries", value: 0,              color: "#d97706", bg: "rgba(217,119,6,0.10)",  trend: null },
+    { icon: TrendingUp,   label: "New Stores Today",value: newStoresToday, color: "#db2777", bg: "rgba(219,39,119,0.10)", trend: newStoresToday > 0 ? `+${newStoresToday}` : null },
+    { icon: RefreshCw,    label: "Total Renewals",  value: totalRenewals,  color: "#7c3aed", bg: "rgba(124,58,237,0.10)", trend: null },
   ];
 
-  function matchesPlan(a: (typeof admins)[number], planId: string) {
-    if (planId === "all") return true;
-    const plan = pricingPlans.find((p) => p.id === planId);
-    if (!plan) return false;
-    const planName = ((a as any).planName as string ?? "").trim().toLowerCase();
-    return planName === plan.name.trim().toLowerCase();
+  // ── mock manager rows for the table (empty until backend ready) ──────────
+  const managerRows: any[] = [];
+
+  // ── mock recent activities ────────────────────────────────────────────────
+  const activities: Array<{ icon: any; label: string; time: string; color: string }> = [];
+
+  // ── mock pending queries ──────────────────────────────────────────────────
+  const pendingQueries: any[] = [];
+
+  // ── mock city report ──────────────────────────────────────────────────────
+  const cityReport: any[] = [];
+
+  // ── map breadcrumb label ──────────────────────────────────────────────────
+  const mapBreadcrumb =
+    mapLevel === "india"
+      ? "India"
+      : mapLevel === "state"
+      ? selectedState ?? "State"
+      : `${selectedCity ?? "City"} — ${selectedState}`;
+
+  function handleComingSoon(label: string) {
+    toast({ title: `${label} — Coming Soon`, description: "This feature is under development." });
   }
 
-  const searchTrimmed = storeSearch.trim().toLowerCase();
-
-  const searchFiltered = searchTrimmed
-    ? admins?.filter((a) =>
-        ((a as any).storeName as string | null)?.toLowerCase().includes(searchTrimmed)
-      )
-    : admins;
-
-  const filteredAdmins = searchFiltered?.filter((a) => matchesPlan(a, planFilter));
-
-  // Auto-switch: if current tab has 0 results but search is active, find first tab with results
-  function handleSearchChange(val: string) {
-    setStoreSearch(val);
-    if (!val.trim()) return;
-    const q = val.trim().toLowerCase();
-    const matched = admins?.filter((a) =>
-      ((a as any).storeName as string | null)?.toLowerCase().includes(q)
-    ) ?? [];
-    const countInCurrent = matched.filter((a) => matchesPlan(a, planFilter)).length;
-    if (countInCurrent === 0 && matched.length > 0) {
-      for (const tab of PLAN_TABS) {
-        const countInTab = matched.filter((a) => matchesPlan(a, tab.id)).length;
-        if (countInTab > 0) { setPlanFilter(tab.id); break; }
-      }
-    }
-  }
-
-  const activePlanTab = PLAN_TABS.find(t => t.id === planFilter) ?? PLAN_TABS[0];
-
   return (
-    <div />
-  );
-  /* eslint-disable-next-line no-unreachable */
-  return (
-    <div className="space-y-6 max-w-4xl mx-auto pb-12">
+    <div className="space-y-6 pb-16">
 
-      {/* ── Global Link Section ── */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <LinkIcon className="w-4 h-4 text-primary" />
-          <h2 className="text-base font-semibold">Global Link</h2>
-        </div>
-
-        {globalLink && !isEditingLink ? (
-          <Card className="border-primary/20">
-            <CardContent className="p-3">
-              {/* Link row: icon + clickable link + copy button */}
-              <div className="flex items-center gap-2">
-                <LinkIcon className="w-3.5 h-3.5 text-primary shrink-0" />
-                <a
-                  href={globalLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 text-sm text-primary font-medium underline underline-offset-2 break-all line-clamp-1"
-                >
-                  {globalLink}
-                </a>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 px-2.5 gap-1 text-xs shrink-0"
-                  onClick={() => { navigator.clipboard.writeText(globalLink); toast({ title: "Link copied!" }); }}
-                >
-                  <Copy className="w-3 h-3" /> Copy
-                </Button>
-              </div>
-              {/* Pencil dropdown: edit or delete */}
-              <div className="flex justify-end mt-1.5">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground">
-                      <Pencil className="w-3.5 h-3.5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-36">
-                    <DropdownMenuItem onClick={() => { setLinkInput(globalLink); setIsEditingLink(true); }}>
-                      <Pencil className="w-3.5 h-3.5 mr-2" /> Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="text-red-600 focus:text-red-600"
-                      onClick={() => deleteGlobalLink.mutate()}
-                      disabled={deleteGlobalLink.isPending}
-                    >
-                      <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="border-dashed border-2">
-            <CardContent className="p-3 space-y-2">
-              <p className="text-sm text-muted-foreground">
-                {isEditingLink ? "Update the global link:" : "Paste a link to show on all admin pages:"}
-              </p>
-              <div className="flex gap-2">
-                <Input
-                  value={linkInput}
-                  onChange={(e) => setLinkInput(e.target.value)}
-                  placeholder="https://example.com/..."
-                  className="flex-1 h-9"
-                />
-                <Button
-                  onClick={() => { const t = linkInput.trim(); if (!t) return; saveGlobalLink.mutate(t); }}
-                  disabled={saveGlobalLink.isPending || !linkInput.trim()}
-                  className="bg-primary text-primary-foreground h-9"
-                >
-                  {saveGlobalLink.isPending ? "Saving..." : isEditingLink ? "Update" : "Save"}
-                </Button>
-                {isEditingLink && (
-                  <Button variant="outline" className="h-9" onClick={() => { setIsEditingLink(false); setLinkInput(""); }}>
-                    Cancel
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      {/* ── Referral Reward Section ── */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <Gift className="w-4 h-4 text-purple-500" />
-          <h2 className="text-base font-semibold">Referral Reward</h2>
-          {referralData?.referrals?.length ? (
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(168,85,247,0.12)", color: "#9333ea" }}>
-              {referralData.referrals.length}
-            </span>
-          ) : null}
-        </div>
-        {referralLoading ? (
-          <div className="space-y-2">
-            {[1, 2].map((i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
+      {/* ── Page Header ────────────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-4">
+        {/* Title row */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight" style={{ color: "#1e1b4b" }}>
+              Dashboard
+            </h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {fmtDate(new Date().toISOString())} · Super Admin View
+            </p>
           </div>
-        ) : !referralData?.referrals?.length ? (
-          <Card className="border-dashed">
-            <CardContent className="py-8 text-center text-muted-foreground">
-              <Gift className="w-8 h-8 mx-auto mb-2 opacity-20" />
-              <p className="text-sm">Abhi tak koi referral nahi hua.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
-            {referralData.referrals.map((r) => (
-              <Card key={r.id} className="border-purple-100 bg-gradient-to-br from-purple-50/60 to-white">
-                <CardContent className="p-4">
-                  {/* Reward code — prominent */}
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-purple-500">Reward Code</span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-mono font-extrabold text-base text-purple-700 tracking-widest bg-purple-100 px-3 py-0.5 rounded-lg">
-                        {r.rewardCode}
-                      </span>
-                      <Button
-                        size="sm" variant="ghost"
-                        className="h-7 w-7 p-0 text-purple-400 hover:text-purple-700"
-                        onClick={() => { navigator.clipboard.writeText(r.rewardCode); toast({ title: "Code copied!" }); }}
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    {/* Referrer admin */}
-                    <div className="rounded-lg bg-white border border-purple-100 p-2.5">
-                      <p className="text-[9px] font-bold uppercase tracking-wider text-purple-400 mb-1 flex items-center gap-1">
-                        <UserCheck className="w-2.5 h-2.5" /> Referrer (Reward milega)
-                      </p>
-                      <p className="text-xs font-bold text-gray-800 truncate">
-                        {r.referrer?.storeName || r.referrerUsername}
-                      </p>
-                      {r.referrer?.storeName && (
-                        <p className="text-[10px] text-muted-foreground truncate">@{r.referrerUsername}</p>
-                      )}
-                      {r.referrer?.adminNumber && (
-                        <p className="text-[10px] text-muted-foreground mt-0.5">📞 {r.referrer.adminNumber}</p>
-                      )}
-                    </div>
-
-                    {/* Referred (new) admin */}
-                    <div className="rounded-lg bg-white border border-purple-100 p-2.5">
-                      <p className="text-[9px] font-bold uppercase tracking-wider text-blue-400 mb-1 flex items-center gap-1">
-                        <Store className="w-2.5 h-2.5" /> Naya Admin (Refer hua)
-                      </p>
-                      <p className="text-xs font-bold text-gray-800 truncate">
-                        {r.referredStoreName}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground truncate">{r.referredEmail}</p>
-                      {r.referredPlan && (
-                        <p className="text-[10px] text-muted-foreground mt-0.5">📦 {r.referredPlan}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <p className="text-[10px] text-muted-foreground text-right mt-2">{fmtDate(r.date)}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* ── Admin List heading ── */}
-      <div className="flex items-center gap-2">
-        <Users className="w-4 h-4 text-muted-foreground" />
-        <h2 className="text-base font-semibold">Admin List</h2>
-      </div>
-
-      {/* Store name search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Search by store name..."
-          value={storeSearch}
-          onChange={(e) => handleSearchChange(e.target.value)}
-          className="pl-9"
-        />
-      </div>
-
-      {/* Plan filter tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
-        {PLAN_TABS.map((tab) => {
-          const isActive = planFilter === tab.id;
-          return (
+          <div className="flex items-center gap-2">
             <button
-              key={tab.id}
-              onClick={() => setPlanFilter(tab.id)}
-              className="flex-shrink-0 rounded-xl px-3 py-2 text-left transition-all border-2"
+              className="relative w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-105"
+              style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.15)" }}
+              onClick={() => handleComingSoon("Notifications")}
+            >
+              <Bell className="w-4 h-4" style={{ color: "#7c3aed" }} />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 border border-white" />
+            </button>
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold"
+              style={{ background: "rgba(124,58,237,0.12)", color: "#7c3aed", border: "1px solid rgba(124,58,237,0.2)" }}
+            >
+              SA
+            </div>
+          </div>
+        </div>
+
+        {/* Filters row */}
+        <div className="flex flex-wrap gap-2">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[180px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search managers, stores..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8 h-9 text-sm"
+            />
+          </div>
+
+          {/* Date filter */}
+          {(["This Month", "Last Month", "Last 3 Months", "This Year"] as const).map((opt) => (
+            <button
+              key={opt}
+              onClick={() => setDateFilter(opt)}
+              className="h-9 px-3 rounded-lg text-xs font-medium transition-all border"
               style={{
-                borderColor: isActive ? tab.color : "transparent",
-                background: isActive ? tab.bg : "rgba(0,0,0,0.03)",
-                minWidth: tab.id === "all" ? "56px" : "120px",
+                background: dateFilter === opt ? "rgba(124,58,237,0.10)" : "transparent",
+                borderColor: dateFilter === opt ? "rgba(124,58,237,0.4)" : "hsl(var(--border))",
+                color: dateFilter === opt ? "#7c3aed" : "hsl(var(--muted-foreground))",
               }}
             >
-              <p className="text-xs font-bold leading-tight" style={{ color: isActive ? tab.color : "#6b7280" }}>
-                {tab.label}
-              </p>
-              {tab.price && (
-                <p className="text-[10px] font-semibold mt-0.5" style={{ color: isActive ? tab.color : "#9ca3af" }}>
-                  {tab.price}
-                </p>
-              )}
+              {opt}
             </button>
+          ))}
+
+          {/* State / City / Sub-City dropdowns */}
+          {[
+            { label: stateFilter,    options: ["All States", ...INDIA_STATES], setter: setStateFilter },
+            { label: cityFilter,     options: ["All Cities"],                  setter: setCityFilter   },
+            { label: subCityFilter,  options: ["All Sub-Cities"],              setter: setSubCityFilter },
+          ].map(({ label, options, setter }) => (
+            <DropdownMenu key={label}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs font-medium">
+                  <Filter className="w-3 h-3" />
+                  {label}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="max-h-60 overflow-y-auto w-44">
+                {options.map((o) => (
+                  <DropdownMenuItem key={o} onClick={() => setter(o)} className="text-xs">
+                    {o}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Stats Cards ────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        {stats.map((s) => {
+          const Icon = s.icon;
+          return (
+            <Card key={s.label} className="relative overflow-hidden group hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 cursor-default">
+              <div
+                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                style={{ background: `linear-gradient(135deg, ${s.bg} 0%, transparent 60%)` }}
+              />
+              <CardContent className="p-4 relative z-10">
+                <div className="flex items-start justify-between mb-3">
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: s.bg, border: `1px solid ${s.color}22` }}
+                  >
+                    <Icon className="w-4 h-4" style={{ color: s.color }} />
+                  </div>
+                  {s.trend && (
+                    <span
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                      style={{ background: "rgba(5,150,105,0.12)", color: "#059669" }}
+                    >
+                      {s.trend}
+                    </span>
+                  )}
+                </div>
+                <p className="text-2xl font-bold tracking-tight" style={{ color: "#1e1b4b" }}>
+                  {isLoading && s.label === "Total Stores" ? "—" : s.value.toLocaleString()}
+                </p>
+                <p className="text-xs text-muted-foreground font-medium mt-0.5">{s.label}</p>
+              </CardContent>
+            </Card>
           );
         })}
       </div>
 
+      {/* ── Quick Actions ───────────────────────────────────────────────────── */}
       <div>
-        <div className="flex items-center gap-2 mb-4">
-          <Users className="w-5 h-5" style={{ color: activePlanTab.color }} />
-          <h2 className="text-lg font-semibold">{activePlanTab.id === "all" ? "All Admins" : activePlanTab.label}</h2>
-          <Badge className="ml-1" style={{ background: activePlanTab.bg, color: activePlanTab.color, border: "none" }}>{filteredAdmins?.length ?? 0}</Badge>
+        <div className="flex items-center gap-2 mb-3">
+          <Zap className="w-4 h-4" style={{ color: "#7c3aed" }} />
+          <h2 className="text-base font-semibold">Quick Actions</h2>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+          {QUICK_ACTIONS.map((action) => {
+            const Icon = action.icon;
+            return (
+              <button
+                key={action.label}
+                onClick={() => handleComingSoon(action.label)}
+                className="group relative overflow-hidden rounded-2xl p-4 flex flex-col items-center gap-3 border transition-all duration-200 hover:-translate-y-1 hover:shadow-lg text-center"
+                style={{
+                  background: "hsl(var(--card))",
+                  borderColor: "hsl(var(--border))",
+                }}
+              >
+                <div
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                  style={{ background: `linear-gradient(135deg, ${action.bg} 0%, transparent 70%)` }}
+                />
+                <div
+                  className="relative z-10 w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110"
+                  style={{ background: action.bg, border: `1px solid ${action.color}22` }}
+                >
+                  <Icon className="w-5 h-5" style={{ color: action.color }} />
+                </div>
+                <span className="relative z-10 text-xs font-semibold text-foreground/80 group-hover:text-foreground transition-colors leading-tight">
+                  {action.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Managers Overview + Top Performers ─────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+        {/* Managers Table */}
+        <div className="lg:col-span-2">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4" style={{ color: "#7c3aed" }} />
+              <h2 className="text-base font-semibold">Managers Overview</h2>
+            </div>
+            <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => handleComingSoon("Add Manager")}>
+              <Plus className="w-3 h-3" /> Add Manager
+            </Button>
+          </div>
+
+          <Card className="overflow-hidden">
+            {/* Table header */}
+            <div
+              className="grid text-[10px] font-bold uppercase tracking-wider text-white px-4 py-3"
+              style={{
+                background: "linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)",
+                gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr 1fr 80px",
+              }}
+            >
+              <span>Manager</span>
+              <span>State</span>
+              <span>City</span>
+              <span>Stores</span>
+              <span>Performance</span>
+              <span>Status</span>
+              <span></span>
+            </div>
+
+            {/* Table body */}
+            {managerRows.length === 0 ? (
+              <CardContent className="py-14 text-center">
+                <Users className="w-10 h-10 mx-auto mb-3 opacity-15" style={{ color: "#7c3aed" }} />
+                <p className="text-sm font-medium text-muted-foreground">No managers added yet</p>
+                <p className="text-xs text-muted-foreground mt-1">Click "Add Manager" to get started</p>
+              </CardContent>
+            ) : (
+              <div className="divide-y divide-border">
+                {managerRows.map((m, i) => (
+                  <div
+                    key={i}
+                    className="grid items-center px-4 py-3 hover:bg-muted/40 transition-colors text-sm"
+                    style={{ gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr 1fr 80px" }}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                        style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)" }}>
+                        {m.name?.[0]}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold truncate text-xs">{m.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{m.empId}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs text-muted-foreground truncate">{m.state}</span>
+                    <span className="text-xs text-muted-foreground truncate">{m.city}</span>
+                    <span className="text-xs font-medium">{m.stores}</span>
+                    <div className="flex items-center gap-1.5">
+                      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div className="h-full rounded-full" style={{ width: `${m.perf}%`, background: "linear-gradient(90deg, #7c3aed, #a855f7)" }} />
+                      </div>
+                      <span className="text-[10px] font-bold" style={{ color: "#7c3aed" }}>{m.perf}%</span>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full w-fit ${m.online ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                      {m.online ? "Online" : "Offline"}
+                    </span>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7">
+                          <MoreVertical className="w-3.5 h-3.5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-40">
+                        <DropdownMenuItem className="text-xs gap-2"><Eye className="w-3 h-3" /> View Profile</DropdownMenuItem>
+                        <DropdownMenuItem className="text-xs gap-2"><Pencil className="w-3 h-3" /> Edit</DropdownMenuItem>
+                        <DropdownMenuItem className="text-xs gap-2"><ArrowLeftRight className="w-3 h-3" /> Change Manager</DropdownMenuItem>
+                        <DropdownMenuItem className="text-xs gap-2 text-red-600 focus:text-red-600"><UserMinus className="w-3 h-3" /> Disable Manager</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
+
+        {/* Top Performers */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Star className="w-4 h-4" style={{ color: "#d97706" }} />
+            <h2 className="text-base font-semibold">Top Performers</h2>
+          </div>
+          <Card className="overflow-hidden">
+            <div className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-white"
+              style={{ background: "linear-gradient(135deg, #d97706 0%, #f59e0b 100%)" }}>
+              Manager Performance
+            </div>
+            {managerRows.length === 0 ? (
+              <CardContent className="py-10 text-center">
+                <Star className="w-8 h-8 mx-auto mb-2 opacity-15" style={{ color: "#d97706" }} />
+                <p className="text-xs text-muted-foreground">No data yet</p>
+              </CardContent>
+            ) : (
+              <div className="divide-y divide-border">
+                {managerRows.slice(0, 5).map((m, i) => (
+                  <div key={i} className="flex items-center gap-3 px-4 py-3">
+                    <span className="text-xs font-bold w-4 text-muted-foreground">#{i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold truncate">{m.name}</p>
+                      <p className="text-[10px] text-muted-foreground">{m.city}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-bold" style={{ color: "#7c3aed" }}>{m.perf}%</p>
+                      <p className="text-[10px] text-muted-foreground">{m.stores} stores</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
+      </div>
+
+      {/* ── India Map + Geographic Breakdown ──────────────────────────────── */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <MapPin className="w-4 h-4" style={{ color: "#7c3aed" }} />
+            <h2 className="text-base font-semibold">India Map</h2>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <button
+                className={`hover:text-foreground transition-colors ${mapLevel === "india" ? "font-semibold text-foreground" : ""}`}
+                onClick={() => { setMapLevel("india"); setSelectedState(null); setSelectedCity(null); }}
+              >
+                India
+              </button>
+              {selectedState && (
+                <>
+                  <ChevronRight className="w-3 h-3" />
+                  <button
+                    className={`hover:text-foreground transition-colors ${mapLevel === "state" ? "font-semibold text-foreground" : ""}`}
+                    onClick={() => { setMapLevel("state"); setSelectedCity(null); }}
+                  >
+                    {selectedState}
+                  </button>
+                </>
+              )}
+              {selectedCity && (
+                <>
+                  <ChevronRight className="w-3 h-3" />
+                  <span className="font-semibold text-foreground">{selectedCity}</span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <Card>
+          <CardContent className="p-4">
+            {mapLevel === "india" && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                {INDIA_STATES.map((state) => (
+                  <button
+                    key={state}
+                    onClick={() => { setSelectedState(state); setMapLevel("state"); }}
+                    className="group relative text-left rounded-xl p-3 border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+                    style={{
+                      background: "hsl(var(--card))",
+                      borderColor: "hsl(var(--border))",
+                    }}
+                  >
+                    <div
+                      className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
+                      style={{ background: "rgba(124,58,237,0.06)" }}
+                    />
+                    <p className="relative z-10 text-xs font-semibold text-foreground/80 group-hover:text-foreground transition-colors leading-tight">{state}</p>
+                    <div className="relative z-10 flex gap-2 mt-2">
+                      <span className="text-[10px] text-muted-foreground">0 mgrs</span>
+                      <span className="text-[10px] text-muted-foreground">0 stores</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {mapLevel === "state" && (
+              <div className="space-y-3">
+                <div
+                  className="rounded-xl p-4 border"
+                  style={{ background: "rgba(124,58,237,0.05)", borderColor: "rgba(124,58,237,0.2)" }}
+                >
+                  <p className="font-semibold" style={{ color: "#7c3aed" }}>{selectedState}</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+                    {["Managers", "Stores", "Pending Queries", "Active Stores"].map((label, i) => (
+                      <div key={label} className="text-center">
+                        <p className="text-lg font-bold" style={{ color: "#7c3aed" }}>0</p>
+                        <p className="text-[10px] text-muted-foreground">{label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground text-center">No cities added for {selectedState} yet</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Recent Activities + Pending Queries ────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        {/* Recent Activities */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Activity className="w-4 h-4" style={{ color: "#059669" }} />
+            <h2 className="text-base font-semibold">Recent Activities</h2>
+          </div>
+          <Card>
+            {activities.length === 0 ? (
+              <CardContent className="py-12 text-center">
+                <Activity className="w-8 h-8 mx-auto mb-2 opacity-15" style={{ color: "#059669" }} />
+                <p className="text-sm font-medium text-muted-foreground">No recent activities</p>
+                <p className="text-xs text-muted-foreground mt-1">Activity feed will appear here</p>
+              </CardContent>
+            ) : (
+              <div className="divide-y divide-border">
+                {activities.map((a, i) => {
+                  const Icon = a.icon;
+                  return (
+                    <div key={i} className="flex items-start gap-3 px-4 py-3">
+                      <div className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+                        style={{ background: `${a.color}18`, border: `1px solid ${a.color}22` }}>
+                        <Icon className="w-3.5 h-3.5" style={{ color: a.color }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium">{a.label}</p>
+                        <p className="text-[10px] text-muted-foreground">{a.time}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        </div>
+
+        {/* Pending Queries */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <MessageSquare className="w-4 h-4" style={{ color: "#d97706" }} />
+            <h2 className="text-base font-semibold">Pending Queries</h2>
+          </div>
+          <Card>
+            {pendingQueries.length === 0 ? (
+              <CardContent className="py-12 text-center">
+                <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-15" style={{ color: "#d97706" }} />
+                <p className="text-sm font-medium text-muted-foreground">No pending queries</p>
+                <p className="text-xs text-muted-foreground mt-1">All clear! 🎉</p>
+              </CardContent>
+            ) : (
+              <div className="divide-y divide-border">
+                {pendingQueries.map((q, i) => (
+                  <div key={i} className="flex items-start gap-3 px-4 py-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-medium truncate">{q.storeName}</p>
+                        <Badge className="text-[9px] px-1.5 py-0 h-4"
+                          style={{
+                            background: q.priority === "High" ? "rgba(220,38,38,0.1)" : "rgba(217,119,6,0.1)",
+                            color: q.priority === "High" ? "#dc2626" : "#d97706",
+                            border: "none",
+                          }}>
+                          {q.priority}
+                        </Badge>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{q.manager} · {fmtDate(q.date)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
+      </div>
+
+      {/* ── City / Sub-City Report ─────────────────────────────────────────── */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <LayoutGrid className="w-4 h-4" style={{ color: "#0891b2" }} />
+          <h2 className="text-base font-semibold">City / Sub-City Report</h2>
+        </div>
+        <Card className="overflow-hidden">
+          <div
+            className="grid text-[10px] font-bold uppercase tracking-wider text-white px-4 py-3 gap-2"
+            style={{
+              background: "linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)",
+              gridTemplateColumns: "1fr 1fr 1fr 80px 80px 80px 80px 1fr",
+            }}
+          >
+            <span>State</span>
+            <span>City</span>
+            <span>Sub-City</span>
+            <span>Total</span>
+            <span>Active</span>
+            <span>Trial</span>
+            <span>Queries</span>
+            <span>Manager</span>
+          </div>
+
+          {cityReport.length === 0 ? (
+            <CardContent className="py-12 text-center">
+              <LayoutGrid className="w-8 h-8 mx-auto mb-2 opacity-15" style={{ color: "#0891b2" }} />
+              <p className="text-sm font-medium text-muted-foreground">No city data yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Add cities and assign managers to see the report</p>
+            </CardContent>
+          ) : (
+            <div className="divide-y divide-border">
+              {cityReport.map((row, i) => (
+                <div
+                  key={i}
+                  className="grid items-center px-4 py-3 hover:bg-muted/30 transition-colors text-xs gap-2"
+                  style={{ gridTemplateColumns: "1fr 1fr 1fr 80px 80px 80px 80px 1fr" }}
+                >
+                  <span className="font-medium truncate">{row.state}</span>
+                  <span className="text-muted-foreground truncate">{row.city}</span>
+                  <span className="text-muted-foreground truncate">{row.subCity}</span>
+                  <span className="font-semibold">{row.total}</span>
+                  <span className="text-green-600 font-semibold">{row.active}</span>
+                  <span className="text-amber-600 font-semibold">{row.trial}</span>
+                  <span className="text-red-500 font-semibold">{row.queries}</span>
+                  <span className="text-muted-foreground truncate">{row.manager}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {/* ── Admin Stores Summary (existing real data) ──────────────────────── */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <Store className="w-4 h-4" style={{ color: "#7c3aed" }} />
+          <h2 className="text-base font-semibold">All Stores</h2>
+          <span
+            className="text-[11px] font-bold px-2 py-0.5 rounded-full"
+            style={{ background: "rgba(124,58,237,0.10)", color: "#7c3aed" }}
+          >
+            {totalStores}
+          </span>
         </div>
 
         {isLoading ? (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-20 w-full rounded-xl" />
+              <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "hsl(var(--muted))" }} />
             ))}
           </div>
-        ) : adminCount === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="py-12 text-center text-muted-foreground">
-              <Shield className="w-10 h-10 mx-auto mb-3 opacity-20" />
-              <p>No admins yet. Add one from Manage Admins.</p>
-            </CardContent>
-          </Card>
-        ) : filteredAdmins?.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="py-12 text-center text-muted-foreground">
-              <Store className="w-10 h-10 mx-auto mb-3 opacity-20" />
-              <p>No stores found matching "<strong>{storeSearch}</strong>"</p>
+        ) : totalStores === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <Store className="w-10 h-10 mx-auto mb-3 opacity-15" style={{ color: "#7c3aed" }} />
+              <p className="text-sm text-muted-foreground">No stores registered yet</p>
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-2">
-            {filteredAdmins?.map((admin) => {
-              const isActive = (admin as any).isActive !== false;
-              const storeName = (admin as any).storeName as string | null;
-              const displayName = storeName || (admin as any).email || "";
-              const planName = (admin as any).planName as string;
-              const planColor = (admin as any).planColor as string;
-              const planPeriod = (admin as any).planPeriod as string;
-              const endDate = (admin as any).subscriptionEndDate as string | null;
-              const storeCreatedAt = (admin as any).storeCreatedAt as string | null;
-              const days = getDaysRemaining(endDate);
-              return (
-                <button key={admin.id} onClick={() => openAdminDetail(admin)} className="w-full text-left">
-                  <Card className="hover:border-primary/40 transition-colors cursor-pointer">
-                    <CardContent className="p-4 flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold uppercase shrink-0">
-                        {displayName.substring(0, 2)}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {(admins as any[])
+              .filter((a) =>
+                !search.trim() ||
+                (a.storeName ?? "").toLowerCase().includes(search.toLowerCase()) ||
+                (a.email ?? "").toLowerCase().includes(search.toLowerCase())
+              )
+              .slice(0, 12)
+              .map((admin) => {
+                const isActive = admin.isActive !== false;
+                const displayName = admin.storeName || admin.email || "—";
+                const planName = admin.planName as string;
+                const planColor = admin.planColor as string;
+                const endDate = admin.subscriptionEndDate as string | null;
+                return (
+                  <Card key={admin.id} className="hover:border-purple-200 transition-colors">
+                    <CardContent className="p-3.5 flex items-center gap-3">
+                      <div
+                        className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold text-white shrink-0"
+                        style={{ background: isActive ? "linear-gradient(135deg, #7c3aed, #a855f7)" : "hsl(var(--muted))", color: isActive ? "white" : "hsl(var(--muted-foreground))" }}
+                      >
+                        {displayName.substring(0, 2).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        {/* Row 1: name + badges */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold truncate">{displayName}</span>
-                          <Badge variant={admin.role === "super_admin" ? "default" : "outline"} className="capitalize text-[10px]">
-                            {admin.role.replace("_", " ")}
-                          </Badge>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-semibold truncate">{displayName}</span>
                           {!isActive && (
-                            <Badge variant="destructive" className="text-[10px]">Inactive</Badge>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 font-semibold">Inactive</span>
                           )}
-                          <SubscriptionBadge endDate={endDate} planPeriod={planPeriod} />
                         </div>
-
-                        {/* Row 2: plan + dates */}
-                        <div className="flex items-center gap-3 mt-1 flex-wrap">
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           {planName && (
-                            <span className="text-[11px] font-medium px-1.5 py-0.5 rounded" style={{ background: planColor ? planColor + "18" : "rgba(0,0,0,0.06)", color: planColor || "inherit" }}>
+                            <span
+                              className="text-[10px] font-medium px-1.5 py-0.5 rounded"
+                              style={{ background: planColor ? planColor + "18" : "rgba(124,58,237,0.08)", color: planColor || "#7c3aed" }}
+                            >
                               {planName}
                             </span>
                           )}
-                          {storeCreatedAt && (
-                            <span className="text-xs text-muted-foreground flex items-center gap-1">
-                              <CalendarDays className="w-3 h-3" />
-                              Store: {fmtDate(storeCreatedAt)}
-                            </span>
-                          )}
-                          {endDate && days !== null && (
-                            <span className={`text-xs flex items-center gap-1 ${days <= 0 ? "text-red-500" : days <= 5 ? "text-yellow-600" : "text-muted-foreground"}`}>
-                              <Clock className="w-3 h-3" />
-                              {days <= 0 ? "Subscription expired" : `Ends ${fmtDate(endDate)}`}
+                          {endDate && (
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                              <CalendarDays className="w-2.5 h-2.5" />
+                              {fmtDate(endDate)}
                             </span>
                           )}
                         </div>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
                     </CardContent>
                   </Card>
-                </button>
-              );
-            })}
+                );
+              })}
           </div>
+        )}
+        {totalStores > 12 && (
+          <p className="text-xs text-center text-muted-foreground mt-3">
+            Showing 12 of {totalStores} stores · Use the Admins section for full list
+          </p>
         )}
       </div>
 
-      {/* Admin Detail Dialog */}
-      <Dialog open={adminDetailOpen} onOpenChange={setAdminDetailOpen}>
-        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-primary" />
-              Admin Information
-            </DialogTitle>
-          </DialogHeader>
-          {selectedAdmin && (() => {
-            const isActive = (selectedAdmin as any).isActive !== false;
-            const storeSlug = (selectedAdmin as any).storeSlug as string | null;
-            const storeName = (selectedAdmin as any).storeName as string | null;
-            const storeUrl = getStoreUrl(storeSlug);
-            const planName = (selectedAdmin as any).planName as string;
-            const planPrice = (selectedAdmin as any).planPrice as string;
-            const planPeriod = (selectedAdmin as any).planPeriod as string;
-            const planBadge = (selectedAdmin as any).planBadge as string;
-            const planColor = (selectedAdmin as any).planColor as string;
-            const subStart = (selectedAdmin as any).subscriptionStartDate as string | null;
-            const subEnd = (selectedAdmin as any).subscriptionEndDate as string | null;
-            const storeCreatedAt = (selectedAdmin as any).storeCreatedAt as string | null;
-            const days = getDaysRemaining(subEnd);
-            // Primary signal: lifetime plans have no subscriptionEndDate
-            const isLifetime = !subEnd || planPeriod?.toLowerCase().includes("lifetime");
-            const isExpired = !isLifetime && subEnd && days !== null && days <= 0;
-
-            return (
-              <div className="space-y-5 pt-2">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xl uppercase">
-                    {((selectedAdmin as any).email || "?").substring(0, 2)}
-                  </div>
-                  <div>
-                    <p className="font-bold text-lg">{(selectedAdmin as any).email}</p>
-                    <Badge variant={selectedAdmin.role === "super_admin" ? "default" : "outline"} className="capitalize text-xs mt-1">
-                      {selectedAdmin.role.replace("_", " ")}
-                    </Badge>
-                  </div>
-                </div>
-
-                {/* Plan Card — always show */}
-                <div
-                  className="rounded-xl border px-4 py-3 space-y-1"
-                  style={{
-                    borderColor: planColor ? planColor + "55" : "rgba(0,0,0,0.1)",
-                    background: planColor ? planColor + "11" : "rgba(0,0,0,0.02)",
-                  }}
-                >
-                  {planBadge ? (
-                    <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: planColor || "#888" }}>{planBadge}</p>
-                  ) : (
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Plan Info</p>
-                  )}
-                  <p className="font-bold text-sm">{planName || "No Plan Assigned"}</p>
-                  {planPrice ? (
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-lg font-extrabold" style={{ color: planColor || undefined }}>{planPrice}</span>
-                      {planPeriod && <span className="text-xs text-muted-foreground">{planPeriod}</span>}
-                    </div>
-                  ) : planName ? null : (
-                    <p className="text-xs text-muted-foreground">Contact super admin to assign a plan</p>
-                  )}
-                </div>
-
-                {/* Subscription Timeline — always show */}
-                <div className="rounded-xl border overflow-hidden">
-                  <div className="bg-muted/50 px-4 py-2 border-b">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Subscription Timeline</p>
-                  </div>
-                  <div className="divide-y divide-border">
-                    {storeCreatedAt && (
-                      <div className="flex items-center justify-between px-4 py-3">
-                        <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-                          <Store className="w-3.5 h-3.5" /> Store Registered
-                        </span>
-                        <span className="text-sm font-semibold">{fmtDate(storeCreatedAt)}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between px-4 py-3">
-                      <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-                        <CalendarDays className="w-3.5 h-3.5" /> Subscription Start
-                      </span>
-                      <span className="text-sm font-semibold">{subStart ? fmtDate(subStart) : "—"}</span>
-                    </div>
-                    <div className="flex items-center justify-between px-4 py-3">
-                      <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5" /> Subscription End
-                      </span>
-                      {isLifetime ? (
-                        <span className="text-sm font-bold flex items-center gap-1" style={{ color: "#9333ea" }}>∞ Unlimited</span>
-                      ) : (
-                        <span className={`text-sm font-semibold ${isExpired ? "text-red-500" : ""}`}>{subEnd ? fmtDate(subEnd) : "—"}</span>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between px-4 py-3">
-                      <span className="text-sm text-muted-foreground">Days Remaining</span>
-                      {isLifetime ? (
-                        <span className="text-sm font-bold flex items-center gap-1" style={{ color: "#9333ea" }}>∞ Unlimited</span>
-                      ) : days === null ? (
-                        <span className="text-sm font-semibold text-muted-foreground">—</span>
-                      ) : days <= 0 ? (
-                        <span className="text-sm font-bold text-red-500 flex items-center gap-1">
-                          <AlertTriangle className="w-3.5 h-3.5" /> Expired
-                        </span>
-                      ) : (
-                        <span className={`text-sm font-bold flex items-center gap-1 ${days <= 5 ? "text-yellow-600" : "text-green-600"}`}>
-                          <CheckCircle2 className="w-3.5 h-3.5" /> {days} days
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                </div>
-
-                <div className="bg-muted rounded-xl divide-y divide-border">
-                  <div className="flex items-center justify-between px-4 py-3">
-                    <span className="text-sm text-muted-foreground">Email</span>
-                    <span className="text-sm font-medium">{(selectedAdmin as any).email || "—"}</span>
-                  </div>
-                  <div className="flex items-center justify-between px-4 py-3">
-                    <span className="text-sm text-muted-foreground">Password</span>
-                    <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full">🔒 Securely Hashed</span>
-                  </div>
-                  <div className="flex items-center justify-between px-4 py-3">
-                    <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-                      <Phone className="w-3.5 h-3.5" /> Admin Number
-                    </span>
-                    <span className="text-sm font-medium">
-                      {(selectedAdmin as any).adminNumber ? `+91 ${(selectedAdmin as any).adminNumber}` : "—"}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between px-4 py-3">
-                    <span className="text-sm text-muted-foreground">Added</span>
-                    <span className="text-sm font-medium">{fmtDate(selectedAdmin.createdAt)}</span>
-                  </div>
-
-                  {/* Store Link Row */}
-                  <div className="px-4 py-3">
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <Store className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">Store Link</span>
-                    </div>
-                    {storeUrl ? (
-                      <div className="space-y-2">
-                        <p className="text-xs font-medium text-foreground break-all bg-background rounded-lg px-3 py-2 border border-border">
-                          {storeUrl}
-                        </p>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline" className="flex-1 gap-1.5 h-8 text-xs" onClick={() => copyToClipboard(storeUrl)}>
-                            <Copy className="w-3.5 h-3.5" /> Copy Link
-                          </Button>
-                          <Button size="sm" variant="outline" className="flex-1 gap-1.5 h-8 text-xs" onClick={() => window.open(storeUrl, "_blank")}>
-                            <ExternalLink className="w-3.5 h-3.5" /> Open Store
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground italic">No store created yet</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* ── Virtual Try-On & Ads Stats ── */}
-                <div className="rounded-xl border border-border overflow-hidden">
-                  <div className="flex">
-                    {/* Left: Virtual Try-On */}
-                    <div className="flex-1 px-4 py-4 flex flex-col items-center gap-1">
-                      <div className="w-9 h-9 rounded-full flex items-center justify-center mb-1" style={{ background: "rgba(99,102,241,0.1)" }}>
-                        <span className="text-lg">🪞</span>
-                      </div>
-                      <span className="text-2xl font-extrabold text-gray-900">
-                        {storeStats === null ? (
-                          <span className="inline-block w-8 h-6 bg-muted animate-pulse rounded" />
-                        ) : (
-                          storeStats.tryOnCount.toLocaleString("en-IN")
-                        )}
-                      </span>
-                      <span className="text-[11px] font-semibold text-muted-foreground text-center leading-tight">Virtual Try-On</span>
-                      <span className="text-[10px] text-muted-foreground/70 text-center">Total on this store</span>
-                    </div>
-
-                    {/* Divider */}
-                    <div className="w-px bg-border self-stretch my-3" />
-
-                    {/* Right: Ads Run */}
-                    <div className="flex-1 px-4 py-4 flex flex-col items-center gap-1">
-                      <div className="w-9 h-9 rounded-full flex items-center justify-center mb-1" style={{ background: "rgba(234,179,8,0.1)" }}>
-                        <span className="text-lg">📢</span>
-                      </div>
-                      <span className="text-2xl font-extrabold text-gray-900">
-                        {storeStats === null ? (
-                          <span className="inline-block w-8 h-6 bg-muted animate-pulse rounded" />
-                        ) : (
-                          storeStats.adsCount.toLocaleString("en-IN")
-                        )}
-                      </span>
-                      <span className="text-[11px] font-semibold text-muted-foreground text-center leading-tight">Total Ads Run</span>
-                      <span className="text-[10px] text-muted-foreground/70 text-center">Campaigns on store</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Active Toggle */}
-                <div className="flex items-center justify-between bg-muted rounded-xl px-4 py-3">
-                  <div>
-                    <p className="font-medium text-sm">Active Admin</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {isActive ? "Admin can login and access the platform" : "Admin is blocked from logging in"}
-                    </p>
-                  </div>
-                  <Switch
-                    checked={isActive}
-                    disabled={toggleActive.isPending}
-                    onCheckedChange={(val) => {
-                      if (selectedAdmin.role === "super_admin") return;
-                      toggleActive.mutate({ id: selectedAdmin.id, isActive: val });
-                    }}
-                  />
-                </div>
-
-                {selectedAdmin.role !== "super_admin" && (
-                  deleteConfirmId === selectedAdmin.id ? (
-                    <div className="space-y-2">
-                      <p className="text-sm text-destructive font-medium text-center">Are you sure you want to delete this admin?</p>
-                      <div className="flex gap-3">
-                        <Button variant="outline" className="flex-1" onClick={() => setDeleteConfirmId(null)}>Cancel</Button>
-                        <Button
-                          className="flex-1 bg-destructive hover:bg-destructive/90 text-white"
-                          onClick={() => handleDelete(selectedAdmin.id)}
-                          disabled={deleteAdmin.isPending}
-                        >
-                          {deleteAdmin.isPending ? "Deleting..." : "Yes, Delete"}
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      className="w-full text-destructive border-destructive/30 hover:bg-destructive/10"
-                      onClick={() => setDeleteConfirmId(selectedAdmin.id)}
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Delete Admin
-                    </Button>
-                  )
-                )}
-              </div>
-            );
-          })()}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

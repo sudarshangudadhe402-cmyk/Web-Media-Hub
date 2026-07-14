@@ -6,7 +6,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   LogOut,
   Menu,
-  Users,
+  LayoutDashboard,
   ShieldCheck,
   FileText,
   TrendingUp,
@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 const navItems = [
-  { path: "/admins", name: "Admins list", icon: Users },
+  { path: "/admins", name: "Dashboard", icon: LayoutDashboard },
   { path: "/pricing-config", name: "Pricing Plans", icon: Tag },
   { path: "/revenue", name: "Revenue & Growth", icon: TrendingUp },
   { path: "/marketing", name: "Growth & Marketing", icon: BarChart2 },
