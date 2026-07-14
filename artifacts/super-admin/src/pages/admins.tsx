@@ -181,78 +181,118 @@ function CircularProgress({
 }
 
 // ── India SVG Map ─────────────────────────────────────────────────────────────
+//
+// Coordinate system: viewBox "0 0 290 415"
+// Derived from real lat/lon bounds: lat 8°N–37°N, lon 68°E–97.5°E
+//   x = 10 + (lon - 68) * 9.0
+//   y =  5 + (37 - lat) * 13.5
+//
+// Path traced clockwise from J&K NW corner.
 
-// Dots placed inside the India mainland path (viewBox 0 0 280 420)
-const REGION_DOTS = [
-  { x: 172, y: 108, label: "N"  },  // Delhi / North India
-  { x: 232, y: 98,  label: "NE" },  // Northeast (Assam area)
-  { x: 208, y: 172, label: "E"  },  // Kolkata / East
-  { x: 148, y: 182, label: "C"  },  // Madhya Pradesh / Central
-  { x: 88,  y: 192, label: "W"  },  // Mumbai / West
-  { x: 84,  y: 148, label: "GJ" },  // Gujarat
-  { x: 152, y: 252, label: "TS" },  // Hyderabad / Telangana
-  { x: 162, y: 312, label: "TN" },  // Chennai / Tamil Nadu
-  { x: 118, y: 340, label: "KL" },  // Kerala
-];
-
-/* India mainland: smooth blob approximating India's silhouette.
-   ViewBox 0 0 280 420. Key landmarks:
-   - NW corner (Kashmir/Himachal) → across the north → NE bump (Arunachal/Nagaland) → east coast down → tip (Kanyakumari) → west coast up → Gujarat protrusion → back NW
-*/
 const INDIA_PATH =
-  "M 98,48 " +
-  "C 128,28 163,20 195,30 " +      // top, west → east
-  "C 216,36 236,50 248,68 " +      // heading northeast
-  "C 260,84 265,104 258,120 " +    // NE bump peak
-  "C 252,134 238,142 224,138 " +   // NE bump returning
-  "C 222,162 218,188 212,212 " +   // east coast (Odisha / AP)
-  "C 207,235 202,258 194,278 " +   // east coast (AP lower)
-  "C 186,298 176,318 164,338 " +   // heading toward tip
-  "C 155,355 146,370 138,382 " +   // near Kanyakumari
-  "C 125,372 112,352 102,332 " +   // SW coast (Kerala)
-  "C 90,310 80,284 76,258 " +      // Karnataka coast going north
-  "C 71,232 69,205 70,180 " +      // Goa / Konkan
-  "C 71,158 73,140 78,122 " +      // Gujarat south
-  "C 82,106 90,92 98,78 " +        // Gujarat/Rajasthan
-  "C 97,64 97,54 98,48 Z";
+  // J&K / Ladakh (north, top of map)
+  "M 65,19 " +
+  "C 72,12 80,6 87,5 " +           // J&K north peak
+  "C 97,5 105,15 109,25 " +        // J&K NE ridge
+  "C 115,40 120,60 123,81 " +      // J&K → Himachal Pradesh
+  "C 123,93 122,100 121,106 " +    // Uttarakhand / Nepal W border
+  // Himalayan northern border east (Nepal / Sikkim / Bhutan)
+  "C 130,108 140,110 148,112 " +
+  "C 162,116 178,122 195,130 " +   // Sikkim — "chicken neck" entry
+  // Northeast appendage (Arunachal → Nagaland → Manipur → Mizoram)
+  "C 222,118 250,112 276,113 " +   // Arunachal Pradesh NE corner
+  "C 278,124 276,130 271,133 " +   // Arunachal east face
+  "C 265,142 260,152 258,160 " +   // Nagaland / Myanmar border
+  "C 254,168 251,171 249,174 " +   // Manipur east
+  "C 245,185 242,194 240,201 " +   // Mizoram east
+  "C 236,208 233,211 231,214 " +   // Mizoram south
+  // Bangladesh south border + West Bengal coast
+  "C 220,214 208,214 195,214 " +   // along Bangladesh south edge
+  "C 190,213 186,213 183,213 " +   // WB coast start
+  "C 182,220 181,224 181,228 " +   // WB coast slight south dip
+  // East coast: Odisha → Andhra Pradesh → Tamil Nadu
+  "C 175,236 169,242 163,248 " +   // Odisha N coast
+  "C 158,254 154,258 150,262 " +   // Odisha mid
+  "C 141,274 136,284 132,295 " +   // AP N coast
+  "C 125,310 121,318 118,324 " +   // AP mid coast
+  "C 119,336 120,342 121,349 " +   // TN east coast going south
+  "C 115,362 105,378 96,395 " +    // near Kanyakumari tip
+  // Kerala / Karnataka / Goa west coast going north
+  "C 92,394 89,393 87,392 " +      // tip / Kerala southernmost
+  "C 82,382 80,373 78,364 " +      // Kerala west coast
+  "C 70,350 65,343 64,337 " +      // Karnataka west
+  "C 63,318 62,306 62,295 " +      // Goa area
+  "C 58,282 55,278 52,275 " +      // Maharashtra south coast
+  "C 51,262 52,256 53,249 " +      // Maharashtra mid
+  "C 52,240 52,234 52,228 " +      // Maharashtra / Gujarat border
+  // Gujarat & Saurashtra peninsula (bulges west)
+  "C 42,225 34,222 28,221 " +      // Gujarat S → Saurashtra base
+  "C 22,218 17,210 17,201 " +      // Saurashtra west coast going SW
+  "C 18,194 21,190 24,187 " +      // Saurashtra NW tip turning back
+  "C 26,187 27,187 28,187 " +      // Saurashtra → Gujarat join point
+  // Rajasthan / Pakistan western border going north
+  "C 26,180 24,177 24,174 " +
+  "C 25,158 27,145 30,133 " +      // Rajasthan / Pakistan mid
+  "C 32,120 34,113 37,106 " +      // Rajasthan NW
+  "C 40,100 43,96 46,93 " +        // Punjab entry
+  "C 54,86 59,82 64,79 " +         // Punjab
+  "C 66,72 68,69 69,66 " +         // J&K south face
+  "C 65,52 61,45 60,39 " +         // J&K west face going up
+  "C 61,30 62,24 65,19 Z";         // close back to J&K NW
+
+// City dots — coordinates verified to be inside INDIA_PATH
+const REGION_DOTS = [
+  { x: 93,  y: 118, label: "N"  },  // Delhi / North India
+  { x: 230, y: 150, label: "NE" },  // Guwahati / Northeast
+  { x: 172, y: 200, label: "E"  },  // Kolkata / East
+  { x: 96,  y: 190, label: "C"  },  // Bhopal / Madhya Pradesh
+  { x: 68,  y: 248, label: "W"  },  // Mumbai / Maharashtra
+  { x: 56,  y: 188, label: "GJ" },  // Ahmedabad / Gujarat
+  { x: 108, y: 268, label: "TS" },  // Hyderabad / Telangana
+  { x: 108, y: 325, label: "TN" },  // Chennai / Tamil Nadu
+  { x: 80,  y: 350, label: "KL" },  // Thiruvananthapuram / Kerala
+];
 
 function IndiaMap() {
   return (
-    <div className="flex justify-center items-center" style={{ height: 320 }}>
+    <div className="flex justify-center items-center" style={{ height: 340 }}>
       <svg
-        viewBox="0 0 280 420"
-        style={{ width: "100%", height: "100%", maxWidth: 260 }}
+        viewBox="0 0 290 415"
+        style={{ width: "100%", height: "100%", maxWidth: 270 }}
         fill="none"
       >
-        {/* mainland */}
+        {/* India mainland */}
         <path
           d={INDIA_PATH}
           fill="#ece8fb"
           stroke="#c4b8f5"
           strokeWidth={1.5}
           strokeLinejoin="round"
+          strokeLinecap="round"
         />
-        {/* Sri Lanka island */}
-        <ellipse
-          cx={158}
-          cy={402}
-          rx={11}
-          ry={16}
-          fill="#ece8fb"
-          stroke="#c4b8f5"
-          strokeWidth={1}
-        />
+        {/* Sri Lanka */}
+        <ellipse cx={110} cy={408} rx={10} ry={14}
+          fill="#ece8fb" stroke="#c4b8f5" strokeWidth={1} />
+        {/* Andaman & Nicobar (simplified) */}
+        <ellipse cx={252} cy={338} rx={5} ry={10}
+          fill="#ece8fb" stroke="#c4b8f5" strokeWidth={1} />
+        <ellipse cx={255} cy={358} rx={4} ry={7}
+          fill="#ece8fb" stroke="#c4b8f5" strokeWidth={1} />
+        {/* Lakshadweep */}
+        <ellipse cx={28}  cy={332} rx={4} ry={6}
+          fill="#ece8fb" stroke="#c4b8f5" strokeWidth={1} />
+
         {/* City dots */}
         {REGION_DOTS.map((d) => (
           <g key={d.label}>
-            <circle cx={d.x} cy={d.y} r={14} fill="#6d28d9" />
+            <circle cx={d.x} cy={d.y} r={13} fill="#6d28d9" />
             <text
               x={d.x}
               y={d.y + 1}
               textAnchor="middle"
               dominantBaseline="middle"
               fill="white"
-              fontSize={d.label.length > 1 ? 6.5 : 8}
+              fontSize={d.label.length > 1 ? 6.2 : 8}
               fontWeight="700"
               letterSpacing={d.label.length > 1 ? -0.5 : 0}
             >
