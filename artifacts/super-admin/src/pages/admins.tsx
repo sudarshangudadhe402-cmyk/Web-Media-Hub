@@ -459,8 +459,19 @@ export default function Dashboard() {
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56 max-h-72 overflow-y-auto">
               {INDIA_LOCATIONS.map((o) => (
-                <DropdownMenuItem key={o} onClick={() => setLocationFilter(o)} className="text-sm">
-                  {o}
+                <DropdownMenuItem
+                  key={o}
+                  onClick={() => setLocationFilter(o)}
+                  className="text-sm flex items-center justify-between gap-2"
+                >
+                  <span className="truncate">{o}</span>
+                  <span
+                    className="text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
+                    style={{ background: "rgba(124,58,237,0.10)", color: "#7c3aed" }}
+                  >
+                    {/* TODO: wire real per-state manager/store counts */}
+                    0
+                  </span>
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
