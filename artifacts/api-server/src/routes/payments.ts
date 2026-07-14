@@ -14,6 +14,7 @@ import {
 } from "../services/emailOtp";
 import { OtpCode } from "../models/OtpCode";
 import { RevenuePayment } from "../models/RevenuePayment";
+import { ConsumedPayment } from "../models/ConsumedPayment";
 import { requireAuth, requireAuthForRenewal, AuthRequest } from "../middlewares/auth";
 
 const router = Router();
@@ -72,6 +73,9 @@ function getRazorpay() {
  * name/price/features at /verify-and-register or /renewal-verify — the signature
  * check alone only proves payment_id belongs to order_id, not that the claimed plan
  * matches what was actually charged.
+ *
+ * Also confirms order.status === "paid" so we don't act on a signature that matched
+ * but whose underlying order was never actually collected.
  */
 async function verifyOrderMatchesClaimedPrice(
   rzp: { key_id: string; key_secret: string },
@@ -82,6 +86,8 @@ async function verifyOrderMatchesClaimedPrice(
     const Razorpay = (await import("razorpay")).default;
     const instance = new Razorpay({ key_id: rzp.key_id, key_secret: rzp.key_secret });
     const order = await (instance.orders.fetch as any)(orderId);
+    // Confirm the order is in "paid" state — don't trust a signature alone
+    if (order.status !== "paid") return false;
     const expectedPaise = Math.round((claimedPlanPriceRupees + claimedPlanPriceRupees * 0.02) * 100);
     // Allow a 1-paise tolerance for rounding
     return Math.abs(Number(order.amount) - expectedPaise) <= 1;
@@ -90,9 +96,40 @@ async function verifyOrderMatchesClaimedPrice(
   }
 }
 
+/**
+ * Per-admin/per-email in-flight lock.
+ *
+ * Guarantees that only one payment request per user is processed at a time —
+ * rapid double-clicks or parallel calls from the same user are rejected with 429
+ * until the first call completes (success or error).
+ *
+ * Key is the admin's userId (for auth'd routes) or email (for pre-auth routes).
+ * The lock is released in a finally block so crashes/errors never leave it stuck.
+ *
+ * NOTE: This is an in-process lock — sufficient for a single-process server.
+ * If the server runs in multiple processes, replace with a short-TTL Redis lock.
+ */
+const paymentInflightKeys = new Set<string>();
+
+function acquirePaymentLock(key: string): boolean {
+  if (paymentInflightKeys.has(key)) return false;
+  paymentInflightKeys.add(key);
+  return true;
+}
+
+function releasePaymentLock(key: string): void {
+  paymentInflightKeys.delete(key);
+}
+
 // ── POST /api/payments/create-order ─────────────────────────────────────────
 // Creates a Razorpay order for the given plan price
 router.post("/payments/create-order", async (req: any, res) => {
+  const emailLower = String(req.body?.email ?? "").toLowerCase().trim();
+  const lockKey = `create-order:${emailLower}`;
+  if (emailLower && !acquirePaymentLock(lockKey)) {
+    res.status(429).json({ error: "A payment request is already in progress. Please wait for it to complete." });
+    return;
+  }
   try {
     const rzp = getRazorpay();
     if (!rzp) {
@@ -126,12 +163,26 @@ router.post("/payments/create-order", async (req: any, res) => {
   } catch (err) {
     req.log?.error({ err }, "Create Razorpay order error");
     res.status(500).json({ error: "Failed to create payment order" });
+  } finally {
+    if (emailLower) releasePaymentLock(lockKey);
   }
 });
 
 // ── POST /api/payments/verify-and-register ───────────────────────────────────
 // Verifies Razorpay payment signature, then auto-creates admin account
 router.post("/payments/verify-and-register", async (req: any, res) => {
+  const _emailLower = String(req.body?.email ?? "").toLowerCase().trim();
+  const _lockKey = `verify-register:${_emailLower}`;
+  if (_emailLower && !acquirePaymentLock(_lockKey)) {
+    res.status(429).json({ error: "A payment request is already in progress. Please wait for it to complete." });
+    return;
+  }
+  // Hoisted so the outer catch can clean up on any unhandled error path.
+  let consumedDoc: InstanceType<typeof ConsumedPayment> | null = null;
+  // Set true only after User.create succeeds (the durable commit point for signup).
+  // Once true, ConsumedPayment must NOT be deleted — the account exists; the payment
+  // is consumed. Post-commit failures (notification, email) are non-fatal.
+  let signupCommitted = false;
   try {
     const rzp = getRazorpay();
     if (!rzp) {
@@ -161,13 +212,35 @@ router.post("/payments/verify-and-register", async (req: any, res) => {
 
     // 1b. Confirm the plan/price being claimed here matches what was actually paid
     // for at /create-order — prevents paying for a cheap plan then registering as an
-    // expensive one.
+    // expensive one. Also confirms order.status === "paid".
     const claimedPriceRupees = parsePrice(planPrice);
     const amountMatches = await verifyOrderMatchesClaimedPrice(rzp, razorpay_order_id, claimedPriceRupees);
     if (!amountMatches) {
-      req.log?.warn({ razorpay_order_id, planPrice }, "Plan price mismatch at verify-and-register — rejected");
+      req.log?.warn({ razorpay_order_id, planPrice }, "Plan price mismatch or order not paid at verify-and-register — rejected");
       res.status(400).json({ error: "Payment verification failed. Please contact support." });
       return;
+    }
+
+    // 1c. Atomic replay-protection — insert a ConsumedPayment record with a unique
+    // index on razorpay_payment_id. If this payment_id was already processed (by any
+    // instance), the DB rejects the insert with code 11000 and we bail out immediately.
+    // We do this AFTER signature + order-status verification so we only consume
+    // legitimate payment IDs (forged requests are rejected before reaching here).
+    // consumedDoc is declared in the outer scope for catch-block cleanup.
+    try {
+      consumedDoc = await ConsumedPayment.create({
+        razorpay_payment_id,
+        razorpay_order_id,
+        type: "signup",
+        adminId: "",
+      });
+    } catch (idempErr: any) {
+      if (idempErr?.code === 11000) {
+        req.log?.warn({ razorpay_payment_id }, "Duplicate payment_id rejected at verify-and-register");
+        res.status(400).json({ error: "Payment verification failed. Please contact support." });
+        return;
+      }
+      throw idempErr; // unexpected — re-throw to outer catch
     }
 
     // 2. Check email OTP was verified (server-side proof)
@@ -180,6 +253,8 @@ router.post("/payments/verify-and-register", async (req: any, res) => {
       createdAt: { $gte: new Date(Date.now() - 2 * 60 * 60 * 1000) }, // within last 2 hours
     }).sort({ createdAt: -1 }).lean();
     if (!otpVerified) {
+      // Release the idempotency record so the user can complete OTP verification and retry
+      await ConsumedPayment.findByIdAndDelete(consumedDoc._id).catch(() => {});
       res.status(400).json({ error: "Email verification required. Please verify your email with OTP before completing payment." });
       return;
     }
@@ -187,6 +262,8 @@ router.post("/payments/verify-and-register", async (req: any, res) => {
     // 2b. Check for duplicates
     const existingUser = await User.findOne({ email: emailLower });
     if (existingUser) {
+      // Payment already registered to this email — release so the user gets a clear error
+      await ConsumedPayment.findByIdAndDelete(consumedDoc._id).catch(() => {});
       res.status(400).json({ error: "Email already registered. Please login." });
       return;
     }
@@ -249,9 +326,13 @@ router.post("/payments/verify-and-register", async (req: any, res) => {
         autopaySetupTokenExpiry: setupTokenExpiry,
       });
     } catch (userCreateErr: any) {
-      // If User creation fails (e.g. duplicate email race), roll back the dangling StoreRequest
+      // If User creation fails, roll back StoreRequest and idempotency record
+      // so the user can retry. signupCommitted is still false here.
       if (request) {
         await StoreRequest.findByIdAndDelete(request._id).catch(() => {});
+      }
+      if (consumedDoc?._id) {
+        await ConsumedPayment.findByIdAndDelete(consumedDoc._id).catch(() => {});
       }
       req.log?.error({ err: userCreateErr }, "User.create failed after StoreRequest created — rolled back");
       if (userCreateErr?.code === 11000) {
@@ -261,6 +342,9 @@ router.post("/payments/verify-and-register", async (req: any, res) => {
       }
       return;
     }
+    // Account durably created — from here on, ConsumedPayment must not be deleted.
+    // Post-commit failures (revenue log, notification, email) are non-fatal.
+    signupCommitted = true;
 
     // 4b. Record revenue event — first-time signup payment
     const createdUser = await User.findOne({ email: emailLower }).select("_id");
@@ -322,8 +406,16 @@ router.post("/payments/verify-and-register", async (req: any, res) => {
 
     res.json({ success: true, email: emailLower, storeName, autopaySetupToken: setupToken });
   } catch (err) {
-    req.log?.error({ err }, "Verify and register error");
+    // Only release the idempotency record if the account was never durably created.
+    // Once signupCommitted is true the User exists — deleting ConsumedPayment would
+    // allow the same payment_id to be replayed and create a duplicate account.
+    if (!signupCommitted && consumedDoc?._id) {
+      await ConsumedPayment.findByIdAndDelete(consumedDoc._id).catch(() => {});
+    }
+    req.log?.error({ err, signupCommitted }, "Verify and register error");
     res.status(500).json({ error: "Registration failed. Please contact support." });
+  } finally {
+    if (_emailLower) releasePaymentLock(_lockKey);
   }
 });
 
@@ -519,6 +611,12 @@ router.post("/payments/verify-subscription-auth", async (req: any, res) => {
 // ── POST /api/payments/renewal-create-order ──────────────────────────────────
 // Creates Razorpay order for an existing admin renewing their plan
 router.post("/payments/renewal-create-order", requireAuthForRenewal, async (req: AuthRequest, res) => {
+  const _userId = String((req as any).user?._id ?? "");
+  const _lockKey = `renewal-create:${_userId}`;
+  if (_userId && !acquirePaymentLock(_lockKey)) {
+    res.status(429).json({ error: "A payment request is already in progress. Please wait for it to complete." });
+    return;
+  }
   try {
     const rzp = getRazorpay();
     if (!rzp) { res.status(503).json({ error: "Payment gateway not configured. Please contact support." }); return; }
@@ -549,12 +647,28 @@ router.post("/payments/renewal-create-order", requireAuthForRenewal, async (req:
   } catch (err) {
     req.log?.error({ err }, "Renewal create order error");
     res.status(500).json({ error: "Failed to create renewal order" });
+  } finally {
+    if (_userId) releasePaymentLock(_lockKey);
   }
 });
 
 // ── POST /api/payments/renewal-verify ─────────────────────────────────────────
 // Verifies Razorpay payment, updates admin plan + subscription, reactivates account
 router.post("/payments/renewal-verify", requireAuthForRenewal, async (req: AuthRequest, res) => {
+  const _userId = String((req as any).user?._id ?? "");
+  const _lockKey = `renewal-verify:${_userId}`;
+  if (_userId && !acquirePaymentLock(_lockKey)) {
+    res.status(429).json({ error: "A payment request is already in progress. Please wait for it to complete." });
+    return;
+  }
+  // Hoisted to outer scope so the catch block can release it on transient errors.
+  // null means the idempotency record was never inserted (e.g. request failed
+  // before reaching that point), so the catch never tries to clean it up.
+  let renewalConsumedDoc: InstanceType<typeof ConsumedPayment> | null = null;
+  // Set to true immediately after adminUser.save() succeeds. Once the renewal
+  // is durably committed, we must NOT delete ConsumedPayment on later errors —
+  // doing so would allow the same payment_id to be replayed on retry.
+  let renewalCommitted = false;
   try {
     const rzp = getRazorpay();
     if (!rzp) { res.status(503).json({ error: "Payment gateway not configured." }); return; }
@@ -582,18 +696,46 @@ router.post("/payments/renewal-verify", requireAuthForRenewal, async (req: AuthR
 
     // Confirm the plan/price being claimed here matches what was actually paid for
     // at /renewal-create-order — prevents renewing at a cheap price then claiming an
-    // expensive plan's name/features.
+    // expensive plan's name/features. Also confirms order.status === "paid".
     const claimedPriceRupees = parsePrice(planPrice);
     const amountMatches = await verifyOrderMatchesClaimedPrice(rzp, razorpay_order_id, claimedPriceRupees);
     if (!amountMatches) {
-      req.log?.warn({ razorpay_order_id, planPrice }, "Plan price mismatch at renewal-verify — rejected");
+      req.log?.warn({ razorpay_order_id, planPrice }, "Plan price mismatch or order not paid at renewal-verify — rejected");
       res.status(400).json({ error: "Payment verification failed. Please contact support." }); return;
+    }
+
+    // ── Atomic replay-protection ──────────────────────────────────────────────
+    // Insert a ConsumedPayment record with a unique index on razorpay_payment_id.
+    // This atomically rejects any duplicate — including old payment IDs from prior
+    // renewals — across all server instances.
+    // Placed AFTER sig + order-status verification so forged requests never reach
+    // the DB write. renewalConsumedDoc is declared in the outer scope so the catch
+    // block can clean it up on transient failures.
+    try {
+      renewalConsumedDoc = await ConsumedPayment.create({
+        razorpay_payment_id,
+        razorpay_order_id,
+        type: "renewal",
+        adminId: String(user._id),
+      });
+    } catch (idempErr: any) {
+      if (idempErr?.code === 11000) {
+        req.log?.warn({ razorpay_payment_id }, "Duplicate payment_id rejected at renewal-verify");
+        res.status(400).json({ error: "This payment has already been applied to your account." });
+        return;
+      }
+      throw idempErr; // unexpected — re-throw to outer catch
     }
 
     const { start, end } = calcSubscriptionDates(planPeriod ?? "");
 
     const adminUser = await User.findById(String(user._id));
-    if (!adminUser) { res.status(404).json({ error: "Admin not found" }); return; }
+    if (!adminUser) {
+      // User disappeared between auth and here — release idempotency record so retryable
+      await ConsumedPayment.findByIdAndDelete(renewalConsumedDoc._id).catch(() => {});
+      renewalConsumedDoc = null; // prevent double-delete in catch
+      res.status(404).json({ error: "Admin not found" }); return;
+    }
 
     if (planKey) adminUser.planKey = planKey;
     if (planName) adminUser.planName = planName;
@@ -609,7 +751,13 @@ router.post("/payments/renewal-verify", requireAuthForRenewal, async (req: AuthR
     adminUser.isActive = true;
     adminUser.activeSessions = [];
     adminUser.expiredEmailSent = false; // reset so next expiry cycle sends a fresh email
+    // Audit trail — last renewal payment_id mirrored on the user document
+    adminUser.lastVerifiedPaymentId = razorpay_payment_id;
     await adminUser.save();
+    // Mark renewal as durably committed. From this point forward, ConsumedPayment
+    // must NOT be deleted on error — the subscription is already extended, and
+    // deleting it would allow the same payment_id to be replayed on retry.
+    renewalCommitted = true;
 
     await RevenuePayment.create({
       adminId: String(adminUser._id),
@@ -647,9 +795,20 @@ router.post("/payments/renewal-verify", requireAuthForRenewal, async (req: AuthR
     })();
 
     res.json({ success: true });
-  } catch (err) {
-    req.log?.error({ err }, "Renewal verify error");
+  } catch (err: any) {
+    // Only release the idempotency record if the renewal mutation has NOT yet
+    // been committed (i.e. adminUser.save() never ran). Once renewalCommitted
+    // is true the subscription is durably extended — deleting ConsumedPayment
+    // would allow the same payment_id to be replayed, so we leave it in place.
+    // Post-commit failures (revenue log, email) are non-fatal and do not warrant
+    // a retry of the payment itself.
+    if (!renewalCommitted && renewalConsumedDoc?._id) {
+      await ConsumedPayment.findByIdAndDelete(renewalConsumedDoc._id).catch(() => {});
+    }
+    req.log?.error({ err, renewalCommitted }, "Renewal verify error");
     res.status(500).json({ error: "Renewal failed. Please contact support." });
+  } finally {
+    if (_userId) releasePaymentLock(_lockKey);
   }
 });
 

@@ -37,6 +37,7 @@ export interface IUser extends Document {
   autopaySetupToken: string;
   autopaySetupTokenExpiry: Date | null;
   lastWebhookPaymentId: string; // idempotency key for subscription.charged events
+  lastVerifiedPaymentId: string; // replay-protection: last razorpay_payment_id consumed by renewal-verify
   failedPaymentCount: number; // consecutive autopay failures; autopay is cancelled after 2
   expiredEmailSent: boolean; // true once the deactivation email has been sent; reset on renewal
   uploadViolationCount: number; // invalid/malicious upload attempts; account blocked at 3
@@ -92,6 +93,7 @@ const UserSchema = new Schema<IUser>(
     autopaySetupToken: { type: String, default: "" },
     autopaySetupTokenExpiry: { type: Date, default: null },
     lastWebhookPaymentId: { type: String, default: "" },
+    lastVerifiedPaymentId: { type: String, default: "" },
     failedPaymentCount: { type: Number, default: 0 },
     expiredEmailSent: { type: Boolean, default: false },
     uploadViolationCount: { type: Number, default: 0 },
