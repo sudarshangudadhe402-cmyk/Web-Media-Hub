@@ -454,6 +454,46 @@ router.get("/marketing/revenue", requireSuperAdmin, async (req: AuthRequest, res
   } catch { res.status(500).json({ error: "Failed" }); }
 });
 
+/* ── RENEWALS DETAIL (total renewal count + revenue + per-admin breakdown) ── */
+router.get("/marketing/renewals-detail", requireSuperAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const renewalPayments = await RevenuePayment.find({ type: "renewal" })
+      .select("adminId amount")
+      .lean();
+
+    const totalRenewalCount = renewalPayments.length;
+    const totalRenewalRevenue = renewalPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+
+    const perAdminMap: Record<string, { renewalCount: number; renewalRevenue: number }> = {};
+    for (const p of renewalPayments) {
+      const id = String(p.adminId);
+      if (!perAdminMap[id]) perAdminMap[id] = { renewalCount: 0, renewalRevenue: 0 };
+      perAdminMap[id].renewalCount++;
+      perAdminMap[id].renewalRevenue += p.amount || 0;
+    }
+
+    const adminIds = Object.keys(perAdminMap);
+    const admins = await User.find({ _id: { $in: adminIds } })
+      .select("storeName username email planName planColor")
+      .lean();
+
+    const perAdmin = admins
+      .map((a: any) => ({
+        adminId: String(a._id),
+        storeName: a.storeName || a.username || a.email || "—",
+        planName: a.planName || "",
+        planColor: a.planColor || "",
+        renewalCount: perAdminMap[String(a._id)]?.renewalCount || 0,
+        renewalRevenue: perAdminMap[String(a._id)]?.renewalRevenue || 0,
+      }))
+      .sort((a, b) => b.renewalCount - a.renewalCount);
+
+    res.json({ totalRenewalCount, totalRenewalRevenue, perAdmin });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load renewals detail" });
+  }
+});
+
 /* ── EXPORT ── */
 router.get("/marketing/export/csv", requireSuperAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {

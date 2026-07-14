@@ -6,6 +6,8 @@ import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
 import Login from "@/pages/login";
 import Admins from "@/pages/admins";
+import Stores from "@/pages/stores";
+import Renewals from "@/pages/renewals";
 import LegalLog from "@/pages/legal-log";
 import Revenue from "@/pages/revenue";
 import PricingConfig from "@/pages/pricing-config";
@@ -55,6 +57,16 @@ function Router() {
       <Route path="/revenue">
         <ProtectedRoute>
           <Revenue />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/stores">
+        <ProtectedRoute>
+          <Stores />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/renewals">
+        <ProtectedRoute>
+          <Renewals />
         </ProtectedRoute>
       </Route>
       <Route path="/legal-log">

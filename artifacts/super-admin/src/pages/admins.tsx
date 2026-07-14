@@ -7,12 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import {
   Users,
@@ -281,8 +276,7 @@ export default function Dashboard() {
   const [datePresetIdx, setDatePresetIdx]   = useState(-1); // -1 = no date filter applied
   const [mapDropdown, setMapDropdown]       = useState("Total Stores");
   const [mapZoom, setMapZoom]               = useState(4); // 4 = all-India view
-  const [showStoreListModal, setShowStoreListModal] = useState(false);
-  const [showRenewalModal, setShowRenewalModal]     = useState(false);
+  const [, setLocation] = useLocation();
 
   const datePreset =
     datePresetIdx === -1
@@ -339,9 +333,6 @@ export default function Dashboard() {
 
   const totalRenewals: number =
     revenueData?.renewalCount ?? revenueData?.total ?? 0;
-
-  const renewalsByPlan: { plan: string; count: number; revenue: number }[] =
-    Array.isArray(revenueData?.byPlan) ? revenueData.byPlan : [];
 
   const pendingQueriesCount: number = Array.isArray(storeRequests)
     ? storeRequests.filter((r: any) => r.status === "pending").length
@@ -400,7 +391,7 @@ export default function Dashboard() {
       label: "Total Stores",
       value: isLoading ? "—" : totalStores.toLocaleString(),
       action: "View all", actionColor: "#059669",
-      onAction: () => setShowStoreListModal(true),
+      onAction: () => setLocation("/stores"),
     },
     {
       icon: <MessageSquare className="w-5 h-5" style={{ color: "#d97706" }} />,
@@ -441,7 +432,7 @@ export default function Dashboard() {
       label: "Total Renewals",
       value: isLoading ? "—" : totalRenewals.toLocaleString(),
       action: "View all", actionColor: "#7c3aed",
-      onAction: () => setShowRenewalModal(true),
+      onAction: () => setLocation("/renewals"),
     },
   ];
 
@@ -689,136 +680,6 @@ export default function Dashboard() {
         </div>
 
       </div>
-
-      {/* ── Store List Modal — opened from the "Total Stores" card ─────────── */}
-      <Dialog open={showStoreListModal} onOpenChange={setShowStoreListModal}>
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Store className="w-4 h-4" style={{ color: "#7c3aed" }} />
-              All Stores
-              <span
-                className="text-[11px] font-bold px-2 py-0.5 rounded-full"
-                style={{ background: "rgba(124,58,237,0.10)", color: "#7c3aed" }}
-              >
-                {filteredAdmins.length}
-              </span>
-            </DialogTitle>
-          </DialogHeader>
-
-          {isLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-16 rounded-xl animate-pulse" style={{ background: "#f0f0f5" }} />
-              ))}
-            </div>
-          ) : filteredAdmins.length === 0 ? (
-            <div className="py-6 text-center">
-              <Store className="w-10 h-10 mx-auto mb-3 opacity-15" style={{ color: "#7c3aed" }} />
-              <p className="text-sm font-medium text-gray-500">No stores found</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredAdmins.map((admin: any) => {
-                const isActive    = admin.isActive !== false;
-                const displayName = admin.storeName || admin.email || "—";
-                const planName    = admin.planName as string;
-                const planColor   = admin.planColor as string;
-                const endDate     = admin.subscriptionEndDate as string | null;
-                return (
-                  <div
-                    key={admin.id}
-                    className="bg-white rounded-2xl p-4 flex items-center gap-3 hover:shadow-md transition-all duration-200"
-                    style={{ border: "1px solid #f0f0f5", boxShadow: "0 1px 6px rgba(0,0,0,0.05)" }}
-                  >
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold shrink-0"
-                      style={{
-                        background: isActive
-                          ? "linear-gradient(135deg, #7c3aed, #a855f7)"
-                          : "#d1d5db",
-                        color: "white",
-                      }}
-                    >
-                      {displayName.substring(0, 2).toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-xs font-semibold truncate">{displayName}</span>
-                        {!isActive && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 font-semibold">
-                            Inactive
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        {planName && (
-                          <span
-                            className="text-[10px] font-medium px-1.5 py-0.5 rounded"
-                            style={{
-                              background: planColor ? planColor + "18" : "rgba(124,58,237,0.08)",
-                              color: planColor || "#7c3aed",
-                            }}
-                          >
-                            {planName}
-                          </span>
-                        )}
-                        {endDate && (
-                          <span className="text-[10px] text-gray-400 flex items-center gap-1">
-                            <CalendarDays className="w-2.5 h-2.5" />
-                            {fmtDate(endDate)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Renewal Detail Modal — opened from the "Total Renewals" card ───── */}
-      <Dialog open={showRenewalModal} onOpenChange={setShowRenewalModal}>
-        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <RefreshCw className="w-4 h-4" style={{ color: "#7c3aed" }} />
-              Renewals by Plan
-            </DialogTitle>
-          </DialogHeader>
-
-          {renewalsByPlan.length === 0 ? (
-            <div className="py-6 text-center">
-              <RefreshCw className="w-10 h-10 mx-auto mb-3 opacity-15" style={{ color: "#7c3aed" }} />
-              <p className="text-sm font-medium text-gray-500">No renewal data yet</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {renewalsByPlan.map((p) => (
-                <div
-                  key={p.plan}
-                  className="flex items-center justify-between px-4 py-3 rounded-xl"
-                  style={{ border: "1px solid #f0f0f5", background: "#f9f9fc" }}
-                >
-                  <span className="text-sm font-semibold" style={{ color: "#1e1b4b" }}>
-                    {p.plan}
-                  </span>
-                  <div className="text-right">
-                    <p className="text-sm font-bold" style={{ color: "#7c3aed" }}>
-                      {p.count.toLocaleString()} admin{p.count === 1 ? "" : "s"}
-                    </p>
-                    <p className="text-[11px] text-gray-400">
-                      ₹{p.revenue.toLocaleString()} revenue
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
