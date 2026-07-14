@@ -7,6 +7,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   Users,
@@ -87,11 +93,52 @@ function subscriptionHealth(admin: any): number {
   return Math.max(5, Math.min(100, Math.round((remaining / total) * 100)));
 }
 
+// ── India states / UTs ────────────────────────────────────────────────────────
+
+const INDIA_LOCATIONS = [
+  "All India",
+  "Andhra Pradesh",
+  "Arunachal Pradesh",
+  "Assam",
+  "Bihar",
+  "Chhattisgarh",
+  "Goa",
+  "Gujarat",
+  "Haryana",
+  "Himachal Pradesh",
+  "Jharkhand",
+  "Karnataka",
+  "Kerala",
+  "Madhya Pradesh",
+  "Maharashtra",
+  "Manipur",
+  "Meghalaya",
+  "Mizoram",
+  "Nagaland",
+  "Odisha",
+  "Punjab",
+  "Rajasthan",
+  "Sikkim",
+  "Tamil Nadu",
+  "Telangana",
+  "Tripura",
+  "Uttar Pradesh",
+  "Uttarakhand",
+  "West Bengal",
+  "Andaman and Nicobar Islands",
+  "Chandigarh",
+  "Dadra and Nagar Haveli and Daman and Diu",
+  "Delhi (NCT)",
+  "Jammu and Kashmir",
+  "Ladakh",
+  "Lakshadweep",
+  "Puducherry",
+];
+
 // ── date-range presets ───────────────────────────────────────────────────────
 
 const DATE_PRESETS: { label: string; start: Date | null; end: Date | null }[] =
   [
-    { label: "All Time", start: null, end: null },
     {
       label: "01 May - 31 May 2024",
       start: new Date("2024-05-01"),
@@ -231,11 +278,16 @@ export default function Dashboard() {
   // Filters
   const [search, setSearch]           = useState("");
   const [locationFilter, setLocationFilter] = useState("All India");
-  const [datePresetIdx, setDatePresetIdx]   = useState(0);
+  const [datePresetIdx, setDatePresetIdx]   = useState(-1); // -1 = no date filter applied
   const [mapDropdown, setMapDropdown]       = useState("Total Stores");
   const [mapZoom, setMapZoom]               = useState(4); // 4 = all-India view
+  const [showStoreListModal, setShowStoreListModal] = useState(false);
+  const [showRenewalModal, setShowRenewalModal]     = useState(false);
 
-  const datePreset = DATE_PRESETS[datePresetIdx];
+  const datePreset =
+    datePresetIdx === -1
+      ? { label: "Date Range", start: null, end: null }
+      : DATE_PRESETS[datePresetIdx];
 
   // Marketing / revenue data for renewals
   const { data: revenueData } = useQuery({
@@ -288,6 +340,9 @@ export default function Dashboard() {
   const totalRenewals: number =
     revenueData?.renewalCount ?? revenueData?.total ?? 0;
 
+  const renewalsByPlan: { plan: string; count: number; revenue: number }[] =
+    Array.isArray(revenueData?.byPlan) ? revenueData.byPlan : [];
+
   const pendingQueriesCount: number = Array.isArray(storeRequests)
     ? storeRequests.filter((r: any) => r.status === "pending").length
     : (storeRequests?.pending ?? 0);
@@ -327,8 +382,8 @@ export default function Dashboard() {
       icon: <Users className="w-5 h-5" style={{ color: "#7c3aed" }} />,
       bg: "rgba(124,58,237,0.10)", border: "rgba(124,58,237,0.18)",
       label: "Total Managers",
-      // Each admin account IS a store owner / manager
-      value: isLoading ? "—" : totalStores.toLocaleString(),
+      // Managers are a separate concept from store-owner admins; not built yet
+      value: "0",
       action: "View all", actionColor: "#7c3aed",
     },
     {
@@ -345,6 +400,7 @@ export default function Dashboard() {
       label: "Total Stores",
       value: isLoading ? "—" : totalStores.toLocaleString(),
       action: "View all", actionColor: "#059669",
+      onAction: () => setShowStoreListModal(true),
     },
     {
       icon: <MessageSquare className="w-5 h-5" style={{ color: "#d97706" }} />,
@@ -359,21 +415,22 @@ export default function Dashboard() {
     {
       icon: <UserCheck className="w-5 h-5" style={{ color: "#059669" }} />,
       bg: "rgba(5,150,105,0.10)", border: "rgba(5,150,105,0.18)",
-      label: "Active Managers",
-      value: isLoading ? "—" : activeStores.toLocaleString(),
-      badge: `${activeRate}%`, badgeColor: "#059669",
+      label: "Online Managers",
+      // Manager online/offline tracking not built yet
+      value: "0",
+      badge: "0%", badgeColor: "#059669",
     },
     {
       icon: <UserX className="w-5 h-5" style={{ color: "#dc2626" }} />,
       bg: "rgba(220,38,38,0.10)", border: "rgba(220,38,38,0.18)",
       label: "Offline Managers",
-      value: isLoading ? "—" : offlineStores.toLocaleString(),
-      badge: `${offlineRate}%`, badgeColor: "#dc2626",
+      value: "0",
+      badge: "0%", badgeColor: "#dc2626",
     },
     {
       icon: <TrendingUp className="w-5 h-5" style={{ color: "#0891b2" }} />,
       bg: "rgba(8,145,178,0.10)", border: "rgba(8,145,178,0.18)",
-      label: "New Stores Today",
+      label: "New Store",
       value: isLoading ? "—" : newStoresToday.toLocaleString(),
       badge: newStoresToday > 0 ? `+${newStoresToday}` : null,
       badgeColor: "#059669",
@@ -384,6 +441,7 @@ export default function Dashboard() {
       label: "Total Renewals",
       value: isLoading ? "—" : totalRenewals.toLocaleString(),
       action: "View all", actionColor: "#7c3aed",
+      onAction: () => setShowRenewalModal(true),
     },
   ];
 
@@ -408,8 +466,8 @@ export default function Dashboard() {
                 <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-48">
-              {["All India", "North India", "South India", "East India", "West India"].map((o) => (
+            <DropdownMenuContent className="w-56 max-h-72 overflow-y-auto">
+              {INDIA_LOCATIONS.map((o) => (
                 <DropdownMenuItem key={o} onClick={() => setLocationFilter(o)} className="text-sm">
                   {o}
                 </DropdownMenuItem>
@@ -480,7 +538,9 @@ export default function Dashboard() {
                   <button
                     className="font-semibold mt-0.5 text-left transition-opacity hover:opacity-70"
                     style={{ fontSize: 10, color: (s as any).actionColor }}
-                    onClick={() => handleComingSoon(s.label)}
+                    onClick={() =>
+                      (s as any).onAction ? (s as any).onAction() : handleComingSoon(s.label)
+                    }
                   >
                     {s.action}
                   </button>
@@ -536,140 +596,12 @@ export default function Dashboard() {
             </button>
           </div>
 
-          {/* Rows */}
-          {isLoading ? (
-            <div className="px-4 pb-4 space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="h-16 rounded-xl animate-pulse"
-                  style={{ background: "#f0f0f5" }}
-                />
-              ))}
-            </div>
-          ) : filteredAdmins.length === 0 ? (
-            <div className="px-4 pb-6 pt-2 text-center">
-              <Users className="w-10 h-10 mx-auto mb-3 opacity-15" style={{ color: "#7c3aed" }} />
-              <p className="text-sm font-medium text-gray-500">
-                {search ? "No results found" : "No managers added yet"}
-              </p>
-              <p className="text-xs text-gray-400 mt-1">
-                {search ? "Try a different search term" : 'Click "Add Manager" to get started'}
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y" style={{ borderColor: "#f0f0f5" }}>
-              {filteredAdmins.slice(0, 10).map((admin: any, idx: number) => {
-                const isActive   = admin.isActive !== false;
-                const isOnline   = (admin.activeSessionCount ?? 0) > 0;
-                const displayName = admin.storeName || admin.username || admin.email || "—";
-                const subLabel    = admin.adminNumber ?? admin.email ?? "—";
-                const initials    = displayName.substring(0, 2).toUpperCase();
-                const hues        = ["#7c3aed", "#0891b2", "#059669", "#d97706", "#db2777"];
-                const hue         = hues[idx % hues.length];
-                const perf        = subscriptionHealth(admin);
-
-                return (
-                  <div
-                    key={admin.id ?? idx}
-                    className="flex items-center gap-1.5 px-2.5 py-2.5 hover:bg-gray-50 transition-colors"
-                  >
-                    {/* Avatar */}
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0"
-                      style={{ background: `linear-gradient(135deg, ${hue}, ${hue}cc)` }}
-                    >
-                      {initials}
-                    </div>
-
-                    {/* Name + ID */}
-                    <div className="flex-1 min-w-0 pr-1">
-                      <p className="text-xs font-semibold truncate" style={{ color: "#1e1b4b" }}>
-                        {displayName}
-                      </p>
-                      <p className="text-[10px] text-gray-400 mt-0.5 truncate">{subLabel}</p>
-                      {admin.planName && (
-                        <span
-                          className="text-[9px] font-medium px-1 py-0.5 rounded mt-0.5 inline-block truncate max-w-full"
-                          style={{
-                            background: admin.planColor ? admin.planColor + "18" : "rgba(124,58,237,0.08)",
-                            color: admin.planColor || "#7c3aed",
-                          }}
-                        >
-                          {admin.planName}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Total Store — count coming soon */}
-                    <div className="text-center shrink-0 w-8">
-                      <p className="text-[8px] text-gray-400 font-medium leading-tight">Stores</p>
-                      <p className="text-xs font-bold leading-tight" style={{ color: "#1e1b4b" }}>0</p>
-                    </div>
-
-                    {/* Active — count coming soon */}
-                    <div className="text-center shrink-0 w-8">
-                      <p className="text-[8px] text-gray-400 font-medium leading-tight">Active</p>
-                      <p className="text-xs font-bold leading-tight" style={{ color: "#1e1b4b" }}>0</p>
-                    </div>
-
-                    {/* Subscription health circle */}
-                    <div className="shrink-0">
-                      <CircularProgress
-                        pct={perf}
-                        color={isActive ? "#7c3aed" : "#dc2626"}
-                        size={34}
-                      />
-                    </div>
-
-                    {/* Online / offline badge — uses activeSessionCount from API */}
-                    <div
-                      className="px-1.5 py-1 rounded-lg text-[9px] font-semibold shrink-0 whitespace-nowrap"
-                      style={{
-                        background: isOnline
-                          ? "rgba(5,150,105,0.10)"
-                          : "rgba(219,39,119,0.10)",
-                        color:      isOnline ? "#059669" : "#db2777",
-                        border: `1px solid ${isOnline ? "rgba(5,150,105,0.2)" : "rgba(219,39,119,0.2)"}`,
-                      }}
-                    >
-                      {isOnline ? "Online" : "Offline"}
-                    </div>
-
-                    {/* 3-dot menu */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors shrink-0">
-                          <MoreVertical className="w-3.5 h-3.5 text-gray-400" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-44">
-                        <DropdownMenuItem className="text-xs gap-2">
-                          <Eye className="w-3.5 h-3.5" /> View Profile
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-xs gap-2">
-                          <Pencil className="w-3.5 h-3.5" /> Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-xs gap-2">
-                          <ArrowLeftRight className="w-3.5 h-3.5" /> Change Manager
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-xs gap-2 text-red-600 focus:text-red-600">
-                          <UserMinus className="w-3.5 h-3.5" /> Disable
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                );
-              })}
-              {filteredAdmins.length > 10 && (
-                <div className="px-4 py-3 text-center">
-                  <p className="text-xs text-gray-400">
-                    Showing 10 of {filteredAdmins.length} stores
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
+          {/* Rows — managers are a separate feature from store-owner admins, coming later */}
+          <div className="px-4 pb-6 pt-2 text-center">
+            <Users className="w-10 h-10 mx-auto mb-3 opacity-15" style={{ color: "#7c3aed" }} />
+            <p className="text-sm font-medium text-gray-500">No managers added yet</p>
+            <p className="text-xs text-gray-400 mt-1">Click "Add Manager" to get started</p>
+          </div>
         </div>
 
         {/* ── India Map Card ──────────────────────────────────────────────── */}
@@ -756,24 +688,38 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── All Stores (real data) ─────────────────────────────────────── */}
-        {!isLoading && adminsArr.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 mb-3">
+      </div>
+
+      {/* ── Store List Modal — opened from the "Total Stores" card ─────────── */}
+      <Dialog open={showStoreListModal} onOpenChange={setShowStoreListModal}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
               <Store className="w-4 h-4" style={{ color: "#7c3aed" }} />
-              <h2 className="text-base font-bold" style={{ color: "#1e1b4b" }}>
-                All Stores
-              </h2>
+              All Stores
               <span
                 className="text-[11px] font-bold px-2 py-0.5 rounded-full"
                 style={{ background: "rgba(124,58,237,0.10)", color: "#7c3aed" }}
               >
                 {filteredAdmins.length}
               </span>
-            </div>
+            </DialogTitle>
+          </DialogHeader>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {filteredAdmins.slice(0, 12).map((admin: any) => {
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-16 rounded-xl animate-pulse" style={{ background: "#f0f0f5" }} />
+              ))}
+            </div>
+          ) : filteredAdmins.length === 0 ? (
+            <div className="py-6 text-center">
+              <Store className="w-10 h-10 mx-auto mb-3 opacity-15" style={{ color: "#7c3aed" }} />
+              <p className="text-sm font-medium text-gray-500">No stores found</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredAdmins.map((admin: any) => {
                 const isActive    = admin.isActive !== false;
                 const displayName = admin.storeName || admin.email || "—";
                 const planName    = admin.planName as string;
@@ -829,16 +775,50 @@ export default function Dashboard() {
                 );
               })}
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
-            {filteredAdmins.length > 12 && (
-              <p className="text-xs text-center text-gray-400 mt-3">
-                Showing 12 of {filteredAdmins.length} stores
-              </p>
-            )}
-          </div>
-        )}
+      {/* ── Renewal Detail Modal — opened from the "Total Renewals" card ───── */}
+      <Dialog open={showRenewalModal} onOpenChange={setShowRenewalModal}>
+        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCw className="w-4 h-4" style={{ color: "#7c3aed" }} />
+              Renewals by Plan
+            </DialogTitle>
+          </DialogHeader>
 
-      </div>
+          {renewalsByPlan.length === 0 ? (
+            <div className="py-6 text-center">
+              <RefreshCw className="w-10 h-10 mx-auto mb-3 opacity-15" style={{ color: "#7c3aed" }} />
+              <p className="text-sm font-medium text-gray-500">No renewal data yet</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {renewalsByPlan.map((p) => (
+                <div
+                  key={p.plan}
+                  className="flex items-center justify-between px-4 py-3 rounded-xl"
+                  style={{ border: "1px solid #f0f0f5", background: "#f9f9fc" }}
+                >
+                  <span className="text-sm font-semibold" style={{ color: "#1e1b4b" }}>
+                    {p.plan}
+                  </span>
+                  <div className="text-right">
+                    <p className="text-sm font-bold" style={{ color: "#7c3aed" }}>
+                      {p.count.toLocaleString()} admin{p.count === 1 ? "" : "s"}
+                    </p>
+                    <p className="text-[11px] text-gray-400">
+                      ₹{p.revenue.toLocaleString()} revenue
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
