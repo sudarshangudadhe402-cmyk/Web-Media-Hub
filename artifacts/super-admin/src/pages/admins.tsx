@@ -182,66 +182,79 @@ function CircularProgress({
 
 // ── India SVG Map ─────────────────────────────────────────────────────────────
 
+// Dots placed inside the India mainland path (viewBox 0 0 280 420)
 const REGION_DOTS = [
-  { x: 245, y: 72,  label: "N"  },
-  { x: 118, y: 178, label: "W"  },
-  { x: 170, y: 195, label: "C"  },
-  { x: 262, y: 152, label: "E"  },
-  { x: 200, y: 215, label: "MW" },
-  { x: 100, y: 248, label: "GJ" },
-  { x: 175, y: 258, label: "TS" },
-  { x: 145, y: 310, label: "TN" },
-  { x: 155, y: 380, label: "KL" },
+  { x: 172, y: 108, label: "N"  },  // Delhi / North India
+  { x: 232, y: 98,  label: "NE" },  // Northeast (Assam area)
+  { x: 208, y: 172, label: "E"  },  // Kolkata / East
+  { x: 148, y: 182, label: "C"  },  // Madhya Pradesh / Central
+  { x: 88,  y: 192, label: "W"  },  // Mumbai / West
+  { x: 84,  y: 148, label: "GJ" },  // Gujarat
+  { x: 152, y: 252, label: "TS" },  // Hyderabad / Telangana
+  { x: 162, y: 312, label: "TN" },  // Chennai / Tamil Nadu
+  { x: 118, y: 340, label: "KL" },  // Kerala
 ];
+
+/* India mainland: smooth blob approximating India's silhouette.
+   ViewBox 0 0 280 420. Key landmarks:
+   - NW corner (Kashmir/Himachal) → across the north → NE bump (Arunachal/Nagaland) → east coast down → tip (Kanyakumari) → west coast up → Gujarat protrusion → back NW
+*/
+const INDIA_PATH =
+  "M 98,48 " +
+  "C 128,28 163,20 195,30 " +      // top, west → east
+  "C 216,36 236,50 248,68 " +      // heading northeast
+  "C 260,84 265,104 258,120 " +    // NE bump peak
+  "C 252,134 238,142 224,138 " +   // NE bump returning
+  "C 222,162 218,188 212,212 " +   // east coast (Odisha / AP)
+  "C 207,235 202,258 194,278 " +   // east coast (AP lower)
+  "C 186,298 176,318 164,338 " +   // heading toward tip
+  "C 155,355 146,370 138,382 " +   // near Kanyakumari
+  "C 125,372 112,352 102,332 " +   // SW coast (Kerala)
+  "C 90,310 80,284 76,258 " +      // Karnataka coast going north
+  "C 71,232 69,205 70,180 " +      // Goa / Konkan
+  "C 71,158 73,140 78,122 " +      // Gujarat south
+  "C 82,106 90,92 98,78 " +        // Gujarat/Rajasthan
+  "C 97,64 97,54 98,48 Z";
 
 function IndiaMap() {
   return (
-    <div className="flex justify-center items-center" style={{ height: 300 }}>
+    <div className="flex justify-center items-center" style={{ height: 320 }}>
       <svg
-        viewBox="0 0 360 460"
-        style={{ width: "100%", height: "100%", maxWidth: 300 }}
+        viewBox="0 0 280 420"
+        style={{ width: "100%", height: "100%", maxWidth: 260 }}
         fill="none"
       >
+        {/* mainland */}
         <path
-          d="M200,20 C220,18 240,22 258,30 C275,38 285,50 290,65
-             C305,58 320,62 328,72 C338,85 332,100 325,110
-             C335,118 342,130 338,145 C334,158 322,165 310,162
-             C318,175 322,192 315,205 C308,218 295,224 282,220
-             C285,235 283,252 274,263 C265,274 252,278 240,275
-             C238,290 230,304 218,312 C206,320 192,322 180,318
-             C175,335 165,350 152,360 C138,370 122,374 108,370
-             C100,385 88,398 74,404 C60,410 44,408 34,398
-             C24,388 22,372 28,358 C18,348 12,334 14,320
-             C16,306 26,295 38,290 C30,278 26,262 30,248
-             C34,234 46,224 60,220 C52,206 50,190 56,177
-             C62,164 76,155 90,154 C85,140 84,124 90,112
-             C96,100 108,92 120,90 C112,76 110,60 118,48
-             C126,36 142,28 158,26
-             C168,30 178,24 188,20 Z"
-          fill="#e8e6f8"
-          stroke="#c4bef0"
+          d={INDIA_PATH}
+          fill="#ece8fb"
+          stroke="#c4b8f5"
           strokeWidth={1.5}
+          strokeLinejoin="round"
         />
+        {/* Sri Lanka island */}
         <ellipse
-          cx={210}
-          cy={415}
-          rx={14}
-          ry={20}
-          fill="#e8e6f8"
-          stroke="#c4bef0"
+          cx={158}
+          cy={402}
+          rx={11}
+          ry={16}
+          fill="#ece8fb"
+          stroke="#c4b8f5"
           strokeWidth={1}
         />
+        {/* City dots */}
         {REGION_DOTS.map((d) => (
           <g key={d.label}>
-            <circle cx={d.x} cy={d.y} r={13} fill="#6d28d9" opacity={0.88} />
+            <circle cx={d.x} cy={d.y} r={14} fill="#6d28d9" />
             <text
               x={d.x}
               y={d.y + 1}
               textAnchor="middle"
               dominantBaseline="middle"
               fill="white"
-              fontSize={7}
+              fontSize={d.label.length > 1 ? 6.5 : 8}
               fontWeight="700"
+              letterSpacing={d.label.length > 1 ? -0.5 : 0}
             >
               {d.label}
             </text>
