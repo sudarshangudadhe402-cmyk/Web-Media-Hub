@@ -510,28 +510,28 @@ export default function Dashboard() {
           </div>
 
           {/* Search + Add Manager */}
-          <div className="flex gap-2 px-4 pb-3">
+          <div className="flex gap-1.5 px-4 pb-3">
             <div
-              className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl border"
+              className="flex-1 min-w-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border"
               style={{ borderColor: "#e5e7eb", background: "#f9f9fc" }}
             >
-              <Search className="w-4 h-4 text-gray-400 shrink-0" />
+              <Search className="w-3.5 h-3.5 text-gray-400 shrink-0" />
               <input
                 placeholder="Search by name, city or ID..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="flex-1 text-sm bg-transparent outline-none text-gray-600 placeholder-gray-400"
+                className="flex-1 min-w-0 text-xs bg-transparent outline-none text-gray-600 placeholder-gray-400"
               />
             </div>
             <button
               onClick={() => handleComingSoon("Add Manager")}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-200 hover:opacity-90 hover:shadow-lg shrink-0"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white transition-all duration-200 hover:opacity-90 hover:shadow-lg shrink-0 whitespace-nowrap"
               style={{
                 background: "linear-gradient(135deg, #7c3aed, #9333ea)",
                 boxShadow: "0 4px 12px rgba(124,58,237,0.3)",
               }}
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5 shrink-0" />
               Add Manager
             </button>
           </div>
@@ -572,25 +572,25 @@ export default function Dashboard() {
                 return (
                   <div
                     key={admin.id ?? idx}
-                    className="flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition-colors"
+                    className="flex items-center gap-1.5 px-2.5 py-2.5 hover:bg-gray-50 transition-colors"
                   >
                     {/* Avatar */}
                     <div
-                      className="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0"
                       style={{ background: `linear-gradient(135deg, ${hue}, ${hue}cc)` }}
                     >
                       {initials}
                     </div>
 
                     {/* Name + ID */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate" style={{ color: "#1e1b4b" }}>
+                    <div className="flex-1 min-w-0 pr-1">
+                      <p className="text-xs font-semibold truncate" style={{ color: "#1e1b4b" }}>
                         {displayName}
                       </p>
-                      <p className="text-xs text-gray-400 mt-0.5 truncate">{subLabel}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5 truncate">{subLabel}</p>
                       {admin.planName && (
                         <span
-                          className="text-[10px] font-medium px-1.5 py-0.5 rounded mt-0.5 inline-block"
+                          className="text-[9px] font-medium px-1 py-0.5 rounded mt-0.5 inline-block truncate max-w-full"
                           style={{
                             background: admin.planColor ? admin.planColor + "18" : "rgba(124,58,237,0.08)",
                             color: admin.planColor || "#7c3aed",
@@ -601,10 +601,16 @@ export default function Dashboard() {
                       )}
                     </div>
 
-                    {/* Stores: 1 per admin (each admin owns exactly one store) */}
-                    <div className="text-center shrink-0 hidden sm:block">
-                      <p className="text-[10px] text-gray-400 font-medium">Stores</p>
-                      <p className="text-base font-bold" style={{ color: "#1e1b4b" }}>1</p>
+                    {/* Total Store — count coming soon */}
+                    <div className="text-center shrink-0 w-8">
+                      <p className="text-[8px] text-gray-400 font-medium leading-tight">Stores</p>
+                      <p className="text-xs font-bold leading-tight" style={{ color: "#1e1b4b" }}>0</p>
+                    </div>
+
+                    {/* Active — count coming soon */}
+                    <div className="text-center shrink-0 w-8">
+                      <p className="text-[8px] text-gray-400 font-medium leading-tight">Active</p>
+                      <p className="text-xs font-bold leading-tight" style={{ color: "#1e1b4b" }}>0</p>
                     </div>
 
                     {/* Subscription health circle */}
@@ -612,12 +618,13 @@ export default function Dashboard() {
                       <CircularProgress
                         pct={perf}
                         color={isActive ? "#7c3aed" : "#dc2626"}
+                        size={34}
                       />
                     </div>
 
                     {/* Online / offline badge — uses activeSessionCount from API */}
                     <div
-                      className="px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0"
+                      className="px-1.5 py-1 rounded-lg text-[9px] font-semibold shrink-0 whitespace-nowrap"
                       style={{
                         background: isOnline
                           ? "rgba(5,150,105,0.10)"
@@ -632,8 +639,8 @@ export default function Dashboard() {
                     {/* 3-dot menu */}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors shrink-0">
-                          <MoreVertical className="w-4 h-4 text-gray-400" />
+                        <button className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors shrink-0">
+                          <MoreVertical className="w-3.5 h-3.5 text-gray-400" />
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-44">

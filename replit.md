@@ -51,6 +51,8 @@ _Populate as you build — explicit user instructions worth remembering across s
 - `SUPER_ADMIN_ACCESS_CODE` is required at API startup — the server will refuse to boot without it.
 - Vite dev server reads `PORT` and `BASE_PATH` from env; both have safe defaults if unset.
 - After changing the OpenAPI spec, run `pnpm --filter @workspace/api-spec run codegen` to regenerate client hooks.
+- `MONGODB_URI` is not currently set — the API server runs without a database until it's added, so admin/manager data won't load.
+- In the super-admin dashboard's "Managers Overview" row (`artifacts/super-admin/src/pages/admins.tsx`), the per-manager "Stores" and "Active" counts are placeholder `0` values by request — real per-manager store/active counts aren't wired up yet.
 
 ## Pointers
 
