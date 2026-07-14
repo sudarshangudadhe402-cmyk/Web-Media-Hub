@@ -441,72 +441,54 @@ export default function Dashboard() {
           </DropdownMenu>
         </div>
 
-        {/* ── Stats Row 1 ─────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-3">
-          {row1Stats.map((s) => (
-            <div
-              key={s.label}
-              className="bg-white rounded-2xl p-4 transition-transform duration-200 hover:scale-[1.02] cursor-default"
-              style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.07)", border: "1px solid #f0f0f5" }}
-            >
+        {/* ── Stats Grid: 4 col × 2 row compact cards ────────────────────── */}
+        {[row1Stats, row2Stats].map((row, ri) => (
+          <div key={ri} className="grid grid-cols-4 gap-2">
+            {row.map((s) => (
               <div
-                className="w-10 h-10 rounded-2xl flex items-center justify-center mb-3"
-                style={{ background: s.bg, border: `1px solid ${s.border}` }}
+                key={s.label}
+                className="bg-white rounded-xl p-2.5 flex flex-col cursor-default hover:shadow-md transition-shadow duration-200"
+                style={{ boxShadow: "0 1px 6px rgba(0,0,0,0.06)", border: "1px solid #f0f0f5" }}
               >
-                {s.icon}
-              </div>
-              <p className="text-xs text-gray-500 font-medium leading-tight mb-1">{s.label}</p>
-              <p className="text-2xl font-bold tracking-tight" style={{ color: "#1e1b4b" }}>
-                {s.value}
-              </p>
-              {s.action && (
-                <button
-                  className="text-xs font-semibold mt-2 transition-opacity hover:opacity-70"
-                  style={{ color: s.actionColor }}
-                  onClick={() => handleComingSoon(s.label)}
+                {/* Icon */}
+                <div
+                  className="w-8 h-8 rounded-xl flex items-center justify-center mb-2 shrink-0"
+                  style={{ background: s.bg }}
                 >
-                  {s.action}
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* ── Stats Row 2 ─────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-3">
-          {row2Stats.map((s) => (
-            <div
-              key={s.label}
-              className="bg-white rounded-2xl p-4 transition-transform duration-200 hover:scale-[1.02] cursor-default"
-              style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.07)", border: "1px solid #f0f0f5" }}
-            >
-              <div
-                className="w-10 h-10 rounded-2xl flex items-center justify-center mb-3"
-                style={{ background: s.bg, border: `1px solid ${s.border}` }}
-              >
-                {s.icon}
-              </div>
-              <p className="text-xs text-gray-500 font-medium leading-tight mb-1">{s.label}</p>
-              <p className="text-2xl font-bold tracking-tight" style={{ color: "#1e1b4b" }}>
-                {s.value}
-              </p>
-              {s.badge && (
-                <p className="text-xs font-bold mt-1.5" style={{ color: s.badgeColor }}>
-                  {s.badge}
+                  {/* re-render icon smaller */}
+                  <span className="[&_svg]:w-4 [&_svg]:h-4">{s.icon}</span>
+                </div>
+                {/* Label */}
+                <p
+                  className="leading-tight font-medium text-gray-500 mb-0.5"
+                  style={{ fontSize: 9 }}
+                >
+                  {s.label}
                 </p>
-              )}
-              {(s as any).action && (
-                <button
-                  className="text-xs font-semibold mt-2 transition-opacity hover:opacity-70"
-                  style={{ color: (s as any).actionColor }}
-                  onClick={() => handleComingSoon(s.label)}
-                >
-                  {(s as any).action}
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
+                {/* Value */}
+                <p className="font-bold text-base leading-tight" style={{ color: "#1e1b4b" }}>
+                  {s.value}
+                </p>
+                {/* Badge (%) */}
+                {"badge" in s && s.badge && (
+                  <p className="font-bold mt-0.5" style={{ fontSize: 10, color: (s as any).badgeColor }}>
+                    {s.badge}
+                  </p>
+                )}
+                {/* Action link */}
+                {"action" in s && s.action && (
+                  <button
+                    className="font-semibold mt-0.5 text-left transition-opacity hover:opacity-70"
+                    style={{ fontSize: 10, color: (s as any).actionColor }}
+                    onClick={() => handleComingSoon(s.label)}
+                  >
+                    {s.action}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        ))}
 
         {/* ── Managers / Stores Overview ──────────────────────────────────── */}
         <div
