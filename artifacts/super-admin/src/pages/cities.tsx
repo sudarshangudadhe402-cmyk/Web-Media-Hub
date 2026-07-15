@@ -1,33 +1,22 @@
-import { useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Building2 } from "lucide-react";
 import { authFetch } from "@/lib/admin-api";
 import { INDIA_STATES } from "@/lib/india-locations";
 
-interface StateCount {
-  state: string;
-  count: number;
-}
-
 export default function Cities() {
   const [, setLocation] = useLocation();
 
-  const { data: counts = [], isLoading } = useQuery<StateCount[]>({
+  // Backend responds with a plain map: { [state]: count }
+  const { data: countByState = {}, isLoading } = useQuery<Record<string, number>>({
     queryKey: ["cities-counts-by-state"],
     queryFn: async () => {
       const res = await authFetch("/api/cities/counts-by-state");
-      if (!res.ok) return [];
+      if (!res.ok) return {};
       return res.json();
     },
     staleTime: 15_000,
   });
-
-  const countByState = useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const c of counts) map[c.state] = c.count;
-    return map;
-  }, [counts]);
 
   return (
     <div style={{ fontFamily: "'Inter', sans-serif" }}>
