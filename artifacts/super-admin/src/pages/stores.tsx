@@ -88,7 +88,8 @@ export default function Stores() {
             return (
               <div
                 key={admin.id}
-                className="bg-white rounded-2xl p-4 flex items-center gap-3 hover:shadow-md transition-all duration-200"
+                onClick={() => setLocation(`/stores/${admin.id}`)}
+                className="bg-white rounded-2xl p-4 flex items-center gap-3 hover:shadow-md transition-all duration-200 cursor-pointer active:scale-[0.98]"
                 style={{ border: "1px solid #f0f0f5", boxShadow: "0 1px 6px rgba(0,0,0,0.05)" }}
               >
                 <div

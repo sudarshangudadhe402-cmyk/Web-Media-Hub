@@ -196,6 +196,49 @@ router.get("/admins", requireSuperAdmin, async (req, res) => {
 });
 
 
+router.get("/admins/:id", requireSuperAdmin, async (req, res) => {
+  try {
+    const admin = await User.findById(req.params.id).lean() as any;
+    if (!admin || admin.role !== "admin") { res.status(404).json({ error: "Admin not found" }); return; }
+
+    const store = await Store.findOne({ ownerId: String(admin._id) }).lean() as any;
+
+    res.json({
+      id: String(admin._id),
+      username: admin.username ?? "",
+      email: admin.email ?? "",
+      adminNumber: admin.adminNumber ?? "",
+      isActive: admin.isActive !== false,
+      activeSessionCount: (admin.activeSessions ?? []).length,
+      // Plan
+      planName: admin.planName ?? "",
+      planPrice: admin.planPrice ?? "",
+      planPeriod: admin.planPeriod ?? "",
+      planBadge: admin.planBadge ?? "",
+      planColor: admin.planColor ?? "",
+      subscriptionStartDate: admin.subscriptionStartDate ? admin.subscriptionStartDate.toISOString() : null,
+      subscriptionEndDate: admin.subscriptionEndDate ? admin.subscriptionEndDate.toISOString() : null,
+      autopayStatus: admin.autopayStatus ?? "none",
+      // Store
+      storeName: store?.name ?? admin.storeName ?? "",
+      storeAddress: store?.address ?? "",
+      storeWhatsapp: store?.whatsappNumber ?? "",
+      storeOpeningTime: store?.openingTime ?? "",
+      storeOpenDays: store?.openDays ?? "",
+      storePublicSlug: store?.publicSlug ?? "",
+      storeDescription: store?.description ?? "",
+      storeBannerImage: store?.bannerImage ?? "",
+      // Meta
+      storeType: admin.storeType ?? "",
+      signupSource: admin.signup_source ?? "ORGANIC",
+      createdAt: admin.createdAt ? admin.createdAt.toISOString() : "",
+    });
+  } catch (err) {
+    req.log.error({ err }, "Admin detail error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.patch("/admins/:id/toggle-active", requireSuperAdmin, async (req, res) => {
   try {
     const { isActive } = req.body;

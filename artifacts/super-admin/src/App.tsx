@@ -7,6 +7,7 @@ import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
 import Login from "@/pages/login";
 import Admins from "@/pages/admins";
 import Stores from "@/pages/stores";
+import StoreDetail from "@/pages/store-detail";
 import Renewals from "@/pages/renewals";
 import AddCity from "@/pages/add-city";
 import Cities from "@/pages/cities";
@@ -65,6 +66,11 @@ function Router() {
       <Route path="/stores">
         <ProtectedRoute>
           <Stores />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/stores/:id">
+        <ProtectedRoute>
+          <StoreDetail />
         </ProtectedRoute>
       </Route>
       <Route path="/renewals">
