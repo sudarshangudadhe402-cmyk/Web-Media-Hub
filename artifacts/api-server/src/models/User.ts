@@ -29,6 +29,8 @@ export interface IUser extends Document {
   utm_source: string;
   source_confirmed: boolean;
   storeType: string;
+  storeState: string;  // State jahan store registered hai (e.g. "Maharashtra")
+  storeCity: string;   // City jahan store registered hai (e.g. "Pune") — City model se linked
   // Razorpay autopay
   razorpaySubscriptionId: string;
   razorpayPlanId: string;
@@ -85,6 +87,8 @@ const UserSchema = new Schema<IUser>(
     utm_source: { type: String, default: "" },
     source_confirmed: { type: Boolean, default: false },
     storeType: { type: String, default: "" },
+    storeState: { type: String, default: "" },
+    storeCity: { type: String, default: "" },
     // Razorpay autopay
     razorpaySubscriptionId: { type: String, default: "" },
     razorpayPlanId: { type: String, default: "" },

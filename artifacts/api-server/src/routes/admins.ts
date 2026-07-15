@@ -251,9 +251,29 @@ router.get("/admins/:id", requireSuperAdmin, async (req, res) => {
       storeType: admin.storeType ?? "",
       signupSource: admin.signup_source ?? "ORGANIC",
       createdAt: admin.createdAt ? admin.createdAt.toISOString() : "",
+      // Location (City model se linked)
+      storeState: admin.storeState ?? "",
+      storeCity: admin.storeCity ?? "",
     });
   } catch (err) {
     req.log.error({ err }, "Admin detail error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── PATCH /admins/:id/location — assign storeState + storeCity to an admin ──
+router.patch("/admins/:id/location", requireSuperAdmin, async (req, res) => {
+  try {
+    const { storeState, storeCity } = req.body as { storeState?: string; storeCity?: string };
+    const admin = await User.findByIdAndUpdate(
+      req.params.id,
+      { storeState: (storeState ?? "").trim(), storeCity: (storeCity ?? "").trim() },
+      { new: true }
+    );
+    if (!admin) { res.status(404).json({ error: "Admin not found" }); return; }
+    res.json({ id: String(admin._id), storeState: admin.storeState ?? "", storeCity: admin.storeCity ?? "" });
+  } catch (err) {
+    req.log.error({ err }, "Location update error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
