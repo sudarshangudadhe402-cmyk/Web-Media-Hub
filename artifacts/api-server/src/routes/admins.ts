@@ -5,6 +5,34 @@ import { Product } from "../models/Product";
 import { requireSuperAdmin } from "../middlewares/auth";
 import { StoreRequest } from "../models/StoreRequest";
 import { RevenuePayment } from "../models/RevenuePayment";
+import { City } from "../models/City";
+
+/** Parse state & city from a free-form address string using the City model.
+ *  Reuses the same matching logic as /cities/store-counts. */
+async function parseLocationFromAddress(address: string): Promise<{ storeState: string; storeCity: string }> {
+  if (!address?.trim()) return { storeState: "", storeCity: "" };
+  const addrLower = address.toLowerCase();
+  const cities = await City.find({}).select("name state").lean();
+  // Longer names match first (avoids "Pune" stealing "Navi Mumbai")
+  const sorted = (cities as any[]).sort((a, b) => b.name.length - a.name.length);
+  for (const c of sorted) {
+    if (addrLower.includes((c.name as string).toLowerCase())) {
+      return { storeState: c.state as string, storeCity: c.name as string };
+    }
+  }
+  // City not found — try to at least extract state from address parts
+  const INDIA_STATES = [
+    "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat",
+    "Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh",
+    "Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Punjab",
+    "Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh",
+    "Uttarakhand","West Bengal","Delhi","Jammu & Kashmir","Ladakh","Puducherry","Chandigarh",
+  ];
+  for (const s of INDIA_STATES) {
+    if (addrLower.includes(s.toLowerCase())) return { storeState: s, storeCity: "" };
+  }
+  return { storeState: "", storeCity: "" };
+}
 
 const router = Router();
 
@@ -223,6 +251,11 @@ router.get("/admins/:id", requireSuperAdmin, async (req, res) => {
 
     const sName = store?.name ?? "";
     const sObjId = store ? String(store._id) : String(admin._id);
+    const storeAddress: string = store?.address ?? "";
+
+    // Parse state & city from store owner's address using existing City model
+    const { storeState, storeCity } = await parseLocationFromAddress(storeAddress);
+
     res.json({
       id: String(admin._id),
       storeId: sName ? generateStoreId(sName, sObjId) : generateStoreId(admin.username, String(admin._id)),
@@ -241,7 +274,7 @@ router.get("/admins/:id", requireSuperAdmin, async (req, res) => {
       autopayStatus: admin.autopayStatus ?? "none",
       // Store
       storeName: sName,
-      storeAddress: store?.address ?? "",
+      storeAddress,
       storeWhatsapp: store?.whatsappNumber ?? "",
       storeOpeningTime: store?.openingTime ?? "",
       storeOpenDays: store?.openDays ?? "",
@@ -251,29 +284,12 @@ router.get("/admins/:id", requireSuperAdmin, async (req, res) => {
       storeType: admin.storeType ?? "",
       signupSource: admin.signup_source ?? "ORGANIC",
       createdAt: admin.createdAt ? admin.createdAt.toISOString() : "",
-      // Location (City model se linked)
-      storeState: admin.storeState ?? "",
-      storeCity: admin.storeCity ?? "",
+      // Location — derived from store address via City model (not manually set)
+      storeState,
+      storeCity,
     });
   } catch (err) {
     req.log.error({ err }, "Admin detail error");
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// ── PATCH /admins/:id/location — assign storeState + storeCity to an admin ──
-router.patch("/admins/:id/location", requireSuperAdmin, async (req, res) => {
-  try {
-    const { storeState, storeCity } = req.body as { storeState?: string; storeCity?: string };
-    const admin = await User.findByIdAndUpdate(
-      req.params.id,
-      { storeState: (storeState ?? "").trim(), storeCity: (storeCity ?? "").trim() },
-      { new: true }
-    );
-    if (!admin) { res.status(404).json({ error: "Admin not found" }); return; }
-    res.json({ id: String(admin._id), storeState: admin.storeState ?? "", storeCity: admin.storeCity ?? "" });
-  } catch (err) {
-    req.log.error({ err }, "Location update error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
