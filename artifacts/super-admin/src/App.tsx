@@ -9,6 +9,8 @@ import Admins from "@/pages/admins";
 import Stores from "@/pages/stores";
 import Renewals from "@/pages/renewals";
 import AddCity from "@/pages/add-city";
+import Cities from "@/pages/cities";
+import CityStores from "@/pages/city-stores";
 import LegalLog from "@/pages/legal-log";
 import Revenue from "@/pages/revenue";
 import PricingConfig from "@/pages/pricing-config";
@@ -73,6 +75,16 @@ function Router() {
       <Route path="/add-city">
         <ProtectedRoute>
           <AddCity />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/cities">
+        <ProtectedRoute>
+          <Cities />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/cities/:state">
+        <ProtectedRoute>
+          <CityStores />
         </ProtectedRoute>
       </Route>
       <Route path="/legal-log">

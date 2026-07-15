@@ -204,6 +204,19 @@ export default function Dashboard() {
   });
   const citiesArr = cities as { id: string; name: string; state: string }[];
 
+  // All cities (unfiltered) — used for the "Total Cities" stat card, kept
+  // independent from the state-scoped `cities` query above.
+  const { data: allCities = [] } = useQuery({
+    queryKey: ["cities", "all"],
+    queryFn: async () => {
+      const res = await authFetch("/api/cities");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
+  const totalCities = (allCities as any[]).length;
+
   // Marketing / revenue data for renewals
   const { data: revenueData } = useQuery({
     queryKey: ["dashboard-marketing-revenue"],
@@ -287,9 +300,9 @@ export default function Dashboard() {
       icon: <Building2 className="w-5 h-5" style={{ color: "#0891b2" }} />,
       bg: "rgba(8,145,178,0.10)", border: "rgba(8,145,178,0.18)",
       label: "Total Cities",
-      // City field not yet in listAdmins response; shows 0 until API updated
-      value: isLoading ? "—" : "0",
+      value: isLoading ? "—" : totalCities.toLocaleString(),
       action: "View all", actionColor: "#0891b2",
+      onAction: () => setLocation("/cities"),
     },
     {
       icon: <Store className="w-5 h-5" style={{ color: "#059669" }} />,
