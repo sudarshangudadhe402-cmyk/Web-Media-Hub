@@ -204,8 +204,7 @@ export default function Dashboard() {
   });
   const citiesArr = cities as { id: string; name: string; state: string }[];
 
-  // All cities (unfiltered) — used for the "Total Cities" stat card, kept
-  // independent from the state-scoped `cities` query above.
+  // All cities (unfiltered) — used for the "Total Cities" stat card
   const { data: allCities = [] } = useQuery({
     queryKey: ["cities", "all"],
     queryFn: async () => {
@@ -216,6 +215,19 @@ export default function Dashboard() {
     staleTime: 30_000,
   });
   const totalCities = (allCities as any[]).length;
+
+  // Store counts per registered city and state (computed from store addresses + lat/lng)
+  const { data: storeCounts } = useQuery({
+    queryKey: ["cities-store-counts"],
+    queryFn: async () => {
+      const res = await authFetch("/api/cities/store-counts");
+      if (!res.ok) return { byCity: {}, byState: {}, totalCitiesWithStores: 0 };
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+  const storeCountsByState: Record<string, number> = (storeCounts as any)?.byState ?? {};
+  const storeCountsByCity:  Record<string, number> = (storeCounts as any)?.byCity  ?? {};
 
   // Marketing / revenue data for renewals
   const { data: revenueData } = useQuery({
@@ -377,25 +389,31 @@ export default function Dashboard() {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56 max-h-72 overflow-y-auto">
-              {INDIA_LOCATIONS.map((o) => (
-                <DropdownMenuItem
-                  key={o}
-                  onClick={() => {
-                    setLocationFilter(o);
-                    setCityFilter("City");
-                  }}
-                  className="text-sm flex items-center justify-between gap-2"
-                >
-                  <span className="truncate">{o}</span>
-                  <span
-                    className="text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
-                    style={{ background: "rgba(124,58,237,0.10)", color: "#7c3aed" }}
+              {INDIA_LOCATIONS.map((o) => {
+                const cnt = o === "All India"
+                  ? adminsArr.length
+                  : (storeCountsByState[o] ?? 0);
+                return (
+                  <DropdownMenuItem
+                    key={o}
+                    onClick={() => {
+                      setLocationFilter(o);
+                      setCityFilter("City");
+                    }}
+                    className="text-sm flex items-center justify-between gap-2"
                   >
-                    {/* TODO: wire real per-state manager/store counts */}
-                    0
-                  </span>
-                </DropdownMenuItem>
-              ))}
+                    <span className="truncate">{o}</span>
+                    {cnt > 0 && (
+                      <span
+                        className="text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
+                        style={{ background: "rgba(124,58,237,0.10)", color: "#7c3aed" }}
+                      >
+                        {cnt}
+                      </span>
+                    )}
+                  </DropdownMenuItem>
+                );
+              })}
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -421,22 +439,26 @@ export default function Dashboard() {
                     : `No cities added under ${locationFilter} yet`}
                 </div>
               ) : (
-                citiesArr.map((c) => (
-                  <DropdownMenuItem
-                    key={c.id}
-                    onClick={() => setCityFilter(c.name)}
-                    className="text-sm flex items-center justify-between gap-2"
-                  >
-                    <span className="truncate">{c.name}</span>
-                    <span
-                      className="text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
-                      style={{ background: "rgba(124,58,237,0.10)", color: "#7c3aed" }}
+                citiesArr.map((c) => {
+                  const cnt = storeCountsByCity[c.id] ?? 0;
+                  return (
+                    <DropdownMenuItem
+                      key={c.id}
+                      onClick={() => setCityFilter(c.name)}
+                      className="text-sm flex items-center justify-between gap-2"
                     >
-                      {/* TODO: wire real per-city manager/store counts */}
-                      0
-                    </span>
-                  </DropdownMenuItem>
-                ))
+                      <span className="truncate">{c.name}</span>
+                      {cnt > 0 && (
+                        <span
+                          className="text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
+                          style={{ background: "rgba(124,58,237,0.10)", color: "#7c3aed" }}
+                        >
+                          {cnt}
+                        </span>
+                      )}
+                    </DropdownMenuItem>
+                  );
+                })
               )}
             </DropdownMenuContent>
           </DropdownMenu>
