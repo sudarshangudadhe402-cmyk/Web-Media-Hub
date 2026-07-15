@@ -82,6 +82,7 @@ export default function Stores() {
           {filteredAdmins.map((admin: any) => {
             const isActive = admin.isActive !== false;
             const displayName = admin.storeName || admin.email || "—";
+            const storeId = admin.storeId as string | undefined;
             const planName = admin.planName as string;
             const planColor = admin.planColor as string;
             const endDate = admin.subscriptionEndDate as string | null;
@@ -112,6 +113,11 @@ export default function Stores() {
                       </span>
                     )}
                   </div>
+                  {storeId && (
+                    <p className="text-[10px] font-mono font-medium mt-0.5" style={{ color: "#7c3aed" }}>
+                      #{storeId}
+                    </p>
+                  )}
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                     {planName && (
                       <span

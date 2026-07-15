@@ -21,7 +21,7 @@ import { authFetch } from "@/lib/admin-api";
 
 interface AdminDetail {
   id: string;
-  username: string;
+  storeId: string;
   email: string;
   adminNumber: string;
   isActive: boolean;
@@ -41,7 +41,6 @@ interface AdminDetail {
   storeWhatsapp: string;
   storeOpeningTime: string;
   storeOpenDays: string;
-  storePublicSlug: string;
   storeDescription: string;
   storeBannerImage: string;
   // meta
@@ -120,7 +119,7 @@ export default function StoreDetail() {
     staleTime: 30_000,
   });
 
-  const initials = (data?.storeName || data?.username || "??")
+  const initials = (data?.storeName || data?.storeId || "??")
     .substring(0, 2)
     .toUpperCase();
 
@@ -178,7 +177,7 @@ export default function StoreDetail() {
 
             <div className="flex-1 min-w-0">
               <h2 className="text-lg font-bold truncate" style={{ color: "#1e1b4b" }}>
-                {data.storeName || data.username || "—"}
+                {data.storeName || "—"}
               </h2>
 
               <div className="flex flex-wrap items-center gap-1.5 mt-1">
@@ -230,7 +229,7 @@ export default function StoreDetail() {
 
           {/* Owner Details */}
           <Section title="Owner Details">
-            <InfoRow icon={<UserCircle2 className="w-4 h-4" />} label="Username" value={data.username} />
+            <InfoRow icon={<UserCircle2 className="w-4 h-4" />} label="Store ID" value={data.storeId} accent="#7c3aed" />
             <InfoRow icon={<Mail className="w-4 h-4" />} label="Email" value={data.email} accent="#0ea5e9" />
             <InfoRow icon={<Phone className="w-4 h-4" />} label="Mobile Number" value={data.adminNumber} accent="#10b981" />
             <InfoRow icon={<Tag className="w-4 h-4" />} label="Store Type" value={data.storeType} />
@@ -276,13 +275,12 @@ export default function StoreDetail() {
           </Section>
 
           {/* Store Details */}
-          {(data.storeAddress || data.storeWhatsapp || data.storeOpeningTime || data.storeOpenDays || data.storePublicSlug || data.storeDescription) && (
+          {(data.storeAddress || data.storeWhatsapp || data.storeOpeningTime || data.storeOpenDays || data.storeDescription) && (
             <Section title="Store Info">
               <InfoRow icon={<MapPin className="w-4 h-4" />} label="Address" value={data.storeAddress} accent="#ef4444" />
               <InfoRow icon={<MessageCircle className="w-4 h-4" />} label="WhatsApp" value={data.storeWhatsapp} accent="#22c55e" />
               <InfoRow icon={<Clock className="w-4 h-4" />} label="Opening Time" value={data.storeOpeningTime} />
               <InfoRow icon={<CalendarDays className="w-4 h-4" />} label="Open Days" value={data.storeOpenDays} />
-              <InfoRow icon={<Globe className="w-4 h-4" />} label="Public Slug" value={data.storePublicSlug} />
               {data.storeDescription && (
                 <div className="py-3 border-b last:border-0" style={{ borderColor: "#f0f0f5" }}>
                   <div className="flex items-center gap-2 mb-1">

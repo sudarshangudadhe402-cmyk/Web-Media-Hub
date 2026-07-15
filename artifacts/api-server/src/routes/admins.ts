@@ -153,6 +153,17 @@ router.get("/admins/stats-overview", requireSuperAdmin, async (req, res) => {
   }
 });
 
+/** Deterministic 10-char Store ID: 3 letters from store name + 7 from Mongo _id hex */
+function generateStoreId(storeName: string, storeObjectId: string): string {
+  const namePart = storeName
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .substring(0, 3)
+    .toUpperCase()
+    .padEnd(3, "X");
+  const idPart = storeObjectId.replace(/[^a-fA-F0-9]/g, "").substring(0, 7).toUpperCase();
+  return namePart + idPart; // exactly 10 chars
+}
+
 router.get("/admins", requireSuperAdmin, async (req, res) => {
   try {
     const admins = await User.find({ role: "admin" }).sort({ createdAt: -1 });
@@ -160,23 +171,29 @@ router.get("/admins", requireSuperAdmin, async (req, res) => {
     const adminIds = admins.map((a) => String(a._id));
     const stores = await Store.find({ ownerId: { $in: adminIds } }).select("ownerId publicSlug name createdAt");
 
-    const storeMap: Record<string, { publicSlug: string; name: string; createdAt: Date | null }> = {};
+    const storeMap: Record<string, { publicSlug: string; name: string; storeObjId: string; createdAt: Date | null }> = {};
     for (const s of stores) {
-      if (s.ownerId) storeMap[s.ownerId] = { publicSlug: s.publicSlug, name: s.name, createdAt: (s as any).createdAt ?? null };
+      if (s.ownerId) storeMap[s.ownerId] = { publicSlug: s.publicSlug, name: s.name, storeObjId: String(s._id), createdAt: (s as any).createdAt ?? null };
     }
 
     res.json(
-      admins.map((a) => ({
-        id: String(a._id),
+      admins.map((a) => {
+        const sid = String(a._id);
+        const sData = storeMap[sid];
+        const sName = sData?.name ?? "";
+        const sObjId = sData?.storeObjId ?? sid;
+        return {
+        id: sid,
         username: a.username,
         email: a.email ?? "",
         adminNumber: a.adminNumber ?? "",
         role: a.role,
         isActive: a.isActive !== false,
         activeSessionCount: (a.activeSessions ?? []).length,
-        storeSlug: storeMap[String(a._id)]?.publicSlug ?? null,
-        storeName: storeMap[String(a._id)]?.name ?? null,
-        storeCreatedAt: storeMap[String(a._id)]?.createdAt?.toISOString() ?? null,
+        storeId: sName ? generateStoreId(sName, sObjId) : generateStoreId(a.username, sid),
+        storeSlug: sData?.publicSlug ?? null,
+        storeName: sName || null,
+        storeCreatedAt: sData?.createdAt?.toISOString() ?? null,
         planKey: a.planKey ?? "",
         planName: a.planName ?? "",
         planPrice: a.planPrice ?? "",
@@ -187,7 +204,8 @@ router.get("/admins", requireSuperAdmin, async (req, res) => {
         subscriptionEndDate: a.subscriptionEndDate ? a.subscriptionEndDate.toISOString() : null,
         storeType: a.storeType ?? "",
         createdAt: a.createdAt.toISOString(),
-      }))
+        };
+      })
     );
   } catch (err) {
     req.log.error({ err }, "List admins error");
@@ -203,9 +221,11 @@ router.get("/admins/:id", requireSuperAdmin, async (req, res) => {
 
     const store = await Store.findOne({ ownerId: String(admin._id) }).lean() as any;
 
+    const sName = store?.name ?? "";
+    const sObjId = store ? String(store._id) : String(admin._id);
     res.json({
       id: String(admin._id),
-      username: admin.username ?? "",
+      storeId: sName ? generateStoreId(sName, sObjId) : generateStoreId(admin.username, String(admin._id)),
       email: admin.email ?? "",
       adminNumber: admin.adminNumber ?? "",
       isActive: admin.isActive !== false,
@@ -220,12 +240,11 @@ router.get("/admins/:id", requireSuperAdmin, async (req, res) => {
       subscriptionEndDate: admin.subscriptionEndDate ? admin.subscriptionEndDate.toISOString() : null,
       autopayStatus: admin.autopayStatus ?? "none",
       // Store
-      storeName: store?.name ?? admin.storeName ?? "",
+      storeName: sName,
       storeAddress: store?.address ?? "",
       storeWhatsapp: store?.whatsappNumber ?? "",
       storeOpeningTime: store?.openingTime ?? "",
       storeOpenDays: store?.openDays ?? "",
-      storePublicSlug: store?.publicSlug ?? "",
       storeDescription: store?.description ?? "",
       storeBannerImage: store?.bannerImage ?? "",
       // Meta
