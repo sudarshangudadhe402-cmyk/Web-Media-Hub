@@ -28,13 +28,12 @@ import {
   UserMinus,
   ChevronDown,
   Globe,
-  Calendar,
   Building2,
-  CalendarDays,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
 import { authFetch } from "@/lib/admin-api";
+import { INDIA_LOCATIONS } from "@/lib/india-locations";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -45,18 +44,6 @@ function fmtDate(iso: string | null | undefined) {
     month: "short",
     year: "numeric",
   });
-}
-
-function isInDateRange(
-  iso: string | null | undefined,
-  start: Date | null,
-  end: Date | null
-): boolean {
-  if (!iso) return false;
-  const d = new Date(iso);
-  if (start && d < start) return false;
-  if (end && d > end) return false;
-  return true;
 }
 
 function isToday(iso: string | null | undefined): boolean {
@@ -89,81 +76,6 @@ function subscriptionHealth(admin: any): number {
 }
 
 // ── India states / UTs ────────────────────────────────────────────────────────
-
-const INDIA_LOCATIONS = [
-  "All India",
-  "Andhra Pradesh",
-  "Arunachal Pradesh",
-  "Assam",
-  "Bihar",
-  "Chhattisgarh",
-  "Goa",
-  "Gujarat",
-  "Haryana",
-  "Himachal Pradesh",
-  "Jharkhand",
-  "Karnataka",
-  "Kerala",
-  "Madhya Pradesh",
-  "Maharashtra",
-  "Manipur",
-  "Meghalaya",
-  "Mizoram",
-  "Nagaland",
-  "Odisha",
-  "Punjab",
-  "Rajasthan",
-  "Sikkim",
-  "Tamil Nadu",
-  "Telangana",
-  "Tripura",
-  "Uttar Pradesh",
-  "Uttarakhand",
-  "West Bengal",
-  "Andaman and Nicobar Islands",
-  "Chandigarh",
-  "Dadra and Nagar Haveli and Daman and Diu",
-  "Delhi (NCT)",
-  "Jammu and Kashmir",
-  "Ladakh",
-  "Lakshadweep",
-  "Puducherry",
-];
-
-// ── date-range presets ───────────────────────────────────────────────────────
-
-const DATE_PRESETS: { label: string; start: Date | null; end: Date | null }[] =
-  [
-    {
-      label: "01 May - 31 May 2024",
-      start: new Date("2024-05-01"),
-      end: new Date("2024-05-31T23:59:59"),
-    },
-    {
-      label: "01 Apr - 30 Apr 2024",
-      start: new Date("2024-04-01"),
-      end: new Date("2024-04-30T23:59:59"),
-    },
-    {
-      label: "01 Jun - 30 Jun 2024",
-      start: new Date("2024-06-01"),
-      end: new Date("2024-06-30T23:59:59"),
-    },
-    (() => {
-      const now = new Date();
-      return {
-        label: "This Month",
-        start: new Date(now.getFullYear(), now.getMonth(), 1),
-        end: null,
-      };
-    })(),
-    (() => {
-      const now = new Date();
-      const s = new Date(now);
-      s.setMonth(s.getMonth() - 3);
-      return { label: "Last 3 Months", start: s, end: null };
-    })(),
-  ];
 
 // ── Circular Progress ─────────────────────────────────────────────────────────
 
@@ -273,15 +185,24 @@ export default function Dashboard() {
   // Filters
   const [search, setSearch]           = useState("");
   const [locationFilter, setLocationFilter] = useState("All India");
-  const [datePresetIdx, setDatePresetIdx]   = useState(-1); // -1 = no date filter applied
+  const [cityFilter, setCityFilter]         = useState("City");
   const [mapDropdown, setMapDropdown]       = useState("Total Stores");
   const [mapZoom, setMapZoom]               = useState(4); // 4 = all-India view
   const [, setLocation] = useLocation();
 
-  const datePreset =
-    datePresetIdx === -1
-      ? { label: "Date Range", start: null, end: null }
-      : DATE_PRESETS[datePresetIdx];
+  // Cities — scoped to the selected state so the City filter only shows
+  // cities that were actually added under that state.
+  const { data: cities = [] } = useQuery({
+    queryKey: ["cities", locationFilter],
+    queryFn: async () => {
+      const qs = locationFilter !== "All India" ? `?state=${encodeURIComponent(locationFilter)}` : "";
+      const res = await authFetch(`/api/cities${qs}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
+  const citiesArr = cities as { id: string; name: string; state: string }[];
 
   // Marketing / revenue data for renewals
   const { data: revenueData } = useQuery({
@@ -309,23 +230,8 @@ export default function Dashboard() {
 
   const adminsArr = admins as any[];
 
-  // Date-range filtered set (applied to createdAt / storeCreatedAt)
-  const dateFilteredAdmins = useMemo(
-    () =>
-      datePreset.start || datePreset.end
-        ? adminsArr.filter((a) =>
-            isInDateRange(
-              a.storeCreatedAt ?? a.createdAt,
-              datePreset.start,
-              datePreset.end
-            )
-          )
-        : adminsArr,
-    [adminsArr, datePreset]
-  );
-
-  const totalStores   = dateFilteredAdmins.length;
-  const activeStores  = dateFilteredAdmins.filter((a) => a.isActive !== false).length;
+  const totalStores   = adminsArr.length;
+  const activeStores  = adminsArr.filter((a) => a.isActive !== false).length;
   const offlineStores = totalStores - activeStores;
   const newStoresToday = adminsArr.filter((a) =>
     isToday(a.storeCreatedAt ?? a.createdAt)
@@ -349,7 +255,7 @@ export default function Dashboard() {
 
   const filteredAdmins = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return dateFilteredAdmins.filter(
+    return adminsArr.filter(
       (a) =>
         !q ||
         (a.storeName   ?? "").toLowerCase().includes(q) ||
@@ -357,7 +263,7 @@ export default function Dashboard() {
         (a.email       ?? "").toLowerCase().includes(q) ||
         (a.adminNumber ?? "").toLowerCase().includes(q)
     );
-  }, [dateFilteredAdmins, search]);
+  }, [adminsArr, search]);
 
   function handleComingSoon(label: string) {
     toast({
@@ -461,7 +367,10 @@ export default function Dashboard() {
               {INDIA_LOCATIONS.map((o) => (
                 <DropdownMenuItem
                   key={o}
-                  onClick={() => setLocationFilter(o)}
+                  onClick={() => {
+                    setLocationFilter(o);
+                    setCityFilter("City");
+                  }}
                   className="text-sm flex items-center justify-between gap-2"
                 >
                   <span className="truncate">{o}</span>
@@ -477,26 +386,45 @@ export default function Dashboard() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Date range filter — applies to store created date */}
+          {/* City filter — cities added under the selected state via "Add City" */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 className="flex-1 flex items-center gap-2 px-4 py-3 rounded-2xl text-sm font-medium bg-white border"
                 style={{ borderColor: "#e5e7eb", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
               >
-                <Calendar className="w-4 h-4 shrink-0" style={{ color: "#7c3aed" }} />
+                <Building2 className="w-4 h-4 shrink-0" style={{ color: "#7c3aed" }} />
                 <span className="flex-1 text-left text-gray-700 text-xs truncate">
-                  {datePreset.label}
+                  {cityFilter}
                 </span>
                 <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-52">
-              {DATE_PRESETS.map((p, i) => (
-                <DropdownMenuItem key={p.label} onClick={() => setDatePresetIdx(i)} className="text-xs">
-                  {p.label}
-                </DropdownMenuItem>
-              ))}
+            <DropdownMenuContent className="w-56 max-h-72 overflow-y-auto">
+              {citiesArr.length === 0 ? (
+                <div className="px-2 py-3 text-xs text-gray-400 text-center">
+                  {locationFilter === "All India"
+                    ? "No cities added yet"
+                    : `No cities added under ${locationFilter} yet`}
+                </div>
+              ) : (
+                citiesArr.map((c) => (
+                  <DropdownMenuItem
+                    key={c.id}
+                    onClick={() => setCityFilter(c.name)}
+                    className="text-sm flex items-center justify-between gap-2"
+                  >
+                    <span className="truncate">{c.name}</span>
+                    <span
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
+                      style={{ background: "rgba(124,58,237,0.10)", color: "#7c3aed" }}
+                    >
+                      {/* TODO: wire real per-city manager/store counts */}
+                      0
+                    </span>
+                  </DropdownMenuItem>
+                ))
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -668,7 +596,9 @@ export default function Dashboard() {
               return (
                 <button
                   key={action.label}
-                  onClick={() => handleComingSoon(action.label)}
+                  onClick={() =>
+                    action.label === "Add City" ? setLocation("/add-city") : handleComingSoon(action.label)
+                  }
                   className="group flex flex-col items-center gap-2 py-4 rounded-2xl bg-white border transition-all duration-200 hover:-translate-y-1 hover:shadow-md"
                   style={{ borderColor: "#f0f0f5", boxShadow: "0 1px 6px rgba(0,0,0,0.05)" }}
                 >

@@ -18,6 +18,7 @@ import legalRouter from "./legal";
 import ledgerRouter from "./ledger";
 import customerAccountsRouter from "./customerAccounts";
 import marketingRouter from "./marketing";
+import citiesRouter from "./cities";
 import campaignsRouter from "./campaigns";
 import paymentsRouter from "./payments";
 import { requireDb } from "../middlewares/dbCheck";
@@ -92,6 +93,7 @@ router.use(pricingRouter);
 router.use(ledgerRouter);
 router.use(customerAccountsRouter);
 router.use(marketingRouter);
+router.use(citiesRouter);
 router.use(campaignsRouter);
 router.use(paymentsRouter);
 

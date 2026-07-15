@@ -8,6 +8,7 @@ import Login from "@/pages/login";
 import Admins from "@/pages/admins";
 import Stores from "@/pages/stores";
 import Renewals from "@/pages/renewals";
+import AddCity from "@/pages/add-city";
 import LegalLog from "@/pages/legal-log";
 import Revenue from "@/pages/revenue";
 import PricingConfig from "@/pages/pricing-config";
@@ -67,6 +68,11 @@ function Router() {
       <Route path="/renewals">
         <ProtectedRoute>
           <Renewals />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/add-city">
+        <ProtectedRoute>
+          <AddCity />
         </ProtectedRoute>
       </Route>
       <Route path="/legal-log">
