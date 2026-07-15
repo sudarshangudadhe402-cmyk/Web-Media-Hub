@@ -8,6 +8,7 @@ import { MarketingSourceConfig } from "../models/MarketingSourceConfig";
 import { BuiltinSourceSetting } from "../models/BuiltinSourceSetting";
 import { MarketingCategoryConfig } from "../models/MarketingCategoryConfig";
 import { RevenuePayment } from "../models/RevenuePayment";
+import { Store } from "../models/Store";
 
 const router = Router();
 
@@ -477,15 +478,30 @@ router.get("/marketing/renewals-detail", requireSuperAdmin, async (_req: AuthReq
       .select("storeName username email planName planColor")
       .lean();
 
+    // Fetch stores for each admin (Store.ownerId = admin._id as string)
+    const stores = await Store.find({ ownerId: { $in: adminIds } })
+      .select("ownerId name")
+      .lean();
+    const storeNameByAdmin: Record<string, string> = {};
+    for (const s of stores) {
+      if (s.ownerId) storeNameByAdmin[String(s.ownerId)] = s.name;
+    }
+
     const perAdmin = admins
-      .map((a: any) => ({
-        adminId: String(a._id),
-        storeName: a.storeName || a.username || a.email || "—",
-        planName: a.planName || "",
-        planColor: a.planColor || "",
-        renewalCount: perAdminMap[String(a._id)]?.renewalCount || 0,
-        renewalRevenue: perAdminMap[String(a._id)]?.renewalRevenue || 0,
-      }))
+      .map((a: any) => {
+        const id = String(a._id);
+        // Prefer actual Store name → User.storeName → username → email
+        const storeName =
+          storeNameByAdmin[id] || a.storeName || a.username || a.email || "—";
+        return {
+          adminId: id,
+          storeName,
+          planName: a.planName || "",
+          planColor: a.planColor || "",
+          renewalCount: perAdminMap[id]?.renewalCount || 0,
+          renewalRevenue: perAdminMap[id]?.renewalRevenue || 0,
+        };
+      })
       .sort((a, b) => b.renewalCount - a.renewalCount);
 
     res.json({ totalRenewalCount, totalRenewalRevenue, perAdmin });
