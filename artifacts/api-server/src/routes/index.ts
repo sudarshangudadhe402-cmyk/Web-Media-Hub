@@ -21,6 +21,7 @@ import marketingRouter from "./marketing";
 import citiesRouter from "./cities";
 import campaignsRouter from "./campaigns";
 import paymentsRouter from "./payments";
+import chatRouter from "./chat";
 import { requireDb } from "../middlewares/dbCheck";
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET;
@@ -96,5 +97,6 @@ router.use(marketingRouter);
 router.use(citiesRouter);
 router.use(campaignsRouter);
 router.use(paymentsRouter);
+router.use(chatRouter);
 
 export default router;

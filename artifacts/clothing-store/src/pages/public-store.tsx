@@ -1481,6 +1481,10 @@ export default function PublicStore() {
             myBookings={myBookings}
             seenStatus={seenStatus}
             completedStatus={completedStatus}
+            storeSlug={slug}
+            storeName={data?.name ?? ""}
+            customerAccount={customerAccount}
+            onNeedLogin={() => setTab("profile")}
           />
         )}
         {tab === "cart" && (

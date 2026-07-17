@@ -1,7 +1,8 @@
 import { useGetDashboardSummary, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CalendarCheck, MessageCircle, ChevronLeft, ShoppingBag, BookMarked, CheckCheck, Search, User, Mail } from "lucide-react";
+import { CalendarCheck, MessageCircle, ChevronLeft, ShoppingBag, BookMarked, CheckCheck, Search, User, Mail, X } from "lucide-react";
+import AdminChatView from "@/components/chat/AdminChatView";
 import { useLocation } from "wouter";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
@@ -144,7 +145,7 @@ export default function Dashboard() {
 
   const unseenCount = (summary as any).unseenBookings ?? 0;
 
-  /* ── CHAT (blank placeholder) ── */
+  /* ── CHAT VIEW ── */
   if (view === "chat") {
     return (
       <div className="space-y-4">
@@ -154,15 +155,7 @@ export default function Dashboard() {
           </button>
           <h1 className="text-xl font-bold tracking-tight">Customer's Chat</h1>
         </div>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center gap-4">
-          <div className="w-20 h-20 rounded-2xl flex items-center justify-center" style={{ background: "rgba(168,85,247,0.1)" }}>
-            <MessageCircle className="w-10 h-10 text-purple-400" />
-          </div>
-          <div>
-            <p className="text-base font-bold text-gray-900">Coming Soon</p>
-            <p className="text-xs text-gray-400 mt-1">Chat feature will be available here</p>
-          </div>
-        </div>
+        <AdminChatView />
       </div>
     );
   }

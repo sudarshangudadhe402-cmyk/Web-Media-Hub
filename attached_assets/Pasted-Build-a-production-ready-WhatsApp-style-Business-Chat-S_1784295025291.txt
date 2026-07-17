@@ -1,0 +1,180 @@
+Build a production-ready WhatsApp-style Business Chat System inside our existing SaaS. Do not create a separate app. The chat must match the existing design system, authentication, database, and architecture.
+
+User Roles
+
+Customer
+
+- Can chat only with the owner of the store they are interacting with.
+- Cannot message other customers.
+- Cannot message other stores unless a conversation is initiated through that store.
+- No chat search feature.
+
+Store Owner
+
+- Can chat with all customers of their own store.
+- Can search chats by customer name, phone number, or message content.
+- Cannot access chats belonging to other stores.
+
+---
+
+Required Features
+
+Messaging
+
+- One-to-one chat
+- Text messages
+- Voice notes
+- Reply to message
+- Delete for Me
+- Delete for Everyone (within configurable time limit)
+- Read (Seen) status
+- Online/Offline status
+- Last Seen
+- Typing Indicator
+- Unread message counter
+- Push Notifications
+
+Calling
+
+- Voice Calling using WebRTC
+
+Translation
+
+- One-tap message translation
+- Show original and translated message
+- Support future addition of multiple languages
+
+Security
+
+- End-to-End Encryption (E2EE)
+- Encrypt all messages before storage
+- Secure key management
+- HTTPS/TLS only
+- Validate all requests
+- Prevent unauthorized access
+- Rate limit message sending
+- Prevent spam
+
+---
+
+Business Features
+
+Product Card
+
+Every product card must contain a "Message on WhatsApp" button.
+
+When clicked:
+
+- Open chat with the correct Store Owner.
+- Automatically insert product context into the conversation.
+- Product card should appear inside the chat.
+
+---
+
+Order Creation
+
+Store Owner can create an order directly from chat.
+
+Order should automatically appear in conversation with:
+
+- Order ID
+- Product(s)
+- Quantity
+- Total Amount
+- Payment Status
+- Order Status
+
+---
+
+Booking
+
+Booking confirmations must automatically appear in chat.
+
+Also send automatic messages for:
+
+- Booking Confirmed
+- Booking Cancelled
+- Booking Rescheduled
+
+---
+
+UI
+
+Create a premium WhatsApp-inspired interface.
+
+Include:
+
+- Chat List
+- Conversation Screen
+- Message Bubbles
+- Reply Preview
+- Voice Recording Button
+- Emoji Picker
+- Attachment Button (future-ready)
+- Typing Animation
+- Seen Double Tick
+- Online Indicator
+- Last Seen
+- Voice Call Button
+- Responsive Mobile UI
+- Responsive Desktop UI
+- Dark Mode
+- Light Mode
+
+Do NOT copy WhatsApp assets or branding. Create an original UI inspired by modern business messaging apps.
+
+---
+
+Database
+
+Design optimized tables for:
+
+- Conversations
+- Messages
+- Voice Notes
+- Encryption Keys
+- Read Receipts
+- Typing Status
+- Presence
+- Call Logs
+
+Add proper indexes for fast search and scalability.
+
+---
+
+Performance
+
+- Real-time messaging
+- Instant delivery
+- Lazy loading of old messages
+- Infinite scroll
+- Message pagination
+- Optimized database queries
+- Efficient API responses
+- Low bandwidth usage
+- Handle thousands of concurrent users per store
+
+---
+
+Code Quality
+
+- Reuse existing components where possible.
+- No duplicate code.
+- No unnecessary dependencies.
+- No unused files.
+- Clean architecture.
+- Type-safe code.
+- Modular components.
+- Proper error handling.
+- Loading states.
+- Empty states.
+- Offline handling.
+- Fully responsive.
+
+Before finishing:
+
+1. Scan the entire project.
+2. Integrate the chat cleanly with the existing SaaS.
+3. Fix any build or TypeScript errors.
+4. Ensure production-ready code with no broken functionality.
+5. Do not remove or break any existing feature while adding this chat system.
