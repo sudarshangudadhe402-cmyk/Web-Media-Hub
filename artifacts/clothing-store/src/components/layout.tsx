@@ -85,8 +85,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         { name: "Admins", href: "/admins", icon: Shield },
       ]
     : [
-        { name: "Sales & Ledger", href: "/", icon: BookOpen },
         { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+        { name: "Sales & Ledger", href: "/", icon: BookOpen },
         { name: "Products", href: "/products", icon: Package },
         { name: "Marketing & Growth", href: "/marketing-growth", icon: Zap },
         { name: "My Store", href: "/my-store", icon: Store },
