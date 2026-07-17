@@ -517,6 +517,20 @@ export default function Products() {
           )}
         </div>
 
+        {/* Stats row: Total Products + Total Categories */}
+        {!bulkMode && (
+          <div className="flex gap-2">
+            <div className="flex-1 rounded-xl border border-gray-100 bg-white px-4 py-3 flex flex-col">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">Total Products</p>
+              <p className="text-2xl font-extrabold text-gray-900 leading-tight">{allProducts?.length ?? 0}</p>
+            </div>
+            <div className="flex-1 rounded-xl border border-gray-100 bg-white px-4 py-3 flex flex-col">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">Total Categories</p>
+              <p className="text-2xl font-extrabold text-gray-900 leading-tight">{categories?.length ?? 0}</p>
+            </div>
+          </div>
+        )}
+
         {/* Row 2: Add buttons — always full width, fully visible */}
         {!bulkMode && (
           <div className="flex gap-2">

@@ -542,30 +542,7 @@ export default function Dashboard() {
     <div className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
 
-      {/* Row 1: Total Products + Total Categories — split card */}
-      <Card className="overflow-hidden">
-        <div className="flex divide-x divide-gray-100">
-          {/* Left: Total Products */}
-          <button
-            className="flex-1 text-left px-4 py-4 hover:bg-gray-50 active:bg-gray-100 transition-colors"
-            onClick={() => setLocation("/products")}
-          >
-            <p className="text-[11px] text-muted-foreground mb-1">Total Products</p>
-            <div className="text-3xl font-extrabold text-gray-900">{summary.totalProducts}</div>
-          </button>
-
-          {/* Right: Total Categories */}
-          <button
-            className="flex-1 text-left px-4 py-4 hover:bg-gray-50 active:bg-gray-100 transition-colors"
-            onClick={() => setLocation("/categories")}
-          >
-            <p className="text-[11px] text-muted-foreground mb-1">Total Categories</p>
-            <div className="text-3xl font-extrabold text-gray-900">{(summary as any).totalCategories ?? 0}</div>
-          </button>
-        </div>
-      </Card>
-
-      {/* Row 2: Active Bookings */}
+      {/* Row 1: Active Bookings */}
       <Card
         className="cursor-pointer hover:border-primary transition-colors relative overflow-hidden"
         onClick={() => setView("bookings")}
