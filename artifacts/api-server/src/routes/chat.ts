@@ -265,6 +265,18 @@ router.delete("/public/chat/:storeSlug/message/:messageId", async (req, res) => 
         { _id: messageId },
         { $set: { deletedForAdmin: true, deletedForCustomer: true, text: "This message was deleted" } }
       );
+      // Update conversation's lastMessage if this was the last visible message
+      const latestVisible = await ChatMessage.findOne(
+        { conversationId, storeId, deletedForAdmin: { $ne: true }, deletedForCustomer: { $ne: true } },
+        { text: 1, createdAt: 1 }
+      ).sort({ createdAt: -1 }).lean();
+      await ChatConversation.updateOne(
+        { _id: conversationId },
+        { $set: {
+          lastMessage: latestVisible?.text ?? "",
+          ...(latestVisible ? { lastMessageAt: latestVisible.createdAt } : {}),
+        }}
+      );
     } else {
       await ChatMessage.updateOne({ _id: messageId }, { $set: { deletedForCustomer: true } });
     }
@@ -287,7 +299,7 @@ router.get("/chat/conversations", requireAuth, async (req: AuthRequest, res) => 
     const userId = String(req.user!._id);
     const store = await Store.findOne({ ownerId: userId }).lean();
     if (!store) {
-      res.json([]);
+      res.status(403).json({ error: "Forbidden" });
       return;
     }
 
@@ -480,6 +492,19 @@ router.delete("/chat/message/:messageId", requireAuth, async (req: AuthRequest, 
       await ChatMessage.updateOne(
         { _id: messageId },
         { $set: { deletedForAdmin: true, deletedForCustomer: true, text: "This message was deleted" } }
+      );
+      // Update conversation's lastMessage if this was the last visible message
+      const conversationId = String(msg.conversationId);
+      const latestVisible = await ChatMessage.findOne(
+        { conversationId, storeId, deletedForAdmin: { $ne: true }, deletedForCustomer: { $ne: true } },
+        { text: 1, createdAt: 1 }
+      ).sort({ createdAt: -1 }).lean();
+      await ChatConversation.updateOne(
+        { _id: conversationId },
+        { $set: {
+          lastMessage: latestVisible?.text ?? "",
+          ...(latestVisible ? { lastMessageAt: latestVisible.createdAt } : {}),
+        }}
       );
     } else {
       await ChatMessage.updateOne({ _id: messageId }, { $set: { deletedForAdmin: true } });

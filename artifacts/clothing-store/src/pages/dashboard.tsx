@@ -330,7 +330,7 @@ export default function Dashboard() {
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-xl font-extrabold text-gray-900">₹{p?.discountPrice?.toLocaleString()}</span>
-              {p && p.actualPrice > p.discountPrice && (
+              {p && p.actualPrice != null && p.actualPrice > p.discountPrice && (
                 <span className="text-sm text-gray-400 line-through">₹{p.actualPrice.toLocaleString()}</span>
               )}
             </div>

@@ -129,7 +129,7 @@ export default function CustomerChat({
       });
       if (res.ok) {
         const msg: ChatMessage = await res.json();
-        setMessages((prev) => [...prev, msg]);
+        setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]);
       } else {
         const err = await res.json().catch(() => ({}));
         setSendError(err.error ?? "Failed to send. Please try again.");
@@ -202,7 +202,7 @@ export default function CustomerChat({
           className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold text-white"
           style={{ background: "linear-gradient(135deg, #1a1a1a, #444)" }}
         >
-          {storeName.slice(0, 2).toUpperCase()}
+          {(storeName ?? "").slice(0, 2).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
           <p

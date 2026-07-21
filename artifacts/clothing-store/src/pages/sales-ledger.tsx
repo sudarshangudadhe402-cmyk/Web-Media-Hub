@@ -200,11 +200,11 @@ export default function SalesLedger() {
 
   // Auto-add: always keep at least 1 unfilled row
   useEffect(() => {
-    if (!isLoading && allRows.length > 0 && allRows.every((r) => r.confirmed) && !createRow.isPending) {
+    if (!isLoading && allRows.length > 0 && allRows.every((r) => r.confirmed) && !createRow.isPending && !createRow.isError) {
       createRow.mutate();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allRows.map((r) => r.confirmed + r.id).join(","), isLoading]);
+  }, [allRows.map((r) => r.confirmed + r.id).join(","), isLoading, createRow.isPending, createRow.isError]);
 
   // For table: show all rows (both confirmed and draft), filtered by search/date
   // Order: newest at top (descending createdAt)

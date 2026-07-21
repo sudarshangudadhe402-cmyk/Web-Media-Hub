@@ -27,6 +27,7 @@ router.get("/dashboard/summary", requireAuth, async (req: AuthRequest, res) => {
       totalProducts,
       distinctCategories,
       customerAccountCount,
+      customerAccountsThisMonth,
       unreadNotifications,
       dayVisitorsAgg,
       monthVisitorsAgg,
@@ -37,6 +38,7 @@ router.get("/dashboard/summary", requireAuth, async (req: AuthRequest, res) => {
         ? Product.distinct("functionCategory", { storeId, functionCategory: { $exists: true, $nin: [null, ""] } })
         : Promise.resolve([]),
       storeId ? CustomerAccount.countDocuments({ storeId }) : Promise.resolve(0),
+      storeId ? CustomerAccount.countDocuments({ storeId, createdAt: { $gte: monthStart } }) : Promise.resolve(0),
       storeId ? Notification.countDocuments({ read: false, storeId }) : Promise.resolve(0),
       storeId
         ? StoreVisitor.aggregate([
@@ -115,6 +117,7 @@ router.get("/dashboard/summary", requireAuth, async (req: AuthRequest, res) => {
       totalProducts,
       totalCategories: (distinctCategories as string[]).length,
       customerAccountCount,
+      customerAccountsThisMonth,
       activeBookings,
       unseenBookings,
       unreadNotifications,
