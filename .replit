@@ -28,6 +28,10 @@ args = "artifacts/clothing-store: web"
 task = "workflow.run"
 args = "artifacts/super-admin: web"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "artifacts/shopping-page: web"
+
 [[workflows.workflow]]
 name = "artifacts/api-server: API Server"
 author = "agent"
@@ -63,6 +67,18 @@ outputType = "webview"
 task = "shell.exec"
 args = "PORT=20029 BASE_PATH=/super-admin/ pnpm --filter @workspace/super-admin run dev"
 waitForPort = 20029
+
+[[workflows.workflow]]
+name = "artifacts/shopping-page: web"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=21648 BASE_PATH=/ pnpm --filter @workspace/clothing-store run dev"
+waitForPort = 21648
 
 [agent]
 stack = "BEST_EFFORT_FALLBACK"

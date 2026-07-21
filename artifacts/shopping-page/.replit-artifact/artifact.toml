@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/shoping-page"
+title = "Web Media Hub — Store Discovery"
+version = "1.0.0"
+id = "artifacts/shopping-page"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21648
+
+[services.development]
+run = "pnpm --filter @workspace/clothing-store run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/clothing-store", "run", "build" ]
+publicDir = "artifacts/clothing-store/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21648"
+BASE_PATH = "/"

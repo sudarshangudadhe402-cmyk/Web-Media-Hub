@@ -227,7 +227,7 @@ function Router() {
         {() => <ProtectedRoute component={SalesLedger} />}
       </Route>
       <Route path="/demo" component={DemoStore} />
-      <Route path="/find-stores" component={FindStores} />
+      <Route path="/shoping-page" component={FindStores} />
       <Route path="/store/:slug" component={PublicStore} />
       <Route path="/partnership/:type/:code" component={PartnershipPage} />
       <Route component={NotFound} />
