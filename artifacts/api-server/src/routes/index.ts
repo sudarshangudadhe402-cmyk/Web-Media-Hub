@@ -22,6 +22,7 @@ import citiesRouter from "./cities";
 import campaignsRouter from "./campaigns";
 import paymentsRouter from "./payments";
 import chatRouter from "./chat";
+import discoveryRouter from "./discovery";
 import { requireDb } from "../middlewares/dbCheck";
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET;
@@ -98,5 +99,6 @@ router.use(citiesRouter);
 router.use(campaignsRouter);
 router.use(paymentsRouter);
 router.use(chatRouter);
+router.use(discoveryRouter);
 
 export default router;

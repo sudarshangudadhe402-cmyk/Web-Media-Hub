@@ -34,4 +34,10 @@ const StoreSchema = new Schema<IStore>(
   { timestamps: true }
 );
 
+// Indexes for store discovery queries
+StoreSchema.index({ ownerId: 1 });
+StoreSchema.index({ isLocked: 1 });
+StoreSchema.index({ latitude: 1, longitude: 1 });
+StoreSchema.index({ name: "text", address: "text" });
+
 export const Store = mongoose.model<IStore>("Store", StoreSchema);

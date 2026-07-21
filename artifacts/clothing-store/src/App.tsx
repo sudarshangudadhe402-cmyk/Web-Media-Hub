@@ -24,6 +24,7 @@ import SalesLedger from "@/pages/sales-ledger";
 import DemoStore from "@/pages/demo-store";
 import PartnershipPage from "@/pages/partnership";
 import PlanRenewal from "@/pages/plan-renewal";
+import FindStores from "@/pages/find-stores";
 import { Layout } from "@/components/layout";
 
 const queryClient = new QueryClient();
@@ -226,6 +227,7 @@ function Router() {
         {() => <ProtectedRoute component={SalesLedger} />}
       </Route>
       <Route path="/demo" component={DemoStore} />
+      <Route path="/find-stores" component={FindStores} />
       <Route path="/store/:slug" component={PublicStore} />
       <Route path="/partnership/:type/:code" component={PartnershipPage} />
       <Route component={NotFound} />

@@ -1,0 +1,702 @@
+I want you to build a production-ready "Find Stores Near You / Store Discovery" page for my existing Web Media Hub SaaS.
+
+IMPORTANT:
+Before making any changes, deeply inspect the entire existing codebase, database schema, existing APIs, authentication, store data, Super Admin category system, Revenue & Growth section, plan/subscription system, pricing logic, duration logic, review/rating system, and existing map implementation.
+
+DO NOT create duplicate systems.
+DO NOT create a new map system if a working map system already exists.
+DO NOT create duplicate category tables.
+DO NOT hardcode store categories.
+Reuse the existing database models, APIs, components, utilities, authentication, and existing map/location functionality wherever possible.
+
+The page should be mobile-first and responsive, with a premium, professional SaaS UI.
+
+==================================================
+1. PAGE PURPOSE
+==================================================
+
+Create a public Store Discovery page where random/public users can visit the page and discover registered Web Media Hub stores based on their location.
+
+User flow:
+
+1. User opens the Store Discovery page.
+2. User can allow location permission.
+3. Get the user's current location using browser/device geolocation.
+4. Use the existing real map system already implemented elsewhere in this SaaS.
+5. Show registered stores around the user's location.
+6. Sort/rank stores based on the ranking algorithm described below.
+7. User can browse All Stores or filter by Store Category.
+8. User can search stores.
+9. User can view store distance.
+10. User can open/view a store.
+11. Each store card should show the store's review average.
+12. For now, all stores must display as CLOSED.
+13. The Open/Closed system should be structured so that the real store status functionality can be added later.
+
+==================================================
+2. REAL MAP — VERY IMPORTANT
+==================================================
+
+Do NOT use a static image, fake map, generated map, placeholder map, or hardcoded India map.
+
+Use the REAL interactive map already used elsewhere in our SaaS.
+
+First inspect the existing project and find:
+- Existing map library
+- Existing map component
+- Existing map API
+- Existing location/geolocation logic
+- Existing store latitude/longitude data
+- Existing map markers
+- Existing map configuration
+
+Reuse the existing implementation.
+
+The map must be interactive.
+
+The map should:
+- Show the user's current location when permission is granted.
+- Show registered store markers.
+- Allow zoom in/out.
+- Allow panning.
+- Show store markers based on real latitude/longitude.
+- Clicking a marker should show basic store information and an option to view the store.
+- Do not expose exact user location to stores or other users.
+- Use only the minimum location data required for store discovery.
+
+If the existing map system already uses OpenStreetMap + Leaflet or another map provider, reuse it instead of introducing another mapping technology.
+
+==================================================
+3. PAGE HEADER
+==================================================
+
+Create a premium mobile-first header.
+
+Title:
+"Find Stores Near You"
+
+Subtitle:
+"Discover stores around your location"
+
+Add a "My Location" button.
+
+The My Location button should:
+- Request location permission if not already granted.
+- Detect current user latitude/longitude.
+- Center the map on the user's location.
+- Refresh nearby stores based on the user's location.
+
+If location permission is denied:
+Show a friendly message and allow the user to:
+- Search by city
+- Search by area
+- Search by pincode
+- Manually select a location if supported by the existing map/location system.
+
+==================================================
+4. SEARCH BAR
+==================================================
+
+Add a search bar below the header.
+
+Placeholder:
+"Search store, category, city..."
+
+Search should support:
+- Store name
+- Store category
+- City
+- Area
+- Pincode
+
+Search must use the existing database and APIs.
+
+Do not load all stores unnecessarily on the client.
+
+Use optimized server-side filtering/search where appropriate.
+
+==================================================
+5. CATEGORY ROW
+==================================================
+
+Immediately below the search bar, create a horizontally scrollable category row.
+
+The FIRST category must ALWAYS be:
+
+"All Stores"
+
+After All Stores, dynamically show categories created by the Super Admin.
+
+IMPORTANT CATEGORY RULE:
+
+The categories shown here must come ONLY from the categories created by the Super Admin under:
+
+Super Admin → Revenue & Growth → Ads Engagement → Category system
+
+Use the category created through:
+"Add Store Category"
+
+DO NOT use categories created through:
+"Add Store Type"
+
+The Store Type system must NOT be used for this category filter.
+
+Example:
+
+[ All Stores ] [ Clothing ] [ Electronics ] [ Beauty ] [ Furniture ] [ ... ] [ More ]
+
+Do NOT hardcode:
+Clothing
+Electronics
+Beauty
+etc.
+
+These are only examples.
+
+Fetch the actual categories dynamically from the existing Super Admin category system.
+
+==================================================
+6. RESPONSIVE CATEGORY DISPLAY
+==================================================
+
+On mobile:
+
+Show as many category buttons as can comfortably fit/scroll horizontally.
+
+The final visible option should be:
+
+"More"
+
+Clicking "More" should open a premium bottom sheet/modal/dropdown containing ALL categories created by the Super Admin.
+
+The More section must include:
+- All Store Categories
+- Search category option if the number of categories is large
+- Selected category indication
+
+When a category is selected:
+- Filter stores by that category.
+- Update the store list.
+- Update map markers if appropriate.
+- Apply the same ranking system described below.
+
+The "All Stores" category should show all eligible registered stores.
+
+==================================================
+7. STORE MAP
+==================================================
+
+Below the category row, show the real interactive map.
+
+The map should display:
+- User location marker
+- Store markers
+- Store marker clustering if many stores are present
+- Store markers based on actual store latitude/longitude
+
+Clicking a store marker should show:
+- Store name
+- Store category
+- Distance
+- Average rating
+- Closed status
+- View Store button
+
+The map should dynamically update based on:
+- User location
+- Search
+- Selected category
+- Distance/radius
+- Store availability
+
+==================================================
+8. NEARBY STORE LIST
+==================================================
+
+Below the map, create:
+
+"Stores Near You"
+
+Show:
+"X stores found within X km"
+
+The distance/radius should be configurable.
+
+Add a sort option if useful, but the DEFAULT sorting must always follow the ranking algorithm below.
+
+Each store card should show:
+
+- Store image/logo
+- Store name
+- Store category
+- Distance from user
+- Average star rating
+- Total number of reviews
+- Store Open/Closed status
+- View Store button
+
+Example:
+
+[Store Image]
+
+Urban Style Hub
+Clothing • Men, Women, Kids
+
+★ 4.8 (128 reviews)
+
+0.4 km
+
+● Closed
+
+[ View Store ]
+
+IMPORTANT:
+For now, every store must show:
+
+"Closed"
+
+Do not implement real opening/closing logic yet.
+
+However, create the store status structure in a clean way so that the actual Open/Closed functionality can be implemented later without rewriting the store discovery system.
+
+==================================================
+9. STORE RANKING SYSTEM — VERY IMPORTANT
+==================================================
+
+Implement a ranking system for store discovery.
+
+The ranking must work in:
+
+A. All Stores
+B. Individual Store Categories
+
+The ranking should prioritize stores based on the ADMIN'S PLAN VALUE.
+
+The ranking must NOT simply sort by distance.
+
+PLAN + DURATION BASED RANKING:
+
+We have:
+- Plan
+- Plan price
+- Plan duration
+
+First calculate the equivalent 30-day value of the plan.
+
+Formula:
+
+30-Day Plan Value =
+(Total Plan Price / Plan Duration in Days) × 30
+
+Normalize all plans to a 30-day value.
+
+Example:
+
+Plan A:
+Price = ₹999
+Duration = 30 days
+
+30-Day Value =
+999 / 30 × 30
+= ₹999
+
+Plan B:
+Price = ₹5,999
+Duration = 365 days
+
+30-Day Value =
+5999 / 365 × 30
+
+Plan C:
+Price = ₹15,999
+Duration = Lifetime
+
+For Lifetime plans, inspect the existing SaaS business logic and determine the appropriate lifetime duration/value already used in the project.
+
+DO NOT invent a completely separate lifetime pricing system.
+
+If the existing project does not have lifetime normalization logic, create a configurable system where Super Admin can define the lifetime normalization period.
+
+The ranking should compare normalized 30-day plan values.
+
+Higher 30-day plan value = Higher ranking.
+
+Lower 30-day plan value = Lower ranking.
+
+Example:
+
+Store A:
+30-day plan value = ₹999
+
+Store B:
+30-day plan value = ₹493
+
+Store A should rank above Store B.
+
+The ranking should be applied:
+
+1. In All Stores
+2. Inside every individual category
+
+For example, if the user selects Clothing:
+
+Clothing stores should be ranked based on their normalized 30-day plan value.
+
+If the user selects All Stores:
+
+All eligible stores should be ranked based on their normalized 30-day plan value.
+
+==================================================
+10. RANKING + DISTANCE
+==================================================
+
+The primary ranking factor should be the normalized 30-day plan value.
+
+However, distance should still be considered to ensure the page remains useful for nearby users.
+
+Implement a professional ranking algorithm that uses:
+
+Primary:
+- Normalized 30-day plan value
+
+Secondary:
+- Distance from user
+
+Tertiary:
+- Average review rating
+
+Quaternary:
+- Number of reviews
+
+The ranking should NOT allow a very distant store to dominate the local results purely because of its plan.
+
+Use a reasonable geographic radius/filter.
+
+For example:
+Only show stores within the selected radius.
+
+Inside that radius, prioritize higher-value plans.
+
+Do NOT hardcode a simplistic sorting like:
+ORDER BY plan_price DESC
+
+Instead, calculate the normalized 30-day plan value correctly.
+
+Create a reusable ranking function/service such as:
+
+calculate30DayPlanValue()
+calculateStoreRankingScore()
+
+Keep this logic centralized and reusable.
+
+==================================================
+11. REVIEW & STAR RATING SYSTEM
+==================================================
+
+Every store already has a review system.
+
+Use the existing review data.
+
+For each store:
+
+1. Fetch all valid reviews.
+2. Calculate the average rating.
+3. Display the average rating on the store card.
+
+Example:
+
+Reviews:
+5
+4
+5
+4
+5
+
+Average:
+4.6
+
+Display:
+
+★ 4.6
+
+Also show total reviews:
+
+★ 4.6 (128 reviews)
+
+IMPORTANT:
+
+Do not use fake ratings.
+
+Do not hardcode ratings.
+
+Do not create a duplicate review system.
+
+Use the existing store review system.
+
+If a store has no reviews:
+Show:
+
+"No reviews yet"
+
+Do not display 0.0 stars as if it were a real rating.
+
+Only use valid/non-deleted reviews according to the existing review system.
+
+==================================================
+12. STORE DISTANCE
+==================================================
+
+Calculate distance between:
+
+User latitude/longitude
+
+AND
+
+Store latitude/longitude
+
+Use a reliable geographic distance calculation such as Haversine formula or the existing location utility.
+
+Display distance in a user-friendly format:
+
+0.4 km
+1.2 km
+5.8 km
+
+For larger distances:
+
+12 km
+
+Use the existing location data.
+
+Do not calculate distance from city names.
+
+Use actual latitude/longitude whenever available.
+
+==================================================
+13. STORE ELIGIBILITY
+==================================================
+
+Only show stores that are eligible for public discovery.
+
+Inspect the existing admin/store status system.
+
+Do not expose:
+- Deleted stores
+- Suspended stores
+- Banned stores
+- Incomplete stores
+- Stores without required location data
+
+Use existing business rules wherever available.
+
+==================================================
+14. PERFORMANCE
+==================================================
+
+This page may eventually contain a very large number of stores.
+
+Optimize it for scalability.
+
+Do NOT fetch every store in India to the client.
+
+Use:
+- Server-side filtering
+- Geospatial queries where supported
+- Pagination
+- Radius-based queries
+- Lazy loading
+- Marker clustering
+- Debounced search
+- Proper database indexes
+
+Add appropriate database indexes for:
+- Latitude
+- Longitude
+- Category ID
+- Store status
+- Plan/subscription ID
+- Store name
+- City
+- Pincode
+
+If the existing database supports geospatial indexes, use them.
+
+==================================================
+15. MOBILE UI
+==================================================
+
+The page must be designed primarily for mobile.
+
+Use:
+- Premium modern SaaS design
+- White/light background
+- Rounded cards
+- Soft shadows
+- Professional typography
+- Purple/blue primary accent
+- Clean category chips
+- Interactive map
+- Store cards
+- Smooth animations
+- Excellent spacing
+
+The page should look like a professional local store discovery application.
+
+The layout should be:
+
+Header
+↓
+Search
+↓
+Category Chips
+↓
+Interactive Real Map
+↓
+Stores Near You
+↓
+Ranked Store Cards
+↓
+Load More / Pagination
+
+Do NOT add:
+- Home
+- Categories bottom navigation
+- Near Me bottom navigation
+- Favorites bottom navigation
+- Profile bottom navigation
+
+This is a dedicated Store Discovery page only.
+
+==================================================
+16. IMPORTANT EXISTING SYSTEM INTEGRATION
+==================================================
+
+Before coding:
+
+Deeply scan the existing project and identify:
+
+1. Existing map implementation
+2. Existing store location data
+3. Existing store category model
+4. Super Admin Revenue & Growth → Ads Engagement category system
+5. "Add Store Category" implementation
+6. "Add Store Type" implementation
+7. Existing plan/subscription models
+8. Plan price
+9. Plan duration
+10. Lifetime plan logic
+11. Store review system
+12. Store rating calculation
+13. Store status system
+14. Store public profile/page
+15. Existing authentication
+16. Existing APIs
+
+Then integrate this page with those existing systems.
+
+Do not create duplicate data models unless absolutely necessary.
+
+==================================================
+17. SECURITY
+==================================================
+
+Do not expose sensitive admin data to public users.
+
+The public API should return only necessary information:
+
+- Store ID
+- Store name
+- Public store image/logo
+- Public category
+- Public location
+- Distance
+- Average review rating
+- Review count
+- Public store status
+- Public store URL
+
+NEVER expose:
+- Admin ID
+- Admin email
+- Admin phone
+- Plan price
+- Plan duration
+- Subscription details
+- Internal ranking score
+- Internal revenue
+- Private business data
+
+The ranking should be calculated server-side.
+
+Do not trust ranking values sent from the frontend.
+
+==================================================
+18. FINAL TESTING
+==================================================
+
+After implementation:
+
+Test with:
+- 0 stores
+- 1 store
+- Multiple stores
+- Multiple categories
+- No reviews
+- Multiple reviews
+- Different plan prices
+- Different plan durations
+- Monthly plan
+- Annual plan
+- Lifetime plan
+- Same plan stores
+- Same distance stores
+- Location permission allowed
+- Location permission denied
+- Search
+- Category filtering
+- More categories
+- Map marker click
+- Store card click
+- Mobile screen
+- Tablet screen
+- Desktop screen
+
+Verify that:
+
+1. Real existing map is used.
+2. Super Admin-created Store Categories appear dynamically.
+3. Store Types NEVER appear as category filters.
+4. All Stores is always first.
+5. More shows all remaining Super Admin categories.
+6. Ranking works in All Stores.
+7. Ranking works inside each category.
+8. 30-day normalized plan value is calculated correctly.
+9. Higher normalized plan value ranks higher.
+10. Distance is still respected through geographic radius.
+11. Reviews are averaged correctly.
+12. Review count is displayed.
+13. Stores without reviews show "No reviews yet".
+14. All stores show CLOSED for now.
+15. No fake map is used.
+16. No hardcoded store categories are used.
+17. No duplicate map/category/review system is created.
+18. Existing SaaS functionality is not broken.
+
+Before finishing, run a complete codebase scan for:
+- Duplicate logic
+- Unused functions
+- Unused imports
+- Unused dependencies
+- Repeated database queries
+- N+1 queries
+- Unoptimized API calls
+- Missing database indexes
+- Security vulnerabilities
+- Excessive frontend data fetching
+- Over-engineered code
+
+Keep the implementation clean, modular, scalable, and production-ready.
+
+IMPORTANT:
+Do not change unrelated pages or existing SaaS features.
+Only modify/create the required Store Discovery functionality and the minimum backend/API/database changes needed to support it.
