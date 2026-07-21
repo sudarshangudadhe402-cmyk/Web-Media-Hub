@@ -1,7 +1,7 @@
-import { useGetDashboardSummary, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
+import { useGetDashboardSummary, useGetStore, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CalendarCheck, MessageCircle, ChevronLeft, ShoppingBag, BookMarked, CheckCheck, Search, User, Mail, X } from "lucide-react";
+import { CalendarCheck, MessageCircle, ChevronLeft, ShoppingBag, BookMarked, CheckCheck, Search, User, Mail, X, Bell, ChevronRight, BarChart3, Menu } from "lucide-react";
 import AdminChatView from "@/components/chat/AdminChatView";
 import { useLocation } from "wouter";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -42,6 +42,8 @@ type View = "summary" | "bookings" | "detail" | "customeraccounts" | "chat";
 
 export default function Dashboard() {
   const { data: summary, isLoading } = useGetDashboardSummary();
+  const { data: store } = useGetStore({});
+  const storeName = store?.name || "Web Media Hub";
   const [_, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const [view, setView] = useState<View>("summary");
@@ -537,73 +539,261 @@ export default function Dashboard() {
     );
   }
 
+  const customerAccountCount = (summary as any).customerAccountCount ?? 0;
+  const newThisMonth = (summary as any).customerAccountsThisMonth ?? 0;
+
   /* ── SUMMARY (default) ── */
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-
-      {/* Row 1: Active Bookings */}
-      <Card
-        className="cursor-pointer hover:border-primary transition-colors relative overflow-hidden"
-        onClick={() => setView("bookings")}
-      >
-        {unseenCount > 0 && (
-          <span className="absolute top-2.5 right-2.5 flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500" />
-          </span>
-        )}
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium">Active Bookings</CardTitle>
-          <CalendarCheck className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{summary.activeBookings}</div>
-          {unseenCount > 0 ? (
-            <p className="text-xs text-rose-500 font-semibold mt-1">{unseenCount} new booking{unseenCount > 1 ? "s" : ""}</p>
-          ) : (
-            <p className="text-xs text-muted-foreground mt-1">Click to view all</p>
+    <div
+      className="-m-6 min-h-screen"
+      style={{ background: "#F4F6FB", padding: "0" }}
+    >
+      {/* ── Page Header ── */}
+      <div className="flex items-center justify-between px-5 pt-5 pb-3">
+        <div className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white shadow-sm border border-gray-100">
+          <Menu className="w-4.5 h-4.5 text-gray-700" />
+        </div>
+        <div className="text-center">
+          <h1
+            className="font-black text-gray-900 leading-tight"
+            style={{ fontSize: "16px", fontFamily: "'Montserrat', sans-serif" }}
+          >
+            {storeName}
+          </h1>
+          <p className="text-[12px] text-gray-400 font-medium">Welcome back! 👋</p>
+        </div>
+        <div className="relative">
+          <div className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white shadow-sm border border-gray-100">
+            <Bell className="w-4.5 h-4.5 text-gray-700" />
+          </div>
+          {unseenCount > 0 && (
+            <span
+              className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-black text-white px-1"
+              style={{ background: "#FF3B5C" }}
+            >
+              {unseenCount > 9 ? "9+" : unseenCount}
+            </span>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Customer's Chat section */}
-      <Card
-        className="cursor-pointer hover:border-purple-400 transition-colors border-purple-200"
-        onClick={() => setView("chat")}
-      >
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium text-purple-700">Customer's Chat</CardTitle>
-          <MessageCircle className="h-4 w-4 text-purple-500" />
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between gap-4">
-            <p className="text-xs text-muted-foreground">Chat with your customers</p>
-            <p className="text-xs text-purple-600 font-semibold">Click to open →</p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="px-4 space-y-4 pb-8">
 
-      {/* Customer Accounts section */}
-      <Card
-        className="relative cursor-pointer hover:border-blue-400 transition-colors border-blue-200"
-        onClick={() => setView("customeraccounts")}
-      >
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium text-blue-700">Customer Accounts</CardTitle>
-          <User className="h-4 w-4 text-blue-500" />
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <div className="text-3xl font-extrabold text-gray-900">{(summary as any).customerAccountCount ?? 0}</div>
-              <p className="text-xs text-muted-foreground mt-0.5">Registered customers</p>
+        {/* ── Hero Banner ── */}
+        <div
+          className="rounded-3xl p-5 relative overflow-hidden"
+          style={{
+            background: "linear-gradient(135deg, #4F46E5 0%, #6D5FE8 40%, #8B7CF0 100%)",
+            minHeight: "148px",
+          }}
+        >
+          {/* sparkle dots */}
+          <div className="absolute top-4 right-36 w-2 h-2 rounded-full bg-white opacity-50" />
+          <div className="absolute top-10 right-28 w-1 h-1 rounded-full bg-white opacity-35" />
+          <div className="absolute bottom-6 right-20 w-1.5 h-1.5 rounded-full bg-white opacity-25" />
+          <div className="absolute top-6 right-14 w-1 h-1 rounded-full bg-white opacity-45" />
+
+          <div className="flex items-start justify-between">
+            <div className="flex-1 pr-4">
+              {/* icon chip */}
+              <div
+                className="w-11 h-11 rounded-2xl flex items-center justify-center mb-3"
+                style={{ background: "rgba(255,255,255,0.18)" }}
+              >
+                <BarChart3 className="w-5 h-5 text-white" />
+              </div>
+              <p
+                className="text-[10px] font-bold text-white/60 uppercase tracking-widest mb-1"
+              >
+                Overview
+              </p>
+              <h2
+                className="font-black text-white leading-snug mb-2"
+                style={{ fontSize: "20px" }}
+              >
+                Track & Grow Your<br />Business 📈
+              </h2>
+              <p className="text-[12px] text-white/65 leading-relaxed">
+                All your important metrics<br />at a glance
+              </p>
             </div>
-            <p className="text-xs text-blue-600 font-semibold">Click to manage →</p>
+            {/* 3-D illustration */}
+            <div className="flex flex-col items-center justify-center flex-shrink-0 mt-1">
+              <span style={{ fontSize: "72px", lineHeight: 1, filter: "drop-shadow(0 8px 20px rgba(0,0,0,0.25))" }}>🎯</span>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
+        {/* ── Active Bookings Card ── */}
+        <div
+          className="bg-white rounded-3xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+          style={{ boxShadow: "0 2px 20px rgba(0,0,0,0.06)" }}
+          onClick={() => setView("bookings")}
+        >
+          <div className="p-5">
+            <div className="flex items-start justify-between">
+              <div className="flex gap-3.5">
+                <div
+                  className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: "#EEF3FF" }}
+                >
+                  <CalendarCheck className="w-6 h-6" style={{ color: "#5B8DEF" }} />
+                </div>
+                <div>
+                  <p className="font-black text-gray-900 text-[15px] leading-tight">
+                    Active Bookings
+                  </p>
+                  <p className="text-[11px] text-gray-400 mt-0.5 leading-snug">
+                    Manage and view all your<br />active bookings
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                <ChevronRight className="w-4 h-4 text-gray-300" />
+                <span style={{ fontSize: "52px", lineHeight: 1, filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.12))" }}>📅</span>
+              </div>
+            </div>
+
+            <div className="mt-3">
+              <div
+                className="font-black text-gray-900"
+                style={{ fontSize: "36px", lineHeight: 1 }}
+              >
+                {summary.activeBookings}
+              </div>
+              <div className="mt-2">
+                <span
+                  className="inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1 rounded-full"
+                  style={{ background: "#EDFAF3", color: "#16A34A" }}
+                >
+                  🏷 {unseenCount} this week
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* CTA strip */}
+          <div
+            className="px-5 py-3 border-t border-gray-50"
+            style={{ background: "#F8FAFF" }}
+          >
+            <p
+              className="text-center font-bold text-[13px]"
+              style={{ color: "#5B8DEF" }}
+            >
+              Click to view all &nbsp;→
+            </p>
+          </div>
+        </div>
+
+        {/* ── Customer's Chat Card ── */}
+        <div
+          className="bg-white rounded-3xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+          style={{ boxShadow: "0 2px 20px rgba(0,0,0,0.06)" }}
+          onClick={() => setView("chat")}
+        >
+          <div className="p-5">
+            <div className="flex items-start justify-between">
+              <div className="flex gap-3.5">
+                <div
+                  className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: "#F3EDFF" }}
+                >
+                  <MessageCircle className="w-6 h-6" style={{ color: "#8B5CF6" }} />
+                </div>
+                <div>
+                  <p className="font-black text-gray-900 text-[15px] leading-tight">
+                    Customer's Chat
+                  </p>
+                  <p className="text-[11px] text-gray-400 mt-0.5 leading-snug">
+                    Chat with your customers<br />in real-time
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                <ChevronRight className="w-4 h-4 text-gray-300" />
+                <span style={{ fontSize: "52px", lineHeight: 1, filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.12))" }}>💬</span>
+              </div>
+            </div>
+          </div>
+
+          {/* CTA strip */}
+          <div
+            className="px-5 py-3 border-t"
+            style={{ borderColor: "#F0E8FF", background: "#F9F5FF" }}
+          >
+            <p
+              className="text-center font-bold text-[13px]"
+              style={{ color: "#8B5CF6" }}
+            >
+              Click to open &nbsp;→
+            </p>
+          </div>
+        </div>
+
+        {/* ── Customer Accounts Card ── */}
+        <div
+          className="bg-white rounded-3xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+          style={{ boxShadow: "0 2px 20px rgba(0,0,0,0.06)" }}
+          onClick={() => setView("customeraccounts")}
+        >
+          <div className="p-5">
+            <div className="flex items-start justify-between">
+              <div className="flex gap-3.5">
+                <div
+                  className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: "#EEF3FF" }}
+                >
+                  <User className="w-6 h-6" style={{ color: "#93C5FD" }} />
+                </div>
+                <div>
+                  <p className="font-black text-gray-900 text-[15px] leading-tight">
+                    Customer Accounts
+                  </p>
+                  <p className="text-[11px] text-gray-400 mt-0.5 leading-snug">
+                    View and manage all<br />registered customers
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                <ChevronRight className="w-4 h-4 text-gray-300" />
+                <span style={{ fontSize: "52px", lineHeight: 1, filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.12))" }}>👥</span>
+              </div>
+            </div>
+
+            <div className="mt-3">
+              <div
+                className="font-black text-gray-900"
+                style={{ fontSize: "36px", lineHeight: 1 }}
+              >
+                {customerAccountCount}
+              </div>
+              <div className="mt-2">
+                <span
+                  className="inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1 rounded-full"
+                  style={{ background: "#EDFAF3", color: "#16A34A" }}
+                >
+                  ↑ {newThisMonth} this month
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* CTA strip */}
+          <div
+            className="px-5 py-3 border-t border-gray-50"
+            style={{ background: "#F8FAFF" }}
+          >
+            <p
+              className="text-center font-bold text-[13px]"
+              style={{ color: "#5B8DEF" }}
+            >
+              Click to manage &nbsp;→
+            </p>
+          </div>
+        </div>
+
+      </div>
     </div>
   );
 }
