@@ -548,36 +548,7 @@ export default function Dashboard() {
       className="-m-6 min-h-screen"
       style={{ background: "#F4F6FB", padding: "0" }}
     >
-      {/* ── Page Header ── */}
-      <div className="flex items-center justify-between px-5 pt-5 pb-3">
-        <div className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white shadow-sm border border-gray-100">
-          <Menu className="w-4.5 h-4.5 text-gray-700" />
-        </div>
-        <div className="text-center">
-          <h1
-            className="font-black text-gray-900 leading-tight"
-            style={{ fontSize: "16px", fontFamily: "'Montserrat', sans-serif" }}
-          >
-            {storeName}
-          </h1>
-          <p className="text-[12px] text-gray-400 font-medium">Welcome back! 👋</p>
-        </div>
-        <div className="relative">
-          <div className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white shadow-sm border border-gray-100">
-            <Bell className="w-4.5 h-4.5 text-gray-700" />
-          </div>
-          {unseenCount > 0 && (
-            <span
-              className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-black text-white px-1"
-              style={{ background: "#FF3B5C" }}
-            >
-              {unseenCount > 9 ? "9+" : unseenCount}
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div className="px-4 space-y-4 pb-8">
+      <div className="px-4 pt-4 space-y-4 pb-8">
 
         {/* ── Hero Banner ── */}
         <div

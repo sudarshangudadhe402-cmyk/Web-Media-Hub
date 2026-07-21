@@ -204,7 +204,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </div>
               </SheetContent>
             </Sheet>
-            <h1 className="md:hidden font-bold text-base truncate">{storeName}</h1>
+            <div className="md:hidden flex flex-col">
+              <h1 className="font-bold text-base truncate leading-tight">{storeName}</h1>
+              <p className="text-[11px] text-muted-foreground leading-tight">Welcome back! 👋</p>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
