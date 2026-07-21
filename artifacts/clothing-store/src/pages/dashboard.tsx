@@ -545,127 +545,157 @@ export default function Dashboard() {
   /* ── SUMMARY (default) ── */
   return (
     <div
-      className="-m-6 flex flex-col overflow-hidden"
-      style={{ background: "#F4F6FB", height: "calc(100vh - 60px)" }}
+      className="-m-6 min-h-screen"
+      style={{ background: "#F4F6FB", padding: "0" }}
     >
-      <div className="flex flex-col gap-2.5 px-3 pt-3 pb-3 h-full">
+      <div className="px-4 pt-4 space-y-4 pb-8">
 
         {/* ── Hero Banner ── */}
         <div
-          className="rounded-2xl px-4 py-3 relative overflow-hidden flex-shrink-0"
-          style={{ background: "linear-gradient(135deg, #4F46E5 0%, #6D5FE8 40%, #8B7CF0 100%)" }}
+          className="rounded-3xl p-5 relative overflow-hidden"
+          style={{
+            background: "linear-gradient(135deg, #4F46E5 0%, #6D5FE8 40%, #8B7CF0 100%)",
+            minHeight: "148px",
+          }}
         >
-          <div className="absolute top-2 right-24 w-1.5 h-1.5 rounded-full bg-white opacity-50" />
-          <div className="absolute top-5 right-16 w-1 h-1 rounded-full bg-white opacity-35" />
-          <div className="absolute bottom-3 right-10 w-1 h-1 rounded-full bg-white opacity-30" />
+          {/* sparkle dots */}
+          <div className="absolute top-4 right-36 w-2 h-2 rounded-full bg-white opacity-50" />
+          <div className="absolute top-10 right-28 w-1 h-1 rounded-full bg-white opacity-35" />
+          <div className="absolute bottom-6 right-20 w-1.5 h-1.5 rounded-full bg-white opacity-25" />
+          <div className="absolute top-6 right-14 w-1 h-1 rounded-full bg-white opacity-45" />
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="flex items-start justify-between">
+            <div className="flex-1 pr-4">
+              {/* icon chip */}
               <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                className="w-11 h-11 rounded-2xl flex items-center justify-center mb-3"
                 style={{ background: "rgba(255,255,255,0.18)" }}
               >
-                <BarChart3 className="w-4 h-4 text-white" />
+                <BarChart3 className="w-5 h-5 text-white" />
               </div>
-              <div>
-                <p className="text-[9px] font-bold text-white/55 uppercase tracking-widest">Overview</p>
-                <h2 className="font-black text-white text-[15px] leading-tight">
-                  Track & Grow Your Business 📈
-                </h2>
-                <p className="text-[10px] text-white/60 mt-0.5">All your important metrics at a glance</p>
-              </div>
+              <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest mb-1">
+                Overview
+              </p>
+              <h2 className="font-black text-white leading-snug mb-2" style={{ fontSize: "20px" }}>
+                Track & Grow Your<br />Business 📈
+              </h2>
+              <p className="text-[12px] text-white/65 leading-relaxed">
+                All your important metrics<br />at a glance
+              </p>
             </div>
-            <span style={{ fontSize: "48px", lineHeight: 1, filter: "drop-shadow(0 6px 14px rgba(0,0,0,0.25))", flexShrink: 0 }}>🎯</span>
+            <div className="flex flex-col items-center justify-center flex-shrink-0 mt-1">
+              <span style={{ fontSize: "72px", lineHeight: 1, filter: "drop-shadow(0 8px 20px rgba(0,0,0,0.25))" }}>🎯</span>
+            </div>
           </div>
         </div>
 
         {/* ── Active Bookings Card ── */}
         <div
-          className="bg-white rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform flex flex-col flex-1"
-          style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)", minHeight: 0 }}
+          className="bg-white rounded-3xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+          style={{ boxShadow: "0 2px 20px rgba(0,0,0,0.06)" }}
           onClick={() => setView("bookings")}
         >
-          <div className="flex items-center justify-between px-4 py-2.5 flex-1">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#EEF3FF" }}>
-                <CalendarCheck className="w-5 h-5" style={{ color: "#5B8DEF" }} />
-              </div>
-              <div>
-                <p className="font-black text-gray-900 text-[13px] leading-tight">Active Bookings</p>
-                <p className="text-[10px] text-gray-400 leading-snug">Manage and view all your active bookings</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="font-black text-gray-900 text-[22px] leading-none">{summary.activeBookings}</span>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "#EDFAF3", color: "#16A34A" }}>
-                    🏷 {unseenCount} this week
-                  </span>
+          <div className="p-5">
+            <div className="flex items-start justify-between">
+              <div className="flex gap-3.5">
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: "#EEF3FF" }}>
+                  <CalendarCheck className="w-6 h-6" style={{ color: "#5B8DEF" }} />
+                </div>
+                <div>
+                  <p className="font-black text-gray-900 text-[15px] leading-tight">Active Bookings</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5 leading-snug">
+                    Manage and view all your<br />active bookings
+                  </p>
                 </div>
               </div>
+              <div className="flex flex-col items-end gap-1">
+                <ChevronRight className="w-4 h-4 text-gray-300" />
+                <span style={{ fontSize: "52px", lineHeight: 1, filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.12))" }}>📅</span>
+              </div>
             </div>
-            <div className="flex flex-col items-end gap-1 flex-shrink-0">
-              <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-              <span style={{ fontSize: "40px", lineHeight: 1, filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.1))" }}>📅</span>
+            <div className="mt-3">
+              <div className="font-black text-gray-900" style={{ fontSize: "36px", lineHeight: 1 }}>
+                {summary.activeBookings}
+              </div>
+              <div className="mt-2">
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1 rounded-full" style={{ background: "#EDFAF3", color: "#16A34A" }}>
+                  🏷 {unseenCount} this week
+                </span>
+              </div>
             </div>
           </div>
-          <div className="px-4 py-2 border-t border-gray-50" style={{ background: "#F8FAFF" }}>
-            <p className="text-center font-bold text-[12px]" style={{ color: "#5B8DEF" }}>Click to view all →</p>
+          <div className="px-5 py-3 border-t border-gray-50" style={{ background: "#F8FAFF" }}>
+            <p className="text-center font-bold text-[13px]" style={{ color: "#5B8DEF" }}>Click to view all &nbsp;→</p>
           </div>
         </div>
 
         {/* ── Customer's Chat Card ── */}
         <div
-          className="bg-white rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform flex flex-col flex-1"
-          style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)", minHeight: 0 }}
+          className="bg-white rounded-3xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+          style={{ boxShadow: "0 2px 20px rgba(0,0,0,0.06)" }}
           onClick={() => setView("chat")}
         >
-          <div className="flex items-center justify-between px-4 py-2.5 flex-1">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#F3EDFF" }}>
-                <MessageCircle className="w-5 h-5" style={{ color: "#8B5CF6" }} />
+          <div className="p-5">
+            <div className="flex items-start justify-between">
+              <div className="flex gap-3.5">
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: "#F3EDFF" }}>
+                  <MessageCircle className="w-6 h-6" style={{ color: "#8B5CF6" }} />
+                </div>
+                <div>
+                  <p className="font-black text-gray-900 text-[15px] leading-tight">Customer's Chat</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5 leading-snug">
+                    Chat with your customers<br />in real-time
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="font-black text-gray-900 text-[13px] leading-tight">Customer's Chat</p>
-                <p className="text-[10px] text-gray-400 leading-snug">Chat with your customers in real-time</p>
+              <div className="flex flex-col items-end gap-1">
+                <ChevronRight className="w-4 h-4 text-gray-300" />
+                <span style={{ fontSize: "52px", lineHeight: 1, filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.12))" }}>💬</span>
               </div>
-            </div>
-            <div className="flex flex-col items-end gap-1 flex-shrink-0">
-              <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-              <span style={{ fontSize: "40px", lineHeight: 1, filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.1))" }}>💬</span>
             </div>
           </div>
-          <div className="px-4 py-2 border-t" style={{ borderColor: "#F0E8FF", background: "#F9F5FF" }}>
-            <p className="text-center font-bold text-[12px]" style={{ color: "#8B5CF6" }}>Click to open →</p>
+          <div className="px-5 py-3 border-t" style={{ borderColor: "#F0E8FF", background: "#F9F5FF" }}>
+            <p className="text-center font-bold text-[13px]" style={{ color: "#8B5CF6" }}>Click to open &nbsp;→</p>
           </div>
         </div>
 
         {/* ── Customer Accounts Card ── */}
         <div
-          className="bg-white rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform flex flex-col flex-1"
-          style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)", minHeight: 0 }}
+          className="bg-white rounded-3xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+          style={{ boxShadow: "0 2px 20px rgba(0,0,0,0.06)" }}
           onClick={() => setView("customeraccounts")}
         >
-          <div className="flex items-center justify-between px-4 py-2.5 flex-1">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#EEF3FF" }}>
-                <User className="w-5 h-5" style={{ color: "#93C5FD" }} />
-              </div>
-              <div>
-                <p className="font-black text-gray-900 text-[13px] leading-tight">Customer Accounts</p>
-                <p className="text-[10px] text-gray-400 leading-snug">View and manage all registered customers</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="font-black text-gray-900 text-[22px] leading-none">{customerAccountCount}</span>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "#EDFAF3", color: "#16A34A" }}>
-                    ↑ {newThisMonth} this month
-                  </span>
+          <div className="p-5">
+            <div className="flex items-start justify-between">
+              <div className="flex gap-3.5">
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: "#EEF3FF" }}>
+                  <User className="w-6 h-6" style={{ color: "#93C5FD" }} />
+                </div>
+                <div>
+                  <p className="font-black text-gray-900 text-[15px] leading-tight">Customer Accounts</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5 leading-snug">
+                    View and manage all<br />registered customers
+                  </p>
                 </div>
               </div>
+              <div className="flex flex-col items-end gap-1">
+                <ChevronRight className="w-4 h-4 text-gray-300" />
+                <span style={{ fontSize: "52px", lineHeight: 1, filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.12))" }}>👥</span>
+              </div>
             </div>
-            <div className="flex flex-col items-end gap-1 flex-shrink-0">
-              <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-              <span style={{ fontSize: "40px", lineHeight: 1, filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.1))" }}>👥</span>
+            <div className="mt-3">
+              <div className="font-black text-gray-900" style={{ fontSize: "36px", lineHeight: 1 }}>
+                {customerAccountCount}
+              </div>
+              <div className="mt-2">
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1 rounded-full" style={{ background: "#EDFAF3", color: "#16A34A" }}>
+                  ↑ {newThisMonth} this month
+                </span>
+              </div>
             </div>
           </div>
-          <div className="px-4 py-2 border-t border-gray-50" style={{ background: "#F8FAFF" }}>
-            <p className="text-center font-bold text-[12px]" style={{ color: "#5B8DEF" }}>Click to manage →</p>
+          <div className="px-5 py-3 border-t border-gray-50" style={{ background: "#F8FAFF" }}>
+            <p className="text-center font-bold text-[13px]" style={{ color: "#5B8DEF" }}>Click to manage &nbsp;→</p>
           </div>
         </div>
 
