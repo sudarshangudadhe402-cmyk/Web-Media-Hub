@@ -1,54 +1,51 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Search, MapPin, Navigation, X, ChevronDown, Star, AlertCircle, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 
-// ─── Leaflet icon fix for Vite ────────────────────────────────────────────────
-const DefaultIcon = L.icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-L.Marker.prototype.options.icon = DefaultIcon;
+// ─── Inject pulse animation CSS once ─────────────────────────────────────────
+if (typeof document !== "undefined" && !document.getElementById("fs-map-css")) {
+  const s = document.createElement("style");
+  s.id = "fs-map-css";
+  s.textContent = `
+    @keyframes fs-pulse { 0% { transform:scale(1); opacity:0.7; } 100% { transform:scale(2.8); opacity:0; } }
+    .fs-pulse-ring { position:absolute; inset:0; border-radius:50%; background:rgba(59,130,246,0.45); animation:fs-pulse 2s ease-out infinite; }
+    .fs-loc-dot { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:13px; height:13px; border-radius:50%; background:#3b82f6; border:2.5px solid white; box-shadow:0 0 0 2px rgba(59,130,246,0.4); }
+  `;
+  document.head.appendChild(s);
+}
 
-/** Purple store marker — used when no user location is set */
-const StoreIcon = L.icon({
-  iconUrl:
-    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-
-/** Green store marker — used for stores within the selected radius */
-const StoreIconNearby = L.icon({
-  iconUrl:
-    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
+// ─── Custom divIcon: blue pulsing dot for user location ───────────────────────
+const UserLocationIcon = L.divIcon({
+  className: "",
+  html: `<div style="position:relative;width:30px;height:30px;">
+    <div class="fs-pulse-ring"></div>
+    <div class="fs-loc-dot"></div>
+  </div>`,
+  iconSize: [30, 30],
+  iconAnchor: [15, 15],
+  popupAnchor: [0, -18],
 });
 
-/** Red user-location marker */
-const UserIcon = L.icon({
-  iconUrl:
-    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
+// ─── Store SVG icon (house/store shape) ──────────────────────────────────────
+const STORE_SVG = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`;
+
+/** Rounded-square store badge marker — violet (outside radius) or green (inside) */
+function makeStoreIcon(nearby: boolean) {
+  const bg = nearby ? "#16a34a" : "#7c3aed";
+  return L.divIcon({
+    className: "",
+    html: `<div style="width:36px;height:36px;background:${bg};border-radius:10px;display:flex;align-items:center;justify-content:center;border:2.5px solid white;box-shadow:0 2px 10px rgba(0,0,0,0.28);">${STORE_SVG}</div>`,
+    iconSize: [36, 36],
+    iconAnchor: [18, 36],
+    popupAnchor: [0, -38],
+  });
+}
+
+const StoreIconViolet = makeStoreIcon(false);
+const StoreIconGreen  = makeStoreIcon(true);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -375,6 +372,10 @@ export default function FindStores() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [selectedMarkerStore, setSelectedMarkerStore] = useState<string | null>(null);
 
+  // All stores in broad area — for map only (not filtered by selected radius)
+  const [mapStores, setMapStores] = useState<DiscoveredStore[]>([]);
+  const mapAbortRef = useRef<AbortController | null>(null);
+
   const search = useDebounce(searchRaw, 400);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -498,6 +499,33 @@ export default function FindStores() {
   useEffect(() => {
     fetchStores(true);
   }, [userLocation, radius, selectedCategory, search]);
+
+  // ── Fetch wide-area stores for map (radius=200, no category filter) ───────
+  useEffect(() => {
+    if (!userLocation) {
+      setMapStores([]);
+      return;
+    }
+    if (mapAbortRef.current) mapAbortRef.current.abort();
+    mapAbortRef.current = new AbortController();
+
+    const params = new URLSearchParams({
+      lat: String(userLocation.lat),
+      lng: String(userLocation.lng),
+      radius: "200",
+      category: "",
+      search: "",
+      page: "1",
+      limit: "50",
+    });
+
+    fetch(`/api/public/stores/discover?${params.toString()}`, {
+      signal: mapAbortRef.current.signal,
+    })
+      .then((r) => r.json())
+      .then((data: DiscoverResponse) => setMapStores(data.stores))
+      .catch(() => {/* silently ignore map-only fetch errors */});
+  }, [userLocation]);
 
   // Fetch next page — pass the next page explicitly to avoid stale state closure
   const loadMore = useCallback(() => {
@@ -655,71 +683,81 @@ export default function FindStores() {
               onLocationPicked={handleMapLocationPick}
             />
 
-            {/* User location marker */}
+            {/* User location marker — blue pulsing dot */}
             {userLocation && (
-              <Marker
-                position={[userLocation.lat, userLocation.lng]}
-                icon={UserIcon}
-              >
-                <Popup>
-                  <div className="text-sm font-semibold text-red-600">
-                    📍 Your Location
-                  </div>
-                </Popup>
-              </Marker>
+              <>
+                <Marker
+                  position={[userLocation.lat, userLocation.lng]}
+                  icon={UserLocationIcon}
+                >
+                  <Popup>
+                    <div className="text-sm font-semibold text-blue-600">
+                      📍 Your Location
+                    </div>
+                  </Popup>
+                </Marker>
+                {/* Radius boundary circle */}
+                <Circle
+                  center={[userLocation.lat, userLocation.lng]}
+                  radius={radius * 1000}
+                  pathOptions={{ color: "#7c3aed", weight: 1.5, fillColor: "#7c3aed", fillOpacity: 0.06 }}
+                />
+              </>
             )}
 
-            {/* Store markers — green when within radius, violet when no location */}
-            {stores.map((store) => (
-              <Marker
-                key={store.id}
-                position={[store.latitude, store.longitude]}
-                icon={store.distance !== null ? StoreIconNearby : StoreIcon}
-                eventHandlers={{
-                  click: () => setSelectedMarkerStore(store.id),
-                }}
-              >
-                <Popup>
-                  <div className="min-w-[180px] text-xs">
-                    <p className="font-bold text-gray-900 text-sm leading-tight mb-1">
-                      {store.name}
-                    </p>
-                    {store.category && (
-                      <p className="text-violet-600 font-medium mb-0.5">
-                        {store.category}
+            {/* Store markers:
+                - When user has location: show mapStores (wide area); green = within radius, violet = outside
+                - When no location: show stores (nationwide) all violet */}
+            {(userLocation ? mapStores : stores).map((store) => {
+              const isNearby = userLocation
+                ? store.distance !== null && store.distance <= radius
+                : false;
+              return (
+                <Marker
+                  key={store.id}
+                  position={[store.latitude, store.longitude]}
+                  icon={isNearby ? StoreIconGreen : StoreIconViolet}
+                  eventHandlers={{
+                    click: () => setSelectedMarkerStore(store.id),
+                  }}
+                >
+                  <Popup>
+                    <div className="min-w-[180px] text-xs">
+                      <p className="font-bold text-gray-900 text-sm leading-tight mb-1">
+                        {store.name}
                       </p>
-                    )}
-                    {store.distance !== null && (
-                      <p className="text-gray-500 mb-1">
-                        📍{" "}
-                        {store.distance < 1
-                          ? `${Math.round(store.distance * 1000)} m away`
-                          : `${store.distance} km away`}
-                      </p>
-                    )}
-                    {store.reviewCount > 0 ? (
+                      {store.category && (
+                        <p className="text-violet-600 font-medium mb-0.5">
+                          {store.category}
+                        </p>
+                      )}
+                      {store.distance !== null && (
+                        <p className="text-gray-500 mb-1">
+                          📍{" "}
+                          {store.distance < 1
+                            ? `${Math.round(store.distance * 1000)} m away`
+                            : `${store.distance} km away`}
+                        </p>
+                      )}
                       <p className="text-gray-600 mb-1">
-                        ⭐ {store.avgRating.toFixed(1)} ({store.reviewCount}{" "}
-                        reviews)
+                        ⭐ {store.reviewCount > 0 ? `${store.avgRating.toFixed(1)} (${store.reviewCount})` : "0.0 (0)"}
                       </p>
-                    ) : (
-                      <p className="text-gray-400 italic mb-1 text-xs">
-                        No reviews yet
+                      <p className={`font-medium mb-2 ${store.isOpen ? "text-green-600" : "text-red-500"}`}>
+                        ● {store.isOpen ? "Open" : "Closed"}
                       </p>
-                    )}
-                    <p className={`font-medium mb-2 ${store.isOpen ? "text-green-600" : "text-red-500"}`}>
-                      ● {store.isOpen ? "Open" : "Closed"}
-                    </p>
-                    <button
-                      onClick={() => handleViewStore(store.publicSlug)}
-                      className="block w-full text-center bg-violet-600 text-white text-xs font-semibold py-1.5 rounded-lg hover:bg-violet-700 transition-colors"
-                    >
-                      View Store
-                    </button>
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
+                      {isNearby && (
+                        <button
+                          onClick={() => handleViewStore(store.publicSlug)}
+                          className="block w-full text-center bg-violet-600 text-white text-xs font-semibold py-1.5 rounded-lg hover:bg-violet-700 transition-colors"
+                        >
+                          View Store
+                        </button>
+                      )}
+                    </div>
+                  </Popup>
+                </Marker>
+              );
+            })}
           </MapContainer>
 
           {/* Tap-to-set-location hint overlay */}
@@ -732,34 +770,19 @@ export default function FindStores() {
           )}
 
           {/* Map legend */}
-          <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 px-3 py-2 shadow-sm text-xs flex flex-col gap-1 z-[1000]">
-            <div className="flex items-center gap-1.5">
-              <img
-                src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png"
-                className="w-2.5 h-4 object-contain"
-                alt=""
-              />
+          <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 px-3 py-2 shadow-sm text-xs flex flex-col gap-1.5 z-[1000]">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-blue-500 border-2 border-white shadow-sm flex-shrink-0" />
               <span className="text-gray-600">Your Location</span>
             </div>
-            {userLocation ? (
-              <div className="flex items-center gap-1.5">
-                <img
-                  src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png"
-                  className="w-2.5 h-4 object-contain"
-                  alt=""
-                />
-                <span className="text-gray-600">Nearby Store</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5">
-                <img
-                  src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png"
-                  className="w-2.5 h-4 object-contain"
-                  alt=""
-                />
-                <span className="text-gray-600">Store</span>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-md bg-green-600 flex-shrink-0" />
+              <span className="text-gray-600">Within area</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-md bg-violet-600 flex-shrink-0" />
+              <span className="text-gray-600">Outside area</span>
+            </div>
           </div>
         </div>
       </div>
