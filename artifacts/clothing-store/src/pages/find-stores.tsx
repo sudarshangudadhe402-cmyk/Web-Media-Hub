@@ -783,21 +783,6 @@ export default function FindStores() {
             </div>
           )}
 
-          {/* Map legend */}
-          <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 px-3 py-2 shadow-sm text-xs flex flex-col gap-1.5 z-[1000]">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-blue-500 border-2 border-white shadow-sm flex-shrink-0" />
-              <span className="text-gray-600">Your Location</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded-md bg-green-600 flex-shrink-0" />
-              <span className="text-gray-600">Within area</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded-md bg-violet-600 flex-shrink-0" />
-              <span className="text-gray-600">Outside area</span>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -822,10 +807,6 @@ export default function FindStores() {
             </p>
           </div>
 
-          {/* Sort badge */}
-          <span className="text-xs text-gray-500 bg-gray-100 rounded-lg px-2.5 py-1 font-medium">
-            Ranked by plan
-          </span>
         </div>
 
         {/* Radius selector */}
