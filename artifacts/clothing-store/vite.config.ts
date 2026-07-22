@@ -11,12 +11,31 @@ const port = rawPort && !Number.isNaN(Number(rawPort)) && Number(rawPort) > 0
 
 const basePath = process.env.BASE_PATH ?? "/";
 
+// Plugin: when running as the shopping-page artifact (port 21648),
+// redirect root "/" to "/shoping-page" so the artifact opens directly on the right page.
+function shoppingPageRedirectPlugin() {
+  return {
+    name: "shopping-page-redirect",
+    configureServer(server: any) {
+      server.middlewares.use((req: any, res: any, next: any) => {
+        if (req.url === "/" || req.url === "") {
+          res.writeHead(302, { Location: "/shoping-page" });
+          res.end();
+          return;
+        }
+        next();
+      });
+    },
+  };
+}
+
 export default defineConfig({
   base: basePath,
   plugins: [
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
+    ...(port === 21648 ? [shoppingPageRedirectPlugin()] : []),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
