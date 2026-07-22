@@ -179,9 +179,15 @@ router.get(
         !isNaN(userLat) &&
         !isNaN(userLng);
 
-      const radius = Math.min(Math.max(parseFloat(radiusRaw) || 50, 1), 200);
+      // No hard upper cap on radius — large values (e.g. 99999) are used by the
+      // map-only fetch to retrieve ALL stores; normal list fetches use ≤50 km.
+      const radius = Math.max(parseFloat(radiusRaw) || 50, 1);
+      // Whether this is a "show everything on the map" request
+      const isMapWide = radius > 5000;
       const page = Math.max(parseInt(pageRaw) || 1, 1);
-      const limit = Math.min(Math.max(parseInt(limitRaw) || 20, 1), 50);
+      // Allow up to 500 results for map-wide fetches, otherwise cap at 50
+      const maxLimit = isMapWide ? 500 : 50;
+      const limit = Math.min(Math.max(parseInt(limitRaw) || 20, 1), maxLimit);
       const skip = (page - 1) * limit;
 
       // ── 1. Category → storeType mapping ──────────────────────────────────
@@ -259,8 +265,9 @@ router.get(
         longitude: { $exists: true, $ne: null, $type: "number" },
       };
 
-      if (hasLocation) {
-        // Rough bounding-box pre-filter (DB-level) before exact Haversine
+      if (hasLocation && !isMapWide) {
+        // Rough bounding-box pre-filter (DB-level) before exact Haversine.
+        // Skipped for map-wide fetches (radius > 5000) so all stores are returned.
         const latDelta = radius / 111;
         const lngDelta =
           radius / (111 * Math.cos((userLat! * Math.PI) / 180));
@@ -357,7 +364,10 @@ router.get(
         let distanceKm: number | null = null;
         if (hasLocation) {
           distanceKm = haversineKm(userLat!, userLng!, lat2, lng2);
-          if (distanceKm > radius) continue; // exact radius filter
+          // For normal list fetches, drop stores outside the selected radius.
+          // For map-wide fetches (isMapWide), keep ALL stores — the frontend
+          // colours them green (within radius) or violet (outside) client-side.
+          if (!isMapWide && distanceKm > radius) continue;
         }
 
         const meta = userIdToMeta.get(String(store.ownerId));
