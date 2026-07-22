@@ -29,15 +29,17 @@ const UserLocationIcon = L.divIcon({
   popupAnchor: [0, -18],
 });
 
-/** Pin-shaped store marker with a house icon inside — violet (outside radius) or green (inside) */
+/** Pin-shaped store marker with a shopping bag icon inside — violet (outside radius) or green (inside) */
 function makeStoreIcon(nearby: boolean) {
   const bg = nearby ? "#16a34a" : "#7c3aed";
+  // Shopping bag icon (Lucide ShoppingBag), scaled to fit inside pin circle
+  // viewBox 0 0 24 24 → scaled to ~13px, centered at (18, 17) in the 36×48 pin
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48">
-    <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 30 18 30S36 31.5 36 18C36 8.06 27.94 0 18 0z" fill="${bg}" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.35))"/>
-    <circle cx="18" cy="17" r="10" fill="rgba(255,255,255,0.18)"/>
-    <g transform="translate(11,10) scale(0.583)" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-      <polyline points="9 22 9 12 15 12 15 22"/>
+    <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 30 18 30S36 31.5 36 18C36 8.06 27.94 0 18 0z" fill="${bg}" filter="drop-shadow(0 2px 5px rgba(0,0,0,0.4))"/>
+    <g transform="translate(11.5,10.5) scale(0.542)" fill="none" stroke="white" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+      <line x1="3" y1="6" x2="21" y2="6"/>
+      <path d="M16 10a4 4 0 0 1-8 0"/>
     </g>
   </svg>`;
   return L.divIcon({
