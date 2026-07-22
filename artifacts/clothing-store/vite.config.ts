@@ -12,15 +12,21 @@ const port = rawPort && !Number.isNaN(Number(rawPort)) && Number(rawPort) > 0
 const basePath = process.env.BASE_PATH ?? "/";
 
 // Plugin: when running as the shopping-page artifact (port 21648),
-// redirect root "/" to "/shoping-page" so the artifact opens directly on the right page.
+// serve a client-side redirect at "/" so the browser navigates to /shoping-page.
+// A server-side 302 is not enough because Replit's reverse proxy follows it internally,
+// keeping the browser URL at "/" and making React Router render the wrong route.
 function shoppingPageRedirectPlugin() {
   return {
     name: "shopping-page-redirect",
     configureServer(server: any) {
       server.middlewares.use((req: any, res: any, next: any) => {
         if (req.url === "/" || req.url === "") {
-          res.writeHead(302, { Location: "/shoping-page" });
-          res.end();
+          res.writeHead(200, { "Content-Type": "text/html" });
+          res.end(
+            `<!doctype html><html><head>` +
+            `<meta http-equiv="refresh" content="0;url=/shoping-page">` +
+            `</head><body><script>window.location.replace('/shoping-page')</script></body></html>`
+          );
           return;
         }
         next();
