@@ -125,15 +125,12 @@ type Radius = (typeof RADIUS_OPTIONS)[number];
 // ─── Star Rating display ──────────────────────────────────────────────────────
 
 function StarRating({ rating, count }: { rating: number; count: number }) {
-  if (count === 0) {
-    return (
-      <span className="text-xs text-gray-400 italic">No reviews yet</span>
-    );
-  }
   return (
     <span className="flex items-center gap-1 text-sm">
-      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-      <span className="font-semibold text-gray-800">{rating.toFixed(1)}</span>
+      <Star className={`w-3.5 h-3.5 ${count === 0 ? "text-gray-300 fill-gray-300" : "fill-amber-400 text-amber-400"}`} />
+      <span className={`font-semibold ${count === 0 ? "text-gray-400" : "text-gray-800"}`}>
+        {count === 0 ? "0.0" : rating.toFixed(1)}
+      </span>
       <span className="text-gray-400">({count})</span>
     </span>
   );
