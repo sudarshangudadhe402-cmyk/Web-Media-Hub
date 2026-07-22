@@ -185,14 +185,9 @@ function StoreCard({
             <h3 className="font-semibold text-gray-900 text-sm leading-tight truncate">
               {store.name}
             </h3>
-            {(store.category || store.storeType) && (
+            {store.category && (
               <p className="text-xs text-gray-500 mt-0.5 truncate">
-                {store.category || store.storeType}
-                {store.storeType &&
-                  store.category &&
-                  store.storeType !== store.category && (
-                    <span className="text-gray-300"> • {store.storeType}</span>
-                  )}
+                {store.category}
               </p>
             )}
           </div>
@@ -209,7 +204,15 @@ function StoreCard({
         </div>
 
         <div className="mt-1.5">
-          <StarRating rating={store.avgRating} count={store.reviewCount} />
+          {store.reviewCount === 0 ? (
+            store.storeType ? (
+              <span className="inline-block text-xs font-medium text-violet-700 bg-violet-50 border border-violet-100 px-2 py-0.5 rounded-full">
+                {store.storeType}
+              </span>
+            ) : null
+          ) : (
+            <StarRating rating={store.avgRating} count={store.reviewCount} />
+          )}
         </div>
 
         <div className="flex items-center justify-between mt-2">
@@ -903,26 +906,6 @@ export default function FindStores() {
           </div>
         )}
 
-        {/* No location prompt */}
-        {!userLocation && stores.length > 0 && (
-          <div className="mt-4 bg-violet-50 border border-violet-100 rounded-2xl p-4 flex items-start gap-3">
-            <Navigation className="w-5 h-5 text-violet-500 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-violet-800">
-                Enable location for better results
-              </p>
-              <p className="text-xs text-violet-600 mt-0.5">
-                Allow location access to see stores near you, sorted by distance.
-              </p>
-              <button
-                onClick={requestLocation}
-                className="mt-2 text-xs font-bold text-violet-700 underline"
-              >
-                Allow Location
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ── More categories bottom sheet ────────────────────────────────── */}
