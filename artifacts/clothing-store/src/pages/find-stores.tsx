@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Search, MapPin, Navigation, X, ChevronDown, Star, AlertCircle, Loader2 } from "lucide-react";
@@ -81,6 +81,24 @@ function MapRecenter({ lat, lng }: { lat: number; lng: number }) {
   useEffect(() => {
     map.setView([lat, lng], map.getZoom(), { animate: true });
   }, [lat, lng, map]);
+  return null;
+}
+
+/** Lets user tap the map to manually set their location when GPS fails */
+function MapClickHandler({
+  enabled,
+  onLocationPicked,
+}: {
+  enabled: boolean;
+  onLocationPicked: (lat: number, lng: number) => void;
+}) {
+  useMapEvents({
+    click(e) {
+      if (enabled) {
+        onLocationPicked(e.latlng.lat, e.latlng.lng);
+      }
+    },
+  });
   return null;
 }
 
@@ -347,6 +365,7 @@ export default function FindStores() {
 
   // UI state
   const [showMoreSheet, setShowMoreSheet] = useState(false);
+  const [mapClickEnabled, setMapClickEnabled] = useState(false);
 
   // Data state
   const [categories, setCategories] = useState<string[]>([]);
@@ -375,35 +394,55 @@ export default function FindStores() {
       });
   }, []);
 
-  // ── Request user location ────────────────────────────────────────────────
+  // ── Request user location (two-attempt: high-accuracy → low-accuracy fallback) ──
   const requestLocation = useCallback(() => {
     if (!navigator.geolocation) {
-      setLocationError(
-        "Geolocation is not supported by your browser. Try searching by city or area."
-      );
+      setLocationError("tap-map"); // triggers map-click mode
       return;
     }
     setLocationLoading(true);
     setLocationError(null);
+    setMapClickEnabled(false);
+
+    // First attempt: high accuracy (GPS), 8 s timeout
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setLocationLoading(false);
+        setMapClickEnabled(false);
       },
-      (err) => {
-        setLocationLoading(false);
-        if (err.code === 1) {
-          setLocationError(
-            "Location permission denied. You can still search by store name, city, or pincode."
-          );
-        } else {
-          setLocationError(
-            "Could not detect your location. Try searching by city or area."
-          );
-        }
+      () => {
+        // High-accuracy failed → retry with low accuracy (network/IP-based), 6 s
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+            setLocationLoading(false);
+            setMapClickEnabled(false);
+          },
+          (err) => {
+            setLocationLoading(false);
+            if (err.code === 1) {
+              // Permission denied — can't retry, offer map-click
+              setLocationError("tap-map");
+              setMapClickEnabled(true);
+            } else {
+              // Position unavailable or timeout — offer map-click as fallback
+              setLocationError("tap-map");
+              setMapClickEnabled(true);
+            }
+          },
+          { enableHighAccuracy: false, timeout: 6000, maximumAge: 60000 }
+        );
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
     );
+  }, []);
+
+  /** Called when user taps the map to manually pin their location */
+  const handleMapLocationPick = useCallback((lat: number, lng: number) => {
+    setUserLocation({ lat, lng });
+    setMapClickEnabled(false);
+    setLocationError(null);
   }, []);
 
   // ── Fetch stores ─────────────────────────────────────────────────────────
@@ -518,9 +557,23 @@ export default function FindStores() {
           {locationError && (
             <div className="flex items-start gap-2 mt-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
               <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-700 leading-relaxed">
-                {locationError}
-              </p>
+              {locationError === "tap-map" ? (
+                <div className="flex-1">
+                  <p className="text-xs text-amber-700 leading-relaxed">
+                    GPS nahi mila. Neeche map par tap karke apni location set karein.
+                  </p>
+                  <button
+                    onClick={() => setMapClickEnabled((v) => !v)}
+                    className={`mt-1.5 text-xs font-bold underline ${mapClickEnabled ? "text-violet-700" : "text-amber-700"}`}
+                  >
+                    {mapClickEnabled ? "✓ Map tap mode active — tap to pin your location" : "Tap map to set location →"}
+                  </button>
+                </div>
+              ) : (
+                <p className="text-xs text-amber-700 leading-relaxed">
+                  {locationError}
+                </p>
+              )}
             </div>
           )}
 
@@ -598,6 +651,10 @@ export default function FindStores() {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <MapRecenter lat={mapCenter[0]} lng={mapCenter[1]} />
+            <MapClickHandler
+              enabled={mapClickEnabled}
+              onLocationPicked={handleMapLocationPick}
+            />
 
             {/* User location marker */}
             {userLocation && (
@@ -665,6 +722,15 @@ export default function FindStores() {
               </Marker>
             ))}
           </MapContainer>
+
+          {/* Tap-to-set-location hint overlay */}
+          {mapClickEnabled && (
+            <div className="absolute inset-0 z-[999] pointer-events-none flex items-center justify-center">
+              <div className="bg-violet-700/90 text-white text-xs font-semibold px-4 py-2 rounded-full shadow-lg backdrop-blur-sm animate-pulse">
+                📍 Map par tap karein — apni location set karein
+              </div>
+            </div>
+          )}
 
           {/* Map legend */}
           <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 px-3 py-2 shadow-sm text-xs flex flex-col gap-1 z-[1000]">
