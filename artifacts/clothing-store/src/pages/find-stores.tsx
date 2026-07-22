@@ -149,9 +149,9 @@ function StoreCard({
   onView: (slug: string) => void;
 }) {
   return (
-    <div className="flex items-start gap-3 bg-white rounded-2xl shadow-sm border border-gray-100 p-3 hover:shadow-md transition-shadow">
+    <div className="flex items-center gap-3 bg-white rounded-2xl shadow-sm border border-gray-100 px-3 py-2.5 hover:shadow-md transition-shadow">
       {/* Image */}
-      <div className="w-20 h-20 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100">
+      <div className="w-16 h-16 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100">
         {store.bannerImage ? (
           <img
             src={store.bannerImage}
@@ -162,7 +162,7 @@ function StoreCard({
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-violet-50 to-purple-100">
             <svg
-              className="w-8 h-8 text-violet-300"
+              className="w-7 h-7 text-violet-300"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -180,49 +180,48 @@ function StoreCard({
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <h3 className="font-semibold text-gray-900 text-sm leading-tight truncate">
-              {store.name}
-            </h3>
-            {store.category && (
-              <p className="text-xs text-gray-500 mt-0.5 truncate">
-                {store.category}
-              </p>
-            )}
-          </div>
+        {/* Row 1: Name + Distance */}
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-semibold text-gray-900 text-sm leading-tight truncate">
+            {store.name}
+          </h3>
           {store.distance !== null && (
-            <div className="flex items-center gap-0.5 text-xs text-violet-600 font-medium flex-shrink-0">
-              <MapPin className="w-3 h-3" />
+            <div className="flex items-center gap-0.5 text-xs text-violet-600 font-semibold flex-shrink-0">
               <span>
                 {store.distance < 1
                   ? `${Math.round(store.distance * 1000)} m`
                   : `${store.distance} km`}
               </span>
+              <MapPin className="w-3 h-3" />
             </div>
           )}
         </div>
 
-        <div className="mt-1.5">
-          {store.reviewCount === 0 ? (
-            store.storeType ? (
-              <span className="inline-block text-xs font-medium text-violet-700 bg-violet-50 border border-violet-100 px-2 py-0.5 rounded-full">
-                {store.storeType}
-              </span>
-            ) : null
-          ) : (
-            <StarRating rating={store.avgRating} count={store.reviewCount} />
-          )}
-        </div>
+        {/* Row 2: Store Type */}
+        {store.storeType && (
+          <p className="text-xs text-violet-600 font-medium mt-0.5 truncate">
+            {store.storeType}
+            {store.category && (
+              <span className="text-gray-400 font-normal"> · {store.category}</span>
+            )}
+          </p>
+        )}
+        {!store.storeType && store.category && (
+          <p className="text-xs text-gray-500 mt-0.5 truncate">{store.category}</p>
+        )}
 
-        <div className="flex items-center justify-between mt-2">
-          <span className={`inline-flex items-center gap-1 text-xs font-medium ${store.isOpen ? "text-green-600" : "text-red-500"}`}>
-            <span className={`w-1.5 h-1.5 rounded-full inline-block ${store.isOpen ? "bg-green-500" : "bg-red-400"}`} />
-            {store.isOpen ? "Open" : "Closed"}
-          </span>
+        {/* Row 3: Rating + Open/Close + View Store */}
+        <div className="flex items-center justify-between mt-1.5 gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <StarRating rating={store.avgRating} count={store.reviewCount} />
+            <span className={`inline-flex items-center gap-1 text-xs font-medium flex-shrink-0 ${store.isOpen ? "text-green-600" : "text-red-500"}`}>
+              <span className={`w-1.5 h-1.5 rounded-full inline-block ${store.isOpen ? "bg-green-500" : "bg-red-400"}`} />
+              {store.isOpen ? "Open" : "Closed"}
+            </span>
+          </div>
           <button
             onClick={() => onView(store.publicSlug)}
-            className="text-xs font-semibold text-violet-600 border border-violet-200 rounded-lg px-3 py-1 hover:bg-violet-50 active:bg-violet-100 transition-colors"
+            className="text-xs font-semibold text-violet-600 border border-violet-200 rounded-lg px-3 py-1 hover:bg-violet-50 active:bg-violet-100 transition-colors flex-shrink-0"
           >
             View Store
           </button>
