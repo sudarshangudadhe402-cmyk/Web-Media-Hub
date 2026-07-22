@@ -526,11 +526,11 @@ export default function FindStores() {
     const params = new URLSearchParams({
       lat: String(userLocation.lat),
       lng: String(userLocation.lng),
-      radius: "200",
+      radius: "99999",
       category: "",
       search: "",
       page: "1",
-      limit: "50",
+      limit: "500",
     });
 
     fetch(`/api/public/stores/discover?${params.toString()}`, {
