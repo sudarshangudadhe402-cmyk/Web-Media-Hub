@@ -29,18 +29,23 @@ const UserLocationIcon = L.divIcon({
   popupAnchor: [0, -18],
 });
 
-// ─── Store SVG icon (house/store shape) ──────────────────────────────────────
-const STORE_SVG = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`;
-
-/** Rounded-square store badge marker — violet (outside radius) or green (inside) */
+/** Pin-shaped store marker with a house icon inside — violet (outside radius) or green (inside) */
 function makeStoreIcon(nearby: boolean) {
   const bg = nearby ? "#16a34a" : "#7c3aed";
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48">
+    <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 30 18 30S36 31.5 36 18C36 8.06 27.94 0 18 0z" fill="${bg}" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.35))"/>
+    <circle cx="18" cy="17" r="10" fill="rgba(255,255,255,0.18)"/>
+    <g transform="translate(11,10) scale(0.583)" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </g>
+  </svg>`;
   return L.divIcon({
     className: "",
-    html: `<div style="width:36px;height:36px;background:${bg};border-radius:10px;display:flex;align-items:center;justify-content:center;border:2.5px solid white;box-shadow:0 2px 10px rgba(0,0,0,0.28);">${STORE_SVG}</div>`,
-    iconSize: [36, 36],
-    iconAnchor: [18, 36],
-    popupAnchor: [0, -38],
+    html: svg,
+    iconSize: [36, 48],
+    iconAnchor: [18, 48],
+    popupAnchor: [0, -50],
   });
 }
 
