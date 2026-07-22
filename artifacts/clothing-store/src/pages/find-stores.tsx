@@ -17,7 +17,7 @@ const DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-/** Purple store marker */
+/** Purple store marker — used when no user location is set */
 const StoreIcon = L.icon({
   iconUrl:
     "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png",
@@ -28,10 +28,21 @@ const StoreIcon = L.icon({
   shadowSize: [41, 41],
 });
 
-/** Blue user-location marker */
+/** Green store marker — used for stores within the selected radius */
+const StoreIconNearby = L.icon({
+  iconUrl:
+    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+/** Red user-location marker */
 const UserIcon = L.icon({
   iconUrl:
-    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png",
+    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
@@ -595,19 +606,19 @@ export default function FindStores() {
                 icon={UserIcon}
               >
                 <Popup>
-                  <div className="text-sm font-semibold text-blue-700">
+                  <div className="text-sm font-semibold text-red-600">
                     📍 Your Location
                   </div>
                 </Popup>
               </Marker>
             )}
 
-            {/* Store markers */}
+            {/* Store markers — green when within radius, violet when no location */}
             {stores.map((store) => (
               <Marker
                 key={store.id}
                 position={[store.latitude, store.longitude]}
-                icon={StoreIcon}
+                icon={store.distance !== null ? StoreIconNearby : StoreIcon}
                 eventHandlers={{
                   click: () => setSelectedMarkerStore(store.id),
                 }}
@@ -659,20 +670,31 @@ export default function FindStores() {
           <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 px-3 py-2 shadow-sm text-xs flex flex-col gap-1 z-[1000]">
             <div className="flex items-center gap-1.5">
               <img
-                src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png"
+                src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png"
                 className="w-2.5 h-4 object-contain"
                 alt=""
               />
               <span className="text-gray-600">Your Location</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <img
-                src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png"
-                className="w-2.5 h-4 object-contain"
-                alt=""
-              />
-              <span className="text-gray-600">Store</span>
-            </div>
+            {userLocation ? (
+              <div className="flex items-center gap-1.5">
+                <img
+                  src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png"
+                  className="w-2.5 h-4 object-contain"
+                  alt=""
+                />
+                <span className="text-gray-600">Nearby Store</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <img
+                  src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png"
+                  className="w-2.5 h-4 object-contain"
+                  alt=""
+                />
+                <span className="text-gray-600">Store</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
