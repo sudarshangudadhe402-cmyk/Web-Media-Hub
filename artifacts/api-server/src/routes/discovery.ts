@@ -255,7 +255,6 @@ router.get(
       // ── 4. Find stores for those owners (with optional bounding box) ──────
       const storeQuery: Record<string, any> = {
         ownerId: { $in: ownerIds },
-        isLocked: false,
         latitude: { $exists: true, $ne: null, $type: "number" },
         longitude: { $exists: true, $ne: null, $type: "number" },
       };
