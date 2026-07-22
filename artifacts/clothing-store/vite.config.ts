@@ -12,25 +12,13 @@ const port = rawPort && !Number.isNaN(Number(rawPort)) && Number(rawPort) > 0
 const basePath = process.env.BASE_PATH ?? "/";
 
 // Plugin: when running as the shopping-page artifact (port 21648),
-// serve a client-side redirect at "/" so the browser navigates to /shoping-page.
-// A server-side 302 is not enough because Replit's reverse proxy follows it internally,
-// keeping the browser URL at "/" and making React Router render the wrong route.
-function shoppingPageRedirectPlugin() {
+// swap main.tsx → shopping-main.tsx in index.html so the app starts
+// directly on FindStores with no router, no auth, no login possible.
+function shoppingPagePlugin() {
   return {
-    name: "shopping-page-redirect",
-    configureServer(server: any) {
-      server.middlewares.use((req: any, res: any, next: any) => {
-        if (req.url === "/" || req.url === "") {
-          res.writeHead(200, { "Content-Type": "text/html" });
-          res.end(
-            `<!doctype html><html><head>` +
-            `<meta http-equiv="refresh" content="0;url=/shoping-page">` +
-            `</head><body><script>window.location.replace('/shoping-page')</script></body></html>`
-          );
-          return;
-        }
-        next();
-      });
+    name: "shopping-page-entry",
+    transformIndexHtml(html: string) {
+      return html.replace("/src/main.tsx", "/src/shopping-main.tsx");
     },
   };
 }
@@ -41,7 +29,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
-    ...(port === 21648 ? [shoppingPageRedirectPlugin()] : []),
+    ...(port === 21648 ? [shoppingPagePlugin()] : []),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
