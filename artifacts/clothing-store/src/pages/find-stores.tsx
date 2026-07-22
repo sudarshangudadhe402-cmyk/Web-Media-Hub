@@ -54,7 +54,7 @@ interface DiscoveredStore {
   distance: number | null;
   avgRating: number;
   reviewCount: number;
-  isOpen: false;
+  isOpen: boolean;
 }
 
 interface DiscoverResponse {
@@ -184,9 +184,9 @@ function StoreCard({
         </div>
 
         <div className="flex items-center justify-between mt-2">
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-red-500">
-            <span className="w-1.5 h-1.5 rounded-full bg-red-400 inline-block" />
-            Closed
+          <span className={`inline-flex items-center gap-1 text-xs font-medium ${store.isOpen ? "text-green-600" : "text-red-500"}`}>
+            <span className={`w-1.5 h-1.5 rounded-full inline-block ${store.isOpen ? "bg-green-500" : "bg-red-400"}`} />
+            {store.isOpen ? "Open" : "Closed"}
           </span>
           <button
             onClick={() => onView(store.publicSlug)}
@@ -352,11 +352,16 @@ export default function FindStores() {
   // ── Fetch categories on mount ────────────────────────────────────────────
   useEffect(() => {
     fetch("/api/public/store-discovery-categories")
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error("Failed to load categories");
+        return r.json();
+      })
       .then((data) => {
         if (Array.isArray(data.categories)) setCategories(data.categories);
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.error("Could not load store categories:", err);
+      });
   }, []);
 
   // ── Request user location ────────────────────────────────────────────────
@@ -392,8 +397,8 @@ export default function FindStores() {
 
   // ── Fetch stores ─────────────────────────────────────────────────────────
   const fetchStores = useCallback(
-    async (resetPage: boolean) => {
-      const currentPage = resetPage ? 1 : page;
+    async (resetPage: boolean, pageOverride?: number) => {
+      const currentPage = resetPage ? 1 : (pageOverride ?? page);
       if (resetPage) setPage(1);
 
       if (abortRef.current) abortRef.current.abort();
@@ -445,43 +450,12 @@ export default function FindStores() {
     fetchStores(true);
   }, [userLocation, radius, selectedCategory, search]);
 
-  // Fetch next page
-  const loadMore = () => {
+  // Fetch next page — pass the next page explicitly to avoid stale state closure
+  const loadMore = useCallback(() => {
     const nextPage = page + 1;
     setPage(nextPage);
-    // We need to fetch with the new page manually since page state won't update synchronously
-    (async () => {
-      if (abortRef.current) abortRef.current.abort();
-      abortRef.current = new AbortController();
-      setLoading(true);
-      try {
-        const params = new URLSearchParams({
-          radius: String(radius),
-          category: selectedCategory === "all" ? "" : selectedCategory,
-          search: search.trim(),
-          page: String(nextPage),
-          limit: "20",
-        });
-        if (userLocation) {
-          params.set("lat", String(userLocation.lat));
-          params.set("lng", String(userLocation.lng));
-        }
-        const res = await fetch(
-          `/api/public/stores/discover?${params.toString()}`,
-          { signal: abortRef.current.signal }
-        );
-        if (!res.ok) throw new Error();
-        const data: DiscoverResponse = await res.json();
-        setStores((prev) => [...prev, ...data.stores]);
-        setTotal(data.total);
-        setHasMore(data.hasMore);
-      } catch {
-        setFetchError("Failed to load more stores.");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  };
+    fetchStores(false, nextPage);
+  }, [page, fetchStores]);
 
   // ── Derived ──────────────────────────────────────────────────────────────
   const visibleCategories = categories.slice(0, VISIBLE_CATEGORY_COUNT);
@@ -666,7 +640,9 @@ export default function FindStores() {
                         No reviews yet
                       </p>
                     )}
-                    <p className="text-red-500 font-medium mb-2">● Closed</p>
+                    <p className={`font-medium mb-2 ${store.isOpen ? "text-green-600" : "text-red-500"}`}>
+                      ● {store.isOpen ? "Open" : "Closed"}
+                    </p>
                     <button
                       onClick={() => handleViewStore(store.publicSlug)}
                       className="block w-full text-center bg-violet-600 text-white text-xs font-semibold py-1.5 rounded-lg hover:bg-violet-700 transition-colors"

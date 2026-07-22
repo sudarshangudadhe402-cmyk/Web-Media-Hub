@@ -344,7 +344,7 @@ router.get(
         distance: number | null;
         avgRating: number;
         reviewCount: number;
-        isOpen: false;
+        isOpen: boolean;
         _score: number;
       };
 
