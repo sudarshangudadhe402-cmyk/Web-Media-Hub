@@ -561,38 +561,40 @@ export default function FindStores() {
         <div className="absolute inset-x-0 top-0 z-[500] pointer-events-none">
           <div className="px-3 pt-3 space-y-2 pointer-events-auto">
 
-            {/* Row: search bar + My Location button */}
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search store, category, city..."
-                  value={searchRaw}
-                  onChange={(e) => setSearchRaw(e.target.value)}
-                  className="w-full pl-10 pr-10 py-2.5 text-sm rounded-2xl shadow-md bg-white/95 backdrop-blur-sm border-0 focus:outline-none focus:ring-2 focus:ring-violet-400 transition-all"
-                />
-                {searchRaw && (
-                  <button
-                    onClick={() => setSearchRaw("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
+            {/* Row: My Location button — right-aligned, above search */}
+            <div className="flex justify-end">
               <button
                 onClick={requestLocation}
                 disabled={locationLoading}
-                className="flex items-center justify-center w-10 h-10 rounded-full bg-white/95 backdrop-blur-sm shadow-md text-violet-600 hover:bg-violet-50 active:bg-violet-100 transition-colors disabled:opacity-60 flex-shrink-0"
-                title="My Location"
+                className="flex items-center gap-1.5 text-sm font-semibold text-violet-600 bg-white/95 backdrop-blur-sm shadow-md rounded-xl px-3 py-2 hover:bg-violet-50 active:bg-violet-100 transition-colors disabled:opacity-60"
               >
                 {locationLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : (
-                  <Navigation className="w-4 h-4" />
+                  <Navigation className="w-3.5 h-3.5" />
                 )}
+                My Location
               </button>
+            </div>
+
+            {/* Search bar — full width */}
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search store, category, city..."
+                value={searchRaw}
+                onChange={(e) => setSearchRaw(e.target.value)}
+                className="w-full pl-10 pr-10 py-2.5 text-sm rounded-2xl shadow-md bg-white/95 backdrop-blur-sm border-0 focus:outline-none focus:ring-2 focus:ring-violet-400 transition-all"
+              />
+              {searchRaw && (
+                <button
+                  onClick={() => setSearchRaw("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
 
             {/* Category chips row */}
