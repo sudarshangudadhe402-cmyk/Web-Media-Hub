@@ -96,10 +96,20 @@ function getStyle() {
         type: "raster",
         tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
         tileSize: 256,
+        minzoom: 4,
+        maxzoom: 18,
         attribution: "© OpenStreetMap contributors",
       },
     },
-    layers: [{ id: "osm", type: "raster", source: "osm" }],
+    layers: [{
+      id: "osm",
+      type: "raster",
+      source: "osm",
+      paint: {
+        "raster-fade-duration": 0,
+        "raster-opacity": 1,
+      },
+    }],
   } as maplibregl.StyleSpecification;
 }
 
@@ -182,6 +192,8 @@ export function IndiaMap({
       minZoom: 4,
       maxZoom: 18,
       cooperativeGestures: true,
+      fadeDuration: 0,
+      renderWorldCopies: false,
     });
     mapRef.current = map;
     if (showNavigation) map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "top-right");
@@ -211,10 +223,17 @@ export function IndiaMap({
       minZoom: 4,
       maxZoom: 18,
       zoomControl: showNavigation,
+      zoomAnimation: false,
+      fadeAnimation: false,
+      markerZoomAnimation: false,
     }).setView([center[1], center[0]], zoom);
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "&copy; OpenStreetMap contributors",
       maxZoom: 19,
+      updateWhenZooming: false,
+      updateWhenIdle: true,
+      updateInterval: 100,
+      keepBuffer: 4,
     }).addTo(map);
     const outerRing: [number, number][] = [
       [3, 60], [3, 105], [45, 105], [45, 60], [3, 60],
