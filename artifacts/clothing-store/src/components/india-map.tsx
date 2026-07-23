@@ -130,7 +130,12 @@ function addIndiaMask(map: Map) {
     id: "india-outside-mask",
     type: "fill",
     source: "india-mask",
-    paint: { "fill-color": "#f8fafc", "fill-opacity": 0.94 },
+    // Keep nearby city labels readable. A nearly opaque mask cuts raster
+    // labels at the simplified boundary, especially around border cities.
+    // Keep the boundary for orientation without washing out nearby labels.
+    // OSM labels are baked into raster tiles, so any opaque fill here hides
+    // part of names that cross the simplified India outline.
+    paint: { "fill-color": "#f8fafc", "fill-opacity": 0 },
   });
   map.addSource("india-boundary", {
     type: "geojson",
@@ -240,7 +245,7 @@ export function IndiaMap({
     ];
     L.polygon(
       [outerRing, INDIA_BOUNDARY.map(([lng, lat]) => [lat, lng] as [number, number]).reverse()],
-      { stroke: false, fillColor: "#f8fafc", fillOpacity: 0.94 },
+      { stroke: false, fillColor: "#f8fafc", fillOpacity: 0 },
     ).addTo(map);
     L.polygon(
       INDIA_BOUNDARY.map(([lng, lat]) => [lat, lng] as [number, number]),
