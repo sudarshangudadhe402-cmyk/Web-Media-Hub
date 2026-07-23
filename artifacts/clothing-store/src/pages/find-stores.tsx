@@ -394,7 +394,8 @@ export default function FindStores() {
 
   // ── Fetch categories on mount ────────────────────────────────────────────
   useEffect(() => {
-    fetch("/api/public/store-discovery-categories")
+    const ac = new AbortController();
+    fetch("/api/public/store-discovery-categories", { signal: ac.signal })
       .then((r) => {
         if (!r.ok) throw new Error("Failed to load categories");
         return r.json();
@@ -403,8 +404,9 @@ export default function FindStores() {
         if (Array.isArray(data.categories)) setCategories(data.categories);
       })
       .catch((err) => {
-        console.error("Could not load store categories:", err);
+        if (err.name !== "AbortError") console.error("Could not load store categories:", err);
       });
+    return () => ac.abort();
   }, []);
 
   // ── Request user location (two-attempt: high-accuracy → low-accuracy fallback) ──
@@ -512,8 +514,10 @@ export default function FindStores() {
   );
 
   // Re-fetch when filters change (always reset to page 1)
+  // Cleanup aborts any in-flight request when the component unmounts or deps change
   useEffect(() => {
     fetchStores(true);
+    return () => { abortRef.current?.abort(); };
   }, [userLocation, radius, selectedCategory, search, fetchStores]);
 
   // ── Fetch wide-area stores for map (radius=200, no category filter) ───────
@@ -524,6 +528,7 @@ export default function FindStores() {
     }
     if (mapAbortRef.current) mapAbortRef.current.abort();
     mapAbortRef.current = new AbortController();
+    const mapAc = mapAbortRef.current;
 
     const params = new URLSearchParams({
       lat: String(userLocation.lat),
@@ -536,11 +541,13 @@ export default function FindStores() {
     });
 
     fetch(`/api/public/stores/discover?${params.toString()}`, {
-      signal: mapAbortRef.current.signal,
+      signal: mapAc.signal,
     })
       .then((r) => { if (!r.ok) throw new Error("map fetch failed"); return r.json(); })
       .then((data: DiscoverResponse) => { if (Array.isArray(data.stores)) setMapStores(data.stores); })
       .catch(() => {/* silently ignore map-only fetch errors */});
+
+    return () => { mapAc.abort(); };
   }, [userLocation]);
 
   // Fetch next page — pass the next page explicitly to avoid stale state closure
@@ -563,9 +570,9 @@ export default function FindStores() {
   );
   const mapZoom = userLocation ? LOCAL_ZOOM : INDIA_ZOOM;
 
-  const handleViewStore = (slug: string) => {
+  const handleViewStore = useCallback((slug: string) => {
     navigate(`/store/${slug}`);
-  };
+  }, [navigate]);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (

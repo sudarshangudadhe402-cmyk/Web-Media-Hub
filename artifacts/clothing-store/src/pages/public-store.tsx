@@ -363,17 +363,19 @@ export default function PublicStore() {
 
   function openBooking() {
     setTryOnBookingImage(null);
-    setBookingForm({ name: "", city: "", whatsapp: "" });
+    // Do NOT reset bookingForm — preserve saved customer data (name, city, whatsapp)
     setSelectedSize(selectedProduct?.sizes[0] ?? "");
     setBookingSuccess(false);
+    setBookingError(null); // Clear any previous booking error
     setView("booking");
   }
 
   function openTryOnBooking() {
     setTryOnBookingImage(tryOnResult);
-    setBookingForm({ name: "", city: "", whatsapp: "" });
+    // Do NOT reset bookingForm — preserve saved customer data
     setSelectedSize(selectedProduct?.sizes[0] ?? "");
     setBookingSuccess(false);
+    setBookingError(null); // Clear any previous booking error
     setView("booking");
   }
 
@@ -540,6 +542,11 @@ export default function PublicStore() {
 
   async function submitBooking() {
     if (!selectedProduct || !bookingForm.name || !bookingForm.whatsapp) return;
+    // Bug fix: guard against submitting without a size when the product requires one
+    if (selectedProduct.sizes.length > 0 && !selectedSize) {
+      setBookingError("Please select a size before booking.");
+      return;
+    }
     setBookingLoading(true);
     try {
       const res = await fetch("/api/bookings", {
