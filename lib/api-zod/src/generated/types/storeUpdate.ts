@@ -9,6 +9,8 @@
 export interface StoreUpdate {
   name?: string;
   address?: string;
+  latitude?: number;
+  longitude?: number;
   whatsappNumber?: string;
   openingTime?: string;
   openDays?: string;

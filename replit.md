@@ -19,6 +19,13 @@ A multi-store clothing management platform. Store owners create and manage their
 | `SUPER_ADMIN_ACCESS_CODE` | Required access code for super-admin login |
 | `VITE_GATE_CODE` | Frontend gate code for super-admin panel |
 
+## India-only maps
+
+- Store locations are stored as provider-neutral latitude/longitude plus the resolved address in MongoDB.
+- `VITE_MAPTILER_API_KEY` is optional. When configured, the shared `IndiaMap` component uses MapLibre GL JS with MapTiler vector tiles; without it, it uses OpenStreetMap tiles.
+- Both renderers enforce the India bounding box, mask the area outside the India boundary, validate pins, and share the same marker/navigation behavior.
+- Store registration resolves full addresses through the API's OSM/Nominatim proxy. This keeps geocoding provider-specific details out of the frontend and business logic.
+
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9

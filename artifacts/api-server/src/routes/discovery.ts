@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { Store } from "../models/Store";
+import { INDIA_BOUNDS } from "../lib/indiaGeo";
 import { User } from "../models/User";
 import { Review } from "../models/Review";
 import { MarketingCategoryConfig } from "../models/MarketingCategoryConfig";
@@ -261,8 +262,14 @@ router.get(
       // ── 4. Find stores for those owners (with optional bounding box) ──────
       const storeQuery: Record<string, any> = {
         ownerId: { $in: ownerIds },
-        latitude: { $exists: true, $ne: null, $type: "number" },
-        longitude: { $exists: true, $ne: null, $type: "number" },
+        latitude: {
+          $exists: true, $ne: null, $type: "number",
+          $gte: INDIA_BOUNDS.minLatitude, $lte: INDIA_BOUNDS.maxLatitude,
+        },
+        longitude: {
+          $exists: true, $ne: null, $type: "number",
+          $gte: INDIA_BOUNDS.minLongitude, $lte: INDIA_BOUNDS.maxLongitude,
+        },
       };
 
       if (hasLocation && !isMapWide) {

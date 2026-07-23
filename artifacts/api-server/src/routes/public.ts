@@ -8,10 +8,69 @@ import { LikeEvent } from "../models/LikeEvent";
 import { StoreVisitor } from "../models/StoreVisitor";
 import { CustomerAccount } from "../models/CustomerAccount";
 import { Review } from "../models/Review";
+import { isIndiaCoordinate } from "../lib/indiaGeo";
 
 const router = Router();
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+// Map provider boundary: clients call our API rather than a geocoder directly.
+// This keeps provider policy, rate limits, and a future geocoder swap server-side.
+router.get("/public/map/reverse-geocode", ipRateLimit(20, 60_000), async (req, res) => {
+  const lat = Number(req.query.lat);
+  const lng = Number(req.query.lng);
+  if (!isIndiaCoordinate(lat, lng)) {
+    res.status(400).json({ error: "Only locations inside India can be geocoded." });
+    return;
+  }
+  try {
+    const upstream = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}`,
+      { headers: { "Accept-Language": "en", "User-Agent": "WebMediaHub/1.0 store-map" } },
+    );
+    if (!upstream.ok) {
+      res.status(502).json({ error: "Address lookup temporarily unavailable." });
+      return;
+    }
+    const data = await upstream.json() as { display_name?: string };
+    res.json({ displayName: data.display_name ?? "" });
+  } catch (err) {
+    req.log.error({ err }, "Reverse geocode error");
+    res.status(502).json({ error: "Address lookup temporarily unavailable." });
+  }
+});
+
+router.get("/public/map/geocode", ipRateLimit(20, 60_000), async (req, res) => {
+  const query = String(req.query.q ?? "").trim();
+  if (query.length < 3 || query.length > 200) {
+    res.status(400).json({ error: "A valid address is required." });
+    return;
+  }
+  try {
+    const upstream = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=in&limit=1&q=${encodeURIComponent(query)}`,
+      { headers: { "Accept-Language": "en", "User-Agent": "WebMediaHub/1.0 store-map" } },
+    );
+    if (!upstream.ok) {
+      res.status(502).json({ error: "Address lookup temporarily unavailable." });
+      return;
+    }
+    const data = await upstream.json() as Array<{ lat?: string; lon?: string; display_name?: string }>;
+    const result = data[0];
+    if (!result) {
+      res.json({ result: null });
+      return;
+    }
+    const lat = Number(result.lat);
+    const lng = Number(result.lon);
+    res.json(isIndiaCoordinate(lat, lng)
+      ? { result: { lat, lng, displayName: result.display_name ?? "" } }
+      : { result: null });
+  } catch (err) {
+    req.log.error({ err }, "Geocode error");
+    res.status(502).json({ error: "Address lookup temporarily unavailable." });
+  }
+});
 
 // ─── In-memory IP rate limiter for public endpoints ──────────────────────────
 const _rlStore = new Map<string, { count: number; resetAt: number }>();

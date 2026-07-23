@@ -29,6 +29,8 @@ import type {
   DashboardSummary,
   DeleteResponse,
   ErrorResponse,
+  GeocodeIndiaAddress200,
+  GeocodeIndiaAddressParams,
   HealthStatus,
   ImageUploadInput,
   ImageUploadResponse,
@@ -41,6 +43,8 @@ import type {
   Product,
   ProductInput,
   ProductUpdate,
+  ReverseGeocodeIndia200,
+  ReverseGeocodeIndiaParams,
   Store,
   StoreInput,
   StoreUpdate,
@@ -1595,6 +1599,174 @@ export const useUpdateStore = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getUpdateStoreMutationOptions(options));
     }
+
+export const getReverseGeocodeIndiaUrl = (params: ReverseGeocodeIndiaParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/public/map/reverse-geocode?${stringifiedParams}` : `/api/public/map/reverse-geocode`
+}
+
+/**
+ * @summary Reverse geocode an India-only map coordinate
+ */
+export const reverseGeocodeIndia = async (params: ReverseGeocodeIndiaParams, options?: RequestInit): Promise<ReverseGeocodeIndia200> => {
+
+  return customFetch<ReverseGeocodeIndia200>(getReverseGeocodeIndiaUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getReverseGeocodeIndiaQueryKey = (params?: ReverseGeocodeIndiaParams,) => {
+    return [
+    `/api/public/map/reverse-geocode`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getReverseGeocodeIndiaQueryOptions = <TData = Awaited<ReturnType<typeof reverseGeocodeIndia>>, TError = ErrorType<void>>(params: ReverseGeocodeIndiaParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof reverseGeocodeIndia>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getReverseGeocodeIndiaQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof reverseGeocodeIndia>>> = ({ signal }) => reverseGeocodeIndia(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof reverseGeocodeIndia>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ReverseGeocodeIndiaQueryResult = NonNullable<Awaited<ReturnType<typeof reverseGeocodeIndia>>>
+export type ReverseGeocodeIndiaQueryError = ErrorType<void>
+
+
+/**
+ * @summary Reverse geocode an India-only map coordinate
+ */
+
+export function useReverseGeocodeIndia<TData = Awaited<ReturnType<typeof reverseGeocodeIndia>>, TError = ErrorType<void>>(
+ params: ReverseGeocodeIndiaParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof reverseGeocodeIndia>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getReverseGeocodeIndiaQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGeocodeIndiaAddressUrl = (params: GeocodeIndiaAddressParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/public/map/geocode?${stringifiedParams}` : `/api/public/map/geocode`
+}
+
+/**
+ * @summary Geocode an address within India
+ */
+export const geocodeIndiaAddress = async (params: GeocodeIndiaAddressParams, options?: RequestInit): Promise<GeocodeIndiaAddress200> => {
+
+  return customFetch<GeocodeIndiaAddress200>(getGeocodeIndiaAddressUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGeocodeIndiaAddressQueryKey = (params?: GeocodeIndiaAddressParams,) => {
+    return [
+    `/api/public/map/geocode`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGeocodeIndiaAddressQueryOptions = <TData = Awaited<ReturnType<typeof geocodeIndiaAddress>>, TError = ErrorType<unknown>>(params: GeocodeIndiaAddressParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof geocodeIndiaAddress>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGeocodeIndiaAddressQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof geocodeIndiaAddress>>> = ({ signal }) => geocodeIndiaAddress(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof geocodeIndiaAddress>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GeocodeIndiaAddressQueryResult = NonNullable<Awaited<ReturnType<typeof geocodeIndiaAddress>>>
+export type GeocodeIndiaAddressQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Geocode an address within India
+ */
+
+export function useGeocodeIndiaAddress<TData = Awaited<ReturnType<typeof geocodeIndiaAddress>>, TError = ErrorType<unknown>>(
+ params: GeocodeIndiaAddressParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof geocodeIndiaAddress>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGeocodeIndiaAddressQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getListAdminsUrl = () => {
 

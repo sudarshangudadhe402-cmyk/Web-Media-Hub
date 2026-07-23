@@ -14,6 +14,7 @@ import ShopTab from "@/components/store/ShopTab";
 import MyBookingTab from "@/components/store/MyBookingTab";
 import CartTab from "@/components/store/CartTab";
 import ProfileTab, { type CustomerAccountInfo } from "@/components/store/ProfileTab";
+import { IndiaMap } from "@/components/india-map";
 
 interface PublicProduct {
   id: string;
@@ -1366,22 +1367,57 @@ export default function PublicStore() {
     <div className="min-h-screen flex flex-col" style={{ background: "#ffffff", fontFamily: "'Inter', sans-serif" }}>
       <div className="flex-1 flex flex-col overflow-hidden" style={{ paddingBottom: 64 }}>
         {tab === "home" && !selectedAdminCategory && (
-          <HomeTab
-            storeName={data.name}
-            products={data.products}
-            categories={data.categories ?? []}
-            likedProducts={likedProducts}
-            likeCounts={likeCounts}
-            onProductClick={openProduct}
-            onLike={handleLike}
-            onViewAll={() => setTab("shop")}
-            onCategoryOpen={(cat) => setSelectedAdminCategory(cat)}
-            onTryOnClick={() => {
-              if (data.products.length > 0) {
-                openProduct(data.products[0]);
-              }
-            }}
-          />
+          <>
+            {data.latitude !== null && data.longitude !== null && (
+              <div className="mx-4 mt-4 rounded-2xl overflow-hidden border border-gray-100 bg-white shadow-sm">
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Visit the store</p>
+                    <p className="text-sm font-semibold text-gray-800 mt-0.5">{data.address || "India store location"}</p>
+                  </div>
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${data.latitude},${data.longitude}&travelmode=driving`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 rounded-xl bg-green-600 px-3 py-2 text-xs font-bold text-white"
+                  >
+                    Open in Google Maps
+                  </a>
+                </div>
+                <IndiaMap
+                  center={[data.longitude, data.latitude]}
+                  zoom={15}
+                  markers={[{
+                    id: data.id,
+                    lat: data.latitude,
+                    lng: data.longitude,
+                    title: data.name,
+                    description: data.address ?? undefined,
+                    color: "#16a34a",
+                  }]}
+                  interactive
+                  showNavigation={false}
+                  className="h-44 w-full rounded-none"
+                />
+              </div>
+            )}
+            <HomeTab
+              storeName={data.name}
+              products={data.products}
+              categories={data.categories ?? []}
+              likedProducts={likedProducts}
+              likeCounts={likeCounts}
+              onProductClick={openProduct}
+              onLike={handleLike}
+              onViewAll={() => setTab("shop")}
+              onCategoryOpen={(cat) => setSelectedAdminCategory(cat)}
+              onTryOnClick={() => {
+                if (data.products.length > 0) {
+                  openProduct(data.products[0]);
+                }
+              }}
+            />
+          </>
         )}
         {tab === "home" && selectedAdminCategory && (() => {
           const catProducts = data.products.filter(p => p.functionCategory === selectedAdminCategory.name);

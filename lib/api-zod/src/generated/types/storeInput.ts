@@ -9,6 +9,8 @@
 export interface StoreInput {
   name: string;
   address?: string;
+  latitude?: number;
+  longitude?: number;
   whatsappNumber?: string;
   openingTime?: string;
   openDays?: string;

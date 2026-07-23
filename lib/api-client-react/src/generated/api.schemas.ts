@@ -308,3 +308,26 @@ export const ListProductsType = {
   Functional: 'Functional',
 } as const;
 
+export type ReverseGeocodeIndiaParams = {
+lat: number;
+lng: number;
+};
+
+export type ReverseGeocodeIndia200 = {
+  displayName?: string;
+};
+
+export type GeocodeIndiaAddressParams = {
+q: string;
+};
+
+export type GeocodeIndiaAddress200Result = {
+  lat?: number;
+  lng?: number;
+  displayName?: string;
+} | null;
+
+export type GeocodeIndiaAddress200 = {
+  result?: GeocodeIndiaAddress200Result;
+};
+

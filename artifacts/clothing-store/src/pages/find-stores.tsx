@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMap, useMapEvents } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
 import { Search, MapPin, Navigation, X, ChevronDown, Star, AlertCircle, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
+import { IndiaMap, INDIA_CENTER, isIndiaCoordinate } from "@/components/india-map";
 
 // ─── Inject pulse animation CSS once ─────────────────────────────────────────
 if (typeof document !== "undefined" && !document.getElementById("fs-map-css")) {
@@ -16,50 +14,6 @@ if (typeof document !== "undefined" && !document.getElementById("fs-map-css")) {
   `;
   document.head.appendChild(s);
 }
-
-// ─── Custom divIcon: blue pulsing dot for user location ───────────────────────
-const UserLocationIcon = L.divIcon({
-  className: "",
-  html: `<div style="position:relative;width:30px;height:30px;">
-    <div class="fs-pulse-ring"></div>
-    <div class="fs-loc-dot"></div>
-  </div>`,
-  iconSize: [30, 30],
-  iconAnchor: [15, 15],
-  popupAnchor: [0, -18],
-});
-
-/** Pin-shaped store marker with a storefront icon inside — violet (outside radius) or green (inside) */
-function makeStoreIcon(nearby: boolean) {
-  const bg = nearby ? "#16a34a" : "#7c3aed";
-  // Storefront icon: filled white awning + building body with colour-punched windows & door
-  // Local coords 0–24; translate(11,8) scale(0.58) centres the shape in the 36×48 pin circle
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48">
-    <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 30 18 30S36 31.5 36 18C36 8.06 27.94 0 18 0z" fill="${bg}" filter="drop-shadow(0 2px 5px rgba(0,0,0,0.4))"/>
-    <g transform="translate(11,8) scale(0.58)" fill="white">
-      <!-- awning / canopy -->
-      <path d="M-0.5 10.5 L3 3.5 L21 3.5 L24.5 10.5 Z"/>
-      <!-- building body -->
-      <rect x="0.5" y="10.5" width="23" height="13.5" rx="1"/>
-      <!-- left window (colour punch) -->
-      <rect x="2.5" y="13" width="6" height="4" rx="0.6" fill="${bg}"/>
-      <!-- right window (colour punch) -->
-      <rect x="15.5" y="13" width="6" height="4" rx="0.6" fill="${bg}"/>
-      <!-- door (colour punch) -->
-      <rect x="9.5" y="17" width="5" height="7" rx="0.6" fill="${bg}"/>
-    </g>
-  </svg>`;
-  return L.divIcon({
-    className: "",
-    html: svg,
-    iconSize: [36, 48],
-    iconAnchor: [18, 48],
-    popupAnchor: [0, -50],
-  });
-}
-
-const StoreIconViolet = makeStoreIcon(false);
-const StoreIconGreen  = makeStoreIcon(true);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -85,34 +39,6 @@ interface DiscoverResponse {
   hasMore: boolean;
 }
 
-// ─── Map helpers ──────────────────────────────────────────────────────────────
-
-function MapRecenter({ lat, lng, zoom }: { lat: number; lng: number; zoom: number }) {
-  const map = useMap();
-  useEffect(() => {
-    map.setView([lat, lng], zoom, { animate: true });
-  }, [lat, lng, zoom, map]);
-  return null;
-}
-
-/** Lets user tap the map to manually set their location when GPS fails */
-function MapClickHandler({
-  enabled,
-  onLocationPicked,
-}: {
-  enabled: boolean;
-  onLocationPicked: (lat: number, lng: number) => void;
-}) {
-  useMapEvents({
-    click(e) {
-      if (enabled) {
-        onLocationPicked(e.latlng.lat, e.latlng.lng);
-      }
-    },
-  });
-  return null;
-}
-
 // ─── Debounce hook ────────────────────────────────────────────────────────────
 
 function useDebounce<T>(value: T, delay: number): T {
@@ -126,7 +52,6 @@ function useDebounce<T>(value: T, delay: number): T {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const INDIA_CENTER: [number, number] = [20.5937, 78.9629];
 const INDIA_ZOOM = 5;
 const LOCAL_ZOOM = 13;
 
@@ -422,6 +347,11 @@ export default function FindStores() {
     // First attempt: high accuracy (GPS), 8 s timeout
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        if (!isIndiaCoordinate(pos.coords.latitude, pos.coords.longitude)) {
+          setLocationError("India locations only");
+          setLocationLoading(false);
+          return;
+        }
         setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setLocationLoading(false);
         setMapClickEnabled(false);
@@ -430,6 +360,11 @@ export default function FindStores() {
         // High-accuracy failed → retry with low accuracy (network/IP-based), 6 s
         navigator.geolocation.getCurrentPosition(
           (pos) => {
+            if (!isIndiaCoordinate(pos.coords.latitude, pos.coords.longitude)) {
+              setLocationError("India locations only");
+              setLocationLoading(false);
+              return;
+            }
             setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
             setLocationLoading(false);
             setMapClickEnabled(false);
@@ -564,7 +499,7 @@ export default function FindStores() {
   const mapCenter = useMemo<[number, number]>(
     () =>
       userLocation
-        ? [userLocation.lat, userLocation.lng]
+        ? [userLocation.lng, userLocation.lat]
         : INDIA_CENTER,
     [userLocation]
   );
@@ -690,96 +625,36 @@ export default function FindStores() {
       {/* ── Map ────────────────────────────────────────────────────────── */}
       <div className="max-w-2xl mx-auto px-0 sm:px-4 mt-0">
         <div className="h-64 sm:h-72 sm:rounded-2xl overflow-hidden border-b sm:border border-gray-200 shadow-sm relative">
-          <MapContainer
+          <IndiaMap
             center={mapCenter}
             zoom={mapZoom}
-            className="h-full w-full"
-            scrollWheelZoom={false}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            <MapRecenter lat={mapCenter[0]} lng={mapCenter[1]} zoom={mapZoom} />
-            <MapClickHandler
-              enabled={mapClickEnabled}
-              onLocationPicked={handleMapLocationPick}
-            />
-
-            {/* User location marker — blue pulsing dot */}
-            {userLocation && (
-              <>
-                <Marker
-                  position={[userLocation.lat, userLocation.lng]}
-                  icon={UserLocationIcon}
-                >
-                  <Popup>
-                    <div className="text-sm font-semibold text-blue-600">
-                      📍 Your Location
-                    </div>
-                  </Popup>
-                </Marker>
-                {/* Radius boundary circle */}
-                <Circle
-                  center={[userLocation.lat, userLocation.lng]}
-                  radius={radius * 1000}
-                  pathOptions={{ color: "#7c3aed", weight: 1.5, fillColor: "#7c3aed", fillOpacity: 0.06 }}
-                />
-              </>
-            )}
-
-            {/* Store markers:
-                - When user has location: prefer mapStores (wide area, all stores with distances);
-                  fall back to `stores` while mapStores is still loading so markers never flash away.
-                  green = within selected radius, violet = outside
-                - When no location: show stores (nationwide) all violet */}
-            {(userLocation ? (mapStores.length > 0 ? mapStores : stores) : stores).map((store) => {
+            interactive={mapClickEnabled}
+            onPick={handleMapLocationPick}
+            onInvalidPick={() => setLocationError("India locations only")}
+            userLocation={userLocation ? [userLocation.lat, userLocation.lng] : null}
+            markers={(userLocation ? (mapStores.length > 0 ? mapStores : stores) : stores).map((store) => {
               const isNearby = userLocation
                 ? store.distance !== null && store.distance <= radius
                 : false;
-              return (
-                <Marker
-                  key={store.id}
-                  position={[store.latitude, store.longitude]}
-                  icon={isNearby ? StoreIconGreen : StoreIconViolet}
-                >
-                  <Popup>
-                    <div className="min-w-[180px] text-xs">
-                      <p className="font-bold text-gray-900 text-sm leading-tight mb-1">
-                        {store.name}
-                      </p>
-                      {store.category && (
-                        <p className="text-violet-600 font-medium mb-0.5">
-                          {store.category}
-                        </p>
-                      )}
-                      {store.distance !== null && (
-                        <p className="text-gray-500 mb-1">
-                          📍{" "}
-                          {store.distance < 1
-                            ? `${Math.round(store.distance * 1000)} m away`
-                            : `${store.distance} km away`}
-                        </p>
-                      )}
-                      <p className="text-gray-600 mb-1">
-                        ⭐ {store.reviewCount > 0 ? `${store.avgRating.toFixed(1)} (${store.reviewCount})` : "0.0 (0)"}
-                      </p>
-                      <p className={`font-medium mb-2 ${store.isOpen ? "text-green-600" : "text-red-500"}`}>
-                        ● {store.isOpen ? "Open" : "Closed"}
-                      </p>
-                      <button
-                        onClick={() => handleViewStore(store.publicSlug)}
-                        className="block w-full text-center bg-violet-600 text-white text-xs font-semibold py-1.5 rounded-lg hover:bg-violet-700 transition-colors"
-                      >
-                        View Store
-                      </button>
-                    </div>
-                  </Popup>
-                </Marker>
-              );
+              return {
+                id: store.id,
+                lat: store.latitude,
+                lng: store.longitude,
+                title: store.name,
+                description: [
+                  store.category,
+                  store.distance !== null
+                    ? store.distance < 1
+                      ? `${Math.round(store.distance * 1000)} m away`
+                      : `${store.distance} km away`
+                    : null,
+                  store.isOpen ? "Open" : "Closed",
+                ].filter(Boolean).join(" · "),
+                color: isNearby ? "#16a34a" : "#7c3aed",
+              };
             })}
-          </MapContainer>
-
+            className="h-full w-full"
+          />
           {/* Tap-to-set-location hint overlay */}
           {mapClickEnabled && (
             <div className="absolute inset-0 z-[999] pointer-events-none flex items-center justify-center">

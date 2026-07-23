@@ -1,5 +1,6 @@
-import { MapPin, Clock, CalendarDays, ShoppingBag, Phone, User, LogOut, Loader2, AlertCircle, Eye, EyeOff, Mail, CheckCircle2 } from "lucide-react";
+import { MapPin, Clock, CalendarDays, ShoppingBag, Phone, User, LogOut, Loader2, AlertCircle, Eye, EyeOff, Mail, CheckCircle2, Navigation } from "lucide-react";
 import { useState } from "react";
+import { IndiaMap } from "@/components/india-map";
 
 interface StoreData {
   id: string;
@@ -603,10 +604,29 @@ export default function ProfileTab({
                 className="px-4 py-2 rounded-xl text-sm font-bold text-white flex-shrink-0 active:scale-95 transition-transform"
                 style={{ background: "#22c55e" }}
               >
-                📍 Mapping
+                <Navigation className="w-4 h-4" /> Open in Google Maps
               </button>
             ) : null}
           </div>
+          {data.latitude !== null && data.longitude !== null && (
+            <div className="px-3 pb-3">
+              <IndiaMap
+                center={[data.longitude, data.latitude]}
+                zoom={15}
+                markers={[{
+                  id: data.id,
+                  lat: data.latitude,
+                  lng: data.longitude,
+                  title: data.name,
+                  description: data.address ?? undefined,
+                  color: "#16a34a",
+                }]}
+                interactive={false}
+                showNavigation={false}
+                className="h-44 w-full"
+              />
+            </div>
+          )}
         </div>
 
       </div>

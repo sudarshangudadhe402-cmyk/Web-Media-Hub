@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { Store } from "../models/Store";
 import { AuthRequest, requireAuth } from "../middlewares/auth";
+import { parseIndiaCoordinatePair } from "../lib/indiaGeo";
 
 const router = Router();
 
@@ -53,13 +54,18 @@ router.post("/store", requireAuth, async (req: AuthRequest, res) => {
   try {
     const userId = String(req.user!._id);
     const { name, address, latitude, longitude, whatsappNumber, openingTime, openDays, bannerImage, description } = req.body;
+    const coordinates = parseIndiaCoordinatePair(latitude, longitude);
+    if ((latitude !== undefined || longitude !== undefined) && !coordinates) {
+      res.status(400).json({ error: "Store location must be inside India." });
+      return;
+    }
 
     let store = await getStoreForUser(userId);
     if (store) {
       store.name = name;
       store.address = address;
-      store.latitude = latitude ?? undefined;
-      store.longitude = longitude ?? undefined;
+      store.latitude = coordinates?.latitude;
+      store.longitude = coordinates?.longitude;
       store.whatsappNumber = whatsappNumber;
       store.openingTime = openingTime;
       store.openDays = openDays;
@@ -73,8 +79,8 @@ router.post("/store", requireAuth, async (req: AuthRequest, res) => {
         ownerId: userId,
         name,
         address,
-        latitude: latitude ?? undefined,
-        longitude: longitude ?? undefined,
+        latitude: coordinates?.latitude,
+        longitude: coordinates?.longitude,
         whatsappNumber,
         openingTime,
         openDays,
@@ -101,10 +107,19 @@ router.patch("/store", requireAuth, async (req: AuthRequest, res) => {
     }
 
     const { name, address, latitude, longitude, whatsappNumber, openingTime, openDays, bannerImage, description } = req.body;
+    const coordinates = (latitude !== undefined || longitude !== undefined)
+      ? parseIndiaCoordinatePair(latitude, longitude)
+      : null;
+    if ((latitude !== undefined || longitude !== undefined) && !coordinates) {
+      res.status(400).json({ error: "Store location must be inside India." });
+      return;
+    }
     if (name !== undefined) store.name = name;
     if (address !== undefined) store.address = address;
-    if (latitude !== undefined) store.latitude = latitude;
-    if (longitude !== undefined) store.longitude = longitude;
+    if (coordinates) {
+      store.latitude = coordinates.latitude;
+      store.longitude = coordinates.longitude;
+    }
     if (whatsappNumber !== undefined) store.whatsappNumber = whatsappNumber;
     if (openingTime !== undefined) store.openingTime = openingTime;
     if (openDays !== undefined) store.openDays = openDays;

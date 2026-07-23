@@ -78,6 +78,7 @@
   },
   "dependencies": {
     "leaflet": "^1.9.4",
+    "maplibre-gl": "4.7.1",
     "react-easy-crop": "^5.5.7",
     "react-leaflet": "^5.0.0"
   }

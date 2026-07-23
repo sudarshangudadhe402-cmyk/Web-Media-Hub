@@ -389,6 +389,8 @@ export const GetStoreResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "address": zod.string().nullish(),
+  "latitude": zod.number().nullish(),
+  "longitude": zod.number().nullish(),
   "whatsappNumber": zod.string().nullish(),
   "openingTime": zod.string().nullish(),
   "openDays": zod.string().nullish(),
@@ -406,6 +408,8 @@ export const GetStoreResponse = zod.object({
 export const CreateStoreBody = zod.object({
   "name": zod.string(),
   "address": zod.string().optional(),
+  "latitude": zod.number().optional(),
+  "longitude": zod.number().optional(),
   "whatsappNumber": zod.string().optional(),
   "openingTime": zod.string().optional(),
   "openDays": zod.string().optional(),
@@ -417,6 +421,8 @@ export const CreateStoreResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "address": zod.string().nullish(),
+  "latitude": zod.number().nullish(),
+  "longitude": zod.number().nullish(),
   "whatsappNumber": zod.string().nullish(),
   "openingTime": zod.string().nullish(),
   "openDays": zod.string().nullish(),
@@ -434,6 +440,8 @@ export const CreateStoreResponse = zod.object({
 export const UpdateStoreBody = zod.object({
   "name": zod.string().optional(),
   "address": zod.string().optional(),
+  "latitude": zod.number().optional(),
+  "longitude": zod.number().optional(),
   "whatsappNumber": zod.string().optional(),
   "openingTime": zod.string().optional(),
   "openDays": zod.string().optional(),
@@ -445,6 +453,8 @@ export const UpdateStoreResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "address": zod.string().nullish(),
+  "latitude": zod.number().nullish(),
+  "longitude": zod.number().nullish(),
   "whatsappNumber": zod.string().nullish(),
   "openingTime": zod.string().nullish(),
   "openDays": zod.string().nullish(),
@@ -453,6 +463,35 @@ export const UpdateStoreResponse = zod.object({
   "publicSlug": zod.string().nullish(),
   "isLocked": zod.boolean(),
   "createdAt": zod.string().optional()
+})
+
+
+/**
+ * @summary Reverse geocode an India-only map coordinate
+ */
+export const ReverseGeocodeIndiaQueryParams = zod.object({
+  "lat": zod.coerce.number(),
+  "lng": zod.coerce.number()
+})
+
+export const ReverseGeocodeIndiaResponse = zod.object({
+  "displayName": zod.string().optional()
+})
+
+
+/**
+ * @summary Geocode an address within India
+ */
+export const GeocodeIndiaAddressQueryParams = zod.object({
+  "q": zod.coerce.string()
+})
+
+export const GeocodeIndiaAddressResponse = zod.object({
+  "result": zod.union([zod.object({
+  "lat": zod.number().optional(),
+  "lng": zod.number().optional(),
+  "displayName": zod.string().optional()
+}),zod.null()]).optional()
 })
 
 

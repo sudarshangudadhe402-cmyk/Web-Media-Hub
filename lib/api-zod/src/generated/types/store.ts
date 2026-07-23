@@ -12,6 +12,10 @@ export interface Store {
   /** @nullable */
   address?: string | null;
   /** @nullable */
+  latitude?: number | null;
+  /** @nullable */
+  longitude?: number | null;
+  /** @nullable */
   whatsappNumber?: string | null;
   /** @nullable */
   openingTime?: string | null;

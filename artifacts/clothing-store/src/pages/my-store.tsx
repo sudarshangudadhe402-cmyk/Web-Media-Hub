@@ -39,31 +39,7 @@ import {
   LocateFixed,
   Map as MapIcon,
 } from "lucide-react";
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-
-// Fix default leaflet marker icons in Vite
-const LeafletDefaultIcon = L.icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-L.Marker.prototype.options.icon = LeafletDefaultIcon;
-
-// Click handler inside the map
-function MapClickHandler({ onPick }: { onPick: (lat: number, lng: number) => void }) {
-  useMapEvents({
-    click(e) {
-      onPick(e.latlng.lat, e.latlng.lng);
-    },
-  });
-  return null;
-}
+import { IndiaMap, INDIA_CENTER } from "@/components/india-map";
 import {
   Dialog,
   DialogContent,
@@ -507,11 +483,11 @@ export default function MyStore() {
   async function reverseGeocode(lat: number, lng: number): Promise<string> {
     try {
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
+        `/api/public/map/reverse-geocode?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`,
         { headers: { "Accept-Language": "en" } }
       );
       const data = await res.json();
-      return data.display_name ?? "";
+      return data.displayName ?? "";
     } catch {
       return "";
     }
@@ -520,12 +496,12 @@ export default function MyStore() {
   async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
     try {
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(address)}&limit=1`,
+        `/api/public/map/geocode?q=${encodeURIComponent(address)}`,
         { headers: { "Accept-Language": "en" } }
       );
       const data = await res.json();
-      if (data.length === 0) return null;
-      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      if (!data.result) return null;
+      return { lat: Number(data.result.lat), lng: Number(data.result.lng) };
     } catch {
       return null;
     }
@@ -696,6 +672,8 @@ export default function MyStore() {
   const isFormValid =
     form.name.trim().length >= 2 &&
     form.address.trim().length >= 2 &&
+    form.latitude !== null &&
+    form.longitude !== null &&
     form.whatsappNumber.trim().length >= 5 &&
     form.openFrom.hour !== "" &&
     form.openTo.hour !== "" &&
@@ -705,6 +683,7 @@ export default function MyStore() {
   const missingFields: string[] = [];
   if (form.name.trim().length < 2) missingFields.push("Store Name");
   if (form.address.trim().length < 2) missingFields.push("Store Address");
+  if (form.latitude === null || form.longitude === null) missingFields.push("India Map Location");
   if (form.whatsappNumber.trim().length < 5) missingFields.push("WhatsApp Number");
   if (!form.openFrom.hour || !form.openTo.hour) missingFields.push("Opening Time");
   if (form.openDays.length < 1) missingFields.push("Open Days");
@@ -1297,22 +1276,18 @@ export default function MyStore() {
 
               {/* Map */}
               <div className="h-96 w-full">
-                <MapContainer
-                  center={mapPin ? [mapPin.lat, mapPin.lng] : [20.5937, 78.9629]}
+                <IndiaMap
+                  center={mapPin ? [mapPin.lng, mapPin.lat] : INDIA_CENTER}
                   zoom={mapPin ? 16 : 5}
-                  style={{ height: "100%", width: "100%" }}
-                  key={mapPin ? `${mapPin.lat}-${mapPin.lng}` : "default"}
-                  zoomControl={true}
-                >
-                  <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    maxZoom={19}
-                    maxNativeZoom={19}
-                  />
-                  <MapClickHandler onPick={handleMapPick} />
-                  {mapPin && <Marker position={[mapPin.lat, mapPin.lng]} />}
-                </MapContainer>
+                  markers={mapPin ? [{ id: "store", lat: mapPin.lat, lng: mapPin.lng, title: "Store location", color: "#16a34a" }] : []}
+                  onPick={handleMapPick}
+                  onInvalidPick={() => toast({
+                    variant: "destructive",
+                    title: "India locations only",
+                    description: "Please select a point inside India's boundary.",
+                  })}
+                  className="h-full w-full"
+                />
               </div>
 
               {/* Address preview */}
