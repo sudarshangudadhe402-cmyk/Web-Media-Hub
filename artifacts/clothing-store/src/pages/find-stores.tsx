@@ -382,7 +382,7 @@ export default function FindStores() {
   const [stores, setStores] = useState<DiscoveredStore[]>([]);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // true so skeleton shows before first fetch completes
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   // All stores in broad area — for map only (not filtered by selected radius)
@@ -505,13 +505,16 @@ export default function FindStores() {
         setLoading(false);
       }
     },
-    [userLocation, radius, selectedCategory, search, page]
+    [userLocation, radius, selectedCategory, search]
+    // NOTE: `page` intentionally omitted — it is always passed explicitly via
+    // resetPage=true (→ currentPage=1) or pageOverride, so a stale closure
+    // value is never used.
   );
 
   // Re-fetch when filters change (always reset to page 1)
   useEffect(() => {
     fetchStores(true);
-  }, [userLocation, radius, selectedCategory, search]);
+  }, [userLocation, radius, selectedCategory, search, fetchStores]);
 
   // ── Fetch wide-area stores for map (radius=200, no category filter) ───────
   useEffect(() => {
@@ -719,9 +722,11 @@ export default function FindStores() {
             )}
 
             {/* Store markers:
-                - When user has location: show mapStores (wide area); green = within radius, violet = outside
+                - When user has location: prefer mapStores (wide area, all stores with distances);
+                  fall back to `stores` while mapStores is still loading so markers never flash away.
+                  green = within selected radius, violet = outside
                 - When no location: show stores (nationwide) all violet */}
-            {(userLocation ? mapStores : stores).map((store) => {
+            {(userLocation ? (mapStores.length > 0 ? mapStores : stores) : stores).map((store) => {
               const isNearby = userLocation
                 ? store.distance !== null && store.distance <= radius
                 : false;
