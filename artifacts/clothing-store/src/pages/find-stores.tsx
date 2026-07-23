@@ -522,159 +522,146 @@ export default function FindStores() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-gray-100 px-4 pt-6 pb-4 sticky top-0 z-40 shadow-sm">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-start justify-between mb-1">
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 leading-tight">
-                Find Stores Near You
-              </h1>
-              <p className="text-sm text-gray-500 mt-0.5">
-                Discover stores around your location
-              </p>
-            </div>
-            <button
-              onClick={requestLocation}
-              disabled={locationLoading}
-              className="flex items-center gap-1.5 text-sm font-semibold text-violet-600 border border-violet-200 rounded-xl px-3 py-2 hover:bg-violet-50 active:bg-violet-100 transition-colors disabled:opacity-60 flex-shrink-0 ml-3"
-            >
-              {locationLoading ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Navigation className="w-3.5 h-3.5" />
-              )}
-              My Location
-            </button>
-          </div>
 
-          {/* Location error banner */}
-          {locationError && (
-            <div className="flex items-start gap-2 mt-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
-              <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-              {locationError === "tap-map" ? (
-                <div className="flex-1">
-                  <p className="text-xs text-amber-700 leading-relaxed">
-                    GPS nahi mila. Neeche map par tap karke apni location set karein.
-                  </p>
+      {/* ── Full-width map with overlaid search + categories ─────────────── */}
+      <div className="relative w-full h-64 sm:h-72">
+        {/* Map fills the entire block */}
+        <IndiaMap
+          center={mapCenter}
+          zoom={mapZoom}
+          interactive={mapClickEnabled}
+          onPick={handleMapLocationPick}
+          onInvalidPick={() => setLocationError("India locations only")}
+          userLocation={userLocation ? [userLocation.lat, userLocation.lng] : null}
+          markers={(userLocation ? (mapStores.length > 0 ? mapStores : stores) : stores).map((store) => {
+            const isNearby = userLocation
+              ? store.distance !== null && store.distance <= radius
+              : false;
+            return {
+              id: store.id,
+              lat: store.latitude,
+              lng: store.longitude,
+              title: store.name,
+              description: [
+                store.category,
+                store.distance !== null
+                  ? store.distance < 1
+                    ? `${Math.round(store.distance * 1000)} m away`
+                    : `${store.distance} km away`
+                  : null,
+                store.isOpen ? "Open" : "Closed",
+              ].filter(Boolean).join(" · "),
+              color: isNearby ? "#16a34a" : "#7c3aed",
+            };
+          })}
+          className="absolute inset-0 w-full h-full rounded-none"
+        />
+
+        {/* ── Overlaid controls ─────────────────────────────────────────── */}
+        <div className="absolute inset-x-0 top-0 z-[500] pointer-events-none">
+          <div className="px-3 pt-3 space-y-2 pointer-events-auto">
+
+            {/* Row: search bar + My Location button */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search store, category, city..."
+                  value={searchRaw}
+                  onChange={(e) => setSearchRaw(e.target.value)}
+                  className="w-full pl-10 pr-10 py-2.5 text-sm rounded-2xl shadow-md bg-white/95 backdrop-blur-sm border-0 focus:outline-none focus:ring-2 focus:ring-violet-400 transition-all"
+                />
+                {searchRaw && (
                   <button
-                    onClick={() => setMapClickEnabled((v) => !v)}
-                    className={`mt-1.5 text-xs font-bold underline ${mapClickEnabled ? "text-violet-700" : "text-amber-700"}`}
+                    onClick={() => setSearchRaw("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    {mapClickEnabled ? "✓ Map tap mode active — tap to pin your location" : "Tap map to set location →"}
+                    <X className="w-4 h-4" />
                   </button>
-                </div>
-              ) : (
-                <p className="text-xs text-amber-700 leading-relaxed">
-                  {locationError}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Search bar */}
-          <div className="relative mt-3">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search store, category, city..."
-              value={searchRaw}
-              onChange={(e) => setSearchRaw(e.target.value)}
-              className="w-full pl-10 pr-10 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-300 bg-gray-50 transition-all"
-            />
-            {searchRaw && (
+                )}
+              </div>
               <button
-                onClick={() => setSearchRaw("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                onClick={requestLocation}
+                disabled={locationLoading}
+                className="flex items-center justify-center w-10 h-10 rounded-full bg-white/95 backdrop-blur-sm shadow-md text-violet-600 hover:bg-violet-50 active:bg-violet-100 transition-colors disabled:opacity-60 flex-shrink-0"
+                title="My Location"
               >
-                <X className="w-4 h-4" />
+                {locationLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Navigation className="w-4 h-4" />
+                )}
               </button>
-            )}
-          </div>
+            </div>
 
-          {/* Category chips */}
-          <div className="flex items-center gap-2 mt-3 overflow-x-auto pb-1 scrollbar-none">
-            {/* All Stores chip */}
-            <button
-              onClick={() => setSelectedCategory("all")}
-              className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                selectedCategory === "all"
-                  ? "bg-violet-600 text-white shadow-sm shadow-violet-200"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              All Stores
-            </button>
-
-            {visibleCategories.map((cat) => (
+            {/* Category chips row */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-none">
               <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                  selectedCategory === cat
-                    ? "bg-violet-600 text-white shadow-sm shadow-violet-200"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                onClick={() => setSelectedCategory("all")}
+                className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold shadow-sm transition-colors ${
+                  selectedCategory === "all"
+                    ? "bg-violet-600 text-white"
+                    : "bg-white/95 backdrop-blur-sm text-gray-700 hover:bg-white"
                 }`}
               >
-                {cat}
+                All Stores
               </button>
-            ))}
+              {visibleCategories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold shadow-sm transition-colors ${
+                    selectedCategory === cat
+                      ? "bg-violet-600 text-white"
+                      : "bg-white/95 backdrop-blur-sm text-gray-700 hover:bg-white"
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+              {hasMoreCategories && (
+                <button
+                  onClick={() => setShowMoreSheet(true)}
+                  className="flex-shrink-0 flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white/95 backdrop-blur-sm text-gray-700 hover:bg-white shadow-sm transition-colors"
+                >
+                  More <ChevronDown className="w-3 h-3" />
+                </button>
+              )}
+            </div>
 
-            {hasMoreCategories && (
-              <button
-                onClick={() => setShowMoreSheet(true)}
-                className="flex-shrink-0 flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
-              >
-                More <ChevronDown className="w-3 h-3" />
-              </button>
+            {/* Location error banner */}
+            {locationError && (
+              <div className="flex items-start gap-2 bg-amber-50/95 backdrop-blur-sm border border-amber-200 rounded-xl px-3 py-2.5 shadow-sm">
+                <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                {locationError === "tap-map" ? (
+                  <div className="flex-1">
+                    <p className="text-xs text-amber-700 leading-relaxed">
+                      GPS nahi mila. Map par tap karke apni location set karein.
+                    </p>
+                    <button
+                      onClick={() => setMapClickEnabled((v) => !v)}
+                      className={`mt-1 text-xs font-bold underline ${mapClickEnabled ? "text-violet-700" : "text-amber-700"}`}
+                    >
+                      {mapClickEnabled ? "✓ Tap mode active" : "Tap map to set location →"}
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-amber-700 leading-relaxed">{locationError}</p>
+                )}
+              </div>
             )}
           </div>
         </div>
-      </div>
 
-      {/* ── Map ────────────────────────────────────────────────────────── */}
-      <div className="max-w-2xl mx-auto px-0 sm:px-4 mt-0">
-        <div className="h-64 sm:h-72 sm:rounded-2xl overflow-hidden border-b sm:border border-gray-200 shadow-sm relative">
-          <IndiaMap
-            center={mapCenter}
-            zoom={mapZoom}
-            interactive={mapClickEnabled}
-            onPick={handleMapLocationPick}
-            onInvalidPick={() => setLocationError("India locations only")}
-            userLocation={userLocation ? [userLocation.lat, userLocation.lng] : null}
-            markers={(userLocation ? (mapStores.length > 0 ? mapStores : stores) : stores).map((store) => {
-              const isNearby = userLocation
-                ? store.distance !== null && store.distance <= radius
-                : false;
-              return {
-                id: store.id,
-                lat: store.latitude,
-                lng: store.longitude,
-                title: store.name,
-                description: [
-                  store.category,
-                  store.distance !== null
-                    ? store.distance < 1
-                      ? `${Math.round(store.distance * 1000)} m away`
-                      : `${store.distance} km away`
-                    : null,
-                  store.isOpen ? "Open" : "Closed",
-                ].filter(Boolean).join(" · "),
-                color: isNearby ? "#16a34a" : "#7c3aed",
-              };
-            })}
-            className="h-full w-full"
-          />
-          {/* Tap-to-set-location hint overlay */}
-          {mapClickEnabled && (
-            <div className="absolute inset-0 z-[999] pointer-events-none flex items-center justify-center">
-              <div className="bg-violet-700/90 text-white text-xs font-semibold px-4 py-2 rounded-full shadow-lg backdrop-blur-sm animate-pulse">
-                📍 Map par tap karein — apni location set karein
-              </div>
+        {/* Tap-to-set-location center hint */}
+        {mapClickEnabled && (
+          <div className="absolute inset-0 z-[499] pointer-events-none flex items-center justify-center">
+            <div className="bg-violet-700/90 text-white text-xs font-semibold px-4 py-2 rounded-full shadow-lg backdrop-blur-sm animate-pulse mt-24">
+              📍 Map par tap karein — apni location set karein
             </div>
-          )}
-
-        </div>
+          </div>
+        )}
       </div>
 
       {/* ── Stores section ─────────────────────────────────────────────── */}
