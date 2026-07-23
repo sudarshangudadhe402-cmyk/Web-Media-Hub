@@ -87,11 +87,11 @@ interface DiscoverResponse {
 
 // ─── Map helpers ──────────────────────────────────────────────────────────────
 
-function MapRecenter({ lat, lng }: { lat: number; lng: number }) {
+function MapRecenter({ lat, lng, zoom }: { lat: number; lng: number; zoom: number }) {
   const map = useMap();
   useEffect(() => {
-    map.setView([lat, lng], map.getZoom(), { animate: true });
-  }, [lat, lng, map]);
+    map.setView([lat, lng], zoom, { animate: true });
+  }, [lat, lng, zoom, map]);
   return null;
 }
 
@@ -384,7 +384,6 @@ export default function FindStores() {
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [selectedMarkerStore, setSelectedMarkerStore] = useState<string | null>(null);
 
   // All stores in broad area — for map only (not filtered by selected radius)
   const [mapStores, setMapStores] = useState<DiscoveredStore[]>([]);
@@ -536,8 +535,8 @@ export default function FindStores() {
     fetch(`/api/public/stores/discover?${params.toString()}`, {
       signal: mapAbortRef.current.signal,
     })
-      .then((r) => r.json())
-      .then((data: DiscoverResponse) => setMapStores(data.stores))
+      .then((r) => { if (!r.ok) throw new Error("map fetch failed"); return r.json(); })
+      .then((data: DiscoverResponse) => { if (Array.isArray(data.stores)) setMapStores(data.stores); })
       .catch(() => {/* silently ignore map-only fetch errors */});
   }, [userLocation]);
 
@@ -691,7 +690,7 @@ export default function FindStores() {
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            <MapRecenter lat={mapCenter[0]} lng={mapCenter[1]} />
+            <MapRecenter lat={mapCenter[0]} lng={mapCenter[1]} zoom={mapZoom} />
             <MapClickHandler
               enabled={mapClickEnabled}
               onLocationPicked={handleMapLocationPick}
@@ -731,9 +730,6 @@ export default function FindStores() {
                   key={store.id}
                   position={[store.latitude, store.longitude]}
                   icon={isNearby ? StoreIconGreen : StoreIconViolet}
-                  eventHandlers={{
-                    click: () => setSelectedMarkerStore(store.id),
-                  }}
                 >
                   <Popup>
                     <div className="min-w-[180px] text-xs">
@@ -759,14 +755,12 @@ export default function FindStores() {
                       <p className={`font-medium mb-2 ${store.isOpen ? "text-green-600" : "text-red-500"}`}>
                         ● {store.isOpen ? "Open" : "Closed"}
                       </p>
-                      {isNearby && (
-                        <button
-                          onClick={() => handleViewStore(store.publicSlug)}
-                          className="block w-full text-center bg-violet-600 text-white text-xs font-semibold py-1.5 rounded-lg hover:bg-violet-700 transition-colors"
-                        >
-                          View Store
-                        </button>
-                      )}
+                      <button
+                        onClick={() => handleViewStore(store.publicSlug)}
+                        className="block w-full text-center bg-violet-600 text-white text-xs font-semibold py-1.5 rounded-lg hover:bg-violet-700 transition-colors"
+                      >
+                        View Store
+                      </button>
                     </div>
                   </Popup>
                 </Marker>
