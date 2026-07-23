@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -149,7 +149,7 @@ function StarRating({ rating, count }: { rating: number; count: number }) {
 
 // ─── Store Card ───────────────────────────────────────────────────────────────
 
-function StoreCard({
+const StoreCard = React.memo(function StoreCard({
   store,
   onView,
 }: {
@@ -237,7 +237,7 @@ function StoreCard({
       </div>
     </div>
   );
-}
+});
 
 // ─── More Categories Sheet ────────────────────────────────────────────────────
 

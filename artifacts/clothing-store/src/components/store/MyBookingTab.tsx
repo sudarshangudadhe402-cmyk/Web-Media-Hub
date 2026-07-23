@@ -243,11 +243,13 @@ export default function MyBookingTab({
                   </p>
                   <p className="text-xs text-gray-400">{bk.whatsapp}</p>
                   <p className="text-[10px] text-gray-300 mt-1">
-                    {new Date(bk.bookedAt).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
+                    {(() => {
+                      try {
+                        const d = new Date(bk.bookedAt);
+                        if (isNaN(d.getTime())) return "—";
+                        return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+                      } catch { return "—"; }
+                    })()}
                   </p>
                 </div>
                 <div className="flex-shrink-0 flex flex-col items-center justify-end gap-0.5">

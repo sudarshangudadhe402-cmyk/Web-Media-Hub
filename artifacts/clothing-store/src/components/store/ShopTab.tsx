@@ -1,5 +1,5 @@
 import { Search, X, SlidersHorizontal, ShoppingBag, Heart, Camera, Box, Star } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 
 interface PublicProduct {
@@ -63,7 +63,7 @@ export default function ShopTab({
   const [viewing3D, setViewing3D] = useState<PublicProduct | null>(null);
   const [show3DUnavailable, setShow3DUnavailable] = useState(false);
 
-  const filteredProducts = (() => {
+  const filteredProducts = useMemo(() => {
     let list = [...products];
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -88,7 +88,7 @@ export default function ShopTab({
       list.sort((a, b) => b.recentLikeCount + b.recentTryOnCount - (a.recentLikeCount + a.recentTryOnCount));
     }
     return list;
-  })();
+  }, [products, search, activeCategory, sortBy, likeCounts]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden" style={{ background: "#f5f5f5" }}>

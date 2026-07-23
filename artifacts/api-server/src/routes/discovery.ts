@@ -282,7 +282,8 @@ router.get(
       }
 
       if (search.trim()) {
-        const term = search.trim();
+        // Escape special regex chars to prevent ReDoS attacks
+        const term = search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         storeQuery.$or = [
           { name: { $regex: term, $options: "i" } },
           { address: { $regex: term, $options: "i" } },

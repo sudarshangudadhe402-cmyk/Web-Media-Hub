@@ -168,7 +168,8 @@ export default function PublicStore() {
   // Re-sync cart from the server so it stays consistent across devices
   useEffect(() => {
     if (!customerAccount?.id) return;
-    fetch(`/api/public/cart/${customerAccount.id}`)
+    const ac = new AbortController();
+    fetch(`/api/public/cart/${customerAccount.id}`, { signal: ac.signal })
       .then((res) => (res.ok ? res.json() : null))
       .then((d) => {
         if (!d) return;
@@ -179,7 +180,8 @@ export default function PublicStore() {
           return acc;
         });
       })
-      .catch(() => {});
+      .catch((err) => { if (err.name !== "AbortError") console.error("Cart sync failed:", err); });
+    return () => ac.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerAccount?.id]);
   const [signUpLoading, setSignUpLoading] = useState(false);
@@ -349,6 +351,13 @@ export default function PublicStore() {
     setPreviousProductId(null);
     setSelectedProduct(product);
     setImgIndex(0);
+    // Reset try-on + booking state so previous product's data never bleeds through
+    setCustomerPhoto(null);
+    setTryOnResult(null);
+    setLastCountedPhoto(null);
+    setBookingSuccess(false);
+    setBookingError(null);
+    setSelectedSize(product.sizes[0] ?? "");
     setView("product");
   }
 
