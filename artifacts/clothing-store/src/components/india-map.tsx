@@ -178,7 +178,7 @@ export function IndiaMap({
       maxBounds: INDIA_BOUNDS,
       minZoom: 4,
       maxZoom: 18,
-      cooperativeGestures: true,
+      cooperativeGestures: false,
       fadeDuration: 0,
       renderWorldCopies: false,
     });
@@ -214,13 +214,14 @@ export function IndiaMap({
       fadeAnimation: false,
       markerZoomAnimation: false,
     }).setView([center[1], center[0]], zoom);
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "&copy; OpenStreetMap contributors",
+      subdomains: ["a", "b", "c"],
       maxZoom: 19,
-      updateWhenZooming: false,
-      updateWhenIdle: true,
-      updateInterval: 100,
-      keepBuffer: 4,
+      updateWhenZooming: true,
+      updateWhenIdle: false,
+      updateInterval: 0,
+      keepBuffer: 8,
     }).addTo(map);
     const outerRing: [number, number][] = [
       [3, 60], [3, 105], [45, 105], [45, 60], [3, 60],

@@ -524,7 +524,7 @@ export default function FindStores() {
     <div className="min-h-screen bg-gray-50">
 
       {/* ── Full-width map with overlaid search + categories ─────────────── */}
-      <div className="relative w-full h-64 sm:h-72">
+      <div className="relative w-full h-[55vh] min-h-[260px] max-h-[480px]">
         {/* Map fills the entire block */}
         <IndiaMap
           center={mapCenter}
