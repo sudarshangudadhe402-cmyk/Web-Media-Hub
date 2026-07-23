@@ -496,14 +496,24 @@ export default function FindStores() {
   const visibleCategories = categories.slice(0, VISIBLE_CATEGORY_COUNT);
   const hasMoreCategories = categories.length > VISIBLE_CATEGORY_COUNT;
 
-  const mapCenter = useMemo<[number, number]>(
-    () =>
-      userLocation
-        ? [userLocation.lng, userLocation.lat]
-        : INDIA_CENTER,
-    [userLocation]
-  );
-  const mapZoom = userLocation ? LOCAL_ZOOM : INDIA_ZOOM;
+  const mapCenter = useMemo<[number, number]>(() => {
+    if (userLocation) return [userLocation.lng, userLocation.lat];
+    const visibleStores = mapStores.length > 0 ? mapStores : stores;
+    if (visibleStores.length > 0) {
+      const avgLng = visibleStores.reduce((s, st) => s + st.longitude, 0) / visibleStores.length;
+      const avgLat = visibleStores.reduce((s, st) => s + st.latitude, 0) / visibleStores.length;
+      return [avgLng, avgLat];
+    }
+    return INDIA_CENTER;
+  }, [userLocation, stores, mapStores]);
+
+  const mapZoom = useMemo(() => {
+    if (userLocation) return LOCAL_ZOOM;
+    const visibleStores = mapStores.length > 0 ? mapStores : stores;
+    if (visibleStores.length === 1) return 12;
+    if (visibleStores.length > 1) return 8;
+    return INDIA_ZOOM;
+  }, [userLocation, stores, mapStores]);
 
   const handleViewStore = useCallback((slug: string) => {
     navigate(`/store/${slug}`);
