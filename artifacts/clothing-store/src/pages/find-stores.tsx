@@ -510,8 +510,8 @@ export default function FindStores() {
   const mapZoom = useMemo(() => {
     if (userLocation) return LOCAL_ZOOM;
     const visibleStores = mapStores.length > 0 ? mapStores : stores;
-    if (visibleStores.length === 1) return 12;
-    if (visibleStores.length > 1) return 8;
+    if (visibleStores.length === 1) return 15;
+    if (visibleStores.length > 1) return 10;
     return INDIA_ZOOM;
   }, [userLocation, stores, mapStores]);
 

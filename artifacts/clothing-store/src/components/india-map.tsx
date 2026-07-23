@@ -89,28 +89,8 @@ interface IndiaMapProps {
 function getStyle() {
   const key = import.meta.env.VITE_MAPTILER_API_KEY as string | undefined;
   if (key) return `https://api.maptiler.com/maps/streets-v2/style.json?key=${encodeURIComponent(key)}`;
-  return {
-    version: 8,
-    sources: {
-      osm: {
-        type: "raster",
-        tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-        tileSize: 256,
-        minzoom: 4,
-        maxzoom: 18,
-        attribution: "© OpenStreetMap contributors",
-      },
-    },
-    layers: [{
-      id: "osm",
-      type: "raster",
-      source: "osm",
-      paint: {
-        "raster-fade-duration": 0,
-        "raster-opacity": 1,
-      },
-    }],
-  } as maplibregl.StyleSpecification;
+  // OpenFreeMap: free vector tiles with building footprints, roads, labels — no API key needed
+  return "https://tiles.openfreemap.org/styles/liberty";
 }
 
 function addIndiaMask(map: Map) {
@@ -168,6 +148,8 @@ export function IndiaMap({
   const mapRef = useRef<Map | null>(null);
   const fallbackMapRef = useRef<L.Map | null>(null);
   const fallbackMarkerRefs = useRef<L.Layer[]>([]);
+  const fallbackBuildingLayer = useRef<L.GeoJSON | null>(null);
+  const buildingFetchController = useRef<AbortController | null>(null);
   const markerRefs = useRef<Marker[]>([]);
   const popupRefs = useRef<Popup[]>([]);
   const [useLeafletFallback, setUseLeafletFallback] = useState(false);
@@ -260,10 +242,72 @@ export function IndiaMap({
         }
       });
     }
+
+    // ── Building footprints via Overpass API ─────────────────────────────────
+    async function loadBuildings() {
+      const currentZoom = map.getZoom();
+      if (currentZoom < 15) {
+        if (fallbackBuildingLayer.current) {
+          map.removeLayer(fallbackBuildingLayer.current);
+          fallbackBuildingLayer.current = null;
+        }
+        return;
+      }
+      buildingFetchController.current?.abort();
+      const controller = new AbortController();
+      buildingFetchController.current = controller;
+      try {
+        const b = map.getBounds();
+        const bbox = `${b.getSouth().toFixed(5)},${b.getWest().toFixed(5)},${b.getNorth().toFixed(5)},${b.getEast().toFixed(5)}`;
+        const query = `[out:json][timeout:15];(way[building](${bbox}););out geom;`;
+        const res = await fetch(
+          `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`,
+          { signal: controller.signal },
+        );
+        if (!res.ok || controller.signal.aborted) return;
+        const data = await res.json() as { elements: Array<{ type: string; geometry?: Array<{ lat: number; lon: number }>; tags?: Record<string, string> }> };
+        const features: GeoJSON.Feature[] = data.elements
+          .filter((el) => el.type === "way" && el.geometry && el.geometry.length > 2)
+          .map((el) => ({
+            type: "Feature" as const,
+            properties: { tags: el.tags ?? {} },
+            geometry: {
+              type: "Polygon" as const,
+              coordinates: [el.geometry!.map(({ lat, lon }) => [lon, lat])],
+            },
+          }));
+        if (controller.signal.aborted) return;
+        if (fallbackBuildingLayer.current) map.removeLayer(fallbackBuildingLayer.current);
+        fallbackBuildingLayer.current = L.geoJSON(
+          { type: "FeatureCollection", features },
+          {
+            style: () => ({
+              color: "#b0a898",
+              weight: 0.8,
+              fillColor: "#d9d0c8",
+              fillOpacity: 0.7,
+            }),
+          },
+        ).addTo(map);
+      } catch {
+        // aborted or network error — ignore
+      }
+    }
+
+    map.on("moveend", loadBuildings);
+    map.on("zoomend", loadBuildings);
+    // Initial load
+    setTimeout(loadBuildings, 400);
+
     fallbackMapRef.current = map;
     return () => {
+      buildingFetchController.current?.abort();
       fallbackMarkerRefs.current.forEach((marker) => marker.remove());
       fallbackMarkerRefs.current = [];
+      if (fallbackBuildingLayer.current) {
+        map.removeLayer(fallbackBuildingLayer.current);
+        fallbackBuildingLayer.current = null;
+      }
       map.remove();
       fallbackMapRef.current = null;
     };
