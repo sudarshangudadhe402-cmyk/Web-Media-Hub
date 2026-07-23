@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { Store } from "../models/Store";
+import { Store, type IStoreAddressDetails } from "../models/Store";
 import { AuthRequest, requireAuth } from "../middlewares/auth";
 import { parseIndiaCoordinatePair } from "../lib/indiaGeo";
 
@@ -20,6 +20,7 @@ function formatStore(s: InstanceType<typeof Store>) {
     address: s.address ?? null,
     latitude: s.latitude ?? null,
     longitude: s.longitude ?? null,
+    addressDetails: s.addressDetails ?? null,
     whatsappNumber: s.whatsappNumber ?? null,
     openingTime: s.openingTime ?? null,
     openDays: s.openDays ?? null,
@@ -53,7 +54,7 @@ router.get("/store", requireAuth, async (req: AuthRequest, res) => {
 router.post("/store", requireAuth, async (req: AuthRequest, res) => {
   try {
     const userId = String(req.user!._id);
-    const { name, address, latitude, longitude, whatsappNumber, openingTime, openDays, bannerImage, description } = req.body;
+    const { name, address, latitude, longitude, addressDetails, whatsappNumber, openingTime, openDays, bannerImage, description } = req.body;
     const coordinates = parseIndiaCoordinatePair(latitude, longitude);
     if ((latitude !== undefined || longitude !== undefined) && !coordinates) {
       res.status(400).json({ error: "Store location must be inside India." });
@@ -66,6 +67,7 @@ router.post("/store", requireAuth, async (req: AuthRequest, res) => {
       store.address = address;
       store.latitude = coordinates?.latitude;
       store.longitude = coordinates?.longitude;
+      store.addressDetails = addressDetails ?? undefined;
       store.whatsappNumber = whatsappNumber;
       store.openingTime = openingTime;
       store.openDays = openDays;
@@ -81,6 +83,7 @@ router.post("/store", requireAuth, async (req: AuthRequest, res) => {
         address,
         latitude: coordinates?.latitude,
         longitude: coordinates?.longitude,
+        addressDetails: addressDetails ?? undefined,
         whatsappNumber,
         openingTime,
         openDays,
@@ -106,7 +109,7 @@ router.patch("/store", requireAuth, async (req: AuthRequest, res) => {
       return;
     }
 
-    const { name, address, latitude, longitude, whatsappNumber, openingTime, openDays, bannerImage, description } = req.body;
+    const { name, address, latitude, longitude, addressDetails, whatsappNumber, openingTime, openDays, bannerImage, description } = req.body;
     const coordinates = (latitude !== undefined || longitude !== undefined)
       ? parseIndiaCoordinatePair(latitude, longitude)
       : null;
@@ -119,6 +122,11 @@ router.patch("/store", requireAuth, async (req: AuthRequest, res) => {
     if (coordinates) {
       store.latitude = coordinates.latitude;
       store.longitude = coordinates.longitude;
+    }
+    if (addressDetails !== undefined) {
+      store.addressDetails = addressDetails
+        ? addressDetails as IStoreAddressDetails
+        : undefined;
     }
     if (whatsappNumber !== undefined) store.whatsappNumber = whatsappNumber;
     if (openingTime !== undefined) store.openingTime = openingTime;

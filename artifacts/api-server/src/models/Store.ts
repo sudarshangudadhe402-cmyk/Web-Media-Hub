@@ -1,11 +1,28 @@
 import mongoose, { Schema, Document } from "mongoose";
 
+export interface IStoreAddressDetails {
+  houseNumber?: string;
+  road?: string;
+  neighbourhood?: string;
+  suburb?: string;
+  city?: string;
+  town?: string;
+  village?: string;
+  district?: string;
+  stateDistrict?: string;
+  state?: string;
+  postcode?: string;
+  country?: string;
+  countryCode?: string;
+}
+
 export interface IStore extends Document {
   ownerId?: string;
   name: string;
   address?: string;
   latitude?: number;
   longitude?: number;
+  addressDetails?: IStoreAddressDetails;
   whatsappNumber?: string;
   openingTime?: string;
   openDays?: string;
@@ -23,6 +40,21 @@ const StoreSchema = new Schema<IStore>(
     address: { type: String },
     latitude: { type: Number },
     longitude: { type: Number },
+    addressDetails: {
+      houseNumber: { type: String, trim: true },
+      road: { type: String, trim: true },
+      neighbourhood: { type: String, trim: true },
+      suburb: { type: String, trim: true },
+      city: { type: String, trim: true },
+      town: { type: String, trim: true },
+      village: { type: String, trim: true },
+      district: { type: String, trim: true },
+      stateDistrict: { type: String, trim: true },
+      state: { type: String, trim: true },
+      postcode: { type: String, trim: true },
+      country: { type: String, trim: true },
+      countryCode: { type: String, trim: true, lowercase: true },
+    },
     whatsappNumber: { type: String },
     openingTime: { type: String },
     openDays: { type: String },

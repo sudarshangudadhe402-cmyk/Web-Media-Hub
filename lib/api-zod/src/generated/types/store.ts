@@ -5,6 +5,7 @@
  * Web Media Hub - Multi-store clothing management API
  * OpenAPI spec version: 0.1.0
  */
+import type { StoreAddressDetails } from './storeAddressDetails';
 
 export interface Store {
   id: string;
@@ -15,6 +16,7 @@ export interface Store {
   latitude?: number | null;
   /** @nullable */
   longitude?: number | null;
+  addressDetails?: StoreAddressDetails | null;
   /** @nullable */
   whatsappNumber?: string | null;
   /** @nullable */

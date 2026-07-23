@@ -216,6 +216,22 @@ export interface BookingInput {
   selectedSize: string;
 }
 
+export interface StoreAddressDetails {
+  houseNumber?: string;
+  road?: string;
+  neighbourhood?: string;
+  suburb?: string;
+  city?: string;
+  town?: string;
+  village?: string;
+  district?: string;
+  stateDistrict?: string;
+  state?: string;
+  postcode?: string;
+  country?: string;
+  countryCode?: string;
+}
+
 export interface Store {
   id: string;
   name: string;
@@ -225,6 +241,7 @@ export interface Store {
   latitude?: number | null;
   /** @nullable */
   longitude?: number | null;
+  addressDetails?: StoreAddressDetails | null;
   /** @nullable */
   whatsappNumber?: string | null;
   /** @nullable */
@@ -246,6 +263,7 @@ export interface StoreInput {
   address?: string;
   latitude?: number;
   longitude?: number;
+  addressDetails?: StoreAddressDetails | null;
   whatsappNumber?: string;
   openingTime?: string;
   openDays?: string;
@@ -258,6 +276,7 @@ export interface StoreUpdate {
   address?: string;
   latitude?: number;
   longitude?: number;
+  addressDetails?: StoreAddressDetails | null;
   whatsappNumber?: string;
   openingTime?: string;
   openDays?: string;
@@ -315,6 +334,7 @@ lng: number;
 
 export type ReverseGeocodeIndia200 = {
   displayName?: string;
+  addressDetails?: StoreAddressDetails;
 };
 
 export type GeocodeIndiaAddressParams = {

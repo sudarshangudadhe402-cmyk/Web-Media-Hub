@@ -462,6 +462,8 @@ paths:
                 type: object
                 properties:
                   displayName: { type: string }
+                  addressDetails:
+                    $ref: "#/components/schemas/StoreAddressDetails"
         "400":
           description: Coordinate is outside India
 
@@ -907,6 +909,10 @@ components:
           type: ["number", "null"]
         longitude:
           type: ["number", "null"]
+        addressDetails:
+          allOf:
+            - $ref: "#/components/schemas/StoreAddressDetails"
+          nullable: true
         whatsappNumber:
           type: ["string", "null"]
         openingTime:
@@ -924,6 +930,36 @@ components:
         createdAt:
           type: string
 
+    StoreAddressDetails:
+      type: object
+      properties:
+        houseNumber:
+          type: string
+        road:
+          type: string
+        neighbourhood:
+          type: string
+        suburb:
+          type: string
+        city:
+          type: string
+        town:
+          type: string
+        village:
+          type: string
+        district:
+          type: string
+        stateDistrict:
+          type: string
+        state:
+          type: string
+        postcode:
+          type: string
+        country:
+          type: string
+        countryCode:
+          type: string
+
     StoreInput:
       type: object
       required: [name]
@@ -936,6 +972,10 @@ components:
           type: number
         longitude:
           type: number
+        addressDetails:
+          allOf:
+            - $ref: "#/components/schemas/StoreAddressDetails"
+          nullable: true
         whatsappNumber:
           type: string
         openingTime:
@@ -958,6 +998,10 @@ components:
           type: number
         longitude:
           type: number
+        addressDetails:
+          allOf:
+            - $ref: "#/components/schemas/StoreAddressDetails"
+          nullable: true
         whatsappNumber:
           type: string
         openingTime:

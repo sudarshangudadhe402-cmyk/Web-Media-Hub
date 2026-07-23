@@ -391,6 +391,21 @@ export const GetStoreResponse = zod.object({
   "address": zod.string().nullish(),
   "latitude": zod.number().nullish(),
   "longitude": zod.number().nullish(),
+  "addressDetails": zod.object({
+  "houseNumber": zod.string().optional(),
+  "road": zod.string().optional(),
+  "neighbourhood": zod.string().optional(),
+  "suburb": zod.string().optional(),
+  "city": zod.string().optional(),
+  "town": zod.string().optional(),
+  "village": zod.string().optional(),
+  "district": zod.string().optional(),
+  "stateDistrict": zod.string().optional(),
+  "state": zod.string().optional(),
+  "postcode": zod.string().optional(),
+  "country": zod.string().optional(),
+  "countryCode": zod.string().optional()
+}).nullish(),
   "whatsappNumber": zod.string().nullish(),
   "openingTime": zod.string().nullish(),
   "openDays": zod.string().nullish(),
@@ -410,6 +425,21 @@ export const CreateStoreBody = zod.object({
   "address": zod.string().optional(),
   "latitude": zod.number().optional(),
   "longitude": zod.number().optional(),
+  "addressDetails": zod.object({
+  "houseNumber": zod.string().optional(),
+  "road": zod.string().optional(),
+  "neighbourhood": zod.string().optional(),
+  "suburb": zod.string().optional(),
+  "city": zod.string().optional(),
+  "town": zod.string().optional(),
+  "village": zod.string().optional(),
+  "district": zod.string().optional(),
+  "stateDistrict": zod.string().optional(),
+  "state": zod.string().optional(),
+  "postcode": zod.string().optional(),
+  "country": zod.string().optional(),
+  "countryCode": zod.string().optional()
+}).nullish(),
   "whatsappNumber": zod.string().optional(),
   "openingTime": zod.string().optional(),
   "openDays": zod.string().optional(),
@@ -423,6 +453,21 @@ export const CreateStoreResponse = zod.object({
   "address": zod.string().nullish(),
   "latitude": zod.number().nullish(),
   "longitude": zod.number().nullish(),
+  "addressDetails": zod.object({
+  "houseNumber": zod.string().optional(),
+  "road": zod.string().optional(),
+  "neighbourhood": zod.string().optional(),
+  "suburb": zod.string().optional(),
+  "city": zod.string().optional(),
+  "town": zod.string().optional(),
+  "village": zod.string().optional(),
+  "district": zod.string().optional(),
+  "stateDistrict": zod.string().optional(),
+  "state": zod.string().optional(),
+  "postcode": zod.string().optional(),
+  "country": zod.string().optional(),
+  "countryCode": zod.string().optional()
+}).nullish(),
   "whatsappNumber": zod.string().nullish(),
   "openingTime": zod.string().nullish(),
   "openDays": zod.string().nullish(),
@@ -442,6 +487,21 @@ export const UpdateStoreBody = zod.object({
   "address": zod.string().optional(),
   "latitude": zod.number().optional(),
   "longitude": zod.number().optional(),
+  "addressDetails": zod.object({
+  "houseNumber": zod.string().optional(),
+  "road": zod.string().optional(),
+  "neighbourhood": zod.string().optional(),
+  "suburb": zod.string().optional(),
+  "city": zod.string().optional(),
+  "town": zod.string().optional(),
+  "village": zod.string().optional(),
+  "district": zod.string().optional(),
+  "stateDistrict": zod.string().optional(),
+  "state": zod.string().optional(),
+  "postcode": zod.string().optional(),
+  "country": zod.string().optional(),
+  "countryCode": zod.string().optional()
+}).nullish(),
   "whatsappNumber": zod.string().optional(),
   "openingTime": zod.string().optional(),
   "openDays": zod.string().optional(),
@@ -455,6 +515,21 @@ export const UpdateStoreResponse = zod.object({
   "address": zod.string().nullish(),
   "latitude": zod.number().nullish(),
   "longitude": zod.number().nullish(),
+  "addressDetails": zod.object({
+  "houseNumber": zod.string().optional(),
+  "road": zod.string().optional(),
+  "neighbourhood": zod.string().optional(),
+  "suburb": zod.string().optional(),
+  "city": zod.string().optional(),
+  "town": zod.string().optional(),
+  "village": zod.string().optional(),
+  "district": zod.string().optional(),
+  "stateDistrict": zod.string().optional(),
+  "state": zod.string().optional(),
+  "postcode": zod.string().optional(),
+  "country": zod.string().optional(),
+  "countryCode": zod.string().optional()
+}).nullish(),
   "whatsappNumber": zod.string().nullish(),
   "openingTime": zod.string().nullish(),
   "openDays": zod.string().nullish(),
@@ -475,7 +550,22 @@ export const ReverseGeocodeIndiaQueryParams = zod.object({
 })
 
 export const ReverseGeocodeIndiaResponse = zod.object({
-  "displayName": zod.string().optional()
+  "displayName": zod.string().optional(),
+  "addressDetails": zod.object({
+  "houseNumber": zod.string().optional(),
+  "road": zod.string().optional(),
+  "neighbourhood": zod.string().optional(),
+  "suburb": zod.string().optional(),
+  "city": zod.string().optional(),
+  "town": zod.string().optional(),
+  "village": zod.string().optional(),
+  "district": zod.string().optional(),
+  "stateDistrict": zod.string().optional(),
+  "state": zod.string().optional(),
+  "postcode": zod.string().optional(),
+  "country": zod.string().optional(),
+  "countryCode": zod.string().optional()
+}).optional()
 })
 
 

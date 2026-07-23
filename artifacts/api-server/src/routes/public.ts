@@ -32,13 +32,38 @@ router.get("/public/map/reverse-geocode", ipRateLimit(20, 60_000), async (req, r
       res.status(502).json({ error: "Address lookup temporarily unavailable." });
       return;
     }
-    const data = await upstream.json() as { display_name?: string };
-    res.json({ displayName: data.display_name ?? "" });
+    const data = await upstream.json() as {
+      display_name?: string;
+      address?: Record<string, unknown>;
+    };
+    const address = data.address ?? {};
+    res.json({
+      displayName: data.display_name ?? "",
+      addressDetails: {
+        houseNumber: stringValue(address.house_number),
+        road: stringValue(address.road),
+        neighbourhood: stringValue(address.neighbourhood),
+        suburb: stringValue(address.suburb),
+        city: stringValue(address.city),
+        town: stringValue(address.town),
+        village: stringValue(address.village),
+        district: stringValue(address.district),
+        stateDistrict: stringValue(address.state_district),
+        state: stringValue(address.state),
+        postcode: stringValue(address.postcode),
+        country: stringValue(address.country),
+        countryCode: stringValue(address.country_code),
+      },
+    });
   } catch (err) {
     req.log.error({ err }, "Reverse geocode error");
     res.status(502).json({ error: "Address lookup temporarily unavailable." });
   }
 });
+
+function stringValue(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
 
 router.get("/public/map/geocode", ipRateLimit(20, 60_000), async (req, res) => {
   const query = String(req.query.q ?? "").trim();
@@ -151,6 +176,7 @@ router.get("/public/store/:slug", ipRateLimit(60, 60 * 1000), async (req, res) =
       address: store.address ?? null,
       latitude: store.latitude ?? null,
       longitude: store.longitude ?? null,
+      addressDetails: store.addressDetails ?? null,
       whatsappNumber: store.whatsappNumber ?? null,
       openingTime: store.openingTime ?? null,
       openDays: store.openDays ?? null,

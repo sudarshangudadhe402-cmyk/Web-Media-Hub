@@ -5,12 +5,14 @@
  * Web Media Hub - Multi-store clothing management API
  * OpenAPI spec version: 0.1.0
  */
+import type { StoreAddressDetails } from './storeAddressDetails';
 
 export interface StoreInput {
   name: string;
   address?: string;
   latitude?: number;
   longitude?: number;
+  addressDetails?: StoreAddressDetails | null;
   whatsappNumber?: string;
   openingTime?: string;
   openDays?: string;

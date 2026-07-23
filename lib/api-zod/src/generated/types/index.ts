@@ -38,6 +38,7 @@ export * from './productUpdateProductType';
 export * from './reverseGeocodeIndia200';
 export * from './reverseGeocodeIndiaParams';
 export * from './store';
+export * from './storeAddressDetails';
 export * from './storeInput';
 export * from './storeUpdate';
 export * from './user';

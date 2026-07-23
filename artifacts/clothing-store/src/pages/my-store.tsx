@@ -39,7 +39,7 @@ import {
   LocateFixed,
   Map as MapIcon,
 } from "lucide-react";
-import { IndiaMap, INDIA_CENTER } from "@/components/india-map";
+import { IndiaMap, INDIA_CENTER, isIndiaCoordinate } from "@/components/india-map";
 import {
   Dialog,
   DialogContent,
@@ -65,11 +65,28 @@ interface StoreForm {
   address: string;
   latitude: number | null;
   longitude: number | null;
+  addressDetails: StoreAddressDetails | null;
   whatsappNumber: string;
   openFrom: TimeVal;
   openTo: TimeVal;
   openDays: string[];
   description: string;
+}
+
+interface StoreAddressDetails {
+  houseNumber?: string;
+  road?: string;
+  neighbourhood?: string;
+  suburb?: string;
+  city?: string;
+  town?: string;
+  village?: string;
+  district?: string;
+  stateDistrict?: string;
+  state?: string;
+  postcode?: string;
+  country?: string;
+  countryCode?: string;
 }
 
 const DEFAULT_TIME: TimeVal = { hour: "", minute: "00", period: "AM" };
@@ -79,6 +96,7 @@ const EMPTY_FORM: StoreForm = {
   address: "",
   latitude: null,
   longitude: null,
+  addressDetails: null,
   whatsappNumber: "",
   openFrom: { ...DEFAULT_TIME },
   openTo: { ...DEFAULT_TIME, period: "PM" },
@@ -415,6 +433,7 @@ export default function MyStore() {
         address: store.address ?? "",
         latitude: lat,
         longitude: lng,
+        addressDetails: store.addressDetails ?? null,
         whatsappNumber: store.whatsappNumber ?? "",
         openFrom: parseTime12(store.openingTime, 0),
         openTo: parseTime12(store.openingTime, 1),
@@ -480,16 +499,19 @@ export default function MyStore() {
     setCropOpen(false);
   }
 
-  async function reverseGeocode(lat: number, lng: number): Promise<string> {
+  async function reverseGeocode(lat: number, lng: number): Promise<{ displayName: string; addressDetails: StoreAddressDetails | null }> {
     try {
       const res = await fetch(
         `/api/public/map/reverse-geocode?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`,
         { headers: { "Accept-Language": "en" } }
       );
       const data = await res.json();
-      return data.displayName ?? "";
+      return {
+        displayName: data.displayName ?? "",
+        addressDetails: data.addressDetails ?? null,
+      };
     } catch {
-      return "";
+      return { displayName: "", addressDetails: null };
     }
   }
 
@@ -518,20 +540,22 @@ export default function MyStore() {
       return;
     }
     setMapPin(coords);
-    setForm((p) => ({ ...p, latitude: coords.lat, longitude: coords.lng }));
+    setForm((p) => ({ ...p, latitude: coords.lat, longitude: coords.lng, addressDetails: null }));
     setMapOpen(true);
   }
 
   async function handleMapPick(lat: number, lng: number) {
     setMapPin({ lat, lng });
     setMapGeoLoading(true);
-    const addr = await reverseGeocode(lat, lng);
+    const result = await reverseGeocode(lat, lng);
     setMapGeoLoading(false);
     setForm((p) => ({
       ...p,
       latitude: lat,
       longitude: lng,
-      address: addr || p.address,
+      address: result.displayName || p.address,
+      // A manually selected pin is not a browser GPS confirmation.
+      addressDetails: null,
     }));
   }
 
@@ -545,14 +569,24 @@ export default function MyStore() {
       async (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
+        if (!isIndiaCoordinate(lat, lng)) {
+          setMapGeoLoading(false);
+          toast({
+            variant: "destructive",
+            title: "India locations only",
+            description: "Your current location is outside India's boundary.",
+          });
+          return;
+        }
         setMapPin({ lat, lng });
-        const addr = await reverseGeocode(lat, lng);
+        const result = await reverseGeocode(lat, lng);
         setMapGeoLoading(false);
         setForm((p) => ({
           ...p,
           latitude: lat,
           longitude: lng,
-          address: addr || p.address,
+          address: result.displayName || p.address,
+          addressDetails: result.addressDetails,
         }));
       },
       () => {
@@ -569,6 +603,8 @@ export default function MyStore() {
       address: form.address,
       latitude: form.latitude ?? undefined,
       longitude: form.longitude ?? undefined,
+      // Structured address data is only populated by the live-location flow.
+      addressDetails: form.addressDetails,
       whatsappNumber: form.whatsappNumber,
       openingTime:
         form.openFrom.hour && form.openTo.hour
@@ -625,6 +661,7 @@ export default function MyStore() {
         address: store.address ?? "",
         latitude: lat,
         longitude: lng,
+        addressDetails: store.addressDetails ?? null,
         whatsappNumber: store.whatsappNumber ?? "",
         openFrom: parseTime12(store.openingTime, 0),
         openTo: parseTime12(store.openingTime, 1),
@@ -648,6 +685,7 @@ export default function MyStore() {
         address: store.address ?? "",
         latitude: lat,
         longitude: lng,
+        addressDetails: store.addressDetails ?? null,
         whatsappNumber: store.whatsappNumber ?? "",
         openFrom: parseTime12(store.openingTime, 0),
         openTo: parseTime12(store.openingTime, 1),
@@ -1177,7 +1215,13 @@ export default function MyStore() {
               onChange={(e) => {
                 const val = e.target.value;
                 // Clear saved coordinates when admin edits address manually
-                setForm((p) => ({ ...p, address: val, latitude: null, longitude: null }));
+                setForm((p) => ({
+                  ...p,
+                  address: val,
+                  latitude: null,
+                  longitude: null,
+                  addressDetails: null,
+                }));
                 setMapPin(null);
               }}
               data-testid="store-address"

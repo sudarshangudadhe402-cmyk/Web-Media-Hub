@@ -5,7 +5,9 @@
  * Web Media Hub - Multi-store clothing management API
  * OpenAPI spec version: 0.1.0
  */
+import type { StoreAddressDetails } from './storeAddressDetails';
 
 export type ReverseGeocodeIndia200 = {
   displayName?: string;
+  addressDetails?: StoreAddressDetails;
 };
