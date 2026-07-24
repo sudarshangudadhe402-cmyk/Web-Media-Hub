@@ -158,11 +158,15 @@ export function IndiaMap({
   const fallbackMarkerRefs = useRef<L.Layer[]>([]);
   const fallbackBuildingLayer = useRef<L.GeoJSON | null>(null);
   const fallbackLanduseLayer = useRef<L.GeoJSON | null>(null);
+  const fallbackPoiLayer = useRef<L.LayerGroup | null>(null);
   const buildingFetchController = useRef<AbortController | null>(null);
   const landuseFetchController = useRef<AbortController | null>(null);
+  const poiFetchController = useRef<AbortController | null>(null);
+  const overpassDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const markerRefs = useRef<Marker[]>([]);
   const popupRefs = useRef<Popup[]>([]);
   const [useLeafletFallback, setUseLeafletFallback] = useState(false);
+  const [currentZoom, setCurrentZoom] = useState(5);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -195,6 +199,7 @@ export function IndiaMap({
     mapRef.current = map;
     if (showNavigation) map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-left");
     map.on("load", () => addIndiaMask(map));
+    map.on("zoom", () => setCurrentZoom(Math.round(map.getZoom())));
     map.on("click", (event) => {
       if (!interactive || !onPick) return;
       const { lat, lng } = event.lngLat;
@@ -225,6 +230,7 @@ export function IndiaMap({
       markerZoomAnimation: false,
     }).setView([center[1], center[0]], zoom);
     if (showNavigation) L.control.zoom({ position: "bottomleft" }).addTo(map);
+    map.on("zoomend", () => setCurrentZoom(Math.round(map.getZoom())));
     // OpenStreetMap standard: maximum free detail — building outlines, parks,
     // water, POI icons, residential/commercial colour zones, village labels.
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -259,168 +265,240 @@ export function IndiaMap({
       });
     }
 
-    // ── Building type → fill colour (mirrors Google/Apple Maps palette) ────────
+    // ── Overpass fetch with automatic server fallback ────────────────────────
+    const OVERPASS_SERVERS = [
+      "https://overpass-api.de/api/interpreter",
+      "https://overpass.kumi.systems/api/interpreter",
+      "https://overpass.openstreetmap.ru/api/interpreter",
+    ];
+    async function overpassFetch(query: string, signal: AbortSignal): Promise<unknown> {
+      for (const server of OVERPASS_SERVERS) {
+        if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+        try {
+          const res = await fetch(`${server}?data=${encodeURIComponent(query)}`, { signal });
+          if (res.ok) return res.json();
+        } catch {
+          // try next server
+        }
+      }
+      throw new Error("All Overpass servers failed");
+    }
+
+    type OsmElement = { type: string; geometry?: Array<{ lat: number; lon: number }>; tags?: Record<string, string>; lat?: number; lon?: number };
+
+    // ── Building type → fill colour (Google/Apple Maps palette) ─────────────
     function buildingColor(tags: Record<string, string>): string {
-      const use = tags.building ?? "";
-      if (["church", "cathedral", "mosque", "temple", "shrine", "religious"].includes(use)) return "#f5e6c8";
-      if (["school", "university", "college", "kindergarten"].includes(use)) return "#d4edda";
-      if (["commercial", "retail", "supermarket", "mall"].includes(use)) return "#cce5ff";
-      if (["industrial", "warehouse", "factory"].includes(use)) return "#e2d9f3";
-      if (["hospital", "clinic"].includes(use)) return "#f8d7da";
-      return "#ddd5c8"; // residential / generic — warm sandstone
+      const b = tags.building ?? "";
+      const am = tags.amenity ?? "";
+      if (["church", "cathedral", "mosque", "temple", "shrine", "religious", "place_of_worship"].includes(b) || am === "place_of_worship") return "#f5e6c8";
+      if (["school", "university", "college", "kindergarten"].includes(b) || ["school", "university", "college"].includes(am)) return "#d4edda";
+      if (["commercial", "retail", "supermarket", "mall", "shop"].includes(b) || ["marketplace"].includes(am)) return "#cce5ff";
+      if (["industrial", "warehouse", "factory"].includes(b)) return "#e2d9f3";
+      if (["hospital", "clinic", "healthcare"].includes(b) || ["hospital", "clinic", "doctors", "pharmacy"].includes(am)) return "#f8d7da";
+      if (["government", "civic", "public"].includes(b)) return "#fff3cd";
+      if (["hotel", "dormitory"].includes(b) || ["hotel"].includes(am)) return "#ffe5b4";
+      if (b === "garage" || b === "garages") return "#e0e0e0";
+      return "#ddd5c8"; // residential / generic
     }
 
-    // ── Building footprints via Overpass API (loads at zoom ≥ 14) ────────────
-    async function loadBuildings() {
-      const currentZoom = map.getZoom();
-      if (currentZoom < 14) {
-        if (fallbackBuildingLayer.current) {
-          map.removeLayer(fallbackBuildingLayer.current);
-          fallbackBuildingLayer.current = null;
-        }
-        return;
-      }
-      buildingFetchController.current?.abort();
-      const controller = new AbortController();
-      buildingFetchController.current = controller;
-      try {
-        const b = map.getBounds();
-        const bbox = `${b.getSouth().toFixed(5)},${b.getWest().toFixed(5)},${b.getNorth().toFixed(5)},${b.getEast().toFixed(5)}`;
-        const query = `[out:json][timeout:20];(way[building](${bbox});relation[building](${bbox}););out geom;`;
-        const res = await fetch(
-          `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`,
-          { signal: controller.signal },
-        );
-        if (!res.ok || controller.signal.aborted) return;
-        const data = await res.json() as { elements: Array<{ type: string; geometry?: Array<{ lat: number; lon: number }>; tags?: Record<string, string> }> };
-        const features: GeoJSON.Feature[] = data.elements
-          .filter((el) => el.type === "way" && el.geometry && el.geometry.length > 2)
-          .map((el) => ({
-            type: "Feature" as const,
-            properties: { tags: el.tags ?? {} },
-            geometry: {
-              type: "Polygon" as const,
-              coordinates: [el.geometry!.map(({ lat, lon }) => [lon, lat])],
-            },
-          }));
-        if (controller.signal.aborted) return;
-        if (fallbackBuildingLayer.current) map.removeLayer(fallbackBuildingLayer.current);
-        fallbackBuildingLayer.current = L.geoJSON(
-          { type: "FeatureCollection", features },
-          {
-            style: (feature) => {
-              const tags = (feature?.properties?.tags ?? {}) as Record<string, string>;
-              return {
-                color: "#a09080",
-                weight: 0.7,
-                fillColor: buildingColor(tags),
-                fillOpacity: 0.85,
-              };
-            },
-          },
-        ).addTo(map);
-      } catch {
-        // aborted or network error — ignore
-      }
+    // ── Landuse / natural / leisure → colours ────────────────────────────────
+    function landuseColor(tags: Record<string, string>): { fill: string; stroke: string } {
+      const lu = tags.landuse ?? ""; const le = tags.leisure ?? "";
+      const nat = tags.natural ?? ""; const am = tags.amenity ?? "";
+      if (nat === "water" || nat === "wetland" || lu === "reservoir" || lu === "basin") return { fill: "#aad3df", stroke: "#7ab5cc" };
+      if (nat === "beach" || nat === "sand") return { fill: "#fef9c3", stroke: "#e5d77a" };
+      if (["wood", "scrub", "tree_row"].includes(nat) || lu === "forest") return { fill: "#add19e", stroke: "#8ab88a" };
+      if (["park", "garden", "playground", "nature_reserve"].includes(le) || ["park", "grass", "recreation_ground", "village_green", "meadow", "orchard", "allotments"].includes(lu)) return { fill: "#c8e6c9", stroke: "#81c784" };
+      if (lu === "farmland" || lu === "farmyard" || nat === "scrub") return { fill: "#eef0d5", stroke: "#c5c98a" };
+      if (lu === "residential") return { fill: "#f2ede9", stroke: "#e0d8d0" };
+      if (["commercial", "retail"].includes(lu)) return { fill: "#f4e4e4", stroke: "#e0c8c8" };
+      if (lu === "industrial") return { fill: "#e8e0f0", stroke: "#ccc0e0" };
+      if (["school", "university", "college"].includes(am)) return { fill: "#d4edda", stroke: "#a3cfb3" };
+      if (am === "hospital") return { fill: "#fde8ec", stroke: "#f0a0b0" };
+      if (am === "place_of_worship") return { fill: "#fdf3e3", stroke: "#e0c080" };
+      if (["sports_centre", "pitch", "track", "swimming_pool"].includes(le)) return { fill: "#b5d9b5", stroke: "#80b880" };
+      if (lu === "cemetery" || am === "grave_yard") return { fill: "#d9e8cc", stroke: "#aac0a0" };
+      return { fill: "#e8e4de", stroke: "#ccc" };
     }
 
-    // ── Park / landuse / water overlay via Overpass (loads at zoom ≥ 12) ─────
+    // ── POI icon & colour ─────────────────────────────────────────────────────
+    function poiMeta(tags: Record<string, string>): { emoji: string; bg: string } {
+      const am = tags.amenity ?? ""; const sh = tags.shop ?? "";
+      const to = tags.tourism ?? ""; const le = tags.leisure ?? "";
+      const na = tags.natural ?? ""; const hw = tags.highway ?? "";
+      if (am === "restaurant" || am === "food_court") return { emoji: "🍽️", bg: "#fff3e0" };
+      if (am === "cafe") return { emoji: "☕", bg: "#fbe9e7" };
+      if (am === "fast_food") return { emoji: "🍔", bg: "#fff8e1" };
+      if (am === "hospital" || am === "clinic" || am === "doctors") return { emoji: "🏥", bg: "#fce4ec" };
+      if (am === "pharmacy") return { emoji: "💊", bg: "#e8f5e9" };
+      if (am === "school" || am === "kindergarten") return { emoji: "🏫", bg: "#e8f5e9" };
+      if (am === "university" || am === "college") return { emoji: "🎓", bg: "#e3f2fd" };
+      if (am === "place_of_worship") {
+        const rel = tags.religion ?? "";
+        if (rel === "muslim") return { emoji: "🕌", bg: "#f3e5f5" };
+        if (rel === "sikh") return { emoji: "⛪", bg: "#fff3e0" };
+        return { emoji: "🛕", bg: "#fff8e1" };
+      }
+      if (am === "bank" || am === "atm") return { emoji: "🏦", bg: "#e3f2fd" };
+      if (am === "fuel") return { emoji: "⛽", bg: "#fff9c4" };
+      if (am === "police") return { emoji: "👮", bg: "#e8eaf6" };
+      if (am === "post_office") return { emoji: "📮", bg: "#fce4ec" };
+      if (am === "bus_station" || hw === "bus_stop") return { emoji: "🚌", bg: "#e0f7fa" };
+      if (am === "marketplace") return { emoji: "🏪", bg: "#fff3e0" };
+      if (sh === "supermarket" || sh === "mall") return { emoji: "🛒", bg: "#e8f5e9" };
+      if (sh === "clothes" || sh === "fashion") return { emoji: "👗", bg: "#fce4ec" };
+      if (sh) return { emoji: "🛍️", bg: "#fff3e0" };
+      if (to === "hotel" || to === "guest_house") return { emoji: "🏨", bg: "#e3f2fd" };
+      if (to === "museum") return { emoji: "🏛️", bg: "#f3e5f5" };
+      if (to === "attraction" || to === "viewpoint") return { emoji: "📸", bg: "#fff8e1" };
+      if (le === "park" || na === "park") return { emoji: "🌳", bg: "#e8f5e9" };
+      if (le === "playground") return { emoji: "🎠", bg: "#e8f5e9" };
+      if (le === "sports_centre" || le === "pitch") return { emoji: "⚽", bg: "#e8f5e9" };
+      return { emoji: "📍", bg: "#f5f5f5" };
+    }
+
+    // ── Layer loaders ─────────────────────────────────────────────────────────
     async function loadLanduse() {
-      const currentZoom = map.getZoom();
-      if (currentZoom < 12) {
-        if (fallbackLanduseLayer.current) {
-          map.removeLayer(fallbackLanduseLayer.current);
-          fallbackLanduseLayer.current = null;
-        }
+      const z = map.getZoom();
+      if (z < 11) {
+        if (fallbackLanduseLayer.current) { map.removeLayer(fallbackLanduseLayer.current); fallbackLanduseLayer.current = null; }
         return;
       }
       landuseFetchController.current?.abort();
-      const controller = new AbortController();
-      landuseFetchController.current = controller;
+      const ctrl = new AbortController(); landuseFetchController.current = ctrl;
       try {
         const b = map.getBounds();
-        const bbox = `${b.getSouth().toFixed(5)},${b.getWest().toFixed(5)},${b.getNorth().toFixed(5)},${b.getEast().toFixed(5)}`;
-        const query = `[out:json][timeout:20];(
-          way[landuse~"^(park|forest|grass|recreation_ground|village_green|meadow|orchard|farmland|residential|commercial|industrial|retail)$"](${bbox});
-          way[leisure~"^(park|garden|playground|sports_centre|pitch)$"](${bbox});
-          way[natural~"^(wood|scrub|water|wetland|beach)$"](${bbox});
-          way[amenity~"^(school|hospital|university|college|place_of_worship)$"](${bbox});
-        );out geom;`;
-        const res = await fetch(
-          `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`,
-          { signal: controller.signal },
-        );
-        if (!res.ok || controller.signal.aborted) return;
-        const data = await res.json() as { elements: Array<{ type: string; geometry?: Array<{ lat: number; lon: number }>; tags?: Record<string, string> }> };
-
-        function landuseColor(tags: Record<string, string>): { fill: string; stroke: string } {
-          const lu = tags.landuse ?? "";
-          const le = tags.leisure ?? "";
-          const nat = tags.natural ?? "";
-          const am = tags.amenity ?? "";
-          if (nat === "water" || nat === "wetland") return { fill: "#aad3df", stroke: "#7ab5cc" };
-          if (nat === "beach") return { fill: "#fef9c3", stroke: "#e5d77a" };
-          if (["wood", "scrub"].includes(nat) || ["forest"].includes(lu)) return { fill: "#add19e", stroke: "#8ab88a" };
-          if (["park", "garden", "playground"].includes(le) || ["park", "grass", "recreation_ground", "village_green", "meadow", "orchard"].includes(lu)) return { fill: "#c8e6c9", stroke: "#81c784" };
-          if (lu === "farmland") return { fill: "#eef0d5", stroke: "#c5c98a" };
-          if (lu === "residential") return { fill: "#f2ede9", stroke: "#ddd" };
-          if (["commercial", "retail"].includes(lu)) return { fill: "#f4e4e4", stroke: "#ddd" };
-          if (lu === "industrial") return { fill: "#e8e0f0", stroke: "#ddd" };
-          if (["school", "university", "college"].includes(am)) return { fill: "#d4edda", stroke: "#a3cfb3" };
-          if (am === "hospital") return { fill: "#fde8ec", stroke: "#f0a0b0" };
-          if (am === "place_of_worship") return { fill: "#fdf3e3", stroke: "#e0c080" };
-          if (["sports_centre", "pitch"].includes(le)) return { fill: "#b5d9b5", stroke: "#80b880" };
-          return { fill: "#e8e4de", stroke: "#ccc" };
-        }
-
+        const bbox = `${b.getSouth().toFixed(4)},${b.getWest().toFixed(4)},${b.getNorth().toFixed(4)},${b.getEast().toFixed(4)}`;
+        const query = `[out:json][timeout:25];(
+          way[landuse](${bbox});way[leisure~"^(park|garden|playground|sports_centre|pitch|track|swimming_pool|nature_reserve)$"](${bbox});
+          way[natural~"^(wood|scrub|water|wetland|beach|sand|tree_row)$"](${bbox});
+          way[amenity~"^(school|hospital|university|college|place_of_worship|grave_yard|marketplace)$"](${bbox});
+          relation[natural="water"](${bbox});
+        );out geom qt;`;
+        const data = await overpassFetch(query, ctrl.signal) as { elements: OsmElement[] };
+        if (ctrl.signal.aborted) return;
         const features: GeoJSON.Feature[] = data.elements
-          .filter((el) => el.type === "way" && el.geometry && el.geometry.length > 2)
-          .map((el) => ({
+          .filter(el => el.type === "way" && el.geometry && el.geometry.length > 2)
+          .map(el => ({
             type: "Feature" as const,
             properties: { tags: el.tags ?? {} },
-            geometry: {
-              type: "Polygon" as const,
-              coordinates: [el.geometry!.map(({ lat, lon }) => [lon, lat])],
-            },
+            geometry: { type: "Polygon" as const, coordinates: [el.geometry!.map(({ lat, lon }) => [lon, lat])] },
           }));
-        if (controller.signal.aborted) return;
         if (fallbackLanduseLayer.current) map.removeLayer(fallbackLanduseLayer.current);
-        fallbackLanduseLayer.current = L.geoJSON(
-          { type: "FeatureCollection", features },
-          {
-            style: (feature) => {
-              const tags = (feature?.properties?.tags ?? {}) as Record<string, string>;
-              const { fill, stroke } = landuseColor(tags);
-              return { color: stroke, weight: 1, fillColor: fill, fillOpacity: 0.55 };
-            },
-          },
-        ).addTo(map);
-        // Ensure buildings render on top of landuse
+        fallbackLanduseLayer.current = L.geoJSON({ type: "FeatureCollection", features }, {
+          style: (f) => { const { fill, stroke } = landuseColor((f?.properties?.tags ?? {}) as Record<string, string>); return { color: stroke, weight: 1, fillColor: fill, fillOpacity: 0.6 }; },
+        }).addTo(map);
         if (fallbackBuildingLayer.current) fallbackBuildingLayer.current.bringToFront();
-      } catch {
-        // aborted or network error — ignore
-      }
+      } catch { /* aborted / network */ }
     }
 
-    map.on("moveend", () => { void loadLanduse(); void loadBuildings(); });
-    map.on("zoomend", () => { void loadLanduse(); void loadBuildings(); });
+    async function loadBuildings() {
+      const z = map.getZoom();
+      if (z < 13) {
+        if (fallbackBuildingLayer.current) { map.removeLayer(fallbackBuildingLayer.current); fallbackBuildingLayer.current = null; }
+        return;
+      }
+      buildingFetchController.current?.abort();
+      const ctrl = new AbortController(); buildingFetchController.current = ctrl;
+      try {
+        const b = map.getBounds();
+        const bbox = `${b.getSouth().toFixed(4)},${b.getWest().toFixed(4)},${b.getNorth().toFixed(4)},${b.getEast().toFixed(4)}`;
+        const query = `[out:json][timeout:25];(way[building](${bbox}););out geom qt;`;
+        const data = await overpassFetch(query, ctrl.signal) as { elements: OsmElement[] };
+        if (ctrl.signal.aborted) return;
+        const features: GeoJSON.Feature[] = data.elements
+          .filter(el => el.type === "way" && el.geometry && el.geometry.length > 2)
+          .map(el => ({
+            type: "Feature" as const,
+            properties: { tags: el.tags ?? {} },
+            geometry: { type: "Polygon" as const, coordinates: [el.geometry!.map(({ lat, lon }) => [lon, lat])] },
+          }));
+        if (fallbackBuildingLayer.current) map.removeLayer(fallbackBuildingLayer.current);
+        fallbackBuildingLayer.current = L.geoJSON({ type: "FeatureCollection", features }, {
+          style: (f) => {
+            const tags = (f?.properties?.tags ?? {}) as Record<string, string>;
+            return { color: "#8a7a6a", weight: 0.8, fillColor: buildingColor(tags), fillOpacity: 0.88 };
+          },
+        }).addTo(map);
+        if (fallbackPoiLayer.current) fallbackPoiLayer.current.bringToFront();
+      } catch { /* aborted / network */ }
+    }
+
+    async function loadPOIs() {
+      const z = map.getZoom();
+      if (z < 14) {
+        if (fallbackPoiLayer.current) { map.removeLayer(fallbackPoiLayer.current); fallbackPoiLayer.current = null; }
+        return;
+      }
+      poiFetchController.current?.abort();
+      const ctrl = new AbortController(); poiFetchController.current = ctrl;
+      try {
+        const b = map.getBounds();
+        const bbox = `${b.getSouth().toFixed(4)},${b.getWest().toFixed(4)},${b.getNorth().toFixed(4)},${b.getEast().toFixed(4)}`;
+        const query = `[out:json][timeout:25];(
+          node[amenity~"^(restaurant|cafe|fast_food|hospital|clinic|doctors|pharmacy|school|university|college|kindergarten|place_of_worship|bank|atm|fuel|police|post_office|bus_station|marketplace|grave_yard)$"](${bbox});
+          node[shop~"^(supermarket|mall|clothes|fashion|grocery|bakery|electronics)$"](${bbox});
+          node[tourism~"^(hotel|guest_house|museum|attraction|viewpoint)$"](${bbox});
+          node[leisure~"^(park|playground|sports_centre)$"](${bbox});
+          node[highway="bus_stop"](${bbox});
+        );out body qt;`;
+        const data = await overpassFetch(query, ctrl.signal) as { elements: OsmElement[] };
+        if (ctrl.signal.aborted) return;
+        const group = L.layerGroup();
+        data.elements
+          .filter(el => el.type === "node" && el.lat != null && el.lon != null)
+          .slice(0, 300) // cap at 300 POIs to avoid DOM overload
+          .forEach(el => {
+            const tags = el.tags ?? {};
+            const name = tags.name ?? tags["name:en"] ?? "";
+            const { emoji, bg } = poiMeta(tags);
+            const icon = L.divIcon({
+              html: `<div style="background:${bg};border:1.5px solid rgba(0,0,0,0.18);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 1px 4px rgba(0,0,0,0.25);line-height:1;">${emoji}</div>`,
+              iconSize: [22, 22], iconAnchor: [11, 11], className: "",
+            });
+            const marker = L.marker([el.lat!, el.lon!], { icon }).addTo(group);
+            if (name) marker.bindTooltip(name, { permanent: false, direction: "top", offset: [0, -12], className: "leaflet-poi-tooltip" });
+          });
+        if (fallbackPoiLayer.current) map.removeLayer(fallbackPoiLayer.current);
+        fallbackPoiLayer.current = group;
+        group.addTo(map);
+      } catch { /* aborted / network */ }
+    }
+
+    // Debounced refresh — fires all three loaders after 350 ms idle
+    function scheduleRefresh() {
+      if (overpassDebounce.current) clearTimeout(overpassDebounce.current);
+      overpassDebounce.current = setTimeout(() => {
+        void loadLanduse();
+        void loadBuildings();
+        void loadPOIs();
+      }, 350);
+    }
+
+    map.on("moveend", scheduleRefresh);
+    map.on("zoomend", scheduleRefresh);
     // Initial load
-    setTimeout(() => { void loadLanduse(); void loadBuildings(); }, 400);
+    setTimeout(scheduleRefresh, 500);
+
+    // Add tooltip CSS once
+    if (!document.getElementById("leaflet-poi-tooltip-css")) {
+      const s = document.createElement("style");
+      s.id = "leaflet-poi-tooltip-css";
+      s.textContent = `.leaflet-poi-tooltip{background:rgba(30,30,30,0.85);color:#fff;border:none;border-radius:6px;font-size:11px;padding:3px 7px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3)}.leaflet-poi-tooltip::before{display:none}`;
+      document.head.appendChild(s);
+    }
 
     fallbackMapRef.current = map;
     return () => {
+      if (overpassDebounce.current) clearTimeout(overpassDebounce.current);
       buildingFetchController.current?.abort();
       landuseFetchController.current?.abort();
+      poiFetchController.current?.abort();
       fallbackMarkerRefs.current.forEach((marker) => marker.remove());
       fallbackMarkerRefs.current = [];
-      if (fallbackBuildingLayer.current) {
-        map.removeLayer(fallbackBuildingLayer.current);
-        fallbackBuildingLayer.current = null;
-      }
-      if (fallbackLanduseLayer.current) {
-        map.removeLayer(fallbackLanduseLayer.current);
-        fallbackLanduseLayer.current = null;
-      }
+      if (fallbackBuildingLayer.current) { map.removeLayer(fallbackBuildingLayer.current); fallbackBuildingLayer.current = null; }
+      if (fallbackLanduseLayer.current) { map.removeLayer(fallbackLanduseLayer.current); fallbackLanduseLayer.current = null; }
+      if (fallbackPoiLayer.current) { map.removeLayer(fallbackPoiLayer.current); fallbackPoiLayer.current = null; }
       map.remove();
       fallbackMapRef.current = null;
     };
@@ -492,7 +570,20 @@ export function IndiaMap({
     });
   }, [markers, userLocation, useLeafletFallback]);
 
-  return <div ref={containerRef} className={`overflow-hidden rounded-xl ${className}`} aria-label="India map" />;
+  return (
+    <div className={`relative overflow-hidden rounded-xl ${className}`} aria-label="India map">
+      <div ref={containerRef} className="absolute inset-0" />
+      {/* Zoom-in hint — disappears once buildings are visible (zoom ≥ 13) */}
+      {currentZoom < 13 && (
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-[600] pointer-events-none">
+          <div className="flex items-center gap-1.5 bg-black/70 text-white text-xs font-medium px-3 py-1.5 rounded-full shadow-lg backdrop-blur-sm whitespace-nowrap">
+            <span>🔍</span>
+            <span>Zoom in to see buildings, shops &amp; POIs</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function escapeHtml(value: string) {
