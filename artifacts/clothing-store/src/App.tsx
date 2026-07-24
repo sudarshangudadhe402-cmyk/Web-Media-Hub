@@ -182,15 +182,8 @@ function CreateStoreRoute() {
 }
 
 function Router() {
-  // When running as the shopping-page artifact (VITE_IS_SHOPPING_PAGE=true),
-  // show FindStores at root so the artifact opens directly without any redirect tricks.
-  const isShoppingPageArtifact = import.meta.env.VITE_IS_SHOPPING_PAGE === "true";
-
   return (
     <Switch>
-      {isShoppingPageArtifact && (
-        <Route path="/" component={FindStores} />
-      )}
       <Route path="/login" component={Login} />
       <Route path="/create-store" component={CreateStoreRoute} />
       <Route path="/plan-renewal">

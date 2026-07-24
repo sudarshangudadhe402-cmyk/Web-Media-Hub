@@ -11,29 +11,12 @@ const port = rawPort && !Number.isNaN(Number(rawPort)) && Number(rawPort) > 0
 
 const basePath = process.env.BASE_PATH ?? "/";
 
-// Plugin: when running as the shopping-page artifact (VITE_IS_SHOPPING_PAGE=true),
-// swap main.tsx → shopping-main.tsx in index.html so the app starts
-// directly on FindStores with no router, no auth, no login possible.
-// NOTE: this must be driven by an explicit env var, NOT by port number,
-// so it works correctly in both dev and production builds.
-const isShoppingPage = process.env.VITE_IS_SHOPPING_PAGE === "true";
-
-function shoppingPagePlugin() {
-  return {
-    name: "shopping-page-entry",
-    transformIndexHtml(html: string) {
-      return html.replace("/src/main.tsx", "/src/shopping-main.tsx");
-    },
-  };
-}
-
 export default defineConfig({
   base: basePath,
   plugins: [
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
-    ...(isShoppingPage ? [shoppingPagePlugin()] : []),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
