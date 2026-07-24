@@ -1,7 +1,27 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Search, MapPin, Navigation, X, ChevronDown, Star, AlertCircle, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
-import { IndiaMap, INDIA_CENTER, isIndiaCoordinate } from "@/components/india-map";
+import { INDIA_CENTER, isIndiaCoordinate } from "@/components/india-map";
+
+// ─── Google Maps iframe embed (same as super-admin) ───────────────────────────
+function GoogleMapEmbed({ lat, lng, zoom }: { lat: number; lng: number; zoom: number }) {
+  const src =
+    `https://maps.google.com/maps?q=${lat},${lng}&t=m&z=${zoom}` +
+    `&ll=${lat},${lng}&ie=UTF8&iwloc=&output=embed`;
+  return (
+    <iframe
+      key={`${lat}-${lng}-${zoom}`}
+      src={src}
+      width="100%"
+      height="100%"
+      style={{ border: 0, display: "block" }}
+      allowFullScreen
+      loading="lazy"
+      referrerPolicy="no-referrer-when-downgrade"
+      title="India Store Map"
+    />
+  );
+}
 
 // ─── Inject pulse animation CSS once ─────────────────────────────────────────
 if (typeof document !== "undefined" && !document.getElementById("fs-map-css")) {
@@ -501,37 +521,14 @@ export default function FindStores() {
 
       {/* ── Full-width map with overlaid search + categories ─────────────── */}
       <div className="relative w-full h-[55vh] min-h-[260px] max-h-[480px]">
-        {/* Map fills the entire block */}
-        <IndiaMap
-          center={mapCenter}
-          zoom={mapZoom}
-          interactive={mapClickEnabled}
-          onPick={handleMapLocationPick}
-          onInvalidPick={() => setLocationError("India locations only")}
-          userLocation={userLocation ? [userLocation.lat, userLocation.lng] : null}
-          markers={stores.map((store) => {
-            const isNearby = userLocation
-              ? store.distance !== null && store.distance <= radius
-              : false;
-            return {
-              id: store.id,
-              lat: store.latitude,
-              lng: store.longitude,
-              title: store.name,
-              description: [
-                store.category,
-                store.distance !== null
-                  ? store.distance < 1
-                    ? `${Math.round(store.distance * 1000)} m away`
-                    : `${store.distance} km away`
-                  : null,
-                store.isOpen ? "Open" : "Closed",
-              ].filter(Boolean).join(" · "),
-              color: isNearby ? "#16a34a" : "#7c3aed",
-            };
-          })}
-          className="absolute inset-0 w-full h-full rounded-none"
-        />
+        {/* Map fills the entire block — Google Maps iframe (same as super-admin) */}
+        <div className="absolute inset-0 w-full h-full">
+          <GoogleMapEmbed
+            lat={mapCenter[1]}
+            lng={mapCenter[0]}
+            zoom={mapZoom}
+          />
+        </div>
 
         {/* ── Top overlaid controls: search + categories ───────────────── */}
         <div className="absolute inset-x-0 top-0 z-[500] pointer-events-none">
