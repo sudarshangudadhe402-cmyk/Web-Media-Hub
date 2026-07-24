@@ -95,15 +95,19 @@ function getStyle() {
 
 function addIndiaMask(map: Map) {
   if (map.getSource("india-mask")) return;
+  // GeoJSON spec: exterior ring must be CCW (counterclockwise), holes must be CW.
+  // INDIA_BOUNDARY traverses clockwise (NW Kashmir → east coast south → west coast north → back),
+  // so it is already CW → valid hole without reversing.
+  // Outer ring: SW→SE→NE→NW = counterclockwise.
   const outer: [number, number][] = [
-    [-180, 90], [180, 90], [180, -90], [-180, -90], [-180, 90],
+    [55, -5], [115, -5], [115, 50], [55, 50], [55, -5],
   ];
   map.addSource("india-mask", {
     type: "geojson",
     data: {
       type: "Feature",
       properties: {},
-      geometry: { type: "Polygon", coordinates: [outer, [...INDIA_BOUNDARY, INDIA_BOUNDARY[0]].reverse()] },
+      geometry: { type: "Polygon", coordinates: [outer, [...INDIA_BOUNDARY, INDIA_BOUNDARY[0]]] },
     },
   });
   map.addLayer({
@@ -243,7 +247,7 @@ export function IndiaMap({
       keepBuffer: 8,
     }).addTo(map);
     const outerRing: [number, number][] = [
-      [-90, -180], [-90, 180], [90, 180], [90, -180], [-90, -180],
+      [-5, 55], [50, 55], [50, 115], [-5, 115], [-5, 55],
     ];
     L.polygon(
       [outerRing, INDIA_BOUNDARY.map(([lng, lat]) => [lat, lng] as [number, number]).reverse()],
