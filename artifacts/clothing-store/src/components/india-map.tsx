@@ -89,8 +89,8 @@ interface IndiaMapProps {
 function getStyle() {
   const key = import.meta.env.VITE_MAPTILER_API_KEY as string | undefined;
   if (key) return `https://api.maptiler.com/maps/streets-v2/style.json?key=${encodeURIComponent(key)}`;
-  // OpenFreeMap: free vector tiles with building footprints, roads, labels — no API key needed
-  return "https://tiles.openfreemap.org/styles/liberty";
+  // OpenFreeMap bright: vivid road colours, green parks, blue water — closest to Google Maps feel
+  return "https://tiles.openfreemap.org/styles/bright";
 }
 
 function addIndiaMask(map: Map) {
@@ -215,9 +215,11 @@ export function IndiaMap({
       markerZoomAnimation: false,
     }).setView([center[1], center[0]], zoom);
     if (showNavigation) L.control.zoom({ position: "bottomleft" }).addTo(map);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap contributors",
-      subdomains: ["a", "b", "c"],
+    // CartoDB Voyager: closest free alternative to Google Maps — coloured roads,
+    // green parks, blue water, clear labels, no API key needed.
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: ["a", "b", "c", "d"],
       maxZoom: 19,
       updateWhenZooming: true,
       updateWhenIdle: false,
@@ -342,13 +344,19 @@ export function IndiaMap({
     ];
     allMarkers.forEach((item) => {
       if (fallbackMap) {
-        const marker = L.circleMarker([item.lat, item.lng], {
-          radius: item.id === "user-location" ? 7 : 8,
-          color: "#fff",
-          weight: 2,
-          fillColor: item.color ?? "#7c3aed",
-          fillOpacity: 1,
-        }).addTo(fallbackMap);
+        // Use a divIcon with teardrop SVG so Leaflet fallback matches MapLibre pins
+        const pinColor = (item.color ?? "#7c3aed").replace("#", "%23");
+        const isUser = item.id === "user-location";
+        const iconHtml = isUser
+          ? `<div style="width:16px;height:16px;border-radius:50%;background:#3b82f6;border:3px solid white;box-shadow:0 0 0 3px rgba(59,130,246,0.35);"></div>`
+          : `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 28 36"><path d="M14 0C6.268 0 0 6.268 0 14c0 9.5 14 22 14 22S28 23.5 28 14C28 6.268 21.732 0 14 0z" fill="${pinColor}"/><circle cx="14" cy="14" r="6" fill="white" opacity="0.9"/></svg>`;
+        const icon = L.divIcon({
+          html: iconHtml,
+          iconSize: isUser ? [16, 16] : [24, 32],
+          iconAnchor: isUser ? [8, 8] : [12, 32],
+          className: "",
+        });
+        const marker = L.marker([item.lat, item.lng], { icon }).addTo(fallbackMap);
         if (item.title || item.description) {
           marker.bindPopup(
             `<strong>${escapeHtml(item.title ?? "")}</strong>${item.description ? `<br/><span>${escapeHtml(item.description)}</span>` : ""}`,
@@ -358,7 +366,10 @@ export function IndiaMap({
         return;
       }
       const element = document.createElement("div");
-      element.style.cssText = `width:18px;height:18px;border-radius:50%;background:${item.color ?? "#7c3aed"};border:3px solid white;box-shadow:0 1px 7px rgba(0,0,0,.4);`;
+      // Teardrop SVG pin — same look as Google Maps / Apple Maps
+      const pinColor = encodeURIComponent(item.color ?? "#7c3aed");
+      element.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36"><path d="M14 0C6.268 0 0 6.268 0 14c0 9.5 14 22 14 22S28 23.5 28 14C28 6.268 21.732 0 14 0z" fill="${pinColor}"/><circle cx="14" cy="14" r="6" fill="white" opacity="0.9"/></svg>`;
+      element.style.cssText = "width:28px;height:36px;cursor:pointer;transform:translate(-50%,-100%);filter:drop-shadow(0 2px 4px rgba(0,0,0,0.35));";
       if (!map) return;
       const marker = new maplibregl.Marker({ element }).setLngLat([item.lng, item.lat]).addTo(map);
       if (item.title || item.description) {
