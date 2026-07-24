@@ -15,6 +15,7 @@ export interface CustomerChatProps {
   customerId: string;
   customerName: string;
   onClose: () => void;
+  initialMessage?: string;
 }
 
 // ── Double-tick SVG ───────────────────────────────────────────────────────────
@@ -45,12 +46,13 @@ export default function CustomerChat({
   storeName,
   customerId,
   onClose,
+  initialMessage = "",
 }: CustomerChatProps) {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [initLoading, setInitLoading] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
-  const [msgText, setMsgText] = useState("");
+  const [msgText, setMsgText] = useState(initialMessage);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [longPressId, setLongPressId] = useState<string | null>(null);

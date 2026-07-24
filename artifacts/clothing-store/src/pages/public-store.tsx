@@ -14,6 +14,7 @@ import ShopTab from "@/components/store/ShopTab";
 import MyBookingTab from "@/components/store/MyBookingTab";
 import CartTab from "@/components/store/CartTab";
 import ProfileTab, { type CustomerAccountInfo } from "@/components/store/ProfileTab";
+import CustomerChat from "@/components/chat/CustomerChat";
 
 interface PublicProduct {
   id: string;
@@ -191,6 +192,8 @@ export default function PublicStore() {
   const [signInError, setSignInError] = useState<string | null>(null);
   const [otpError, setOtpError] = useState<string | null>(null);
   const [showAccountFieldsPopup, setShowAccountFieldsPopup] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatInitialMessage, setChatInitialMessage] = useState("");
 
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
@@ -856,6 +859,17 @@ export default function PublicStore() {
 
     return (
       <div key={selectedProduct.id} className="fixed inset-0 z-50 flex flex-col" style={{ background: "#ffffff", fontFamily: "'Inter', sans-serif" }}>
+        {/* In-app chat overlay */}
+        {chatOpen && customerAccount && (
+          <CustomerChat
+            storeSlug={data.publicSlug}
+            storeName={data.name}
+            customerId={customerAccount.id}
+            customerName={customerAccount.name}
+            initialMessage={chatInitialMessage}
+            onClose={() => { setChatOpen(false); setChatInitialMessage(""); }}
+          />
+        )}
         <div className="flex items-center gap-2 px-3 py-3 sticky top-0 z-20 border-b" style={{ background: "#ffffff", borderColor: "#f0f0f0" }}>
           <button onClick={goBack} className="p-1.5 rounded-full hover:bg-gray-100 transition-colors">
             <ChevronLeft className="w-5 h-5 text-gray-900" />
@@ -942,13 +956,25 @@ export default function PublicStore() {
             </div>
           )}
 
-          {productWaLink && (
-            <div className="px-4 py-3 border-t" style={{ borderColor: "#f0f0f0" }}>
-              <a href={productWaLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 font-bold py-3 px-4 rounded-2xl w-full justify-center text-sm" style={{ background: "#25D366", color: "white" }}>
-                <MessageCircle className="w-4 h-4" />Ask on WhatsApp
-              </a>
-            </div>
-          )}
+          <div className="px-4 py-3 border-t" style={{ borderColor: "#f0f0f0" }}>
+            <button
+              onClick={() => {
+                if (!customerAccount) {
+                  setView("browse");
+                  setTab("profile");
+                } else {
+                  const msg = `Hello ${data.name}!\n\nI'm interested in your product:\n\n📦 ${selectedProduct.name}\n💰 ₹${selectedProduct.discountPrice.toLocaleString()}\n🏷️ ${selectedProduct.productType}\n\nCan you confirm my interest? ☺️`;
+                  setChatInitialMessage(msg);
+                  setChatOpen(true);
+                }
+              }}
+              className="flex items-center gap-2 font-bold py-3 px-4 rounded-2xl w-full justify-center text-sm transition-all active:opacity-80"
+              style={{ background: "#1a1a1a", color: "white" }}
+            >
+              <MessageCircle className="w-4 h-4" />
+              {customerAccount ? "Chat with Store" : "Login to Chat with Store"}
+            </button>
+          </div>
 
           {relatedProducts.length > 0 && (
             <div className="pb-4 border-t" style={{ borderColor: "#f0f0f0" }}>

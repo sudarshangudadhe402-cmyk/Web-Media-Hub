@@ -25,6 +25,7 @@ import DemoStore from "@/pages/demo-store";
 import PartnershipPage from "@/pages/partnership";
 import PlanRenewal from "@/pages/plan-renewal";
 import FindStores from "@/pages/find-stores";
+import CustomerChatPage from "@/pages/customer-chat";
 import { Layout } from "@/components/layout";
 
 const queryClient = new QueryClient();
@@ -225,6 +226,9 @@ function Router() {
       </Route>
       <Route path="/sales-ledger">
         {() => <ProtectedRoute component={SalesLedger} />}
+      </Route>
+      <Route path="/customer-chat">
+        {() => <ProtectedRoute component={CustomerChatPage} />}
       </Route>
       <Route path="/demo" component={DemoStore} />
       <Route path="/shoping-page" component={FindStores} />

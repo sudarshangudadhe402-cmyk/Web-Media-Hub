@@ -1,5 +1,6 @@
-import { MapPin, Clock, CalendarDays, ShoppingBag, Phone, User, LogOut, Loader2, AlertCircle, Eye, EyeOff, Mail, CheckCircle2, Navigation } from "lucide-react";
+import { MapPin, Clock, CalendarDays, ShoppingBag, Phone, User, LogOut, Loader2, AlertCircle, Eye, EyeOff, Mail, CheckCircle2, Navigation, MessageCircle } from "lucide-react";
 import { useState } from "react";
+import CustomerChat from "@/components/chat/CustomerChat";
 
 interface StoreData {
   id: string;
@@ -56,6 +57,7 @@ export default function ProfileTab({
     ? `https://wa.me/${data.whatsappNumber.replace(/\D/g, "")}`
     : null;
 
+  const [chatOpen, setChatOpen] = useState(false);
   const [accountTab, setAccountTab] = useState<"signup" | "signin">("signup");
   const [accountSectionOpen, setAccountSectionOpen] = useState(false);
 
@@ -144,6 +146,17 @@ export default function ProfileTab({
 
   return (
     <div className="flex-1 overflow-y-auto pb-24" style={{ background: "#f8f8f8" }}>
+
+      {/* In-app chat overlay */}
+      {chatOpen && customerAccount && (
+        <CustomerChat
+          storeSlug={data.publicSlug}
+          storeName={data.name}
+          customerId={customerAccount.id}
+          customerName={customerAccount.name}
+          onClose={() => setChatOpen(false)}
+        />
+      )}
 
       {/* ── ACCOUNT SECTION ── */}
       <div className="px-4 pt-4 mb-4">
@@ -541,6 +554,24 @@ export default function ProfileTab({
                 </div>
               </div>
             )}
+            {/* Chat with Store button */}
+            <div className="px-4 py-3.5 border-t" style={{ borderColor: "#f5f5f5" }}>
+              <button
+                onClick={() => {
+                  if (!customerAccount) {
+                    setAccountSectionOpen(true);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  } else {
+                    setChatOpen(true);
+                  }
+                }}
+                className="w-full flex items-center gap-2.5 justify-center font-bold py-3 rounded-2xl text-sm transition-all active:opacity-80"
+                style={{ background: "linear-gradient(135deg, #1a1a1a, #333)", color: "white", boxShadow: "0 4px 14px rgba(0,0,0,0.15)" }}
+              >
+                <MessageCircle className="w-4 h-4" />
+                {customerAccount ? "Chat with Store" : "Login to Chat with Store"}
+              </button>
+            </div>
           </div>
         </div>
 
