@@ -48,18 +48,6 @@ function GoogleMapEmbed({ lat, lng, zoom }: { lat: number; lng: number; zoom: nu
   );
 }
 
-// ─── Inject pulse animation CSS once ─────────────────────────────────────────
-if (typeof document !== "undefined" && !document.getElementById("fs-map-css")) {
-  const s = document.createElement("style");
-  s.id = "fs-map-css";
-  s.textContent = `
-    @keyframes fs-pulse { 0% { transform:scale(1); opacity:0.7; } 100% { transform:scale(2.8); opacity:0; } }
-    .fs-pulse-ring { position:absolute; inset:0; border-radius:50%; background:rgba(59,130,246,0.45); animation:fs-pulse 2s ease-out infinite; }
-    .fs-loc-dot { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:13px; height:13px; border-radius:50%; background:#3b82f6; border:2.5px solid white; box-shadow:0 0 0 2px rgba(59,130,246,0.4); }
-  `;
-  document.head.appendChild(s);
-}
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface DiscoveredStore {
@@ -345,7 +333,6 @@ export default function FindStores() {
 
   // UI state
   const [showMoreSheet, setShowMoreSheet] = useState(false);
-  const [mapClickEnabled, setMapClickEnabled] = useState(false);
 
   // Data state
   const [categories, setCategories] = useState<string[]>([]);
@@ -389,12 +376,11 @@ export default function FindStores() {
   // ── Request user location (two-attempt: high-accuracy → low-accuracy fallback) ──
   const requestLocation = useCallback(() => {
     if (!navigator.geolocation) {
-      setLocationError("tap-map"); // triggers map-click mode
+      setLocationError("GPS support nahi hai is device mein");
       return;
     }
     setLocationLoading(true);
     setLocationError(null);
-    setMapClickEnabled(false);
 
     // First attempt: high accuracy (GPS), 8 s timeout
     navigator.geolocation.getCurrentPosition(
@@ -406,7 +392,6 @@ export default function FindStores() {
         }
         setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setLocationLoading(false);
-        setMapClickEnabled(false);
       },
       () => {
         // High-accuracy failed → retry with low accuracy (network/IP-based), 6 s
@@ -419,32 +404,16 @@ export default function FindStores() {
             }
             setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
             setLocationLoading(false);
-            setMapClickEnabled(false);
           },
-          (err) => {
+          () => {
             setLocationLoading(false);
-            if (err.code === 1) {
-              // Permission denied — can't retry, offer map-click
-              setLocationError("tap-map");
-              setMapClickEnabled(true);
-            } else {
-              // Position unavailable or timeout — offer map-click as fallback
-              setLocationError("tap-map");
-              setMapClickEnabled(true);
-            }
+            setLocationError("Location nahi mila. Please allow location access.");
           },
           { enableHighAccuracy: false, timeout: 6000, maximumAge: 60000 }
         );
       },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
     );
-  }, []);
-
-  /** Called when user taps the map to manually pin their location */
-  const handleMapLocationPick = useCallback((lat: number, lng: number) => {
-    setUserLocation({ lat, lng });
-    setMapClickEnabled(false);
-    setLocationError(null);
   }, []);
 
   // ── Fetch stores ─────────────────────────────────────────────────────────
@@ -618,21 +587,7 @@ export default function FindStores() {
             {locationError && (
               <div className="flex items-start gap-2 bg-amber-50/95 backdrop-blur-sm border border-amber-200 rounded-xl px-3 py-2.5 shadow-sm">
                 <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                {locationError === "tap-map" ? (
-                  <div className="flex-1">
-                    <p className="text-xs text-amber-700 leading-relaxed">
-                      GPS nahi mila. Map par tap karke apni location set karein.
-                    </p>
-                    <button
-                      onClick={() => setMapClickEnabled((v) => !v)}
-                      className={`mt-1 text-xs font-bold underline ${mapClickEnabled ? "text-violet-700" : "text-amber-700"}`}
-                    >
-                      {mapClickEnabled ? "✓ Tap mode active" : "Tap map to set location →"}
-                    </button>
-                  </div>
-                ) : (
-                  <p className="text-xs text-amber-700 leading-relaxed">{locationError}</p>
-                )}
+                <p className="text-xs text-amber-700 leading-relaxed">{locationError}</p>
               </div>
             )}
           </div>
@@ -654,14 +609,6 @@ export default function FindStores() {
           </button>
         </div>
 
-        {/* Tap-to-set-location center hint */}
-        {mapClickEnabled && (
-          <div className="absolute inset-0 z-[499] pointer-events-none flex items-center justify-center">
-            <div className="bg-violet-700/90 text-white text-xs font-semibold px-4 py-2 rounded-full shadow-lg backdrop-blur-sm animate-pulse mt-24">
-              📍 Map par tap karein — apni location set karein
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ── Stores section ─────────────────────────────────────────────── */}
