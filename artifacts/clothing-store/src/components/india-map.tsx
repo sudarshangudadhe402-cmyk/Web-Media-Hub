@@ -125,11 +125,19 @@ function addIndiaMask(map: Map) {
       geometry: { type: "Polygon", coordinates: [[...INDIA_BOUNDARY, INDIA_BOUNDARY[0]]] },
     },
   });
+  // Dotted circles: dasharray [0, gap] with round cap turns every "dash"
+  // into a perfect circle — no jagged corners at sharp boundary turns.
   map.addLayer({
     id: "india-boundary-line",
     type: "line",
     source: "india-boundary",
-    paint: { "line-color": "#7c3aed", "line-width": 2, "line-opacity": 0.85 },
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: {
+      "line-color": "#7c3aed",
+      "line-width": 4,
+      "line-opacity": 0.9,
+      "line-dasharray": [0, 1.6],
+    },
   });
 }
 
@@ -235,9 +243,11 @@ export function IndiaMap({
       [outerRing, INDIA_BOUNDARY.map(([lng, lat]) => [lat, lng] as [number, number]).reverse()],
       { stroke: false, fillColor: "#f8fafc", fillOpacity: 0 },
     ).addTo(map);
-    L.polygon(
-      INDIA_BOUNDARY.map(([lng, lat]) => [lat, lng] as [number, number]),
-      { color: "#7c3aed", weight: 2, fill: false },
+    // dashArray "1 10" + lineCap round = circular dots along the border.
+    // Round caps mean every dot is a perfect circle regardless of turn angle.
+    L.polyline(
+      [...INDIA_BOUNDARY, INDIA_BOUNDARY[0]].map(([lng, lat]) => [lat, lng] as [number, number]),
+      { color: "#7c3aed", weight: 4, fill: false, dashArray: "1 10", lineCap: "round", lineJoin: "round", opacity: 0.9 },
     ).addTo(map);
     if (interactive && onPick) {
       map.on("click", (event) => {
