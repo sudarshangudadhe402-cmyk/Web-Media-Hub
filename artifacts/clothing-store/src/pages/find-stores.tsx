@@ -4,22 +4,47 @@ import { useLocation } from "wouter";
 import { INDIA_CENTER, isIndiaCoordinate } from "@/components/india-map";
 
 // ─── Google Maps iframe embed (same as super-admin) ───────────────────────────
+// touch-action:none on the wrapper + preventDefault on touchmove stops the
+// browser from starting a page-scroll gesture inside the map area, so Google
+// Maps can handle single-finger pan without showing the "Use two fingers" overlay.
 function GoogleMapEmbed({ lat, lng, zoom }: { lat: number; lng: number; zoom: number }) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    const prevent = (e: TouchEvent) => e.preventDefault();
+    el.addEventListener("touchmove", prevent, { passive: false });
+    el.addEventListener("touchstart", prevent, { passive: false });
+    return () => {
+      el.removeEventListener("touchmove", prevent);
+      el.removeEventListener("touchstart", prevent);
+    };
+  }, []);
+
   const src =
     `https://maps.google.com/maps?q=${lat},${lng}&t=m&z=${zoom}` +
     `&ll=${lat},${lng}&ie=UTF8&iwloc=&output=embed`;
   return (
-    <iframe
-      key={`${lat}-${lng}-${zoom}`}
-      src={src}
-      width="100%"
-      height="100%"
-      style={{ border: 0, display: "block" }}
-      allowFullScreen
-      loading="lazy"
-      referrerPolicy="no-referrer-when-downgrade"
-      title="India Store Map"
-    />
+    <div
+      ref={wrapperRef}
+      style={{ width: "100%", height: "100%", touchAction: "none" }}
+    >
+      <iframe
+        key={`${lat}-${lng}-${zoom}`}
+        src={src}
+        width="100%"
+        height="100%"
+        style={{ border: 0, display: "block" }}
+        allowFullScreen
+        // scrolling="no" signals to Google Maps that the embed is not inside a
+        // scrollable container, disabling the cooperative-gesture requirement.
+        scrolling="no"
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+        title="India Store Map"
+      />
+    </div>
   );
 }
 
