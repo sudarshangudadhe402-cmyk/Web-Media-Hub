@@ -149,7 +149,9 @@ export function IndiaMap({
   const fallbackMapRef = useRef<L.Map | null>(null);
   const fallbackMarkerRefs = useRef<L.Layer[]>([]);
   const fallbackBuildingLayer = useRef<L.GeoJSON | null>(null);
+  const fallbackLanduseLayer = useRef<L.GeoJSON | null>(null);
   const buildingFetchController = useRef<AbortController | null>(null);
+  const landuseFetchController = useRef<AbortController | null>(null);
   const markerRefs = useRef<Marker[]>([]);
   const popupRefs = useRef<Popup[]>([]);
   const [useLeafletFallback, setUseLeafletFallback] = useState(false);
@@ -215,11 +217,11 @@ export function IndiaMap({
       markerZoomAnimation: false,
     }).setView([center[1], center[0]], zoom);
     if (showNavigation) L.control.zoom({ position: "bottomleft" }).addTo(map);
-    // CartoDB Voyager: closest free alternative to Google Maps — coloured roads,
-    // green parks, blue water, clear labels, no API key needed.
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: ["a", "b", "c", "d"],
+    // OpenStreetMap standard: maximum free detail — building outlines, parks,
+    // water, POI icons, residential/commercial colour zones, village labels.
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      subdomains: ["a", "b", "c"],
       maxZoom: 19,
       updateWhenZooming: true,
       updateWhenIdle: false,
@@ -247,10 +249,21 @@ export function IndiaMap({
       });
     }
 
-    // ── Building footprints via Overpass API ─────────────────────────────────
+    // ── Building type → fill colour (mirrors Google/Apple Maps palette) ────────
+    function buildingColor(tags: Record<string, string>): string {
+      const use = tags.building ?? "";
+      if (["church", "cathedral", "mosque", "temple", "shrine", "religious"].includes(use)) return "#f5e6c8";
+      if (["school", "university", "college", "kindergarten"].includes(use)) return "#d4edda";
+      if (["commercial", "retail", "supermarket", "mall"].includes(use)) return "#cce5ff";
+      if (["industrial", "warehouse", "factory"].includes(use)) return "#e2d9f3";
+      if (["hospital", "clinic"].includes(use)) return "#f8d7da";
+      return "#ddd5c8"; // residential / generic — warm sandstone
+    }
+
+    // ── Building footprints via Overpass API (loads at zoom ≥ 14) ────────────
     async function loadBuildings() {
       const currentZoom = map.getZoom();
-      if (currentZoom < 15) {
+      if (currentZoom < 14) {
         if (fallbackBuildingLayer.current) {
           map.removeLayer(fallbackBuildingLayer.current);
           fallbackBuildingLayer.current = null;
@@ -263,7 +276,7 @@ export function IndiaMap({
       try {
         const b = map.getBounds();
         const bbox = `${b.getSouth().toFixed(5)},${b.getWest().toFixed(5)},${b.getNorth().toFixed(5)},${b.getEast().toFixed(5)}`;
-        const query = `[out:json][timeout:15];(way[building](${bbox}););out geom;`;
+        const query = `[out:json][timeout:20];(way[building](${bbox});relation[building](${bbox}););out geom;`;
         const res = await fetch(
           `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`,
           { signal: controller.signal },
@@ -285,12 +298,15 @@ export function IndiaMap({
         fallbackBuildingLayer.current = L.geoJSON(
           { type: "FeatureCollection", features },
           {
-            style: () => ({
-              color: "#b0a898",
-              weight: 0.8,
-              fillColor: "#d9d0c8",
-              fillOpacity: 0.7,
-            }),
+            style: (feature) => {
+              const tags = (feature?.properties?.tags ?? {}) as Record<string, string>;
+              return {
+                color: "#a09080",
+                weight: 0.7,
+                fillColor: buildingColor(tags),
+                fillOpacity: 0.85,
+              };
+            },
           },
         ).addTo(map);
       } catch {
@@ -298,19 +314,102 @@ export function IndiaMap({
       }
     }
 
-    map.on("moveend", loadBuildings);
-    map.on("zoomend", loadBuildings);
+    // ── Park / landuse / water overlay via Overpass (loads at zoom ≥ 12) ─────
+    async function loadLanduse() {
+      const currentZoom = map.getZoom();
+      if (currentZoom < 12) {
+        if (fallbackLanduseLayer.current) {
+          map.removeLayer(fallbackLanduseLayer.current);
+          fallbackLanduseLayer.current = null;
+        }
+        return;
+      }
+      landuseFetchController.current?.abort();
+      const controller = new AbortController();
+      landuseFetchController.current = controller;
+      try {
+        const b = map.getBounds();
+        const bbox = `${b.getSouth().toFixed(5)},${b.getWest().toFixed(5)},${b.getNorth().toFixed(5)},${b.getEast().toFixed(5)}`;
+        const query = `[out:json][timeout:20];(
+          way[landuse~"^(park|forest|grass|recreation_ground|village_green|meadow|orchard|farmland|residential|commercial|industrial|retail)$"](${bbox});
+          way[leisure~"^(park|garden|playground|sports_centre|pitch)$"](${bbox});
+          way[natural~"^(wood|scrub|water|wetland|beach)$"](${bbox});
+          way[amenity~"^(school|hospital|university|college|place_of_worship)$"](${bbox});
+        );out geom;`;
+        const res = await fetch(
+          `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`,
+          { signal: controller.signal },
+        );
+        if (!res.ok || controller.signal.aborted) return;
+        const data = await res.json() as { elements: Array<{ type: string; geometry?: Array<{ lat: number; lon: number }>; tags?: Record<string, string> }> };
+
+        function landuseColor(tags: Record<string, string>): { fill: string; stroke: string } {
+          const lu = tags.landuse ?? "";
+          const le = tags.leisure ?? "";
+          const nat = tags.natural ?? "";
+          const am = tags.amenity ?? "";
+          if (nat === "water" || nat === "wetland") return { fill: "#aad3df", stroke: "#7ab5cc" };
+          if (nat === "beach") return { fill: "#fef9c3", stroke: "#e5d77a" };
+          if (["wood", "scrub"].includes(nat) || ["forest"].includes(lu)) return { fill: "#add19e", stroke: "#8ab88a" };
+          if (["park", "garden", "playground"].includes(le) || ["park", "grass", "recreation_ground", "village_green", "meadow", "orchard"].includes(lu)) return { fill: "#c8e6c9", stroke: "#81c784" };
+          if (lu === "farmland") return { fill: "#eef0d5", stroke: "#c5c98a" };
+          if (lu === "residential") return { fill: "#f2ede9", stroke: "#ddd" };
+          if (["commercial", "retail"].includes(lu)) return { fill: "#f4e4e4", stroke: "#ddd" };
+          if (lu === "industrial") return { fill: "#e8e0f0", stroke: "#ddd" };
+          if (["school", "university", "college"].includes(am)) return { fill: "#d4edda", stroke: "#a3cfb3" };
+          if (am === "hospital") return { fill: "#fde8ec", stroke: "#f0a0b0" };
+          if (am === "place_of_worship") return { fill: "#fdf3e3", stroke: "#e0c080" };
+          if (["sports_centre", "pitch"].includes(le)) return { fill: "#b5d9b5", stroke: "#80b880" };
+          return { fill: "#e8e4de", stroke: "#ccc" };
+        }
+
+        const features: GeoJSON.Feature[] = data.elements
+          .filter((el) => el.type === "way" && el.geometry && el.geometry.length > 2)
+          .map((el) => ({
+            type: "Feature" as const,
+            properties: { tags: el.tags ?? {} },
+            geometry: {
+              type: "Polygon" as const,
+              coordinates: [el.geometry!.map(({ lat, lon }) => [lon, lat])],
+            },
+          }));
+        if (controller.signal.aborted) return;
+        if (fallbackLanduseLayer.current) map.removeLayer(fallbackLanduseLayer.current);
+        fallbackLanduseLayer.current = L.geoJSON(
+          { type: "FeatureCollection", features },
+          {
+            style: (feature) => {
+              const tags = (feature?.properties?.tags ?? {}) as Record<string, string>;
+              const { fill, stroke } = landuseColor(tags);
+              return { color: stroke, weight: 1, fillColor: fill, fillOpacity: 0.55 };
+            },
+          },
+        ).addTo(map);
+        // Ensure buildings render on top of landuse
+        if (fallbackBuildingLayer.current) fallbackBuildingLayer.current.bringToFront();
+      } catch {
+        // aborted or network error — ignore
+      }
+    }
+
+    map.on("moveend", () => { void loadLanduse(); void loadBuildings(); });
+    map.on("zoomend", () => { void loadLanduse(); void loadBuildings(); });
     // Initial load
-    setTimeout(loadBuildings, 400);
+    setTimeout(() => { void loadLanduse(); void loadBuildings(); }, 400);
 
     fallbackMapRef.current = map;
     return () => {
       buildingFetchController.current?.abort();
+      landuseFetchController.current?.abort();
       fallbackMarkerRefs.current.forEach((marker) => marker.remove());
       fallbackMarkerRefs.current = [];
       if (fallbackBuildingLayer.current) {
         map.removeLayer(fallbackBuildingLayer.current);
         fallbackBuildingLayer.current = null;
+      }
+      if (fallbackLanduseLayer.current) {
+        map.removeLayer(fallbackLanduseLayer.current);
+        fallbackLanduseLayer.current = null;
       }
       map.remove();
       fallbackMapRef.current = null;
