@@ -316,6 +316,10 @@ export default function FindStores() {
   const abortRef = useRef<AbortController | null>(null);
 
   // ── Fetch categories on mount ────────────────────────────────────────────
+  const FALLBACK_CATEGORIES = [
+    "Men's Wear", "Women's Wear", "Kids Wear", "Ethnic Wear",
+    "Sportswear", "Footwear", "Accessories", "Bridal",
+  ];
   useEffect(() => {
     const ac = new AbortController();
     fetch("/api/public/store-discovery-categories", { signal: ac.signal })
@@ -324,10 +328,15 @@ export default function FindStores() {
         return r.json();
       })
       .then((data) => {
-        if (Array.isArray(data.categories)) setCategories(data.categories);
+        if (Array.isArray(data.categories) && data.categories.length > 0) {
+          setCategories(data.categories);
+        } else {
+          setCategories(FALLBACK_CATEGORIES);
+        }
       })
       .catch((err) => {
         if (err.name !== "AbortError") console.error("Could not load store categories:", err);
+        setCategories(FALLBACK_CATEGORIES);
       });
     return () => ac.abort();
   }, []);
