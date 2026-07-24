@@ -183,7 +183,7 @@ export function IndiaMap({
       renderWorldCopies: false,
     });
     mapRef.current = map;
-    if (showNavigation) map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "top-right");
+    if (showNavigation) map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-left");
     map.on("load", () => addIndiaMask(map));
     map.on("click", (event) => {
       if (!interactive || !onPick) return;
@@ -209,11 +209,12 @@ export function IndiaMap({
       maxBoundsViscosity: 1,
       minZoom: 4,
       maxZoom: 18,
-      zoomControl: showNavigation,
+      zoomControl: false,
       zoomAnimation: false,
       fadeAnimation: false,
       markerZoomAnimation: false,
     }).setView([center[1], center[0]], zoom);
+    if (showNavigation) L.control.zoom({ position: "bottomleft" }).addTo(map);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "&copy; OpenStreetMap contributors",
       subdomains: ["a", "b", "c"],

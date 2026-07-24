@@ -557,25 +557,9 @@ export default function FindStores() {
           className="absolute inset-0 w-full h-full rounded-none"
         />
 
-        {/* ── Overlaid controls ─────────────────────────────────────────── */}
+        {/* ── Top overlaid controls: search + categories ───────────────── */}
         <div className="absolute inset-x-0 top-0 z-[500] pointer-events-none">
           <div className="px-3 pt-3 space-y-2 pointer-events-auto">
-
-            {/* Row: My Location button — right-aligned, above search */}
-            <div className="flex justify-end">
-              <button
-                onClick={requestLocation}
-                disabled={locationLoading}
-                className="flex items-center gap-1.5 text-sm font-semibold text-violet-600 bg-white/95 backdrop-blur-sm shadow-md rounded-xl px-3 py-2 hover:bg-violet-50 active:bg-violet-100 transition-colors disabled:opacity-60"
-              >
-                {locationLoading ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Navigation className="w-3.5 h-3.5" />
-                )}
-                My Location
-              </button>
-            </div>
 
             {/* Search bar — full width */}
             <div className="relative">
@@ -654,6 +638,22 @@ export default function FindStores() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* My Location — bottom right */}
+        <div className="absolute bottom-3 right-3 z-[500] pointer-events-auto">
+          <button
+            onClick={requestLocation}
+            disabled={locationLoading}
+            className="flex items-center gap-1.5 text-sm font-semibold text-violet-600 bg-white/95 backdrop-blur-sm shadow-md rounded-xl px-3 py-2 hover:bg-violet-50 active:bg-violet-100 transition-colors disabled:opacity-60"
+          >
+            {locationLoading ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Navigation className="w-3.5 h-3.5" />
+            )}
+            My Location
+          </button>
         </div>
 
         {/* Tap-to-set-location center hint */}
