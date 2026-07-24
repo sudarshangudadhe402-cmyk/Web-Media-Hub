@@ -201,14 +201,13 @@ router.get(
       let storeTypeFilter: string[] | null = null;
       const trimmedCategory = category.trim();
       if (trimmedCategory && trimmedCategory !== "all") {
-        storeTypeFilter = storeTypes
+        const mapped = storeTypes
           .filter((st) => st.category === trimmedCategory)
           .map((st) => st.name);
-        if (storeTypeFilter.length === 0) {
-          // Valid category but no store types assigned → empty result
-          res.json({ stores: [], total: 0, hasMore: false });
-          return;
-        }
+        // If storeTypes are mapped to this category, use them.
+        // Otherwise fall back to matching the storeType name directly against
+        // the category string (handles stores registered before mapping was set up).
+        storeTypeFilter = mapped.length > 0 ? mapped : [trimmedCategory];
       }
 
       // ── 2. DynamicPricing plans (for 30-day value calc) ──────────────────

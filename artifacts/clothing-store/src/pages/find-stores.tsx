@@ -310,8 +310,6 @@ export default function FindStores() {
   const [loading, setLoading] = useState(true); // true so skeleton shows before first fetch completes
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  // All stores in broad area — for map only (not filtered by selected radius)
-  const [mapStores, setMapStores] = useState<DiscoveredStore[]>([]);
   const mapAbortRef = useRef<AbortController | null>(null);
 
   const search = useDebounce(searchRaw, 400);
@@ -455,35 +453,6 @@ export default function FindStores() {
     return () => { abortRef.current?.abort(); };
   }, [userLocation, radius, selectedCategory, search, fetchStores]);
 
-  // ── Fetch wide-area stores for map (radius=200, no category filter) ───────
-  useEffect(() => {
-    if (!userLocation) {
-      setMapStores([]);
-      return;
-    }
-    if (mapAbortRef.current) mapAbortRef.current.abort();
-    mapAbortRef.current = new AbortController();
-    const mapAc = mapAbortRef.current;
-
-    const params = new URLSearchParams({
-      lat: String(userLocation.lat),
-      lng: String(userLocation.lng),
-      radius: "99999",
-      category: "",
-      search: "",
-      page: "1",
-      limit: "500",
-    });
-
-    fetch(`/api/public/stores/discover?${params.toString()}`, {
-      signal: mapAc.signal,
-    })
-      .then((r) => { if (!r.ok) throw new Error("map fetch failed"); return r.json(); })
-      .then((data: DiscoverResponse) => { if (Array.isArray(data.stores)) setMapStores(data.stores); })
-      .catch(() => {/* silently ignore map-only fetch errors */});
-
-    return () => { mapAc.abort(); };
-  }, [userLocation]);
 
   // Fetch next page — pass the next page explicitly to avoid stale state closure
   const loadMore = useCallback(() => {
@@ -498,22 +467,20 @@ export default function FindStores() {
 
   const mapCenter = useMemo<[number, number]>(() => {
     if (userLocation) return [userLocation.lng, userLocation.lat];
-    const visibleStores = mapStores.length > 0 ? mapStores : stores;
-    if (visibleStores.length > 0) {
-      const avgLng = visibleStores.reduce((s, st) => s + st.longitude, 0) / visibleStores.length;
-      const avgLat = visibleStores.reduce((s, st) => s + st.latitude, 0) / visibleStores.length;
+    if (stores.length > 0) {
+      const avgLng = stores.reduce((s, st) => s + st.longitude, 0) / stores.length;
+      const avgLat = stores.reduce((s, st) => s + st.latitude, 0) / stores.length;
       return [avgLng, avgLat];
     }
     return INDIA_CENTER;
-  }, [userLocation, stores, mapStores]);
+  }, [userLocation, stores]);
 
   const mapZoom = useMemo(() => {
     if (userLocation) return LOCAL_ZOOM;
-    const visibleStores = mapStores.length > 0 ? mapStores : stores;
-    if (visibleStores.length === 1) return 15;
-    if (visibleStores.length > 1) return 10;
+    if (stores.length === 1) return 15;
+    if (stores.length > 1) return 10;
     return INDIA_ZOOM;
-  }, [userLocation, stores, mapStores]);
+  }, [userLocation, stores]);
 
   const handleViewStore = useCallback((slug: string) => {
     navigate(`/store/${slug}`);
@@ -533,7 +500,7 @@ export default function FindStores() {
           onPick={handleMapLocationPick}
           onInvalidPick={() => setLocationError("India locations only")}
           userLocation={userLocation ? [userLocation.lat, userLocation.lng] : null}
-          markers={(userLocation ? (mapStores.length > 0 ? mapStores : stores) : stores).map((store) => {
+          markers={stores.map((store) => {
             const isNearby = userLocation
               ? store.distance !== null && store.distance <= radius
               : false;
