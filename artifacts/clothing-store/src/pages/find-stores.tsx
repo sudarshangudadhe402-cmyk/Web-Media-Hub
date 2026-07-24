@@ -1,85 +1,26 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Search, MapPin, Navigation, X, ChevronDown, Star, AlertCircle, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
-import { INDIA_CENTER, INDIA_BOUNDS, isIndiaCoordinate } from "@/components/india-map";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { INDIA_CENTER, isIndiaCoordinate } from "@/components/india-map";
 
-// ─── Shopping page map (Leaflet + OSM) ───────────────────────────────────────
-// Leaflet natively supports 1-finger pan — no cooperative gesture restrictions.
-interface ShoppingMapMarker { id: string; lat: number; lng: number; title: string; color: string; }
-interface ShoppingMapProps {
-  lat: number; lng: number; zoom: number;
-  markers?: ShoppingMapMarker[];
-  userLocation?: { lat: number; lng: number } | null;
-}
-
-function ShoppingMap({ lat, lng, zoom, markers = [], userLocation = null }: ShoppingMapProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const markerLayerRef = useRef<L.LayerGroup | null>(null);
-
-  // Init map once
-  useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
-    const map = L.map(containerRef.current, {
-      center: [lat, lng],
-      zoom,
-      zoomControl: false,
-      attributionControl: true,
-      maxBounds: [
-        [INDIA_BOUNDS[0][1] - 2, INDIA_BOUNDS[0][0] - 2],
-        [INDIA_BOUNDS[1][1] + 2, INDIA_BOUNDS[1][0] + 2],
-      ],
-      maxBoundsViscosity: 0.7,
-      minZoom: 4,
-      maxZoom: 18,
-    });
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      subdomains: ["a", "b", "c"],
-      maxZoom: 19,
-    }).addTo(map);
-    L.control.zoom({ position: "bottomleft" }).addTo(map);
-    markerLayerRef.current = L.layerGroup().addTo(map);
-    mapRef.current = map;
-    return () => { map.remove(); mapRef.current = null; markerLayerRef.current = null; };
-  }, []);
-
-  // Pan/zoom when center or zoom changes
-  useEffect(() => {
-    mapRef.current?.setView([lat, lng], zoom);
-  }, [lat, lng, zoom]);
-
-  // Sync markers
-  useEffect(() => {
-    const layer = markerLayerRef.current;
-    if (!layer) return;
-    layer.clearLayers();
-
-    // User location dot
-    if (userLocation) {
-      const icon = L.divIcon({
-        html: `<div style="width:14px;height:14px;border-radius:50%;background:#3b82f6;border:3px solid white;box-shadow:0 0 0 3px rgba(59,130,246,0.35);"></div>`,
-        iconSize: [14, 14], iconAnchor: [7, 7], className: "",
-      });
-      L.marker([userLocation.lat, userLocation.lng], { icon }).addTo(layer)
-        .bindTooltip("Your location", { direction: "top", offset: [0, -10] });
-    }
-
-    // Store markers
-    markers.forEach((m) => {
-      const c = encodeURIComponent(m.color);
-      const icon = L.divIcon({
-        html: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 28 36"><path d="M14 0C6.268 0 0 6.268 0 14c0 9.5 14 22 14 22S28 23.5 28 14C28 6.268 21.732 0 14 0z" fill="${c}"/><circle cx="14" cy="14" r="6" fill="white" opacity="0.9"/></svg>`,
-        iconSize: [24, 32], iconAnchor: [12, 32], className: "",
-      });
-      L.marker([m.lat, m.lng], { icon }).addTo(layer)
-        .bindTooltip(m.title, { direction: "top", offset: [0, -34] });
-    });
-  }, [markers, userLocation]);
-
-  return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
+// ─── Google Maps iframe embed (same as super-admin) ───────────────────────────
+function GoogleMapEmbed({ lat, lng, zoom }: { lat: number; lng: number; zoom: number }) {
+  const src =
+    `https://maps.google.com/maps?q=India&t=m&z=${zoom}` +
+    `&ll=${lat},${lng}&ie=UTF8&iwloc=&output=embed`;
+  return (
+    <iframe
+      key={`${lat}-${lng}-${zoom}`}
+      src={src}
+      width="100%"
+      height="100%"
+      style={{ border: 0, display: "block" }}
+      allowFullScreen
+      loading="lazy"
+      referrerPolicy="no-referrer-when-downgrade"
+      title="India Store Map"
+    />
+  );
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -549,21 +490,12 @@ export default function FindStores() {
 
       {/* ── Full-width map with overlaid search + categories ─────────────── */}
       <div className="relative w-full h-[55vh] min-h-[260px] max-h-[480px]">
-        {/* Map — Leaflet + OSM, 1-finger pan natively supported */}
+        {/* Map — Google Maps iframe, same as super-admin */}
         <div className="absolute inset-0 w-full h-full">
-          <ShoppingMap
+          <GoogleMapEmbed
             lat={mapCenter[1]}
             lng={mapCenter[0]}
             zoom={mapZoom}
-            markers={stores.map((store) => ({
-              id: store.id,
-              lat: store.latitude,
-              lng: store.longitude,
-              title: store.name,
-              color: userLocation && store.distance !== null && store.distance <= radius
-                ? "#16a34a" : "#7c3aed",
-            }))}
-            userLocation={userLocation}
           />
         </div>
 
