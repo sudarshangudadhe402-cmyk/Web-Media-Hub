@@ -170,7 +170,6 @@ export function IndiaMap({
   const markerRefs = useRef<Marker[]>([]);
   const popupRefs = useRef<Popup[]>([]);
   const [useLeafletFallback, setUseLeafletFallback] = useState(false);
-  const [currentZoom, setCurrentZoom] = useState(5);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -203,7 +202,6 @@ export function IndiaMap({
     mapRef.current = map;
     if (showNavigation) map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-left");
     map.on("load", () => addIndiaMask(map));
-    map.on("zoom", () => setCurrentZoom(Math.round(map.getZoom())));
     map.on("click", (event) => {
       if (!interactive || !onPick) return;
       const { lat, lng } = event.lngLat;
@@ -234,7 +232,6 @@ export function IndiaMap({
       markerZoomAnimation: false,
     }).setView([center[1], center[0]], zoom);
     if (showNavigation) L.control.zoom({ position: "bottomleft" }).addTo(map);
-    map.on("zoomend", () => setCurrentZoom(Math.round(map.getZoom())));
     // OpenStreetMap standard: maximum free detail — building outlines, parks,
     // water, POI icons, residential/commercial colour zones, village labels.
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -577,15 +574,6 @@ export function IndiaMap({
   return (
     <div className={`relative overflow-hidden rounded-xl ${className}`} aria-label="India map">
       <div ref={containerRef} className="absolute inset-0" />
-      {/* Zoom-in hint — disappears once buildings are visible (zoom ≥ 13) */}
-      {currentZoom < 13 && (
-        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-[600] pointer-events-none">
-          <div className="flex items-center gap-1.5 bg-black/70 text-white text-xs font-medium px-3 py-1.5 rounded-full shadow-lg backdrop-blur-sm whitespace-nowrap">
-            <span>🔍</span>
-            <span>Zoom in to see buildings, shops &amp; POIs</span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
