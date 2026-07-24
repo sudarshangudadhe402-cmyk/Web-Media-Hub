@@ -96,7 +96,7 @@ function getStyle() {
 function addIndiaMask(map: Map) {
   if (map.getSource("india-mask")) return;
   const outer: [number, number][] = [
-    [60, 45], [105, 45], [105, 3], [60, 3], [60, 45],
+    [-180, 90], [180, 90], [180, -90], [-180, -90], [-180, 90],
   ];
   map.addSource("india-mask", {
     type: "geojson",
@@ -115,7 +115,7 @@ function addIndiaMask(map: Map) {
     // Keep the boundary for orientation without washing out nearby labels.
     // OSM labels are baked into raster tiles, so any opaque fill here hides
     // part of names that cross the simplified India outline.
-    paint: { "fill-color": "#f8fafc", "fill-opacity": 0 },
+    paint: { "fill-color": "#ffffff", "fill-opacity": 1 },
   });
   map.addSource("india-boundary", {
     type: "geojson",
@@ -243,11 +243,11 @@ export function IndiaMap({
       keepBuffer: 8,
     }).addTo(map);
     const outerRing: [number, number][] = [
-      [3, 60], [3, 105], [45, 105], [45, 60], [3, 60],
+      [-90, -180], [-90, 180], [90, 180], [90, -180], [-90, -180],
     ];
     L.polygon(
       [outerRing, INDIA_BOUNDARY.map(([lng, lat]) => [lat, lng] as [number, number]).reverse()],
-      { stroke: false, fillColor: "#f8fafc", fillOpacity: 0 },
+      { stroke: false, fillColor: "#ffffff", fillOpacity: 1 },
     ).addTo(map);
     // dashArray "1 10" + lineCap round = circular dots along the border.
     // Round caps mean every dot is a perfect circle regardless of turn angle.
