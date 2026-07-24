@@ -1,6 +1,5 @@
 import { MapPin, Clock, CalendarDays, ShoppingBag, Phone, User, LogOut, Loader2, AlertCircle, Eye, EyeOff, Mail, CheckCircle2, Navigation } from "lucide-react";
 import { useState } from "react";
-import { IndiaMap } from "@/components/india-map";
 
 interface StoreData {
   id: string;
@@ -609,21 +608,17 @@ export default function ProfileTab({
             ) : null}
           </div>
           {data.latitude !== null && data.longitude !== null && (
-            <div className="px-3 pb-3">
-              <IndiaMap
-                center={[data.longitude, data.latitude]}
-                zoom={15}
-                markers={[{
-                  id: data.id,
-                  lat: data.latitude,
-                  lng: data.longitude,
-                  title: data.name,
-                  description: data.address ?? undefined,
-                  color: "#16a34a",
-                }]}
-                interactive={false}
-                showNavigation={false}
-                className="h-44 w-full"
+            <div className="px-3 pb-3 rounded-2xl overflow-hidden" style={{ height: 176 }}>
+              <iframe
+                key={`${data.latitude}-${data.longitude}`}
+                src={`https://maps.google.com/maps?q=${data.latitude},${data.longitude}&t=m&z=15&ie=UTF8&iwloc=&output=embed`}
+                width="100%"
+                height="100%"
+                style={{ border: 0, display: "block", borderRadius: 16 }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title="Store Location"
               />
             </div>
           )}

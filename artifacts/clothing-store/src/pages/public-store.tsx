@@ -14,7 +14,6 @@ import ShopTab from "@/components/store/ShopTab";
 import MyBookingTab from "@/components/store/MyBookingTab";
 import CartTab from "@/components/store/CartTab";
 import ProfileTab, { type CustomerAccountInfo } from "@/components/store/ProfileTab";
-import { IndiaMap } from "@/components/india-map";
 
 interface PublicProduct {
   id: string;

@@ -39,7 +39,7 @@ import {
   LocateFixed,
   Map as MapIcon,
 } from "lucide-react";
-import { IndiaMap, INDIA_CENTER, isIndiaCoordinate } from "@/components/india-map";
+import { INDIA_CENTER, isIndiaCoordinate } from "@/components/india-map";
 import {
   Dialog,
   DialogContent,
@@ -1311,26 +1311,31 @@ export default function MyStore() {
                   {!mapGeoLoading && <Navigation className="w-4 h-4 opacity-70 shrink-0" />}
                 </button>
 
-                <div className="flex items-center gap-2 mt-2.5">
-                  <div className="flex-1 h-px bg-border" />
-                  <p className="text-xs text-muted-foreground px-1">or tap map to place pin manually</p>
-                  <div className="flex-1 h-px bg-border" />
-                </div>
+                {mapPin && (
+                  <div className="flex items-center gap-2 mt-2.5">
+                    <div className="flex-1 h-px bg-border" />
+                    <p className="text-xs text-muted-foreground px-1">location pinned on map</p>
+                    <div className="flex-1 h-px bg-border" />
+                  </div>
+                )}
               </div>
 
-              {/* Map */}
-              <div className="h-96 w-full">
-                <IndiaMap
-                  center={mapPin ? [mapPin.lng, mapPin.lat] : INDIA_CENTER}
-                  zoom={mapPin ? 16 : 5}
-                  markers={mapPin ? [{ id: "store", lat: mapPin.lat, lng: mapPin.lng, title: "Store location", color: "#16a34a" }] : []}
-                  onPick={handleMapPick}
-                  onInvalidPick={() => toast({
-                    variant: "destructive",
-                    title: "India locations only",
-                    description: "Please select a point inside India's boundary.",
-                  })}
-                  className="h-full w-full"
+              {/* Map — Google Maps iframe */}
+              <div className="h-80 w-full">
+                <iframe
+                  key={mapPin ? `${mapPin.lat}-${mapPin.lng}` : "india"}
+                  src={
+                    mapPin
+                      ? `https://maps.google.com/maps?q=${mapPin.lat},${mapPin.lng}&t=m&z=16&ie=UTF8&iwloc=&output=embed`
+                      : `https://maps.google.com/maps?q=India&t=m&z=5&ll=20.5937,78.9629&ie=UTF8&iwloc=&output=embed`
+                  }
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0, display: "block" }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="Store Location Map"
                 />
               </div>
 

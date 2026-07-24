@@ -274,6 +274,22 @@ export default function StoreDetail() {
           {(data.storeAddress || data.storeWhatsapp || data.storeOpeningTime || data.storeOpenDays || data.storeDescription) && (
             <Section title="Store Info">
               <InfoRow icon={<MapPin className="w-4 h-4" />} label="Address" value={data.storeAddress} accent="#ef4444" />
+              {/* Google Maps embed for store address */}
+              {data.storeAddress && (
+                <div className="py-2 border-b last:border-0" style={{ borderColor: "#f0f0f5" }}>
+                  <iframe
+                    key={data.storeAddress}
+                    src={`https://maps.google.com/maps?q=${encodeURIComponent(data.storeAddress)}&t=m&z=14&ie=UTF8&iwloc=&output=embed`}
+                    width="100%"
+                    height="220"
+                    style={{ border: 0, display: "block", borderRadius: 12 }}
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    title="Store Location"
+                  />
+                </div>
+              )}
               <InfoRow icon={<MessageCircle className="w-4 h-4" />} label="WhatsApp" value={data.storeWhatsapp} accent="#22c55e" />
               <InfoRow icon={<Clock className="w-4 h-4" />} label="Opening Time" value={data.storeOpeningTime} />
               <InfoRow icon={<CalendarDays className="w-4 h-4" />} label="Open Days" value={data.storeOpenDays} />
