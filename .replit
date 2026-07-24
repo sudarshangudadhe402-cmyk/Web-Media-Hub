@@ -77,7 +77,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "VITE_IS_SHOPPING_PAGE=true PORT=21648 BASE_PATH=/ pnpm --filter @workspace/clothing-store run dev"
+args = "PORT=21648 BASE_PATH=/ pnpm --filter @workspace/clothing-store run dev:shopping"
 waitForPort = 21648
 
 [agent]

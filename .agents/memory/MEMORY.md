@@ -4,3 +4,4 @@
 - [Legacy pricing system removed](legacy-pricing-system.md) — only DynamicPricing (pricing-v2) is live now; planKey on User stores a DynamicPricing plan subdocument _id.
 - [Revenue tracking ledger](revenue-tracking-ledger.md) — "this month" revenue split (signup vs renewal) comes from a RevenuePayment event log, not User.createdAt; new payment paths must log to it.
 - [India map WebGL fallback](india-map-webgl-fallback.md) — MapLibre can fail in sandboxed previews; retain the India-bounded Leaflet/OSM fallback.
+- [Shopping page entry point isolation](shopping-page-entry.md) — transformIndexHtml hook and URL-rewrite both fail; use configureServer + server.transformIndexHtml with a physical shopping.html.

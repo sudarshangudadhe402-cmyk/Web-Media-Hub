@@ -15,18 +15,17 @@ paths = [ "/" ]
 localPort = 21648
 
 [services.development]
-run = "pnpm --filter @workspace/clothing-store run dev"
+run = "pnpm --filter @workspace/clothing-store run dev:shopping"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/clothing-store", "run", "build" ]
+build = [ "pnpm", "--filter", "@workspace/clothing-store", "run", "build:shopping" ]
 publicDir = "artifacts/clothing-store/dist/public"
 serve = "static"
 
 [[services.production.rewrites]]
 from = "/*"
-to = "/index.html"
+to = "/shopping.html"
 
 [services.env]
 PORT = "21648"
 BASE_PATH = "/"
-VITE_IS_SHOPPING_PAGE = "true"
