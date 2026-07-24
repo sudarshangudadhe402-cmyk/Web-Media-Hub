@@ -522,9 +522,9 @@ export default function ProfileTab({
                 <div>
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Open Days</p>
                   <div className="flex flex-wrap gap-1 mt-1">
-                    {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(day => (
-                      <span key={day} className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: openDaySet.has(day) ? "#22c55e" : "#f5f5f5", color: openDaySet.has(day) ? "#fff" : "#ccc" }}>
-                        {day}
+                    {[["Sun","Sunday"],["Mon","Monday"],["Tue","Tuesday"],["Wed","Wednesday"],["Thu","Thursday"],["Fri","Friday"],["Sat","Saturday"]].map(([short, full]) => (
+                      <span key={short} className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: openDaySet.has(full) ? "#22c55e" : "#f5f5f5", color: openDaySet.has(full) ? "#fff" : "#ccc" }}>
+                        {short}
                       </span>
                     ))}
                   </div>

@@ -171,6 +171,19 @@ export function IndiaMap({
   const popupRefs = useRef<Popup[]>([]);
   const [useLeafletFallback, setUseLeafletFallback] = useState(false);
 
+  // ResizeObserver: when map is inside a Dialog/modal the container may have
+  // zero dimensions at init time. Trigger resize after the first non-zero paint.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      if (mapRef.current) mapRef.current.resize();
+      if (fallbackMapRef.current) fallbackMapRef.current.invalidateSize();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
     // MapLibre needs WebGL. Replit's preview browser can disable WebGL, so
