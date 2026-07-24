@@ -5,3 +5,4 @@
 - [Revenue tracking ledger](revenue-tracking-ledger.md) — "this month" revenue split (signup vs renewal) comes from a RevenuePayment event log, not User.createdAt; new payment paths must log to it.
 - [India map WebGL fallback](india-map-webgl-fallback.md) — MapLibre can fail in sandboxed previews; retain the India-bounded Leaflet/OSM fallback.
 - [Shopping page entry point isolation](shopping-page-entry.md) — transformIndexHtml hook and URL-rewrite both fail; use configureServer + server.transformIndexHtml with a physical shopping.html.
+- [Clothing app Vite cache isolation](clothing-vite-cache-isolation.md) — admin and shopping Vite workflows must use separate cacheDir values or optimized chunks overwrite each other and cause white previews.

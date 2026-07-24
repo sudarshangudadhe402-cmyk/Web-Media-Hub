@@ -43,6 +43,7 @@ export default defineConfig({
   },
 
   root: path.resolve(import.meta.dirname),
+  cacheDir: path.resolve(import.meta.dirname, "node_modules/.vite-admin"),
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -96,8 +96,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
     "/dashboard": dashboardHasDot,
   };
 
-  const storeName = store?.name || "Web Media Hub";
+  const storeName =
+    store?.name ||
+    (user as any)?.storeName ||
+    (user as any)?.username ||
+    "Web Media Hub";
   const storeInitial = storeName.charAt(0).toUpperCase();
+
+  useEffect(() => {
+    document.title = `${storeName} - Clothing Manager`;
+  }, [storeName]);
 
   const NavLinks = ({ light = false }: { light?: boolean }) => (
     <>
