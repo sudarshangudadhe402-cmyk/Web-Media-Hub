@@ -134,16 +134,50 @@ async function startCustomerAccountCleanupJob() {
   if (!dbAvailable) return;
   const run = async () => {
     try {
-      const cutoff = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000);
-      // Delete accounts where lastActivityAt (or createdAt for old records) is older than 45 days
-      const result = await CustomerAccount.deleteMany({
-        $or: [
-          { lastActivityAt: { $lt: cutoff } },
-          { lastActivityAt: { $exists: false }, createdAt: { $lt: cutoff } },
+      const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+      // ── Rule 1: Empty accounts (no cart items, no activity flag) ────────────
+      // Inactive for 45 days → delete.
+      // Timer resets on every login (lastActivityAt is updated on signin).
+      const cutoff45 = new Date(Date.now() - 45 * MS_PER_DAY);
+      const emptyResult = await CustomerAccount.deleteMany({
+        $and: [
+          // No meaningful data
+          { hasActivity: { $ne: true } },
+          { $or: [{ cart: { $size: 0 } }, { cart: { $exists: false } }] },
+          // Inactive for 45+ days
+          {
+            $or: [
+              { lastActivityAt: { $lt: cutoff45 } },
+              { lastActivityAt: { $exists: false }, createdAt: { $lt: cutoff45 } },
+            ],
+          },
         ],
       });
-      if (result.deletedCount > 0) {
-        logger.info({ count: result.deletedCount }, "Auto-deleted inactive customer accounts (45-day rule)");
+
+      // ── Rule 2: Active accounts (has cart items OR has activity flag) ────────
+      // Inactive for 90 days → delete.
+      const cutoff90 = new Date(Date.now() - 90 * MS_PER_DAY);
+      const activeResult = await CustomerAccount.deleteMany({
+        $and: [
+          // Has meaningful data
+          { $or: [{ hasActivity: true }, { cart: { $not: { $size: 0 } } }] },
+          // Inactive for 90+ days
+          {
+            $or: [
+              { lastActivityAt: { $lt: cutoff90 } },
+              { lastActivityAt: { $exists: false }, createdAt: { $lt: cutoff90 } },
+            ],
+          },
+        ],
+      });
+
+      const total = emptyResult.deletedCount + activeResult.deletedCount;
+      if (total > 0) {
+        logger.info(
+          { empty: emptyResult.deletedCount, active: activeResult.deletedCount },
+          "Auto-deleted inactive customer accounts (45-day empty / 90-day active)",
+        );
       }
     } catch (err) {
       logger.error({ err }, "Customer account cleanup error");

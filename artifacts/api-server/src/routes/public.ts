@@ -359,6 +359,10 @@ router.post("/public/cart", ipRateLimit(30, 60_000), async (req, res) => {
       res.status(403).json({ error: "Invalid customer account" }); return;
     }
     account.cart = [...new Set([...(account.cart ?? []), String(productId)])];
+    // Refresh inactivity timer and permanently mark the account as having data.
+    // hasActivity is never reset — it ensures the 90-day rule applies from now on.
+    account.lastActivityAt = new Date();
+    account.hasActivity = true;
     await account.save();
     res.json({ cart: account.cart });
   } catch (err) {
@@ -376,7 +380,7 @@ router.delete("/public/cart/:customerId/:productId", async (req, res) => {
     }
     const account = await CustomerAccount.findByIdAndUpdate(
       customerId,
-      { $pull: { cart: productId } },
+      { $pull: { cart: productId }, $set: { lastActivityAt: new Date() } },
       { new: true }
     ).select("cart");
     if (!account) {
@@ -448,6 +452,11 @@ router.post("/public/reviews", ipRateLimit(5, 60_000), async (req, res) => {
     const customerName = account.name || "Customer";
     const review = await Review.create({ productId, storeId, customerId, customerName, text: text.trim(), rating: ratingNum, likes: [] });
     await recalcProductRating(productId);
+    // Refresh inactivity timer and permanently mark account as having activity.
+    CustomerAccount.updateOne(
+      { _id: customerId },
+      { $set: { lastActivityAt: new Date(), hasActivity: true } }
+    ).catch(() => {});
     res.status(201).json(serializeReview(review));
   } catch (err) {
     req.log.error({ err }, "Create review error");

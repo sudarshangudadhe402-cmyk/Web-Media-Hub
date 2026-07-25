@@ -9,6 +9,13 @@ export interface ICustomerAccount extends Document {
   source?: string;
   campaign?: string;
   cart: string[];
+  /**
+   * Permanently true once the account has any meaningful data:
+   * cart items added, review posted, etc.
+   * Never reset to false — used by the cleanup job to apply the
+   * 90-day inactivity window instead of the 45-day empty-account window.
+   */
+  hasActivity: boolean;
   createdAt: Date;
   lastActivityAt: Date;
   comparePassword(candidate: string): Promise<boolean>;
@@ -31,6 +38,7 @@ const CustomerAccountSchema = new Schema<ICustomerAccount>(
     source: { type: String },
     campaign: { type: String },
     cart: { type: [String], default: [] },
+    hasActivity: { type: Boolean, default: false, index: true },
     lastActivityAt: { type: Date, default: Date.now, index: true },
   },
   { timestamps: true }
