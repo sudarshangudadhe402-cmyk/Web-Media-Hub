@@ -70,8 +70,10 @@ function ConversationView({
   const [loading, setLoading] = useState(true);
   const [msgText, setMsgText] = useState("");
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [longPressId, setLongPressId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchMessages = useCallback(async () => {
@@ -86,9 +88,14 @@ function ConversationView({
     } catch {}
   }, [conv.id]);
 
+  // Poll only when tab is visible
   useEffect(() => {
     fetchMessages().finally(() => setLoading(false));
-    const interval = setInterval(fetchMessages, 3000);
+    const interval = setInterval(() => {
+      if (document.visibilityState !== "hidden") {
+        fetchMessages();
+      }
+    }, 3000);
     return () => clearInterval(interval);
   }, [fetchMessages]);
 
@@ -96,10 +103,19 @@ function ConversationView({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
 
+  // Auto-resize textarea
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 100) + "px";
+  }, [msgText]);
+
   async function sendMessage() {
     if (!msgText.trim() || sending) return;
     const text = msgText.trim();
     setSending(true);
+    setSendError(null);
     setMsgText("");
     try {
       const res = await fetch("/api/chat/message", {
@@ -112,11 +128,17 @@ function ConversationView({
       });
       if (res.ok) {
         const msg: ChatMessage = await res.json();
-        setMessages((prev) => [...prev, msg]);
+        // Deduplicate in case polling already brought this message in
+        setMessages((prev) =>
+          prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]
+        );
       } else {
+        const err = await res.json().catch(() => ({}));
+        setSendError((err as any).error ?? "Failed to send. Try again.");
         setMsgText(text);
       }
     } catch {
+      setSendError("Network error. Please try again.");
       setMsgText(text);
     } finally {
       setSending(false);
@@ -251,18 +273,18 @@ function ConversationView({
                     </div>
                   </div>
 
-                  {/* Long-press delete menu */}
-                  {isLongPressed && (
+                  {/* Long-press delete menu — only for admin's own messages */}
+                  {isLongPressed && isAdmin && !isDeleted && (
                     <div
-                      className={`absolute bottom-full mb-1 ${isAdmin ? "right-0" : "left-0"} z-10`}
+                      className="absolute bottom-full right-0 mb-1 z-10"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+                      <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden min-w-[130px]">
                         <button
                           onClick={() => deleteMessage(msg.id)}
                           className="flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-red-500 hover:bg-red-50 w-full"
                         >
-                          Delete
+                          Delete message
                         </button>
                         <button
                           onClick={() => setLongPressId(null)}
@@ -289,6 +311,13 @@ function ConversationView({
         />
       )}
 
+      {/* Send error */}
+      {sendError && (
+        <div className="pb-1">
+          <p className="text-xs text-red-500 text-center">{sendError}</p>
+        </div>
+      )}
+
       {/* Send box */}
       <div className="pt-3 border-t border-gray-100 flex-shrink-0">
         <div className="flex items-end gap-2">
@@ -297,8 +326,12 @@ function ConversationView({
             style={{ minHeight: 44 }}
           >
             <textarea
+              ref={textareaRef}
               value={msgText}
-              onChange={(e) => setMsgText(e.target.value)}
+              onChange={(e) => {
+                setSendError(null);
+                setMsgText(e.target.value);
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -306,9 +339,9 @@ function ConversationView({
                 }
               }}
               placeholder="Type a message…"
-              className="flex-1 text-sm text-gray-900 placeholder-gray-400 focus:outline-none resize-none bg-transparent"
+              className="flex-1 text-sm text-gray-900 placeholder-gray-400 focus:outline-none resize-none bg-transparent w-full"
               rows={1}
-              style={{ maxHeight: 100 }}
+              maxLength={1000}
             />
           </div>
           <button
@@ -358,9 +391,20 @@ export default function AdminChatView() {
 
   useEffect(() => {
     fetchConversations().finally(() => setLoading(false));
-    const interval = setInterval(fetchConversations, 4000);
+    const interval = setInterval(() => {
+      if (document.visibilityState !== "hidden") {
+        fetchConversations();
+      }
+    }, 4000);
     return () => clearInterval(interval);
   }, [fetchConversations]);
+
+  // Keep selectedConv in sync as the list refreshes
+  useEffect(() => {
+    if (!selectedConv) return;
+    const updated = conversations.find((c) => c.id === selectedConv.id);
+    if (updated) setSelectedConv(updated);
+  }, [conversations]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync unread to 0 when conversation is opened
   function openConversation(conv: Conversation) {
