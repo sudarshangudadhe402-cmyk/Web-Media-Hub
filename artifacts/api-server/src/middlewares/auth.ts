@@ -2,10 +2,12 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { User, IUser } from "../models/User";
 
-const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET;
-if (!JWT_SECRET) {
+const _JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET;
+if (!_JWT_SECRET) {
   throw new Error("JWT_SECRET or SESSION_SECRET environment variable is required");
 }
+// Non-null assertion is safe: we throw above if both are undefined
+const JWT_SECRET: string = _JWT_SECRET;
 
 export interface AuthRequest extends Request {
   user?: IUser;
@@ -13,7 +15,7 @@ export interface AuthRequest extends Request {
 
 export function signToken(userId: string, sessionId: string, role?: string): string {
   const expiresIn = role === "super_admin" ? "4h" : "7d";
-  return jwt.sign({ id: userId, sessionId }, JWT_SECRET, { expiresIn });
+  return jwt.sign({ id: userId, sessionId }, JWT_SECRET, { expiresIn, algorithm: "HS256" });
 }
 
 export async function requireAuth(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
@@ -25,7 +27,7 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
     }
 
     const token = authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; sessionId?: string };
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] }) as { id: string; sessionId?: string };
 
     const user = await User.findById(decoded.id);
     if (!user) {
@@ -62,7 +64,7 @@ export async function requireAuthForRenewal(req: AuthRequest, res: Response, nex
       return;
     }
     const token = authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; sessionId?: string };
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] }) as { id: string; sessionId?: string };
     const user = await User.findById(decoded.id);
     if (!user) {
       res.status(401).json({ error: "Authentication failed." });

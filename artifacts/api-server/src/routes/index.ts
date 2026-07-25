@@ -25,10 +25,11 @@ import chatRouter from "./chat";
 import discoveryRouter from "./discovery";
 import { requireDb } from "../middlewares/dbCheck";
 
-const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET;
-if (!JWT_SECRET) {
+const _JWT_SECRET_IDX = process.env.JWT_SECRET || process.env.SESSION_SECRET;
+if (!_JWT_SECRET_IDX) {
   throw new Error("JWT_SECRET or SESSION_SECRET environment variable is required");
 }
+const JWT_SECRET: string = _JWT_SECRET_IDX;
 
 // Routes that are allowed even with an expired subscription.
 // These are router-relative paths (no /api prefix) because this middleware
@@ -54,7 +55,7 @@ async function subscriptionGuard(req: Request, res: Response, next: NextFunction
 
   try {
     const token = auth.split(" ")[1];
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] }) as unknown as { id: string };
     const user = await User.findById(decoded.id).select("role subscriptionEndDate").lean();
     if (
       user &&

@@ -322,7 +322,11 @@ router.post(
 
 router.get("/public/cart/:customerId", async (req, res) => {
   try {
-    const account = await CustomerAccount.findById(req.params.customerId).select("cart").lean();
+    // Validate ObjectId to prevent NoSQL injection and CastErrors
+    if (!mongoose.isValidObjectId(req.params.customerId)) {
+      res.status(404).json({ error: "Account not found" }); return;
+    }
+    const account = await CustomerAccount.findById(req.params.customerId).select("cart storeId").lean();
     if (!account) {
       res.status(404).json({ error: "Account not found" });
       return;
@@ -336,25 +340,26 @@ router.get("/public/cart/:customerId", async (req, res) => {
 
 router.post("/public/cart", ipRateLimit(30, 60_000), async (req, res) => {
   try {
-    const { customerId, productId } = req.body as { customerId?: string; productId?: string };
-    if (!customerId || !productId) {
-      res.status(400).json({ error: "customerId and productId are required" });
+    const { customerId, productId, storeId } = req.body as { customerId?: string; productId?: string; storeId?: string };
+    if (!customerId || !productId || !storeId) {
+      res.status(400).json({ error: "customerId, productId and storeId are required" });
       return;
     }
-    const product = await Product.findById(productId).select("_id").lean();
+    // Validate all ObjectIds before any DB query
+    if (!mongoose.isValidObjectId(customerId) || !mongoose.isValidObjectId(productId)) {
+      res.status(404).json({ error: "Not found" }); return;
+    }
+    const product = await Product.findById(productId).select("_id storeId").lean() as any;
     if (!product) {
-      res.status(404).json({ error: "Product not found" });
-      return;
+      res.status(404).json({ error: "Product not found" }); return;
     }
-    const account = await CustomerAccount.findByIdAndUpdate(
-      customerId,
-      { $addToSet: { cart: productId } },
-      { new: true }
-    ).select("cart");
+    // Verify the customer belongs to the same store as the product
+    const account = await CustomerAccount.findOne({ _id: customerId, storeId: String(product.storeId) });
     if (!account) {
-      res.status(404).json({ error: "Account not found" });
-      return;
+      res.status(403).json({ error: "Invalid customer account" }); return;
     }
+    account.cart = [...new Set([...(account.cart ?? []), String(productId)])];
+    await account.save();
     res.json({ cart: account.cart });
   } catch (err) {
     req.log.error({ err }, "Add to cart error");
@@ -365,6 +370,10 @@ router.post("/public/cart", ipRateLimit(30, 60_000), async (req, res) => {
 router.delete("/public/cart/:customerId/:productId", async (req, res) => {
   try {
     const { customerId, productId } = req.params;
+    // Validate ObjectIds to prevent NoSQL injection
+    if (!mongoose.isValidObjectId(customerId) || !mongoose.isValidObjectId(productId)) {
+      res.status(404).json({ error: "Not found" }); return;
+    }
     const account = await CustomerAccount.findByIdAndUpdate(
       customerId,
       { $pull: { cart: productId } },
@@ -450,10 +459,16 @@ router.put("/public/reviews/:id", ipRateLimit(10, 60_000), async (req, res) => {
   try {
     const { customerId, text, rating } = req.body;
     if (!customerId || !text?.trim()) { res.status(400).json({ error: "customerId and text required" }); return; }
+    if (!mongoose.isValidObjectId(req.params.id) || !mongoose.isValidObjectId(customerId)) {
+      res.status(404).json({ error: "Review not found" }); return;
+    }
     if (text.trim().length > 500) { res.status(400).json({ error: "Review too long (max 500 characters)" }); return; }
     const review = await Review.findById(req.params.id);
     if (!review) { res.status(404).json({ error: "Review not found" }); return; }
     if (review.customerId !== customerId) { res.status(403).json({ error: "Not your review" }); return; }
+    // Verify the claimed customerId is a real registered account for this store (prevents IDOR)
+    const account = await CustomerAccount.findOne({ _id: customerId, storeId: review.storeId }).select("_id").lean();
+    if (!account) { res.status(403).json({ error: "Invalid customer account" }); return; }
     review.text = text.trim();
     if (rating !== undefined) {
       const ratingNum = Number(rating);
@@ -475,9 +490,15 @@ router.delete("/public/reviews/:id", async (req, res) => {
   try {
     const { customerId } = req.body;
     if (!customerId) { res.status(400).json({ error: "customerId required" }); return; }
+    if (!mongoose.isValidObjectId(req.params.id) || !mongoose.isValidObjectId(customerId)) {
+      res.status(404).json({ error: "Review not found" }); return;
+    }
     const review = await Review.findById(req.params.id);
     if (!review) { res.status(404).json({ error: "Review not found" }); return; }
     if (review.customerId !== customerId) { res.status(403).json({ error: "Not your review" }); return; }
+    // Verify the claimed customerId is a real registered account for this store (prevents IDOR)
+    const account = await CustomerAccount.findOne({ _id: customerId, storeId: review.storeId }).select("_id").lean();
+    if (!account) { res.status(403).json({ error: "Invalid customer account" }); return; }
     const { productId } = review;
     await review.deleteOne();
     await recalcProductRating(productId);
