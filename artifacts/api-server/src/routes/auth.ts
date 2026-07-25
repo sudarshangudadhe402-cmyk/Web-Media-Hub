@@ -334,7 +334,7 @@ router.post("/auth/admin/forgot-password/send-otp", otpRateLimiter, validate(For
       res.status(429).json({ error: "Too many OTP requests. Please wait 10 minutes." }); return;
     }
 
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = crypto.randomInt(100000, 1000000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     await OtpCode.create({ email: email.trim().toLowerCase(), storeId: "admin", code, purpose: "admin-forgot-password", expiresAt });

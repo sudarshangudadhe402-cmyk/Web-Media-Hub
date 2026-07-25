@@ -166,24 +166,6 @@ export default function PublicStore() {
     catch { return null; }
   });
 
-  // Re-sync cart from the server so it stays consistent across devices
-  useEffect(() => {
-    if (!customerAccount?.id) return;
-    const ac = new AbortController();
-    fetch(`/api/public/cart/${customerAccount.id}`, { signal: ac.signal })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((d) => {
-        if (!d) return;
-        setCustomerAccount((prev) => {
-          if (!prev) return prev;
-          const acc = { ...prev, cart: d.cart ?? [] };
-          localStorage.setItem(`wmh_account_${slug}`, JSON.stringify(acc));
-          return acc;
-        });
-      })
-      .catch((err) => { if (err.name !== "AbortError") console.error("Cart sync failed:", err); });
-    return () => ac.abort();
-  }, [customerAccount?.id, slug]);
   const [signUpLoading, setSignUpLoading] = useState(false);
   const [signInLoading, setSignInLoading] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
@@ -228,6 +210,26 @@ export default function PublicStore() {
     },
     enabled: !!slug,
   });
+
+  // Re-sync cart from the server so it stays consistent across devices.
+  // storeId is required by the API to prevent IDOR — only syncs once the store data is loaded.
+  useEffect(() => {
+    if (!customerAccount?.id || !data?.id) return;
+    const ac = new AbortController();
+    fetch(`/api/public/cart/${customerAccount.id}?storeId=${encodeURIComponent(data.id)}`, { signal: ac.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((d) => {
+        if (!d) return;
+        setCustomerAccount((prev) => {
+          if (!prev) return prev;
+          const acc = { ...prev, cart: d.cart ?? [] };
+          localStorage.setItem(`wmh_account_${slug}`, JSON.stringify(acc));
+          return acc;
+        });
+      })
+      .catch((err) => { if (err.name !== "AbortError") console.error("Cart sync failed:", err); });
+    return () => ac.abort();
+  }, [customerAccount?.id, data?.id, slug]);
 
   useEffect(() => {
     if (data?.products) {
@@ -337,13 +339,14 @@ export default function PublicStore() {
       return;
     }
     const inCart = customerAccount.cart?.includes(productId);
+    const storeId = data?.id ?? "";
     try {
       const res = inCart
-        ? await fetch(`/api/public/cart/${customerAccount.id}/${productId}`, { method: "DELETE" })
+        ? await fetch(`/api/public/cart/${customerAccount.id}/${productId}?storeId=${encodeURIComponent(storeId)}`, { method: "DELETE" })
         : await fetch("/api/public/cart", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ customerId: customerAccount.id, productId }),
+            body: JSON.stringify({ customerId: customerAccount.id, productId, storeId }),
           });
       if (res.ok) {
         const d = await res.json();

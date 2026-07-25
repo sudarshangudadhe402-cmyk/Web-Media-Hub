@@ -25,7 +25,7 @@ interface MemberProfile {
 }
 
 interface SignupRecord {
-  email: string;
+  email?: string; // omitted by the server — admin emails are not exposed in the public API
   adminNumber: string;
   planName: string;
   planPrice: string;

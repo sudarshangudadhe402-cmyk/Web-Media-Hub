@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from "express";
+import mongoose from "mongoose";
 import { Store } from "../models/Store";
 import { Product } from "../models/Product";
 import { Category } from "../models/Category";
@@ -326,7 +327,10 @@ router.get("/public/cart/:customerId", async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.customerId)) {
       res.status(404).json({ error: "Account not found" }); return;
     }
-    const account = await CustomerAccount.findById(req.params.customerId).select("cart storeId").lean();
+    // Require storeId to prevent IDOR — any customerId could otherwise be read
+    const storeId = String(req.query.storeId || "").trim();
+    if (!storeId) { res.status(400).json({ error: "storeId required" }); return; }
+    const account = await CustomerAccount.findOne({ _id: req.params.customerId, storeId }).select("cart").lean();
     if (!account) {
       res.status(404).json({ error: "Account not found" });
       return;
@@ -374,12 +378,16 @@ router.post("/public/cart", ipRateLimit(30, 60_000), async (req, res) => {
 router.delete("/public/cart/:customerId/:productId", async (req, res) => {
   try {
     const { customerId, productId } = req.params;
+    // Require storeId to prevent IDOR — anyone could delete items from any cart without it
+    const storeId = String(req.query.storeId || "").trim();
+    if (!storeId) { res.status(400).json({ error: "storeId required" }); return; }
     // Validate ObjectIds to prevent NoSQL injection
     if (!mongoose.isValidObjectId(customerId) || !mongoose.isValidObjectId(productId)) {
       res.status(404).json({ error: "Not found" }); return;
     }
-    const account = await CustomerAccount.findByIdAndUpdate(
-      customerId,
+    // Verify ownership: account must belong to the claimed store before modifying
+    const account = await CustomerAccount.findOneAndUpdate(
+      { _id: customerId, storeId },
       { $pull: { cart: productId }, $set: { lastActivityAt: new Date() } },
       { new: true }
     ).select("cart");
@@ -422,8 +430,12 @@ function serializeReview(r: any) {
 
 router.get("/public/reviews/:productId", async (req, res) => {
   try {
-    const { storeId } = req.query;
+    // Cast to string to prevent NoSQL injection via object query params (e.g. ?storeId[$ne]=null)
+    const storeId = String(req.query.storeId || "").trim();
     if (!storeId) { res.status(400).json({ error: "storeId required" }); return; }
+    if (!mongoose.isValidObjectId(req.params.productId)) {
+      res.status(400).json({ error: "Invalid productId" }); return;
+    }
     const reviews = await Review.find({ productId: req.params.productId, storeId }).sort({ createdAt: -1 });
     res.json(reviews.map(serializeReview));
   } catch (err) {
@@ -522,8 +534,14 @@ router.post("/public/reviews/:id/like", ipRateLimit(20, 60_000), async (req, res
   try {
     const { customerId } = req.body;
     if (!customerId) { res.status(400).json({ error: "customerId required" }); return; }
+    if (!mongoose.isValidObjectId(req.params.id) || !mongoose.isValidObjectId(customerId)) {
+      res.status(404).json({ error: "Review not found" }); return;
+    }
     const review = await Review.findById(req.params.id);
     if (!review) { res.status(404).json({ error: "Review not found" }); return; }
+    // Verify the claimed customerId is a real account for this store (prevents fake/IDOR likes)
+    const account = await CustomerAccount.findOne({ _id: customerId, storeId: review.storeId }).select("_id").lean();
+    if (!account) { res.status(403).json({ error: "Invalid customer account" }); return; }
     if (review.customerId === customerId) { res.status(400).json({ error: "Cannot like your own review" }); return; }
     const idx = review.likes.indexOf(customerId);
     if (idx === -1) { review.likes.push(customerId); }
@@ -591,7 +609,7 @@ router.get(
         res.json({
           valid: true, type: "influencer", name: inf.name, code: inf.coupon_code,
           discount_percentage: (inf as any).customer_discount_percentage ?? 0,
-          commission_percentage: inf.commission_percentage,
+          // commission_percentage intentionally omitted — internal business data, not needed for checkout
         });
         return;
       }
@@ -601,7 +619,7 @@ router.get(
         res.json({
           valid: true, type: "ambassador", name: amb.name, city: amb.city, code: amb.referral_code,
           discount_percentage: (amb as any).customer_discount_percentage ?? 0,
-          commission_percentage: amb.commission_percentage,
+          // commission_percentage intentionally omitted — internal business data, not needed for checkout
         });
         return;
       }
@@ -614,7 +632,7 @@ router.get(
         res.json({
           valid: true, type: "referral", name: owner?.username || "Admin", code: rc.referral_code,
           discount_percentage: (rc as any).customer_discount_percentage ?? 0,
-          commission_percentage: (rc as any).commission_percentage ?? 0,
+          // commission_percentage intentionally omitted — internal business data, not needed for checkout
         });
         return;
       }
@@ -678,8 +696,8 @@ router.post(
         { used: true }
       );
 
-      // Generate new OTP
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      // Generate new OTP — use crypto.randomInt for cryptographic randomness (Math.random is predictable)
+      const otp = crypto.randomInt(100000, 1000000).toString();
       await OtpCode.create({
         email: e,
         storeId: c,
@@ -812,10 +830,16 @@ router.get(
         .limit(200)
         .lean();
 
+      // Strip sensitive fields from the unauthenticated partner profile response:
+      // - member.email: partner's own email — not needed for public display
+      // - signups[].email: admin email addresses — must not be exposed publicly
+      // Strip sensitive fields from the unauthenticated partner profile response.
+      // email is omitted — partner email address must not be exposed publicly.
+      const { email: _partnerEmail, ...publicMember } = member;
       res.json({
-        member,
+        member: publicMember,
         signups: signups.map((u: any) => ({
-          email: u.email || "",
+          // email intentionally omitted — admin emails must not be exposed in an unauthenticated endpoint
           adminNumber: u.adminNumber || "",
           planName: u.planName || "—",
           planPrice: u.planPrice || "—",
@@ -1001,7 +1025,7 @@ router.post(
         res.status(409).json({ error: "You already have an active withdrawal request. Please wait for it to complete." }); return;
       }
       await OtpCode.updateMany({ email: e, storeId: `wd_${c}`, purpose: "partner-withdrawal", used: false }, { used: true });
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otp = crypto.randomInt(100000, 1000000).toString();
       await OtpCode.create({ email: e, storeId: `wd_${c}`, code: otp, purpose: "partner-withdrawal", expiresAt: new Date(Date.now() + 10 * 60 * 1000) });
       await sendWithdrawalOtpEmail(e, otp, partner.name, amt);
       res.json({ success: true });
