@@ -20,32 +20,42 @@ export interface CustomerChatProps {
 }
 
 // ── WhatsApp-style message status ─────────────────────────────────────────────
-// pending → single faint tick (sending…)
-// readAt = null → single gray tick (sent to server)
-// readAt = set → double bright tick (seen by admin)
+// pending      → single dim tick  + label "Sent"  (still uploading to server)
+// readAt=null  → double gray tick + label "Sent"  (server got it, not seen yet)
+// readAt=set   → double GREEN tick+ label "Seen"  (recipient has opened chat)
 function MessageStatus({ readAt, pending }: { readAt: string | null; pending?: boolean }) {
   if (pending) {
-    // Clock-like single faint tick — still sending
     return (
-      <svg width="13" height="9" viewBox="0 0 16 12" fill="none">
-        <path d="M2 6L6 10L14 2" stroke="rgba(255,255,255,0.28)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+      <div className="flex flex-col items-center gap-[1px]">
+        {/* single faint tick */}
+        <svg width="13" height="9" viewBox="0 0 16 12" fill="none">
+          <path d="M2 6L6 10L14 2" stroke="rgba(255,255,255,0.35)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span style={{ fontSize: 7, color: "rgba(255,255,255,0.35)", lineHeight: 1, fontFamily: "inherit" }}>Sent</span>
+      </div>
     );
   }
   if (!readAt) {
-    // Single tick — sent (server received)
     return (
-      <svg width="13" height="9" viewBox="0 0 16 12" fill="none">
-        <path d="M2 6L6 10L14 2" stroke="rgba(255,255,255,0.52)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+      <div className="flex flex-col items-center gap-[1px]">
+        {/* double gray tick — delivered to server, not seen */}
+        <svg width="18" height="9" viewBox="0 0 22 12" fill="none">
+          <path d="M1 6L5.5 10.5L13 2"  stroke="rgba(255,255,255,0.45)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M7 6L11.5 10.5L19 2" stroke="rgba(255,255,255,0.45)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", lineHeight: 1, fontFamily: "inherit" }}>Sent</span>
+      </div>
     );
   }
-  // Double tick — seen by admin (bright white)
+  // double GREEN tick — seen
   return (
-    <svg width="18" height="9" viewBox="0 0 22 12" fill="none">
-      <path d="M1 6L5.5 10.5L13 2"  stroke="rgba(255,255,255,0.95)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M7 6L11.5 10.5L19 2" stroke="rgba(255,255,255,0.95)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    <div className="flex flex-col items-center gap-[1px]">
+      <svg width="18" height="9" viewBox="0 0 22 12" fill="none">
+        <path d="M1 6L5.5 10.5L13 2"  stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M7 6L11.5 10.5L19 2" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <span style={{ fontSize: 7, color: "#4ade80", lineHeight: 1, fontFamily: "inherit" }}>Seen</span>
+    </div>
   );
 }
 

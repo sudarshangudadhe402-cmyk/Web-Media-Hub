@@ -47,31 +47,42 @@ function getInitials(name: string) {
 }
 
 // ── WhatsApp-style message status ─────────────────────────────────────────────
-// pending → single faint tick (sending…)
-// readAt = null → single dim tick (sent to server)
-// readAt = set → double bright tick (seen by customer)
+// pending      → single dim tick  + label "Sent"  (still uploading to server)
+// readAt=null  → double gray tick + label "Sent"  (server got it, not seen yet)
+// readAt=set   → double GREEN tick+ label "Seen"  (customer has opened chat)
 function MessageStatus({ readAt, pending }: { readAt: string | null; pending?: boolean }) {
   if (pending) {
     return (
-      <svg width="13" height="9" viewBox="0 0 16 12" fill="none">
-        <path d="M2 6L6 10L14 2" stroke="rgba(233,213,255,0.28)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+      <div className="flex flex-col items-center gap-[1px]">
+        {/* single faint tick */}
+        <svg width="13" height="9" viewBox="0 0 16 12" fill="none">
+          <path d="M2 6L6 10L14 2" stroke="rgba(233,213,255,0.35)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span style={{ fontSize: 7, color: "rgba(233,213,255,0.35)", lineHeight: 1, fontFamily: "inherit" }}>Sent</span>
+      </div>
     );
   }
   if (!readAt) {
-    // Single tick — sent
     return (
-      <svg width="13" height="9" viewBox="0 0 16 12" fill="none">
-        <path d="M2 6L6 10L14 2" stroke="rgba(233,213,255,0.6)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+      <div className="flex flex-col items-center gap-[1px]">
+        {/* double gray tick — delivered to server, not seen */}
+        <svg width="18" height="9" viewBox="0 0 22 12" fill="none">
+          <path d="M1 6L5.5 10.5L13 2"  stroke="rgba(233,213,255,0.55)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M7 6L11.5 10.5L19 2" stroke="rgba(233,213,255,0.55)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span style={{ fontSize: 7, color: "rgba(233,213,255,0.55)", lineHeight: 1, fontFamily: "inherit" }}>Sent</span>
+      </div>
     );
   }
-  // Double tick — seen by customer (bright light-purple)
+  // double GREEN tick — seen by customer
   return (
-    <svg width="18" height="9" viewBox="0 0 22 12" fill="none">
-      <path d="M1 6L5.5 10.5L13 2"  stroke="rgba(233,213,255,1)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M7 6L11.5 10.5L19 2" stroke="rgba(233,213,255,1)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    <div className="flex flex-col items-center gap-[1px]">
+      <svg width="18" height="9" viewBox="0 0 22 12" fill="none">
+        <path d="M1 6L5.5 10.5L13 2"  stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M7 6L11.5 10.5L19 2" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <span style={{ fontSize: 7, color: "#4ade80", lineHeight: 1, fontFamily: "inherit" }}>Seen</span>
+    </div>
   );
 }
 
