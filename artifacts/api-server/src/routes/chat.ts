@@ -1,4 +1,5 @@
 import { Router } from "express";
+import mongoose from "mongoose";
 import { ChatConversation } from "../models/ChatConversation";
 import { ChatMessage } from "../models/ChatMessage";
 import { CustomerAccount } from "../models/CustomerAccount";
@@ -92,6 +93,12 @@ router.get("/public/chat/:storeSlug/messages", async (req, res) => {
       return;
     }
 
+    // Bug 7: invalid ObjectId would throw CastError → 500; return 404 instead
+    if (!mongoose.isValidObjectId(conversationId) || !mongoose.isValidObjectId(customerId)) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+
     const validated = await validateCustomer(storeSlug, customerId);
     if (!validated) {
       res.status(404).json({ error: "Not found" });
@@ -156,6 +163,12 @@ router.post("/public/chat/:storeSlug/message", async (req, res) => {
 
     if (!customerId || !conversationId || !text?.trim()) {
       res.status(400).json({ error: "customerId, conversationId and text required" });
+      return;
+    }
+
+    // Bug 7: invalid ObjectId would throw CastError → 500; return 404 instead
+    if (!mongoose.isValidObjectId(conversationId) || !mongoose.isValidObjectId(customerId)) {
+      res.status(404).json({ error: "Not found" });
       return;
     }
 
@@ -238,6 +251,16 @@ router.delete("/public/chat/:storeSlug/message/:messageId", async (req, res) => 
 
     if (!customerId || !conversationId) {
       res.status(400).json({ error: "customerId and conversationId required" });
+      return;
+    }
+
+    // Bug 7: invalid ObjectId would throw CastError → 500; return 404 instead
+    if (
+      !mongoose.isValidObjectId(messageId) ||
+      !mongoose.isValidObjectId(conversationId) ||
+      !mongoose.isValidObjectId(customerId)
+    ) {
+      res.status(404).json({ error: "Message not found" });
       return;
     }
 
@@ -334,6 +357,12 @@ router.get("/chat/messages/:conversationId", requireAuth, async (req: AuthReques
   try {
     const userId = String(req.user!._id);
     const { conversationId } = req.params;
+
+    // Bug 7: invalid ObjectId would throw CastError → 500; return 404 instead
+    if (!mongoose.isValidObjectId(conversationId)) {
+      res.status(404).json({ error: "Conversation not found" });
+      return;
+    }
 
     const store = await Store.findOne({ ownerId: userId }).lean();
     if (!store) {
@@ -461,13 +490,25 @@ router.post("/chat/message", requireAuth, async (req: AuthRequest, res) => {
 
 /**
  * DELETE /chat/message/:messageId
- * Admin deletes a message. Body: {}
+ * Admin deletes a message. Body: { conversationId }
  * Delete for everyone (within 5 min) if admin is sender, otherwise delete for self only.
  */
 router.delete("/chat/message/:messageId", requireAuth, async (req: AuthRequest, res) => {
   try {
     const userId = String(req.user!._id);
     const { messageId } = req.params;
+    const { conversationId } = req.body;
+
+    // Bug 7: invalid ObjectId would throw CastError → 500; return 404 instead
+    if (!mongoose.isValidObjectId(messageId)) {
+      res.status(404).json({ error: "Message not found" });
+      return;
+    }
+    // Bug 8: verify conversationId is present and valid so we can confirm ownership
+    if (conversationId && !mongoose.isValidObjectId(conversationId)) {
+      res.status(404).json({ error: "Message not found" });
+      return;
+    }
 
     const store = await Store.findOne({ ownerId: userId }).lean();
     if (!store) {
@@ -477,7 +518,11 @@ router.delete("/chat/message/:messageId", requireAuth, async (req: AuthRequest, 
 
     const storeId = String(store._id);
 
-    const msg = await ChatMessage.findOne({ _id: messageId, storeId });
+    // Bug 8: include conversationId in the query when provided to verify the message
+    // belongs to the conversation the admin is currently viewing
+    const msgQuery: Record<string, unknown> = { _id: messageId, storeId };
+    if (conversationId) msgQuery.conversationId = conversationId;
+    const msg = await ChatMessage.findOne(msgQuery);
     if (!msg) {
       res.status(404).json({ error: "Message not found" });
       return;

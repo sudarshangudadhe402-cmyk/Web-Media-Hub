@@ -101,6 +101,7 @@ function ConversationView({
   const [sendError, setSendError] = useState<string | null>(null);
   const [longPressId, setLongPressId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -127,8 +128,15 @@ function ConversationView({
     return () => clearInterval(interval);
   }, [fetchMessages]);
 
+  // Bug 1: only auto-scroll when user is already near the bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 120;
+    if (isNearBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages.length]);
 
   // Auto-resize textarea
@@ -179,12 +187,14 @@ function ConversationView({
         const err = await res.json().catch(() => ({}));
         setSendError((err as any).error ?? "Failed to send. Try again.");
         setMessages((prev) => prev.filter((m) => m.id !== tempId));
-        setMsgText(text);
+        // Bug 3: restore failed text only if user hasn't started typing something new
+        setMsgText((curr) => curr || text);
       }
     } catch {
       setSendError("Network error. Please try again.");
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
-      setMsgText(text);
+      // Bug 3: restore failed text only if user hasn't started typing something new
+      setMsgText((curr) => curr || text);
     } finally {
       setSending(false);
     }
@@ -195,7 +205,12 @@ function ConversationView({
     try {
       const res = await fetch(`/api/chat/message/${msgId}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${getToken()}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`,
+        },
+        // Bug 8: send conversationId so backend can verify ownership
+        body: JSON.stringify({ conversationId: conv.id }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -220,6 +235,13 @@ function ConversationView({
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
   }
 
+  // Bug 4: clear timer on unmount to prevent memory leak
+  useEffect(() => {
+    return () => {
+      if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    };
+  }, []);
+
   return (
     <div className="flex flex-col" style={{ height: "calc(100dvh - 130px)", minHeight: 480 }}>
       {/* Header */}
@@ -243,7 +265,7 @@ function ConversationView({
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto py-3 space-y-2 px-0.5">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto py-3 space-y-2 px-0.5">
         {loading ? (
           <div className="flex justify-center pt-10">
             <Loader2 className="w-6 h-6 text-gray-300 animate-spin" />
@@ -319,8 +341,8 @@ function ConversationView({
                     </div>
                   </div>
 
-                  {/* Long-press delete menu — only for admin's own messages */}
-                  {isLongPressed && isAdmin && !isDeleted && (
+                  {/* Long-press delete menu — only for admin's own non-pending messages */}
+                  {isLongPressed && isAdmin && !isDeleted && !msg.pending && (
                     <div
                       className="absolute bottom-full right-0 mb-1 z-10"
                       onClick={(e) => e.stopPropagation()}
@@ -445,11 +467,20 @@ export default function AdminChatView() {
     return () => clearInterval(interval);
   }, [fetchConversations]);
 
-  // Keep selectedConv in sync as the list refreshes
+  // Keep selectedConv in sync as the list refreshes — only update when data actually changed
   useEffect(() => {
     if (!selectedConv) return;
     const updated = conversations.find((c) => c.id === selectedConv.id);
-    if (updated) setSelectedConv(updated);
+    if (
+      updated &&
+      (updated.adminUnread !== selectedConv.adminUnread ||
+        updated.customerUnread !== selectedConv.customerUnread ||
+        updated.lastMessage !== selectedConv.lastMessage ||
+        updated.lastMessageAt !== selectedConv.lastMessageAt ||
+        updated.customerName !== selectedConv.customerName)
+    ) {
+      setSelectedConv(updated);
+    }
   }, [conversations]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync unread to 0 when conversation is opened

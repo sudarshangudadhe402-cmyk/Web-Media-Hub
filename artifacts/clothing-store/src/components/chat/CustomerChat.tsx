@@ -14,7 +14,7 @@ export interface CustomerChatProps {
   storeSlug: string;
   storeName: string;
   customerId: string;
-  customerName: string;
+  customerName?: string; // accepted for caller compatibility but not rendered (customer knows their own name)
   onClose: () => void;
   initialMessage?: string;
 }
@@ -75,6 +75,7 @@ export default function CustomerChat({
   const [sendError, setSendError] = useState<string | null>(null);
   const [longPressId, setLongPressId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -121,9 +122,15 @@ export default function CustomerChat({
     return () => clearInterval(interval);
   }, [conversationId, fetchMessages]);
 
-  // ── Auto-scroll on new messages ────────────────────────────────────────────
+  // ── Auto-scroll on new messages — only when user is near the bottom ────────
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 120;
+    if (isNearBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages.length]);
 
   // ── Auto-resize textarea ───────────────────────────────────────────────────
@@ -172,12 +179,14 @@ export default function CustomerChat({
         const err = await res.json().catch(() => ({}));
         setSendError(err.error ?? "Failed to send. Please try again.");
         setMessages((prev) => prev.filter((m) => m.id !== tempId));
-        setMsgText(text);
+        // Bug 3: restore failed text only if user hasn't started typing something new
+        setMsgText((curr) => curr || text);
       }
     } catch {
       setSendError("Network error. Please try again.");
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
-      setMsgText(text);
+      // Bug 3: restore failed text only if user hasn't started typing something new
+      setMsgText((curr) => curr || text);
     } finally {
       setSending(false);
     }
@@ -218,6 +227,13 @@ export default function CustomerChat({
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
   }
 
+  // Bug 4: clear timer on unmount to prevent memory leak
+  useEffect(() => {
+    return () => {
+      if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    };
+  }, []);
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div
@@ -256,7 +272,7 @@ export default function CustomerChat({
       </div>
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
         {initLoading ? (
           <div className="flex flex-col items-center justify-center h-full gap-3">
             <Loader2 className="w-7 h-7 text-gray-300 animate-spin" />
@@ -352,8 +368,8 @@ export default function CustomerChat({
                     </div>
                   </div>
 
-                  {/* Long-press delete menu */}
-                  {isLongPressed && isCustomer && !isDeleted && (
+                  {/* Long-press delete menu — never show for pending (not yet on server) */}
+                  {isLongPressed && isCustomer && !isDeleted && !msg.pending && (
                     <div
                       className="absolute bottom-full right-0 mb-1 z-10"
                       onClick={(e) => e.stopPropagation()}
