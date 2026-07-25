@@ -7,6 +7,7 @@ interface ChatMessage {
   senderRole: "admin" | "customer";
   readAt: string | null;
   createdAt: string;
+  pending?: boolean; // optimistic — still sending
 }
 
 export interface CustomerChatProps {
@@ -18,25 +19,32 @@ export interface CustomerChatProps {
   initialMessage?: string;
 }
 
-// ── Double-tick SVG ───────────────────────────────────────────────────────────
-function DoubleTick({ read }: { read: boolean }) {
-  const color = read ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.35)";
+// ── WhatsApp-style message status ─────────────────────────────────────────────
+// pending → single faint tick (sending…)
+// readAt = null → single gray tick (sent to server)
+// readAt = set → double bright tick (seen by admin)
+function MessageStatus({ readAt, pending }: { readAt: string | null; pending?: boolean }) {
+  if (pending) {
+    // Clock-like single faint tick — still sending
+    return (
+      <svg width="13" height="9" viewBox="0 0 16 12" fill="none">
+        <path d="M2 6L6 10L14 2" stroke="rgba(255,255,255,0.28)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  if (!readAt) {
+    // Single tick — sent (server received)
+    return (
+      <svg width="13" height="9" viewBox="0 0 16 12" fill="none">
+        <path d="M2 6L6 10L14 2" stroke="rgba(255,255,255,0.52)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  // Double tick — seen by admin (bright white)
   return (
-    <svg width="16" height="10" viewBox="0 0 22 14" fill="none">
-      <path
-        d="M1 7L5.5 11.5L13 3"
-        stroke={color}
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M7 7L11.5 11.5L19 3"
-        stroke={color}
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    <svg width="18" height="9" viewBox="0 0 22 12" fill="none">
+      <path d="M1 6L5.5 10.5L13 2"  stroke="rgba(255,255,255,0.95)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M7 6L11.5 10.5L19 2" stroke="rgba(255,255,255,0.95)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -120,9 +128,22 @@ export default function CustomerChat({
   async function sendMessage() {
     if (!msgText.trim() || !conversationId || sending) return;
     const text = msgText.trim();
+    const tempId = `pending_${Date.now()}`;
     setSending(true);
     setSendError(null);
     setMsgText("");
+    // Optimistic: show message immediately with pending tick
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: tempId,
+        text,
+        senderRole: "customer",
+        readAt: null,
+        createdAt: new Date().toISOString(),
+        pending: true,
+      },
+    ]);
     try {
       const res = await fetch(`/api/public/chat/${storeSlug}/message`, {
         method: "POST",
@@ -131,14 +152,19 @@ export default function CustomerChat({
       });
       if (res.ok) {
         const msg: ChatMessage = await res.json();
-        setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]);
+        // Replace temp with real message
+        setMessages((prev) =>
+          prev.map((m) => (m.id === tempId ? msg : m))
+        );
       } else {
         const err = await res.json().catch(() => ({}));
         setSendError(err.error ?? "Failed to send. Please try again.");
+        setMessages((prev) => prev.filter((m) => m.id !== tempId));
         setMsgText(text);
       }
     } catch {
       setSendError("Network error. Please try again.");
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
       setMsgText(text);
     } finally {
       setSending(false);
@@ -307,7 +333,9 @@ export default function CustomerChat({
                           hour12: true,
                         })}
                       </span>
-                      {isCustomer && !isDeleted && <DoubleTick read={!!msg.readAt} />}
+                      {isCustomer && !isDeleted && (
+                        <MessageStatus readAt={msg.readAt} pending={msg.pending} />
+                      )}
                     </div>
                   </div>
 
