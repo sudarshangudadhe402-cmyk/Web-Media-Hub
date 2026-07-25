@@ -162,9 +162,11 @@ export default function CustomerChat({
       });
       if (res.ok) {
         const msg: ChatMessage = await res.json();
-        // Replace temp with real message
+        // Replace temp with real message (deduplicates if polling already got it)
         setMessages((prev) =>
-          prev.map((m) => (m.id === tempId ? msg : m))
+          prev.some((m) => m.id === msg.id)
+            ? prev.filter((m) => m.id !== tempId)
+            : prev.map((m) => (m.id === tempId ? msg : m))
         );
       } else {
         const err = await res.json().catch(() => ({}));
@@ -303,6 +305,7 @@ export default function CustomerChat({
                   onMouseLeave={cancelLongPress}
                   onTouchStart={() => startLongPress(msg.id)}
                   onTouchEnd={cancelLongPress}
+                  onTouchMove={cancelLongPress}
                 >
                   <div
                     className={`px-3.5 py-2.5 text-sm ${
@@ -350,7 +353,7 @@ export default function CustomerChat({
                   </div>
 
                   {/* Long-press delete menu */}
-                  {isLongPressed && isCustomer && (
+                  {isLongPressed && isCustomer && !isDeleted && (
                     <div
                       className="absolute bottom-full right-0 mb-1 z-10"
                       onClick={(e) => e.stopPropagation()}
