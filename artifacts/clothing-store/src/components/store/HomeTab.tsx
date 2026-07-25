@@ -1,5 +1,5 @@
 import { Search, X, ShoppingBag, Heart, Zap, Camera, BookOpen, ChevronRight, CalendarDays, MapPin, Info, Box } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface PublicProduct {
   id: string;
@@ -65,18 +65,25 @@ export default function HomeTab({
   onTryOnClick,
 }: HomeTabProps) {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [arrivalTab, setArrivalTab] = useState<"arrivals" | "trending">("arrivals");
+
+  // Debounce search so filtering doesn't run on every keystroke
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const newArrivals = products.slice(0, 8);
   const mostTrending = [...products]
     .filter((p) => p.likeCount > 0 || p.tryOnLikeCount > 0)
     .sort((a, b) => (b.recentLikeCount + b.recentTryOnCount) - (a.recentLikeCount + a.recentTryOnCount))
     .slice(0, 10);
-  const filteredBySearch = search.trim()
+  const filteredBySearch = debouncedSearch.trim()
     ? products.filter(
         (p) =>
-          p.name.toLowerCase().includes(search.toLowerCase()) ||
-          p.productType.toLowerCase().includes(search.toLowerCase())
+          p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+          p.productType.toLowerCase().includes(debouncedSearch.toLowerCase())
       )
     : null;
 
@@ -119,7 +126,7 @@ export default function HomeTab({
       {/* Search Results */}
       {filteredBySearch && (
         <div className="px-4 pb-4">
-          <p className="text-xs text-gray-400 mb-2 font-medium">{filteredBySearch.length} results for "{search}"</p>
+          <p className="text-xs text-gray-400 mb-2 font-medium">{filteredBySearch.length} results for "{debouncedSearch}"</p>
           <div className="grid grid-cols-2 gap-3">
             {filteredBySearch.slice(0, 6).map((p) => {
               const disc = discountPct(p);

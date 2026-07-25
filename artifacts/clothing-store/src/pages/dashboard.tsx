@@ -72,38 +72,51 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (view !== "detail" || !selectedBooking) return;
+    const controller = new AbortController();
     const token = localStorage.getItem("wmh_token");
     fetch(`/api/bookings/${selectedBooking.id}/seen`, {
       method: "PATCH",
+      signal: controller.signal,
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then(() => {
         queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
         queryClient.invalidateQueries({ queryKey: ["admin-bookings"] });
       })
-      .catch(() => {});
-  }, [view, selectedBooking?.id]);
+      .catch((err) => { if (err.name !== "AbortError") console.error(err); });
+    return () => controller.abort();
+  }, [view, selectedBooking?.id, queryClient]);
 
   useEffect(() => {
     if (view !== "customeraccounts") return;
+    const controller = new AbortController();
     setCustomerAccountsLoading(true);
     const token = localStorage.getItem("wmh_token");
-    fetch("/api/customer-accounts", { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    fetch("/api/customer-accounts", {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      signal: controller.signal,
+    })
       .then(r => r.ok ? r.json() : [])
-      .then(d => setCustomerAccounts(d))
+      .then(d => { if (!controller.signal.aborted) setCustomerAccounts(d); })
       .catch(() => {})
-      .finally(() => setCustomerAccountsLoading(false));
+      .finally(() => { if (!controller.signal.aborted) setCustomerAccountsLoading(false); });
+    return () => controller.abort();
   }, [view]);
 
   useEffect(() => {
     if (adminBookingTab !== "completed" || view !== "bookings") return;
+    const controller = new AbortController();
     setCompletedBookingsLoading(true);
     const token = localStorage.getItem("wmh_token");
-    fetch("/api/bookings/completed", { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    fetch("/api/bookings/completed", {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      signal: controller.signal,
+    })
       .then(r => r.ok ? r.json() : [])
-      .then(d => setCompletedBookings(d))
+      .then(d => { if (!controller.signal.aborted) setCompletedBookings(d); })
       .catch(() => {})
-      .finally(() => setCompletedBookingsLoading(false));
+      .finally(() => { if (!controller.signal.aborted) setCompletedBookingsLoading(false); });
+    return () => controller.abort();
   }, [adminBookingTab, view]);
 
   async function completeOrder(id: string) {

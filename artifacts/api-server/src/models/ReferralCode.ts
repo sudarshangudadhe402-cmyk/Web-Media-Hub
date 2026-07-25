@@ -16,7 +16,7 @@ export interface IReferralCode extends Document {
 
 const ReferralCodeSchema = new Schema<IReferralCode>(
   {
-    owner_admin_id: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    owner_admin_id: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true },
     referral_code: { type: String, required: true, unique: true, trim: true, uppercase: true },
     commission_percentage: { type: Number, default: 0, min: 0, max: 100 },
     customer_discount_percentage: { type: Number, default: 0, min: 0, max: 100 },

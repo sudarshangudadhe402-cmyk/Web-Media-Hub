@@ -20,7 +20,7 @@ const LedgerEntrySchema = new Schema<ILedgerEntry>(
     productName: { type: String, default: "" },
     productCost: { type: Number, default: null },
     paymentStatus: { type: String, enum: ["Paid", "Pending"], default: "Pending" },
-    confirmed: { type: Boolean, default: false },
+    confirmed: { type: Boolean, default: false, index: true },
   },
   { timestamps: true }
 );

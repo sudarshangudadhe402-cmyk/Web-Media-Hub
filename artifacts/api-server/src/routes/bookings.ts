@@ -1,4 +1,5 @@
 import { Router } from "express";
+import mongoose from "mongoose";
 import { Booking } from "../models/Booking";
 import { Product } from "../models/Product";
 import { Store } from "../models/Store";
@@ -116,6 +117,10 @@ router.post("/bookings", bookingRateLimiter, requireDb, async (req, res) => {
   try {
     const { productId, customerName, customerPhone, customerAddress, selectedSize, tryOnImage } = req.body;
 
+    if (!mongoose.isValidObjectId(productId)) {
+      res.status(404).json({ error: "Product not found" }); return;
+    }
+
     const product = await Product.findById(productId);
     if (!product) {
       res.status(404).json({ error: "Product not found" });
@@ -164,6 +169,9 @@ router.post("/bookings", bookingRateLimiter, requireDb, async (req, res) => {
 
 router.patch("/bookings/:id/complete", requireAuth, async (req: AuthRequest, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      res.status(404).json({ error: "Booking not found" }); return;
+    }
     const userId = String(req.user!._id);
     const isOwner = await verifyBookingOwnership(req.params.id, userId);
     if (!isOwner) {
@@ -197,6 +205,9 @@ router.patch("/bookings/:id/complete", requireAuth, async (req: AuthRequest, res
 
 router.patch("/bookings/:id/seen", requireAuth, async (req: AuthRequest, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      res.status(404).json({ error: "Booking not found" }); return;
+    }
     const userId = String(req.user!._id);
     const isOwner = await verifyBookingOwnership(req.params.id, userId);
     if (!isOwner) {
@@ -224,6 +235,9 @@ router.patch("/bookings/:id/seen", requireAuth, async (req: AuthRequest, res) =>
 
 router.patch("/bookings/:id/ignore", requireAuth, async (req: AuthRequest, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      res.status(404).json({ error: "Booking not found" }); return;
+    }
     const userId = String(req.user!._id);
     const isOwner = await verifyBookingOwnership(req.params.id, userId);
     if (!isOwner) {

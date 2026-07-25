@@ -18,6 +18,8 @@ const RevenuePaymentSchema = new Schema<IRevenuePayment>(
   { timestamps: { createdAt: true, updatedAt: false } }
 );
 
-RevenuePaymentSchema.index({ type: 1, createdAt: 1 });
+// Descending on createdAt so "this month revenue" range queries hit the index efficiently
+RevenuePaymentSchema.index({ type: 1, createdAt: -1 });
+RevenuePaymentSchema.index({ createdAt: -1 });
 
 export const RevenuePayment = mongoose.model<IRevenuePayment>("RevenuePayment", RevenuePaymentSchema);

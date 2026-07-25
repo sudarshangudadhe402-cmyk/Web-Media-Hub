@@ -183,8 +183,7 @@ export default function PublicStore() {
       })
       .catch((err) => { if (err.name !== "AbortError") console.error("Cart sync failed:", err); });
     return () => ac.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customerAccount?.id]);
+  }, [customerAccount?.id, slug]);
   const [signUpLoading, setSignUpLoading] = useState(false);
   const [signInLoading, setSignInLoading] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
@@ -244,9 +243,9 @@ export default function PublicStore() {
   }, [data]);
 
   useEffect(() => {
-    if (!slug || !data) return;
+    if (!slug || !data?.id) return;
     fetch(`/api/public/store/${slug}/visit`, { method: "POST" }).catch(() => {});
-  }, [slug, !!data]);
+  }, [slug, data?.id]);
 
   useEffect(() => {
     if (view === "product" && selectedProduct && data?.id) {
@@ -256,28 +255,32 @@ export default function PublicStore() {
       setReviewError(null);
       setEditingReviewId(null);
       setReviewsLoading(true);
-      fetch(`/api/public/reviews/${selectedProduct.id}?storeId=${data.id}`)
+      const ac = new AbortController();
+      fetch(`/api/public/reviews/${selectedProduct.id}?storeId=${data.id}`, { signal: ac.signal })
         .then(r => r.ok ? r.json() : [])
-        .then(d => setReviews(d))
+        .then(d => { if (!ac.signal.aborted) setReviews(d); })
         .catch(() => {})
-        .finally(() => setReviewsLoading(false));
+        .finally(() => { if (!ac.signal.aborted) setReviewsLoading(false); });
+      return () => ac.abort();
     }
   }, [selectedProduct?.id, view, data?.id]);
 
   useEffect(() => {
     if (tab !== "mybookings" || myBookings.length === 0) return;
+    const ac = new AbortController();
     myBookings.forEach((bk) => {
-      fetch(`/api/public/booking-status/${bk.id}`)
+      fetch(`/api/public/booking-status/${bk.id}`, { signal: ac.signal })
         .then((r) => r.ok ? r.json() : null)
         .then((d) => {
-          if (d) {
+          if (d && !ac.signal.aborted) {
             setSeenStatus((prev) => ({ ...prev, [bk.id]: d.seenByAdmin }));
             setCompletedStatus((prev) => ({ ...prev, [bk.id]: d.completed ?? false }));
           }
         })
         .catch(() => {});
     });
-  }, [tab]);
+    return () => ac.abort();
+  }, [tab, myBookings.length]);
 
   const categories = useMemo(() => {
     if (!data) return [];
@@ -294,7 +297,8 @@ export default function PublicStore() {
       }
     });
     return [...types, ...funcCats];
-  }, [data]);
+  // Depend only on products so description/name changes don't trigger unnecessary recalcs
+  }, [data?.products]);
 
   function canActOnProduct(storeKey: string, productId: string): boolean {
     try {

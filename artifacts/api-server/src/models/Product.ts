@@ -49,4 +49,10 @@ const ProductSchema = new Schema<IProduct>(
   { timestamps: true }
 );
 
+// Index for store-scoped product queries (admin list, booking ownership checks)
+ProductSchema.index({ storeId: 1, createdAt: -1 });
+// Compound index for like/tryOn sorted queries used in discovery
+ProductSchema.index({ storeId: 1, likeCount: -1 });
+ProductSchema.index({ storeId: 1, tryOnLikeCount: -1 });
+
 export const Product = mongoose.model<IProduct>("Product", ProductSchema);

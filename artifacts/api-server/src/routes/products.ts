@@ -1,4 +1,5 @@
 import { Router } from "express";
+import mongoose from "mongoose";
 import { Product } from "../models/Product";
 import { Store } from "../models/Store";
 import { Notification } from "../models/Notification";
@@ -168,6 +169,9 @@ router.post("/products/upload-model", requireAuth, async (req: AuthRequest, res)
 
 router.get("/products/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      res.status(404).json({ error: "Product not found" }); return;
+    }
     const userId = String(req.user!._id);
     const store = await getMyStore(userId);
     const product = await Product.findById(req.params.id);
@@ -192,6 +196,9 @@ router.get("/products/:id", requireAuth, async (req: AuthRequest, res) => {
 
 router.patch("/products/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      res.status(404).json({ error: "Product not found" }); return;
+    }
     const userId = String(req.user!._id);
     const store = await getMyStore(userId);
     const existing = await Product.findById(req.params.id);
@@ -244,6 +251,9 @@ router.patch("/products/:id", requireAuth, async (req: AuthRequest, res) => {
 
 router.delete("/products/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      res.status(404).json({ error: "Product not found" }); return;
+    }
     const userId = String(req.user!._id);
     const store = await getMyStore(userId);
     const existing = await Product.findById(req.params.id);

@@ -4,7 +4,7 @@ export interface IOtpCode extends Document {
   email: string;
   storeId: string;
   code: string;
-  purpose: "signup" | "signin" | "admin-creation" | "admin-forgot-password" | "cancel-autopay" | "reactivate-autopay";
+  purpose: "signup" | "signin" | "admin-creation" | "admin-forgot-password" | "partner-verification" | "partner-withdrawal" | "cancel-autopay" | "reactivate-autopay";
   expiresAt: Date;
   used: boolean;
   /** true only when the correct code was entered by the user — distinct from `used` which also covers invalidation on resend */

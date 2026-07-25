@@ -1,5 +1,5 @@
 import { Search, X, SlidersHorizontal, ShoppingBag, Heart, Camera, Box, Star } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 
 
 interface PublicProduct {
@@ -57,16 +57,23 @@ export default function ShopTab({
   onTryOn,
 }: ShopTabProps) {
   const [search, setSearch] = useState(initialSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState(initialSearch);
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [sortBy, setSortBy] = useState<"newest" | "most-liked" | "most-tried" | "trending">("newest");
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [viewing3D, setViewing3D] = useState<PublicProduct | null>(null);
   const [show3DUnavailable, setShow3DUnavailable] = useState(false);
 
+  // Debounce search so the useMemo doesn't run on every keystroke
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 250);
+    return () => clearTimeout(t);
+  }, [search]);
+
   const filteredProducts = useMemo(() => {
     let list = [...products];
-    if (search.trim()) {
-      const q = search.toLowerCase();
+    if (debouncedSearch.trim()) {
+      const q = debouncedSearch.toLowerCase();
       list = list.filter(
         (p) =>
           p.name.toLowerCase().includes(q) ||
@@ -88,7 +95,7 @@ export default function ShopTab({
       list.sort((a, b) => b.recentLikeCount + b.recentTryOnCount - (a.recentLikeCount + a.recentTryOnCount));
     }
     return list;
-  }, [products, search, activeCategory, sortBy, likeCounts]);
+  }, [products, debouncedSearch, activeCategory, sortBy, likeCounts]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden" style={{ background: "#f5f5f5" }}>

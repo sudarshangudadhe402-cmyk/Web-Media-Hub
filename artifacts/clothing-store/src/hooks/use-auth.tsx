@@ -43,9 +43,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!isError || !token) return;
     const err = error as { status?: number } | null;
     if (err?.status === 401 || err?.status === 403) {
-      logout();
+      // Call logout imperatively without adding it to deps (it's stable but not memoized)
+      localStorage.removeItem("wmh_token");
+      setToken(null);
+      queryClient.clear();
     }
-  }, [isError, error, token]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isError, error?.status, token]);
 
   const isLoading = !!token && isMeLoading;
 

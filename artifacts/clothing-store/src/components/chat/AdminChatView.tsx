@@ -117,15 +117,17 @@ function ConversationView({
     } catch {}
   }, [conv.id]);
 
-  // Poll only when tab is visible
+  // Poll only when tab is visible — isMounted guard prevents state update after unmount
   useEffect(() => {
-    fetchMessages().finally(() => setLoading(false));
+    let isMounted = true;
+    fetchMessages().finally(() => { if (isMounted) setLoading(false); });
     const interval = setInterval(() => {
-      if (document.visibilityState !== "hidden") {
-        fetchMessages();
-      }
+      if (document.visibilityState !== "hidden" && isMounted) fetchMessages();
     }, 3000);
-    return () => clearInterval(interval);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, [fetchMessages]);
 
   // Bug 1: only auto-scroll when user is already near the bottom

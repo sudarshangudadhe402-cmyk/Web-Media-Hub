@@ -60,7 +60,7 @@ const StoreSchema = new Schema<IStore>(
     openDays: { type: String },
     bannerImage: { type: String },
     description: { type: String },
-    publicSlug: { type: String, unique: true },
+    publicSlug: { type: String, unique: true, required: true },
     isLocked: { type: Boolean, default: false },
   },
   { timestamps: true }

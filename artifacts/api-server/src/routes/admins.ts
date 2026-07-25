@@ -1,4 +1,5 @@
 import { Router } from "express";
+import mongoose from "mongoose";
 import { User } from "../models/User";
 import { Store } from "../models/Store";
 import { Product } from "../models/Product";
@@ -244,6 +245,9 @@ router.get("/admins", requireSuperAdmin, async (req, res) => {
 
 router.get("/admins/:id", requireSuperAdmin, async (req, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      res.status(404).json({ error: "Admin not found" }); return;
+    }
     const admin = await User.findById(req.params.id).lean() as any;
     if (!admin || admin.role !== "admin") { res.status(404).json({ error: "Admin not found" }); return; }
 
@@ -298,6 +302,9 @@ router.patch("/admins/:id/toggle-active", requireSuperAdmin, async (req, res) =>
   try {
     const { isActive } = req.body;
     if (typeof isActive !== "boolean") { res.status(400).json({ error: "isActive must be a boolean" }); return; }
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      res.status(404).json({ error: "Admin not found" }); return;
+    }
     const updateFields: Record<string, unknown> = { isActive };
     if (!isActive) updateFields.activeSessions = [];
     const admin = await User.findByIdAndUpdate(req.params.id, updateFields, { new: true });
@@ -311,6 +318,9 @@ router.patch("/admins/:id/toggle-active", requireSuperAdmin, async (req, res) =>
 
 router.delete("/admins/:id", requireSuperAdmin, async (req, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      res.status(404).json({ error: "Admin not found" }); return;
+    }
     await User.findByIdAndDelete(req.params.id);
     res.json({ success: true, message: "Admin deleted" });
   } catch (err) {
@@ -321,6 +331,9 @@ router.delete("/admins/:id", requireSuperAdmin, async (req, res) => {
 
 router.get("/admins/:id/store-stats", requireSuperAdmin, async (req, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      res.json({ tryOnCount: 0, adsCount: 0 }); return;
+    }
     const store = await Store.findOne({ ownerId: req.params.id }).select("_id");
     if (!store) { res.json({ tryOnCount: 0, adsCount: 0 }); return; }
     const storeId = String(store._id);

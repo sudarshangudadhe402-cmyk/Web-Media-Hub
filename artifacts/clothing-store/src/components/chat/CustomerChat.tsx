@@ -110,16 +110,16 @@ export default function CustomerChat({
     [storeSlug, customerId]
   );
 
-  // Poll when conversation is ready
+  // Poll when conversation is ready — active flag prevents stale fetch from updating state
   useEffect(() => {
+    let active = true;
     if (!conversationId) return;
-    fetchMessages(conversationId);
-    const interval = setInterval(() => {
-      if (document.visibilityState !== "hidden") {
-        fetchMessages(conversationId);
-      }
-    }, 3000);
-    return () => clearInterval(interval);
+    const poll = async () => {
+      if (active && document.visibilityState !== "hidden") await fetchMessages(conversationId);
+    };
+    poll();
+    const interval = setInterval(poll, 3000);
+    return () => { active = false; clearInterval(interval); };
   }, [conversationId, fetchMessages]);
 
   // ── Auto-scroll on new messages — only when user is near the bottom ────────
