@@ -5,14 +5,9 @@ import { parseIndiaCoordinatePair } from "../lib/indiaGeo";
 
 const router = Router();
 
-function slugify(text: string): string {
-  const base = text
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^\w-]+/g, "")
-    .slice(0, 50);
-  const rand = Math.random().toString(36).slice(2, 7);
-  return `WMH-${base}-${rand}`;
+function slugify(_text: string): string {
+  const rand = Math.random().toString(36).slice(2, 9).toUpperCase();
+  return `WMH-${rand}`;
 }
 
 function formatStore(s: InstanceType<typeof Store>) {
