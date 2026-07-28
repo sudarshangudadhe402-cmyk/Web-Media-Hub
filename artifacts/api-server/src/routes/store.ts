@@ -6,8 +6,12 @@ import { parseIndiaCoordinatePair } from "../lib/indiaGeo";
 const router = Router();
 
 function slugify(_text: string): string {
-  const rand = Math.random().toString(36).slice(2, 9).toUpperCase();
-  return `WMH-${rand}`;
+  // 6 random digits + 2 random uppercase letters — numbers dominate
+  const digits = Math.floor(Math.random() * 900000 + 100000).toString(); // 100000–999999
+  const letters = Array.from({ length: 2 }, () =>
+    String.fromCharCode(65 + Math.floor(Math.random() * 26))
+  ).join("");
+  return `WMH-${digits}${letters}`;
 }
 
 function formatStore(s: InstanceType<typeof Store>) {
