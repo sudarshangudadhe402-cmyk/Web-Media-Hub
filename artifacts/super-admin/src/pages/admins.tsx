@@ -134,14 +134,10 @@ function CircularProgress({
   );
 }
 
-// ── Google Maps iframe component ───────────────────────────────────────────────
+// ── Map placeholder (map will be added later) ──────────────────────────────────
 
-function GoogleMapEmbed({ zoom }: { zoom: number }) {
-  // Centered on India (lat 20.5937, lon 78.9629), terrain/roadmap style
-  const src =
-    `https://maps.google.com/maps?q=India&t=m&z=${zoom}` +
-    `&ll=20.5937,78.9629&ie=UTF8&iwloc=&output=embed`;
-
+function GoogleMapEmbed({ zoom: _zoom }: { zoom: number }) {
+  // Map placeholder — actual map will be added back later
   return (
     <div
       style={{
@@ -149,19 +145,15 @@ function GoogleMapEmbed({ zoom }: { zoom: number }) {
         borderRadius: 12,
         overflow: "hidden",
         border: "1px solid #e5e7eb",
+        background: "#000",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
       }}
     >
-      <iframe
-        key={zoom}               /* remount on zoom change */
-        src={src}
-        width="100%"
-        height="100%"
-        style={{ border: 0, display: "block" }}
-        allowFullScreen
-        loading="lazy"
-        referrerPolicy="no-referrer-when-downgrade"
-        title="India Managers Map"
-      />
+      <span style={{ color: "#fff", fontSize: "1.5rem", fontWeight: 600, letterSpacing: 2 }}>
+        India
+      </span>
     </div>
   );
 }

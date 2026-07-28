@@ -3,23 +3,23 @@ import { Search, MapPin, Navigation, X, ChevronDown, Star, AlertCircle, Loader2 
 import { useLocation } from "wouter";
 import { INDIA_CENTER, isIndiaCoordinate } from "@/components/india-map";
 
-// ─── Google Maps iframe embed (same as super-admin) ───────────────────────────
-function GoogleMapEmbed({ lat, lng, zoom }: { lat: number; lng: number; zoom: number }) {
-  const src =
-    `https://maps.google.com/maps?q=India&t=m&z=${zoom}` +
-    `&ll=${lat},${lng}&ie=UTF8&iwloc=&output=embed`;
+// ─── Map placeholder (map will be added later) ────────────────────────────────
+function GoogleMapEmbed(_props: { lat: number; lng: number; zoom: number }) {
   return (
-    <iframe
-      key={`${lat}-${lng}-${zoom}`}
-      src={src}
-      width="100%"
-      height="100%"
-      style={{ border: 0, display: "block" }}
-      allowFullScreen
-      loading="lazy"
-      referrerPolicy="no-referrer-when-downgrade"
-      title="India Store Map"
-    />
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        background: "#000",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <span style={{ color: "#fff", fontSize: "1.5rem", fontWeight: 600, letterSpacing: 2 }}>
+        India
+      </span>
+    </div>
   );
 }
 

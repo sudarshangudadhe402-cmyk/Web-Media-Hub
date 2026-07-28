@@ -1320,23 +1320,19 @@ export default function MyStore() {
                 )}
               </div>
 
-              {/* Map — Google Maps iframe */}
-              <div className="h-80 w-full">
-                <iframe
-                  key={mapPin ? `${mapPin.lat}-${mapPin.lng}` : "india"}
-                  src={
-                    mapPin
-                      ? `https://maps.google.com/maps?q=${mapPin.lat},${mapPin.lng}&t=m&z=16&ie=UTF8&iwloc=&output=embed`
-                      : `https://maps.google.com/maps?q=India&t=m&z=5&ll=20.5937,78.9629&ie=UTF8&iwloc=&output=embed`
-                  }
-                  width="100%"
-                  height="100%"
-                  style={{ border: 0, display: "block" }}
-                  allowFullScreen
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                  title="Store Location Map"
-                />
+              {/* Map placeholder — map will be added later */}
+              <div
+                className="h-80 w-full"
+                style={{
+                  background: "#000",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <span style={{ color: "#fff", fontSize: "1.5rem", fontWeight: 600, letterSpacing: 2 }}>
+                  India
+                </span>
               </div>
 
               {/* Address preview */}

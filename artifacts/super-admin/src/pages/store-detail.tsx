@@ -274,20 +274,24 @@ export default function StoreDetail() {
           {(data.storeAddress || data.storeWhatsapp || data.storeOpeningTime || data.storeOpenDays || data.storeDescription) && (
             <Section title="Store Info">
               <InfoRow icon={<MapPin className="w-4 h-4" />} label="Address" value={data.storeAddress} accent="#ef4444" />
-              {/* Google Maps embed for store address */}
+              {/* Map placeholder — map will be added back later */}
               {data.storeAddress && (
                 <div className="py-2 border-b last:border-0" style={{ borderColor: "#f0f0f5" }}>
-                  <iframe
-                    key={data.storeAddress}
-                    src={`https://maps.google.com/maps?q=${encodeURIComponent(data.storeAddress)}&t=m&z=14&ie=UTF8&iwloc=&output=embed`}
-                    width="100%"
-                    height="220"
-                    style={{ border: 0, display: "block", borderRadius: 12 }}
-                    allowFullScreen
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    title="Store Location"
-                  />
+                  <div
+                    style={{
+                      width: "100%",
+                      height: 220,
+                      background: "#000",
+                      borderRadius: 12,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <span style={{ color: "#fff", fontSize: "1.5rem", fontWeight: 600, letterSpacing: 2 }}>
+                      India
+                    </span>
+                  </div>
                 </div>
               )}
               <InfoRow icon={<MessageCircle className="w-4 h-4" />} label="WhatsApp" value={data.storeWhatsapp} accent="#22c55e" />
