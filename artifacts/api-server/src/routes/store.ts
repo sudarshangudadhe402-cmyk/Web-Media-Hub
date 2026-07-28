@@ -6,11 +6,13 @@ import { parseIndiaCoordinatePair } from "../lib/indiaGeo";
 const router = Router();
 
 function slugify(text: string): string {
-  return text
+  const base = text
     .toLowerCase()
     .replace(/\s+/g, "-")
     .replace(/[^\w-]+/g, "")
-    .slice(0, 50) + "-" + Math.random().toString(36).slice(2, 7);
+    .slice(0, 50);
+  const rand = Math.random().toString(36).slice(2, 7);
+  return `WMH-${base}-${rand}`;
 }
 
 function formatStore(s: InstanceType<typeof Store>) {
