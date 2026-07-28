@@ -680,9 +680,8 @@ const NAV_ITEMS: { key: PageKey; label: string; icon: React.ElementType; locked?
 function NavContent({ activePage, onNavigate }: { activePage: PageKey; onNavigate: (k: PageKey) => void }) {
   return (
     <>
-      <div className="px-4 py-5 border-b border-white/10 shrink-0">
-        <p className="font-bold text-sm text-white leading-tight">{DEMO_SUMMARY.storeName}</p>
-        <p className="text-[10px] text-white/40 mt-0.5 uppercase tracking-wider">Demo Store</p>
+      <div className="px-4 py-4 border-b border-white/10 shrink-0">
+        <p className="text-[10px] text-white/40 uppercase tracking-wider">Demo Store</p>
       </div>
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
         {NAV_ITEMS.map(({ key, label, icon: Icon, locked }) => {

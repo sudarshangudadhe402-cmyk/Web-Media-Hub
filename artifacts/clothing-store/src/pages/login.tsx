@@ -10,6 +10,7 @@ import {
   Mail, Lock, Store, ShieldCheck, Zap, Headphones,
   BarChart3, AlertTriangle, Eye, EyeOff, TrendingUp,
   Tag, ArrowRight, Layers, Sparkles, RefreshCw, CheckCircle2, X,
+  Box, Shirt, BookOpen, MessageSquare, Video, MapPin,
 } from "lucide-react";
 
 /* ── Hanger SVG (exact outline style from image) ── */
@@ -489,15 +490,6 @@ export default function Login() {
         >
           <div className="flex flex-col flex-1 px-8 xl:px-12 pt-12 pb-8" style={{ maxWidth: "520px", margin: "0 auto", width: "100%" }}>
 
-            {/* Hanger Icon */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.4 }}
-              className="flex justify-center mb-5"
-            >
-              <HangerSVG size={38} color="#D97706" strokeWidth={1.5} />
-            </motion.div>
-
             {/* Welcome heading */}
             <motion.div
               initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
@@ -676,21 +668,19 @@ export default function Login() {
                 <span className="text-sm" style={{ color: "#AAAAAA" }}>OR</span>
               </div>
 
-              {/* Create Your Store — outlined */}
+              {/* Create Your Store — filled (same style as Store Login) */}
               <motion.button
                 type="button"
                 onClick={() => setLocation("/create-store")}
-                whileHover={{ background: "#FAF7FF" }}
+                whileHover={{ opacity: 0.92 }}
                 whileTap={{ scale: 0.985 }}
-                className="w-full flex items-center justify-between font-semibold transition-all duration-200"
+                className="w-full flex items-center justify-between font-semibold text-white transition-all duration-200"
                 style={{
                   height: "54px",
                   borderRadius: "10px",
-                  background: "#FFFFFF",
-                  border: "1.5px solid #D5C8E0",
+                  background: "#92400E",
                   paddingLeft: "20px",
                   paddingRight: "20px",
-                  color: "#92400E",
                   fontSize: "15px",
                 }}
               >
@@ -748,28 +738,67 @@ export default function Login() {
 
             </motion.form>
 
-            {/* Store exterior image */}
+            {/* Admin feature cards */}
             <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.4 }}
-              className="mt-6 relative overflow-hidden rounded-2xl"
-              style={{ height: "160px", border: "1px solid #E5E0DA" }}
+              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.4 }}
+              className="mt-6 space-y-2.5"
             >
-              <img
-                src="https://images.unsplash.com/photo-1567401893414-76b7b1e5a7a5?w=700&q=85"
-                alt="WEB MEDIA HUB Store"
-                className="w-full h-full object-cover"
-              />
-              {/* Dark overlay */}
-              <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(15,10,30,0.80) 0%, rgba(0,0,0,0.15) 55%)" }} />
-              {/* Store name overlay — gold text on dark awning */}
-              <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center py-4">
-                <p
-                  className="font-bold tracking-widest text-sm"
-                  style={{ color: "#D4AF37", letterSpacing: "0.2em" }}
-                >
-                  WEB MEDIA HUB
-                </p>
+              <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#AAAAAA" }}>
+                What you get as an admin
+              </p>
+
+              {/* 3D Model */}
+              <div className="flex items-start gap-3 rounded-xl p-3" style={{ background: "#FFF8F0", border: "1px solid #F5DFB8" }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#FEF3C7" }}>
+                  <Box className="w-4 h-4" style={{ color: "#D97706" }} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold" style={{ color: "#111" }}>3D Model View</p>
+                  <p className="text-[11px] leading-relaxed mt-0.5" style={{ color: "#666" }}>
+                    Customers can rotate &amp; explore your products in 3D — no physical visit needed.
+                  </p>
+                </div>
               </div>
+
+              {/* Virtual Try-On */}
+              <div className="flex items-start gap-3 rounded-xl p-3" style={{ background: "#F5F3FF", border: "1px solid #DDD6FE" }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#EDE9FE" }}>
+                  <Shirt className="w-4 h-4" style={{ color: "#7C3AED" }} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold" style={{ color: "#111" }}>Virtual Try-On</p>
+                  <p className="text-[11px] leading-relaxed mt-0.5" style={{ color: "#666" }}>
+                    Customers upload their photo &amp; try your outfits virtually — more bookings, fewer returns.
+                  </p>
+                </div>
+              </div>
+
+              {/* Sales & Ledger */}
+              <div className="flex items-start gap-3 rounded-xl p-3" style={{ background: "#F0FDF4", border: "1px solid #BBF7D0" }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#DCFCE7" }}>
+                  <BookOpen className="w-4 h-4" style={{ color: "#16A34A" }} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold" style={{ color: "#111" }}>Sales &amp; Ledger</p>
+                  <p className="text-[11px] leading-relaxed mt-0.5" style={{ color: "#666" }}>
+                    Track every order, payment &amp; customer in one ledger — export or print anytime.
+                  </p>
+                </div>
+              </div>
+
+              {/* More features */}
+              <div className="flex items-start gap-3 rounded-xl p-3" style={{ background: "#EFF6FF", border: "1px solid #BFDBFE" }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#DBEAFE" }}>
+                  <MessageSquare className="w-4 h-4" style={{ color: "#2563EB" }} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold" style={{ color: "#111" }}>WhatsApp + AI Video + Map</p>
+                  <p className="text-[11px] leading-relaxed mt-0.5" style={{ color: "#666" }}>
+                    Message customers on WhatsApp, create AI promo videos &amp; show your store on the map.
+                  </p>
+                </div>
+              </div>
+
             </motion.div>
 
           </div>
