@@ -25,7 +25,7 @@ function rupees(n: number): string {
 export default function Renewals() {
   const [, setLocation] = useLocation();
 
-  const { data, isLoading } = useQuery<RenewalsDetail>({
+  const { data, isLoading, isError } = useQuery<RenewalsDetail>({
     queryKey: ["renewals-detail"],
     queryFn: async () => {
       const res = await authFetch("/api/marketing/renewals-detail");
@@ -105,6 +105,12 @@ export default function Renewals() {
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-16 rounded-2xl animate-pulse" style={{ background: "#f0f0f5" }} />
           ))}
+        </div>
+      ) : isError ? (
+        <div className="py-16 text-center">
+          <RefreshCw className="w-10 h-10 mx-auto mb-3 opacity-20" style={{ color: "#dc2626" }} />
+          <p className="text-sm font-medium text-gray-500">Failed to load renewals</p>
+          <p className="text-xs text-gray-400 mt-1">Check your connection and try again</p>
         </div>
       ) : perAdmin.length === 0 ? (
         <div className="py-16 text-center">

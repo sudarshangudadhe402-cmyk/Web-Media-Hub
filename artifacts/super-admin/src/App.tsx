@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
+import { ErrorBoundary } from "@/components/error-boundary";
 import Login from "@/pages/login";
 import Admins from "@/pages/admins";
 import Stores from "@/pages/stores";
@@ -119,7 +120,9 @@ function App() {
       <TooltipProvider>
         <AuthProvider>
           <WouterRouter base={(import.meta.env.BASE_URL || "").replace(/\/$/, "")}>
-            <Router />
+            <ErrorBoundary>
+              <Router />
+            </ErrorBoundary>
           </WouterRouter>
         </AuthProvider>
         <Toaster />

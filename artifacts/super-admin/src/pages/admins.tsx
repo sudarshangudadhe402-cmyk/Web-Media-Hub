@@ -172,7 +172,7 @@ const QUICK_ACTIONS = [
 
 export default function Dashboard() {
   const { toast } = useToast();
-  const { data: admins = [], isLoading } = useListAdmins();
+  const { data: admins = [], isLoading, isError } = useListAdmins();
 
   // Filters
   const [search, setSearch]           = useState("");
@@ -379,6 +379,25 @@ export default function Dashboard() {
       onAction: () => setLocation("/renewals"),
     },
   ];
+
+  if (isError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#f8f8fc" }}>
+        <div className="text-center space-y-3">
+          <Users className="w-12 h-12 mx-auto opacity-20" style={{ color: "#dc2626" }} />
+          <p className="text-sm font-medium text-gray-500">Failed to load dashboard data</p>
+          <p className="text-xs text-gray-400">Check your connection and refresh the page</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-xs font-semibold px-4 py-2 rounded-xl text-white"
+            style={{ background: "#7c3aed" }}
+          >
+            Refresh
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

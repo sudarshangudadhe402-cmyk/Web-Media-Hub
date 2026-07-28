@@ -12,7 +12,7 @@ function fmtDate(iso: string | null | undefined) {
 
 export default function Stores() {
   const [, setLocation] = useLocation();
-  const { data: admins = [], isLoading } = useListAdmins();
+  const { data: admins = [], isLoading, isError } = useListAdmins();
   const [search, setSearch] = useState("");
 
   const adminsArr = admins as any[];
@@ -71,6 +71,12 @@ export default function Stores() {
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-16 rounded-2xl animate-pulse" style={{ background: "#f0f0f5" }} />
           ))}
+        </div>
+      ) : isError ? (
+        <div className="py-16 text-center">
+          <Store className="w-10 h-10 mx-auto mb-3 opacity-20" style={{ color: "#dc2626" }} />
+          <p className="text-sm font-medium text-gray-500">Failed to load stores</p>
+          <p className="text-xs text-gray-400 mt-1">Check your connection and try again</p>
         </div>
       ) : filteredAdmins.length === 0 ? (
         <div className="py-16 text-center">

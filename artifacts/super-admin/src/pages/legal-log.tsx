@@ -319,7 +319,7 @@ export default function LegalLog() {
   const [appliedTo, setAppliedTo] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const { data: records, isLoading } = useQuery({
+  const { data: records, isLoading, isError } = useQuery({
     queryKey: ["legal-acceptances", appliedSearch, appliedFrom, appliedTo],
     queryFn: () => fetchAcceptances(appliedSearch, appliedFrom, appliedTo),
   });
@@ -340,18 +340,22 @@ export default function LegalLog() {
   }
 
   async function handleExport() {
-    const token = getToken();
-    const res = await fetch("/api/legal/acceptances/export", {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (!res.ok) return;
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `legal-acceptances-${Date.now()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const token = getToken();
+      const res = await fetch("/api/legal/acceptances/export", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `legal-acceptances-${Date.now()}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // Network error — silently ignore; user can retry
+    }
   }
 
   const count = records?.length ?? 0;
@@ -428,6 +432,14 @@ export default function LegalLog() {
               <Skeleton key={i} className="h-24 w-full rounded-xl" />
             ))}
           </div>
+        ) : isError ? (
+          <Card className="border-destructive/30">
+            <CardContent className="py-16 text-center text-muted-foreground">
+              <Shield className="w-10 h-10 mx-auto mb-3 opacity-20 text-destructive" />
+              <p className="font-medium text-destructive">Failed to load records</p>
+              <p className="text-sm mt-1">Check your connection and try again.</p>
+            </CardContent>
+          </Card>
         ) : count === 0 ? (
           <Card className="border-dashed">
             <CardContent className="py-16 text-center text-muted-foreground">
