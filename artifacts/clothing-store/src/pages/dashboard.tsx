@@ -624,26 +624,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── Customer's Chat Card ── */}
-        <div
-          className="bg-white rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
-          style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
-          onClick={() => setView("chat")}
-        >
-          <div className="px-4 py-3.5 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#F3EDFF" }}>
-              <MessageCircle className="w-5 h-5" style={{ color: "#8B5CF6" }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-black text-gray-900 text-[14px] leading-tight">Customer's Chat</p>
-              <p className="text-[11px] text-gray-400 mt-0.5">Chat with customers in real-time</p>
-            </div>
-            <span style={{ fontSize: "36px", lineHeight: 1 }}>💬</span>
-          </div>
-          <div className="px-4 py-2 border-t" style={{ borderColor: "#F0E8FF", background: "#F9F5FF" }}>
-            <p className="text-center font-bold text-[12px]" style={{ color: "#8B5CF6" }}>Open chat →</p>
-          </div>
-        </div>
 
         {/* ── Customer Accounts Card ── */}
         <div

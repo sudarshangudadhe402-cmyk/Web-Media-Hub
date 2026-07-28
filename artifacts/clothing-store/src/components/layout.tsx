@@ -217,6 +217,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <div className="md:hidden flex flex-col">
               <h1 className="font-bold text-base truncate leading-tight">{storeName}</h1>
               <p className="text-[11px] text-muted-foreground leading-tight">Welcome back! 👋</p>
+              {store?.publicSlug && (
+                <p className="text-[10px] font-mono font-semibold leading-tight" style={{ color: "hsl(var(--primary))" }}>{store.publicSlug}</p>
+              )}
             </div>
           </div>
 
