@@ -91,7 +91,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
         { name: "Products", href: "/products", icon: Package },
         { name: "Marketing & Growth", href: "/marketing-growth", icon: Zap },
         { name: "My Store", href: "/my-store", icon: Store },
-        { name: "Customer's Chat", href: "/customer-chat", icon: MessageCircle },
       ];
 
   const navDots: Record<string, boolean> = {
