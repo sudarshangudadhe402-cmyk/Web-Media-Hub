@@ -250,9 +250,18 @@ export default function Dashboard() {
   const totalStores   = adminsArr.length;
   const activeStores  = adminsArr.filter((a) => a.isActive !== false).length;
   const offlineStores = totalStores - activeStores;
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+
   const newStoresToday = adminsArr.filter((a) =>
     isToday(a.storeCreatedAt ?? a.createdAt)
   ).length;
+
+  const newStoresThisMonth = adminsArr.filter((a) => {
+    const d = new Date(a.storeCreatedAt ?? a.createdAt);
+    return d >= monthStart;
+  }).length;
 
   const totalRenewals: number =
     revenueData?.renewalCount ?? revenueData?.total ?? 0;
@@ -345,9 +354,12 @@ export default function Dashboard() {
       icon: <TrendingUp className="w-5 h-5" style={{ color: "#0891b2" }} />,
       bg: "rgba(8,145,178,0.10)", border: "rgba(8,145,178,0.18)",
       label: "New Store",
-      value: isLoading ? "—" : newStoresToday.toLocaleString(),
-      badge: newStoresToday > 0 ? `+${newStoresToday}` : null,
-      badgeColor: "#059669",
+      value: isLoading ? "—" : newStoresThisMonth.toLocaleString(),
+      badge: newStoresThisMonth > 0 ? `+${newStoresThisMonth} this month` : "This Month",
+      badgeColor: "#0891b2",
+      subValue: isLoading ? "—" : newStoresToday.toLocaleString(),
+      subLabel: "New Store Today",
+      subColor: "#059669",
     },
     {
       icon: <RefreshCw className="w-5 h-5" style={{ color: "#7c3aed" }} />,
@@ -489,6 +501,17 @@ export default function Dashboard() {
                   <p className="font-bold mt-0.5" style={{ fontSize: 10, color: (s as any).badgeColor }}>
                     {s.badge}
                   </p>
+                )}
+                {/* Sub value — e.g. "New Store Today" below monthly count */}
+                {"subValue" in s && (s as any).subValue !== undefined && (
+                  <div className="mt-1.5 pt-1.5 border-t" style={{ borderColor: "#f0f0f5" }}>
+                    <p style={{ fontSize: 9, color: "#9ca3af" }} className="leading-tight font-medium uppercase tracking-wide">
+                      {(s as any).subLabel}
+                    </p>
+                    <p className="font-bold leading-tight" style={{ fontSize: 13, color: (s as any).subColor ?? "#1e1b4b" }}>
+                      {(s as any).subValue}
+                    </p>
+                  </div>
                 )}
                 {/* Action link */}
                 {"action" in s && s.action && (
