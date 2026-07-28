@@ -10,7 +10,8 @@ import {
   Mail, Lock, Store, ShieldCheck, Zap, Headphones,
   BarChart3, AlertTriangle, Eye, EyeOff, TrendingUp,
   Tag, ArrowRight, Layers, Sparkles, RefreshCw, CheckCircle2, X,
-  Box, Shirt, BookOpen, MessageSquare, Video, MapPin,
+  Box, Shirt, BookOpen, MessageSquare, MapPin,
+  Trophy, CalendarCheck, Users,
 } from "lucide-react";
 
 /* ── Hanger SVG (exact outline style from image) ── */
@@ -738,66 +739,87 @@ export default function Login() {
 
             </motion.form>
 
-            {/* Admin feature cards */}
+            {/* Admin benefits — 3×3 grid */}
             <motion.div
               initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.4 }}
-              className="mt-6 space-y-2.5"
+              className="mt-6"
             >
               <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#AAAAAA" }}>
                 What you get as an admin
               </p>
 
-              {/* 3D Model */}
-              <div className="flex items-start gap-3 rounded-xl p-3" style={{ background: "#FFF8F0", border: "1px solid #F5DFB8" }}>
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#FEF3C7" }}>
-                  <Box className="w-4 h-4" style={{ color: "#D97706" }} />
-                </div>
-                <div>
-                  <p className="text-xs font-bold" style={{ color: "#111" }}>3D Model View</p>
-                  <p className="text-[11px] leading-relaxed mt-0.5" style={{ color: "#666" }}>
-                    Customers can rotate &amp; explore your products in 3D — no physical visit needed.
-                  </p>
-                </div>
-              </div>
-
-              {/* Virtual Try-On */}
-              <div className="flex items-start gap-3 rounded-xl p-3" style={{ background: "#F5F3FF", border: "1px solid #DDD6FE" }}>
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#EDE9FE" }}>
-                  <Shirt className="w-4 h-4" style={{ color: "#7C3AED" }} />
-                </div>
-                <div>
-                  <p className="text-xs font-bold" style={{ color: "#111" }}>Virtual Try-On</p>
-                  <p className="text-[11px] leading-relaxed mt-0.5" style={{ color: "#666" }}>
-                    Customers upload their photo &amp; try your outfits virtually — more bookings, fewer returns.
-                  </p>
-                </div>
-              </div>
-
-              {/* Sales & Ledger */}
-              <div className="flex items-start gap-3 rounded-xl p-3" style={{ background: "#F0FDF4", border: "1px solid #BBF7D0" }}>
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#DCFCE7" }}>
-                  <BookOpen className="w-4 h-4" style={{ color: "#16A34A" }} />
-                </div>
-                <div>
-                  <p className="text-xs font-bold" style={{ color: "#111" }}>Sales &amp; Ledger</p>
-                  <p className="text-[11px] leading-relaxed mt-0.5" style={{ color: "#666" }}>
-                    Track every order, payment &amp; customer in one ledger — export or print anytime.
-                  </p>
-                </div>
-              </div>
-
-              {/* More features */}
-              <div className="flex items-start gap-3 rounded-xl p-3" style={{ background: "#EFF6FF", border: "1px solid #BFDBFE" }}>
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#DBEAFE" }}>
-                  <MessageSquare className="w-4 h-4" style={{ color: "#2563EB" }} />
-                </div>
-                <div>
-                  <p className="text-xs font-bold" style={{ color: "#111" }}>WhatsApp + AI Video + Map</p>
-                  <p className="text-[11px] leading-relaxed mt-0.5" style={{ color: "#666" }}>
-                    Message customers on WhatsApp, create AI promo videos &amp; show your store on the map.
-                  </p>
-                </div>
-              </div>
+              {(() => {
+                const BENEFITS = [
+                  // Row 1
+                  {
+                    Icon: Box, bg: "#FEF3C7", iconBg: "#FFFBEB", iconColor: "#D97706",
+                    title: "3D Model View",
+                    desc: "Customers rotate & explore your products in 3D — no physical visit needed.",
+                  },
+                  {
+                    Icon: Shirt, bg: "#EDE9FE", iconBg: "#F5F3FF", iconColor: "#7C3AED",
+                    title: "Virtual Try-On",
+                    desc: "Customers upload their photo & try outfits virtually — more bookings, fewer returns.",
+                  },
+                  {
+                    Icon: BookOpen, bg: "#DCFCE7", iconBg: "#F0FDF4", iconColor: "#16A34A",
+                    title: "Sales & Ledger",
+                    desc: "Every order & customer saved in SaaS — no need to write in a book.",
+                  },
+                  // Row 2
+                  {
+                    Icon: Trophy, bg: "#FEE2E2", iconBg: "#FFF5F5", iconColor: "#DC2626",
+                    title: "Store Ranking in City",
+                    desc: "Your store ranks in your city — more visibility & walk-ins from local customers.",
+                  },
+                  {
+                    Icon: BarChart3, bg: "#DBEAFE", iconBg: "#EFF6FF", iconColor: "#2563EB",
+                    title: "Marketing & Growth",
+                    desc: "Full marketing data & analysis in SaaS — track campaigns and grow smarter.",
+                  },
+                  {
+                    Icon: MessageSquare, bg: "#CCFBF1", iconBg: "#F0FDFA", iconColor: "#0D9488",
+                    title: "Customer Chats",
+                    desc: "Chat directly with customers inside SaaS — no need for external apps.",
+                  },
+                  // Row 3
+                  {
+                    Icon: CalendarCheck, bg: "#E0E7FF", iconBg: "#EEF2FF", iconColor: "#4338CA",
+                    title: "Online Booking",
+                    desc: "Customers book online through SaaS — manage all appointments in one place.",
+                  },
+                  {
+                    Icon: Users, bg: "#FCE7F3", iconBg: "#FDF4FF", iconColor: "#BE185D",
+                    title: "Customer Accounts",
+                    desc: "All customer accounts managed in SaaS — view history, preferences & more.",
+                  },
+                  {
+                    Icon: MapPin, bg: "#FEF9C3", iconBg: "#FEFCE8", iconColor: "#CA8A04",
+                    title: "Store Visitors",
+                    desc: "New customers find your store via map in SaaS — they come directly to you.",
+                  },
+                ];
+                return (
+                  <div className="grid grid-cols-3 gap-2">
+                    {BENEFITS.map(({ Icon, bg, iconBg, iconColor, title, desc }) => (
+                      <div
+                        key={title}
+                        className="flex flex-col items-start rounded-xl p-2.5"
+                        style={{ background: iconBg, border: `1px solid ${bg}` }}
+                      >
+                        <div
+                          className="w-7 h-7 rounded-lg flex items-center justify-center mb-2 shrink-0"
+                          style={{ background: bg }}
+                        >
+                          <Icon className="w-3.5 h-3.5" style={{ color: iconColor }} />
+                        </div>
+                        <p className="text-[11px] font-bold leading-tight mb-1" style={{ color: "#111" }}>{title}</p>
+                        <p className="text-[10px] leading-relaxed" style={{ color: "#666" }}>{desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
 
             </motion.div>
 
