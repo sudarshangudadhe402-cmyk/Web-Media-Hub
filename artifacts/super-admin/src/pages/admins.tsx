@@ -232,6 +232,17 @@ export default function Dashboard() {
     staleTime: 60_000,
   });
 
+  // Renewal count (number of renewals, not revenue amount)
+  const { data: renewalsDetail } = useQuery({
+    queryKey: ["dashboard-renewals-detail"],
+    queryFn: async () => {
+      const res = await authFetch("/api/marketing/renewals-detail");
+      if (!res.ok) return null;
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+
   // Pending store requests (used as proxy for pending queries)
   const { data: storeRequests } = useQuery({
     queryKey: ["dashboard-store-requests"],
@@ -264,7 +275,7 @@ export default function Dashboard() {
   }).length;
 
   const totalRenewals: number =
-    revenueData?.renewalCount ?? revenueData?.total ?? 0;
+    renewalsDetail?.totalRenewalCount ?? 0;
 
   const pendingQueriesCount: number = Array.isArray(storeRequests)
     ? storeRequests.filter((r: any) => r.status === "pending").length
@@ -353,12 +364,10 @@ export default function Dashboard() {
     {
       icon: <TrendingUp className="w-5 h-5" style={{ color: "#0891b2" }} />,
       bg: "rgba(8,145,178,0.10)", border: "rgba(8,145,178,0.18)",
-      label: "New Store",
+      label: "New Store This Month",
       value: isLoading ? "—" : newStoresThisMonth.toLocaleString(),
-      badge: newStoresThisMonth > 0 ? `+${newStoresThisMonth} this month` : "This Month",
-      badgeColor: "#0891b2",
       subValue: isLoading ? "—" : newStoresToday.toLocaleString(),
-      subLabel: "New Store Today",
+      subLabel: "Today",
       subColor: "#059669",
     },
     {
@@ -502,16 +511,14 @@ export default function Dashboard() {
                     {s.badge}
                   </p>
                 )}
-                {/* Sub value — e.g. "New Store Today" below monthly count */}
+                {/* Sub value — compact inline, no extra height */}
                 {"subValue" in s && (s as any).subValue !== undefined && (
-                  <div className="mt-1.5 pt-1.5 border-t" style={{ borderColor: "#f0f0f5" }}>
-                    <p style={{ fontSize: 9, color: "#9ca3af" }} className="leading-tight font-medium uppercase tracking-wide">
-                      {(s as any).subLabel}
-                    </p>
-                    <p className="font-bold leading-tight" style={{ fontSize: 13, color: (s as any).subColor ?? "#1e1b4b" }}>
+                  <p className="mt-0.5 leading-tight" style={{ fontSize: 9, color: "#9ca3af" }}>
+                    <span style={{ color: (s as any).subColor ?? "#059669", fontWeight: 700 }}>
                       {(s as any).subValue}
-                    </p>
-                  </div>
+                    </span>
+                    {" "}{(s as any).subLabel}
+                  </p>
                 )}
                 {/* Action link */}
                 {"action" in s && s.action && (
