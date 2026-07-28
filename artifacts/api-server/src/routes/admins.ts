@@ -219,7 +219,7 @@ router.get("/admins", requireSuperAdmin, async (req, res) => {
         role: a.role,
         isActive: a.isActive !== false,
         activeSessionCount: (a.activeSessions ?? []).length,
-        storeId: sName ? generateStoreId(sName, sObjId) : generateStoreId(a.username, sid),
+        storeId: sData?.publicSlug ?? generateStoreId(a.username, sid),
         storeSlug: sData?.publicSlug ?? null,
         storeName: sName || null,
         storeCreatedAt: sData?.createdAt?.toISOString() ?? null,
@@ -262,7 +262,7 @@ router.get("/admins/:id", requireSuperAdmin, async (req, res) => {
 
     res.json({
       id: String(admin._id),
-      storeId: sName ? generateStoreId(sName, sObjId) : generateStoreId(admin.username, String(admin._id)),
+      storeId: store?.publicSlug ?? generateStoreId(admin.username, String(admin._id)),
       email: admin.email ?? "",
       adminNumber: admin.adminNumber ?? "",
       isActive: admin.isActive !== false,
