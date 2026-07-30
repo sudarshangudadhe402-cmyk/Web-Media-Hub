@@ -800,7 +800,7 @@ export default function CreateStore() {
                 {/* Card header */}
                 <div className="px-6 pt-5 pb-4 text-center">
                   <div className="w-12 h-12 rounded-xl mx-auto mb-2 flex items-center justify-center" style={{ background: LABEL }}>
-                    <Sparkles className="w-6 h-6 text-white" />
+                    <Store className="w-6 h-6 text-white" />
                   </div>
                   <p className="font-extrabold text-xs tracking-widest mb-0.5" style={{ color: GOLD }}>WEB MEDIA HUB</p>
                   <h1 className="text-2xl font-black mb-1.5"
@@ -815,7 +815,7 @@ export default function CreateStore() {
                   <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full border text-xs font-semibold"
                     style={{ borderColor: BORDER, color: "#7A6A4A" }}>
                     <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                    Trusted by Fashion Stores
+                    Trusted by All Stores
                   </div>
                 </div>
 
@@ -858,7 +858,7 @@ export default function CreateStore() {
                         </span>
                       </div>
                     )}
-                    {!errors.password && <p className="text-xs" style={{ color: HINT }}>Min 8 chars, 1 uppercase, 1 number (special chars/emojis nahi)</p>}
+                    {!errors.password && <p className="text-xs" style={{ color: HINT }}>Min 8 chars, 1 uppercase, 1 number</p>}
                   </div>
 
                   {/* ── OTP boxes (shown after OTP sent, hidden once verified) ── */}

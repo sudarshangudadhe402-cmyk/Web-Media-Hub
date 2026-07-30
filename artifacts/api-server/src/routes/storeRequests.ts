@@ -166,8 +166,9 @@ router.post("/store-requests/check-duplicate", async (req: any, res) => {
     }
 
     // Also check User collection in case the store was already created
+    // Only flag store-owner accounts (role: "admin"), not super_admin system accounts
     const existingUser = email
-      ? await User.findOne({ email }).select("_id").lean()
+      ? await User.findOne({ email, role: { $ne: "super_admin" } }).select("_id").lean()
       : null;
 
     if (existingUser) {
