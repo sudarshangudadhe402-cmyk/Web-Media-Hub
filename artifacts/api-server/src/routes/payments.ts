@@ -1,7 +1,6 @@
 import { Router } from "express";
 import crypto from "crypto";
 import { User } from "../models/User";
-import { StoreRequest } from "../models/StoreRequest";
 import { Notification } from "../models/Notification";
 import { Influencer } from "../models/Influencer";
 import { Ambassador } from "../models/Ambassador";
@@ -19,12 +18,6 @@ import { requireAuth, requireAuthForRenewal, AuthRequest } from "../middlewares/
 
 const router = Router();
 
-const REWARD_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789";
-function generateRewardCode(email: string): string {
-  const prefix = email.split("@")[0].toUpperCase().replace(/[^A-Z]/g, "").slice(0, 3).padEnd(3, "X");
-  const random = Array.from({ length: 7 }, () => REWARD_CHARS[Math.floor(Math.random() * REWARD_CHARS.length)]).join("");
-  return `${prefix}${random}`;
-}
 
 function parsePrice(str: string): number {
   const n = parseFloat(String(str).replace(/[^\d.]/g, ""));
@@ -270,27 +263,7 @@ router.post("/payments/verify-and-register", async (req: any, res) => {
 
     const cleanPhone = (whatsapp ?? "").replace(/\D/g, "").replace(/^91/, "");
 
-    // 3. Create StoreRequest (approved immediately)
-    const rewardCode = generateRewardCode(emailLower);
-    let request: InstanceType<typeof StoreRequest> | null = null;
-    request = await StoreRequest.create({
-      email: emailLower,
-      password,
-      storeName,
-      whatsapp: cleanPhone ? `+91${cleanPhone}` : whatsapp,
-      plan: plan ?? planName ?? "",
-      planName: planName ?? plan ?? "",
-      planPrice: planPrice ?? "",
-      planPeriod: planPeriod ?? "",
-      planBadge: planBadge ?? "",
-      planColor: planColor ?? "",
-      status: "approved",
-      submittedBy: "razorpay",
-      referred_by_admin_username: (ref_admin ?? "").trim(),
-      rewardCode,
-    });
-
-    // 4. Create User (admin account)
+    // 3. Create User (admin account)
     const autoUsername = `admin_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const { start, end } = calcSubscriptionDates(planPeriod ?? "");
 
@@ -326,15 +299,11 @@ router.post("/payments/verify-and-register", async (req: any, res) => {
         autopaySetupTokenExpiry: setupTokenExpiry,
       });
     } catch (userCreateErr: any) {
-      // If User creation fails, roll back StoreRequest and idempotency record
-      // so the user can retry. signupCommitted is still false here.
-      if (request) {
-        await StoreRequest.findByIdAndDelete(request._id).catch(() => {});
-      }
+      // If User creation fails, roll back idempotency record so the user can retry.
       if (consumedDoc?._id) {
         await ConsumedPayment.findByIdAndDelete(consumedDoc._id).catch(() => {});
       }
-      req.log?.error({ err: userCreateErr }, "User.create failed after StoreRequest created — rolled back");
+      req.log?.error({ err: userCreateErr }, "User.create failed — rolled back idempotency record");
       if (userCreateErr?.code === 11000) {
         res.status(400).json({ error: "Email already registered. Please login." });
       } else {

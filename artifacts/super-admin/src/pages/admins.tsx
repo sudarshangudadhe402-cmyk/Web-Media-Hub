@@ -243,17 +243,6 @@ export default function Dashboard() {
     staleTime: 60_000,
   });
 
-  // Pending store requests (used as proxy for pending queries)
-  const { data: storeRequests } = useQuery({
-    queryKey: ["dashboard-store-requests"],
-    queryFn: async () => {
-      const res = await authFetch("/api/store-requests");
-      if (!res.ok) return null;
-      return res.json();
-    },
-    staleTime: 60_000,
-  });
-
   // ── Derived stats from real API data ────────────────────────────────────────
 
   const adminsArr = admins as any[];
@@ -276,10 +265,6 @@ export default function Dashboard() {
 
   const totalRenewals: number =
     renewalsDetail?.totalRenewalCount ?? 0;
-
-  const pendingQueriesCount: number = Array.isArray(storeRequests)
-    ? storeRequests.filter((r: any) => r.status === "pending").length
-    : (storeRequests?.pending ?? 0);
 
   const activeRate  = totalStores > 0
     ? Math.round((activeStores  / totalStores) * 10000) / 100
@@ -340,7 +325,7 @@ export default function Dashboard() {
       icon: <MessageSquare className="w-5 h-5" style={{ color: "#d97706" }} />,
       bg: "rgba(217,119,6,0.10)", border: "rgba(217,119,6,0.18)",
       label: "Pending Queries",
-      value: isLoading ? "—" : pendingQueriesCount.toLocaleString(),
+      value: "0",
       action: "View all", actionColor: "#d97706",
     },
   ];

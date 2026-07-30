@@ -579,7 +579,7 @@ export default function CreateStore() {
         </button>
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: LABEL }}>
-            <Sparkles className="w-3 h-3 text-white" />
+            <Store className="w-3 h-3 text-white" />
           </div>
           <span className="font-bold text-sm tracking-widest" style={{ color: LABEL }}>WEB MEDIA HUB</span>
         </div>

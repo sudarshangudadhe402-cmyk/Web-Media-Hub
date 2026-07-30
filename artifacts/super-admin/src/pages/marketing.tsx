@@ -517,14 +517,8 @@ function ReferralTab() {
   const PAGE_SIZE = 12;
 
   const load = async () => {
-    setLoading(true);
-    try {
-      const r = await fetch(`${BASE}/store-requests/referral-history`, { headers: authHeaders() });
-      if (!r.ok) throw new Error("Failed");
-      const data = await r.json();
-      setList(Array.isArray(data) ? data : []);
-    } catch { toast({ title: "Failed to load referral history", variant: "destructive" }); }
-    finally { setLoading(false); }
+    setLoading(false);
+    setList([]);
   };
   useEffect(() => { load(); }, []);
 

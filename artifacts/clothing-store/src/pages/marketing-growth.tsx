@@ -301,16 +301,8 @@ export default function MarketingGrowth() {
   /* ── AI Video state ── */
   const [claimHelpOpen, setClaimHelpOpen] = useState(false);
 
-  /* ── My Referrals query ── */
-  const { data: myReferrals = [] } = useQuery<any[]>({
-    queryKey: ["my-referrals"],
-    queryFn: async () => {
-      const res = await fetch("/api/store-requests/my-referrals", { headers: authHeaders() });
-      if (!res.ok) return [];
-      return res.json();
-    },
-    refetchInterval: 30000,
-  });
+  /* ── My Referrals ── */
+  const myReferrals: any[] = [];
 
   const rewardCoins = myReferrals.filter(
     (r) => r.status === "approved" && r.rewardCode && r.rewardCode !== "NO_REWARD_MONTHLY_PLAN"

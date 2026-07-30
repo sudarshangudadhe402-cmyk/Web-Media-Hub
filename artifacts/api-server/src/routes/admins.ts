@@ -4,7 +4,6 @@ import { User } from "../models/User";
 import { Store } from "../models/Store";
 import { Product } from "../models/Product";
 import { requireSuperAdmin } from "../middlewares/auth";
-import { StoreRequest } from "../models/StoreRequest";
 import { RevenuePayment } from "../models/RevenuePayment";
 import { City } from "../models/City";
 
@@ -38,63 +37,9 @@ async function parseLocationFromAddress(address: string): Promise<{ storeState: 
 const router = Router();
 
 
-// ── Referral rewards: admins who referred others via referral link ────────────
-router.get("/admins/referral-rewards", requireSuperAdmin, async (req, res) => {
-  try {
-    // Find all StoreRequests where someone was referred by an admin
-    const referrals = await StoreRequest.find({
-      referred_by_admin_username: { $exists: true, $ne: "" },
-      rewardCode: { $exists: true, $ne: "" },
-    })
-      .select("email storeName referred_by_admin_username rewardCode planName createdAt")
-      .sort({ createdAt: -1 })
-      .lean();
-
-    if (referrals.length === 0) { res.json({ referrals: [] }); return; }
-
-    // Look up referrer admin details (username → store info)
-    const referrerUsernames = [...new Set(referrals.map((r: any) => r.referred_by_admin_username as string))];
-    const referrerUsers = await User.find({ username: { $in: referrerUsernames } })
-      .select("_id username email adminNumber")
-      .lean();
-
-    // Get store names for referrer admins
-    const referrerIds = referrerUsers.map((u: any) => String(u._id));
-    const referrerStores = await Store.find({ ownerId: { $in: referrerIds } }).select("ownerId name").lean();
-    const referrerStoreMap: Record<string, string> = {};
-    for (const s of referrerStores) {
-      referrerStoreMap[String((s as any).ownerId)] = (s as any).name ?? "";
-    }
-
-    const referrerUserMap: Record<string, { email: string; adminNumber: string; storeName: string; userId: string }> = {};
-    for (const u of referrerUsers) {
-      const uid = String((u as any)._id);
-      referrerUserMap[(u as any).username] = {
-        userId: uid,
-        email: (u as any).email ?? "",
-        adminNumber: (u as any).adminNumber ?? "",
-        storeName: referrerStoreMap[uid] ?? "",
-      };
-    }
-
-    res.json({
-      referrals: referrals.map((r: any) => ({
-        id: String(r._id),
-        rewardCode: r.rewardCode,
-        date: r.createdAt,
-        // Who referred
-        referrerUsername: r.referred_by_admin_username,
-        referrer: referrerUserMap[r.referred_by_admin_username] ?? null,
-        // Who was referred (new admin)
-        referredEmail: r.email,
-        referredStoreName: r.storeName,
-        referredPlan: r.planName ?? "",
-      })),
-    });
-  } catch (err) {
-    req.log.error({ err }, "Referral rewards error");
-    res.status(500).json({ error: "Internal server error" });
-  }
+// ── Referral rewards: returns empty (store requests removed) ──────────────────
+router.get("/admins/referral-rewards", requireSuperAdmin, async (_req, res) => {
+  res.json({ referrals: [] });
 });
 
 // ── Source breakdown: how many admins came from each signup_source ────────────
