@@ -723,6 +723,8 @@ router.post("/payments/renewal-verify", requireAuthForRenewal, async (req: AuthR
     adminUser.expiredEmailSent = false; // reset so next expiry cycle sends a fresh email
     // Audit trail — last renewal payment_id mirrored on the user document
     adminUser.lastVerifiedPaymentId = razorpay_payment_id;
+    // 2nd plan onwards → shift out of "referred" category into regular admins
+    adminUser.referred_by_admin_username = "";
     await adminUser.save();
     // Mark renewal as durably committed. From this point forward, ConsumedPayment
     // must NOT be deleted on error — the subscription is already extended, and
@@ -1088,6 +1090,8 @@ router.post("/payments/razorpay-webhook", async (req: any, res) => {
           expiredEmailSent: false,
           // Successful charge resets the consecutive-failure counter
           failedPaymentCount: 0,
+          // 2nd plan onwards → shift out of "referred" category into regular admins
+          referred_by_admin_username: "",
         }
       );
 
