@@ -293,6 +293,7 @@ router.post("/payments/verify-and-register", async (req: any, res) => {
         coupon_code: couponCode ? String(couponCode).toUpperCase() : "",
         signup_source: couponCode ? "INFLUENCER" : "ORGANIC",
         storeType: storeType ?? "",
+        referred_by_admin_username: (ref_admin ?? "").trim(),
         originalPlanPrice: rawOriginalPrice ? String(rawOriginalPrice) : (planPrice ?? ""),
         autopayStatus: "none",
         autopaySetupToken: setupToken,
