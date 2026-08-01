@@ -114,7 +114,7 @@ router.delete("/categories/:id", requireAuth, async (req: AuthRequest, res) => {
     }
     const storeId = String(store._id);
     await Category.findOneAndDelete({ _id: req.params.id, storeId });
-    res.json({ success: true });
+    res.json({ success: true, message: "Category deleted" });
   } catch (err) {
     req.log.error({ err }, "Delete category error");
     res.status(500).json({ error: "Internal server error" });

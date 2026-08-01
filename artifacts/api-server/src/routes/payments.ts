@@ -327,12 +327,16 @@ router.post("/payments/verify-and-register", async (req: any, res) => {
       });
     }
 
-    // 5. Notification
-    await Notification.create({
-      type: "store_request",
-      message: `Store "${storeName}" registered via Razorpay payment (${razorpay_payment_id})`,
-      relatedId: String(request._id),
-    });
+    // 5. Notification — non-fatal; failure must not break the registration response
+    try {
+      await Notification.create({
+        type: "store_request",
+        message: `Store "${storeName}" registered via Razorpay payment (${razorpay_payment_id})`,
+        relatedId: String(createdUser?._id ?? ""),
+      });
+    } catch (notifErr) {
+      req.log?.error({ err: notifErr }, "Failed to create signup notification — non-fatal");
+    }
 
     // 6. Welcome email — fire-and-forget (non-blocking; failure must not break registration)
     (async () => {
@@ -778,7 +782,13 @@ router.post("/payments/renewal-verify", requireAuthForRenewal, async (req: AuthR
       await ConsumedPayment.findByIdAndDelete(renewalConsumedDoc._id).catch(() => {});
     }
     req.log?.error({ err, renewalCommitted }, "Renewal verify error");
-    res.status(500).json({ error: "Renewal failed. Please contact support." });
+    if (renewalCommitted) {
+      // Renewal is durably committed — post-commit side-effects (revenue log, email) failed,
+      // but the subscription is already extended. Return success so the client doesn't retry.
+      res.json({ success: true });
+    } else {
+      res.status(500).json({ error: "Renewal failed. Please contact support." });
+    }
   } finally {
     if (_userId) releasePaymentLock(_lockKey);
   }
@@ -1069,38 +1079,45 @@ router.post("/payments/razorpay-webhook", async (req: any, res) => {
         return;
       }
 
-      // Idempotency: skip if we already processed this payment event
-      if (paymentId && user.lastWebhookPaymentId === paymentId) {
-        req.log?.info({ paymentId }, "Webhook already processed — skipping duplicate");
+      // Atomic update with idempotency guard: only extend if this paymentId hasn't been
+      // processed before. This prevents concurrent/retried Razorpay webhook deliveries from
+      // extending the subscription multiple times or duplicating the revenue record.
+      const days = parsePeriodDays(user.planPeriod);
+      const newEnd = new Date(user.subscriptionEndDate.getTime() + days * 24 * 60 * 60 * 1000);
+
+      const idempotencyFilter = paymentId
+        ? { razorpaySubscriptionId: subscriptionId, lastWebhookPaymentId: { $ne: paymentId } }
+        : { razorpaySubscriptionId: subscriptionId };
+
+      const charged = await User.findOneAndUpdate(
+        idempotencyFilter,
+        {
+          $set: {
+            subscriptionEndDate: newEnd,
+            autopayStatus: "active",
+            lastWebhookPaymentId: paymentId ?? "",
+            isActive: true,
+            expiredEmailSent: false,
+            failedPaymentCount: 0,
+            referred_by_admin_username: "",
+          },
+        },
+        { new: false }
+      );
+
+      if (!charged) {
+        // No document matched — either the user disappeared or this paymentId was already applied
+        req.log?.info({ paymentId, subscriptionId }, "Webhook subscription.charged: already processed or user not found — skipping");
         res.json({ ok: true });
         return;
       }
 
-      // Extend subscription by exactly the plan's period (computed from stored planPeriod)
-      const days = parsePeriodDays(user.planPeriod);
-      const newEnd = new Date(user.subscriptionEndDate.getTime() + days * 24 * 60 * 60 * 1000);
-
-      await User.updateOne(
-        { razorpaySubscriptionId: subscriptionId },
-        {
-          subscriptionEndDate: newEnd,
-          autopayStatus: "active",
-          lastWebhookPaymentId: paymentId ?? "",
-          isActive: true,
-          expiredEmailSent: false,
-          // Successful charge resets the consecutive-failure counter
-          failedPaymentCount: 0,
-          // 2nd plan onwards → shift out of "referred" category into regular admins
-          referred_by_admin_username: "",
-        }
-      );
-
-      // Record revenue event — autopay renewal charge
+      // Record revenue event — only runs when the atomic update succeeded
       await RevenuePayment.create({
-        adminId: String(user._id),
+        adminId: String(charged._id),
         type: "renewal",
-        amount: parsePrice(user.originalPlanPrice || user.planPrice),
-        planName: user.planName || "",
+        amount: parsePrice(charged.originalPlanPrice || charged.planPrice),
+        planName: charged.planName || "",
       });
 
       // Renewal email — fire-and-forget
@@ -1131,20 +1148,32 @@ router.post("/payments/razorpay-webhook", async (req: any, res) => {
         }
       })();
     } else if (event === "payment.failed") {
-      const user = await User.findOne({ razorpaySubscriptionId: subscriptionId });
-      if (!user) {
+      // Atomic increment — prevents concurrent webhook deliveries from racing and
+      // losing increments, which could let users exceed the failure threshold without
+      // their subscription being cancelled.
+      const updatedUser = await User.findOneAndUpdate(
+        { razorpaySubscriptionId: subscriptionId },
+        { $inc: { failedPaymentCount: 1 } },
+        { new: true }
+      );
+      if (!updatedUser) {
         res.json({ ok: true });
         return;
       }
 
-      const newFailedCount = (user.failedPaymentCount || 0) + 1;
+      const newFailedCount = updatedUser.failedPaymentCount;
       req.log?.warn(
         { subscriptionId, paymentId, failedPaymentCount: newFailedCount },
         "Autopay payment failed"
       );
 
       if (newFailedCount >= 2) {
-        // 2 consecutive failures — stop autopay so no further charges are attempted.
+        // 2 consecutive failures — atomically mark as cancelled first, then cancel on
+        // Razorpay so no further charges are attempted.
+        await User.updateOne(
+          { razorpaySubscriptionId: subscriptionId },
+          { autopayStatus: "cancelled" }
+        );
         const rzp = getRazorpay();
         if (rzp) {
           try {
@@ -1155,27 +1184,18 @@ router.post("/payments/razorpay-webhook", async (req: any, res) => {
             req.log?.error({ err: cancelErr, subscriptionId }, "Failed to cancel Razorpay subscription after repeated failures");
           }
         }
-        await User.updateOne(
-          { razorpaySubscriptionId: subscriptionId },
-          { autopayStatus: "cancelled", failedPaymentCount: newFailedCount }
-        );
         // Notify the store owner that autopay was auto-cancelled
         try {
           const { Store } = await import("../models/Store");
-          const store = await Store.findOne({ ownerId: String(user._id) }).lean();
-          const storeName = (store as any)?.storeName ?? (store as any)?.name ?? user.planName ?? user.email;
+          const store = await Store.findOne({ ownerId: String(updatedUser._id) }).lean();
+          const storeName = (store as any)?.storeName ?? (store as any)?.name ?? updatedUser.planName ?? updatedUser.email;
           await sendAutopayAutoCancelledEmail({
-            toEmail: user.email,
+            toEmail: updatedUser.email,
             storeName,
           });
         } catch (emailErr) {
           req.log?.error({ err: emailErr }, "Failed to send autopay auto-cancel email");
         }
-      } else {
-        await User.updateOne(
-          { razorpaySubscriptionId: subscriptionId },
-          { failedPaymentCount: newFailedCount }
-        );
       }
     } else if (event === "subscription.authenticated") {
       await User.updateOne({ razorpaySubscriptionId: subscriptionId }, { autopayStatus: "active" });

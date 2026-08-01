@@ -40,9 +40,15 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
       return;
     }
 
-    if (decoded.sessionId) {
+    // All non-super-admin tokens must carry a sessionId so logout/revocation works.
+    // Tokens without sessionId (e.g. legacy or externally minted) are rejected.
+    if (user.role !== "super_admin") {
+      if (!decoded.sessionId) {
+        res.status(401).json({ error: "Invalid session — please log in again" });
+        return;
+      }
       const sessionExists = user.activeSessions.some((s) => s.sessionId === decoded.sessionId);
-      if (!sessionExists && user.role !== "super_admin") {
+      if (!sessionExists) {
         res.status(401).json({ error: "Session expired — you have been logged in from another device" });
         return;
       }
@@ -70,9 +76,13 @@ export async function requireAuthForRenewal(req: AuthRequest, res: Response, nex
       res.status(401).json({ error: "Authentication failed." });
       return;
     }
-    if (decoded.sessionId) {
+    if (user.role !== "super_admin") {
+      if (!decoded.sessionId) {
+        res.status(401).json({ error: "Invalid session — please log in again" });
+        return;
+      }
       const sessionExists = user.activeSessions.some((s) => s.sessionId === decoded.sessionId);
-      if (!sessionExists && user.role !== "super_admin") {
+      if (!sessionExists) {
         res.status(401).json({ error: "Session expired" });
         return;
       }

@@ -42,13 +42,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
   });
 
-  const isLoading = !!token && isMeLoading;
+  // Track an explicit "logging in" flag so isLoading stays true from the moment
+  // login() is called until the /auth/me refetch resolves. Without this there is
+  // a brief window where token is set but isMeLoading is still false (before
+  // TanStack Query re-evaluates the enabled state), allowing callers to navigate
+  // to a protected route before user data is available.
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  const isLoading = !!token && (isMeLoading || isLoggingIn);
 
   const login = (newToken: string) => {
+    setIsLoggingIn(true);
     writeToken(newToken);
     setToken(newToken);
     setAuthTokenGetter(() => newToken);
-    refetch();
+    refetch().finally(() => setIsLoggingIn(false));
   };
 
   const logout = () => {

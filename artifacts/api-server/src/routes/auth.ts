@@ -255,29 +255,34 @@ router.post("/auth/logout", requireDb, requireAuth, async (req: AuthRequest, res
 });
 
 router.get("/auth/me", requireDb, requireAuth, async (req: AuthRequest, res) => {
-  const user = req.user!;
-  let storeName: string | null = null;
-  if (user.role === "admin") {
-    const store = await Store.findOne({ ownerId: String(user._id) }).select("name");
-    storeName = store?.name ?? null;
+  try {
+    const user = req.user!;
+    let storeName: string | null = null;
+    if (user.role === "admin") {
+      const store = await Store.findOne({ ownerId: String(user._id) }).select("name");
+      storeName = store?.name ?? null;
+    }
+    res.json({
+      id: String(user._id),
+      username: user.username,
+      email: user.email ?? "",
+      role: user.role,
+      createdAt: user.createdAt,
+      storeName,
+      planName: user.planName ?? "",
+      planPrice: user.planPrice ?? "",
+      planPeriod: user.planPeriod ?? "",
+      planBadge: user.planBadge ?? "",
+      planColor: user.planColor ?? "",
+      subscriptionStartDate: user.subscriptionStartDate ? user.subscriptionStartDate.toISOString() : null,
+      subscriptionEndDate: user.subscriptionEndDate ? user.subscriptionEndDate.toISOString() : null,
+      autopayStatus: user.autopayStatus ?? "none",
+      razorpaySubscriptionId: user.razorpaySubscriptionId ?? "",
+    });
+  } catch (err) {
+    req.log.error({ err }, "Get me error");
+    res.status(500).json({ error: "Internal server error" });
   }
-  res.json({
-    id: String(user._id),
-    username: user.username,
-    email: user.email ?? "",
-    role: user.role,
-    createdAt: user.createdAt,
-    storeName,
-    planName: user.planName ?? "",
-    planPrice: user.planPrice ?? "",
-    planPeriod: user.planPeriod ?? "",
-    planBadge: user.planBadge ?? "",
-    planColor: user.planColor ?? "",
-    subscriptionStartDate: user.subscriptionStartDate ? user.subscriptionStartDate.toISOString() : null,
-    subscriptionEndDate: user.subscriptionEndDate ? user.subscriptionEndDate.toISOString() : null,
-    autopayStatus: user.autopayStatus ?? "none",
-    razorpaySubscriptionId: user.razorpaySubscriptionId ?? "",
-  });
 });
 
 router.patch("/auth/change-password", requireDb, requireAuth, validate(ChangePasswordSchema), async (req: AuthRequest, res) => {
