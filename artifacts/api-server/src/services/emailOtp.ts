@@ -36,7 +36,7 @@ export async function sendStoreCreatedEmail(params: {
   const safePrice = escapeHtml(planPrice || "");
   const safePeriod = escapeHtml(planPeriod || "");
   const safeBadge = escapeHtml(planBadge || "");
-  const baseUrl = (process.env.FRONTEND_URL || "https://web-media-hub.replit.app").replace(/\/$/, "");
+  const baseUrl = (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/$/, "");
   const loginUrl = escapeHtml(`${baseUrl}/login`);
   const loginUrlRaw = `${baseUrl}/login`;
 
@@ -170,7 +170,7 @@ export async function sendStoreDeactivatedEmail(params: {
   const { toEmail, storeName, planName } = params;
   const safeStoreName = escapeHtml(storeName || "Your Store");
   const safePlan = escapeHtml(planName || "your plan");
-  const baseUrl = (process.env.FRONTEND_URL || "https://web-media-hub.replit.app").replace(/\/$/, "");
+  const baseUrl = (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/$/, "");
   const renewUrl = escapeHtml(`${baseUrl}/login`);
   const renewUrlRaw = `${baseUrl}/login`;
 
@@ -249,7 +249,7 @@ export async function sendStoreReactivatedEmail(params: {
   const safePrice = escapeHtml(planPrice || "");
   const safePeriod = escapeHtml(planPeriod || "");
   const safeBadge = escapeHtml(planBadge || "");
-  const baseUrl = (process.env.FRONTEND_URL || "https://web-media-hub.replit.app").replace(/\/$/, "");
+  const baseUrl = (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/$/, "");
   const dashboardUrl = escapeHtml(`${baseUrl}/login`);
   const dashboardUrlRaw = `${baseUrl}/login`;
 
@@ -333,7 +333,7 @@ export async function sendAutopayAutoCancelledEmail(params: {
 }) {
   const { toEmail, storeName } = params;
   const safeStoreName = escapeHtml(storeName || "your store");
-  const baseUrl = (process.env.FRONTEND_URL || "https://web-media-hub.replit.app").replace(/\/$/, "");
+  const baseUrl = (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/$/, "");
   const renewUrl = escapeHtml(`${baseUrl}/login`);
 
   const html = `
@@ -390,7 +390,7 @@ export async function sendLockoutEmail(
   lockedUntil: Date,
   role: "admin" | "super_admin" = "super_admin"
 ) {
-  const baseUrl = (process.env.FRONTEND_URL || "https://web-media-hub.replit.app").replace(/\/$/, "");
+  const baseUrl = (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/$/, "");
   const safeUsername = escapeHtml(username);
   const lockedUntilStr = lockedUntil.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
 

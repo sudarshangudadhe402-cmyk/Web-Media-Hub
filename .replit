@@ -106,10 +106,3 @@ externalPort = 80
 [[ports]]
 localPort = 21648
 externalPort = 4200
-
-[userenv]
-
-[userenv.shared]
-SUPER_ADMIN_ACCESS_CODE = "@SID352007_SA-WMH"
-VITE_GATE_CODE = "@SID-WMH-SA"
-SEED_SUPER_ADMIN_EMAIL = "webmediahub.superadmin@gmail.com"

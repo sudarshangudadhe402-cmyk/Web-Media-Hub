@@ -38,14 +38,14 @@ app.use(
       if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) {
         return callback(null, true);
       }
-      // Allow Replit dev domains (*.replit.dev, *.repl.co, *.replit.app)
       // Extract hostname so a port suffix like :3000 doesn't break the match
       let hostname = origin;
       try { hostname = new URL(origin).hostname; } catch {}
+      // Allow Replit preview domains when running on Replit (harmless elsewhere)
       if (/\.(replit\.dev|repl\.co|replit\.app|janeway\.replit\.dev)$/.test(hostname)) {
         return callback(null, true);
       }
-      // Allow localhost in development
+      // Allow localhost in development — set NODE_ENV=production to disable
       if (process.env.NODE_ENV !== "production" && /^https?:\/\/localhost(:\d+)?$/.test(origin)) {
         return callback(null, true);
       }
