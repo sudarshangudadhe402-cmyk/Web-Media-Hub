@@ -3,7 +3,11 @@
  * Router is required: FindStores navigates to /store/:slug via wouter.
  */
 import { createRoot } from "react-dom/client";
+import { setBaseUrl } from "@workspace/api-client-react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+const apiBase = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
+if (apiBase) setBaseUrl(apiBase);
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { Router, Route, Switch } from "wouter";
