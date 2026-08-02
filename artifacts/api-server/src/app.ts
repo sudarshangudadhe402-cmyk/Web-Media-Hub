@@ -24,29 +24,30 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ─── CORS — restrict to known origins ────────────────────────────────────────
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
-  .split(",")
-  .map((o) => o.trim())
-  .filter(Boolean);
+// Build the allowed origins list from ALLOWED_ORIGINS env var (comma-separated).
+// Also auto-allow FRONTEND_URL if set — so you only need one env var when
+// the frontend and API are on different origins (e.g. Vercel + Railway).
+const ALLOWED_ORIGINS = [
+  ...(process.env.ALLOWED_ORIGINS || "").split(",").map((o) => o.trim()).filter(Boolean),
+  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL.trim()] : []),
+];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow same-origin (no Origin header) and Replit proxy requests
+      // Allow same-origin requests (no Origin header — e.g. curl, mobile apps)
       if (!origin) return callback(null, true);
-      // Allow if explicitly listed
-      if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) {
-        return callback(null, true);
-      }
+      // Allow any explicitly listed origin
+      if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
       // Extract hostname so a port suffix like :3000 doesn't break the match
       let hostname = origin;
       try { hostname = new URL(origin).hostname; } catch {}
-      // Allow Replit preview domains when running on Replit (harmless elsewhere)
-      if (/\.(replit\.dev|repl\.co|replit\.app|janeway\.replit\.dev)$/.test(hostname)) {
+      // Allow localhost on any port in non-production (dev convenience)
+      if (process.env.NODE_ENV !== "production" && (hostname === "localhost" || hostname === "127.0.0.1")) {
         return callback(null, true);
       }
-      // Allow localhost in development — set NODE_ENV=production to disable
-      if (process.env.NODE_ENV !== "production" && /^https?:\/\/localhost(:\d+)?$/.test(origin)) {
+      // Allow Replit preview domains when running on Replit (harmless elsewhere)
+      if (/\.(replit\.dev|repl\.co|replit\.app|janeway\.replit\.dev)$/.test(hostname)) {
         return callback(null, true);
       }
       callback(new Error("CORS: origin not allowed"));
